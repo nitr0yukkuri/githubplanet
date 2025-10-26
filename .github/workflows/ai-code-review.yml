@@ -44,7 +44,7 @@ jobs:
 
       # 3. Discordに通知を送信
       - name: Send Discord Notification
-        uses: nav Vcx/discord-webhook-action@v1.2 # Discordアクション
+        uses: navch/discord-webhook-action@v1.2 # ★ 正しいアクション名に修正
         # CodiumAIが失敗した場合でも通知を送りたい場合は if: always() を追加
         if: always()
         with:
@@ -60,4 +60,4 @@ jobs:
             # Example (もしsummaryが出力されるなら):
             # ```
             # ${{ steps.pr_agent_review.outputs.summary }}
-            # ```
+            # 
