@@ -1,3 +1,4 @@
+# .github/workflows/ai-code-review.yml
 
 name: AI Code Review and Discord Notification
 
@@ -14,11 +15,11 @@ jobs:
       contents: read # コードの読み取りに必要
 
     steps:
-      # 1. コードのチェックアウト (変更なし)
+      # 1. コードのチェックアウト
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # CodiumAIのために全履歴を取得
 
       # 2. CodiumAI PR-Agentを実行
       - name: Run CodiumAI PR-Agent Review
@@ -27,8 +28,9 @@ jobs:
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # ★ Gemini APIキーを指定
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          # ★ 使用するモデルを "gemini-pro" (または "gemini-1.5-pro") に明示的に指定
+          # ★ 使用するモデルを "gemini-pro" に明示的に指定
           PR_AGENT.MODEL: "gemini-pro" 
 
       # 3. Discordに通知を送信
@@ -36,7 +38,7 @@ jobs:
         uses: appleboy/discord-action@master
         if: always() # 成功・失敗どちらでも通知
         with:
-          # ★ IDとTokenではなく、webhook_url を使用
+          # ★ ID/Tokenの代わりに webhook_url を使用
           webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }} 
           message: | # メッセージ内容
             CodiumAI Review job finished for PR #${{ github.event.pull_request.number }} ('${{ github.event.pull_request.title }}')
