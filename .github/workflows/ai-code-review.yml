@@ -1,9 +1,9 @@
+# .github/workflows/ai-code-review.yml
 
 name: AI Code Review and Discord Notification
 
 on:
   pull_request:
-    # PR作成時と、PRにプッシュがあった時にトリガー
     types: [opened, synchronize] 
 
 jobs:
@@ -11,40 +11,37 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-      issues: write # PRへのコメント書き込みに必要
-      contents: read # コードの読み取りに必要
+      issues: write 
+      contents: read 
 
     steps:
       # 1. コードのチェックアウト
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # CodiumAIのために全履歴を取得
+          fetch-depth: 0 
 
       # 2. CodiumAI PR-Agentを実行
       - name: Run CodiumAI PR-Agent Review
         id: pr_agent_review 
-        uses: Codium-ai/pr-agent@main 
+        # ★ @main の代わりに最新リリースバージョンを指定 (例: @v5.5.1 など。実際の最新版を確認してください)
+        uses: Codium-ai/pr-agent@v0.30 
         env: 
           GITHUB_CONTEXT: ${{ toJson(github) }} 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # ★ 使用するAPIキー (例: Gemini)
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }} 
-          # ★ 使用するモデルを指定
           PR_AGENT.MODEL: "gemini-pro"
-          # ★ 出力言語を日本語に指定
           PR_AGENT.LANGUAGE: "japanese"
 
       # 3. Discordに通知を送信
       - name: Send Discord Notification
-        # ★ 正しいアクション名を使用
         uses: appleboy/discord-action@master 
-        if: always() # 成功・失敗どちらでも通知
+        if: always() 
         with:
-          # ★ 正しい引数名 webhook_url を使用
           webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }} 
-          message: | # メッセージ内容
+          message: | 
             CodiumAI Review job finished for PR #${{ github.event.pull_request.number }} ('${{ github.event.pull_request.title }}')
             See results on GitHub Actions and the PR comments.
             PR: ${{ github.event.pull_request.html_url }}
 
+          
