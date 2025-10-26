@@ -1,3 +1,4 @@
+# .github/workflows/ai-code-review.yml
 
 name: AI Code Review and Discord Notification
 
@@ -28,7 +29,7 @@ jobs:
         env: 
           GITHUB_CONTEXT: ${{ toJson(github) }} 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # ★ 使用するAPIキー (例: Gemini)
+          # ★ Gemini APIキーを指定
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }} 
           # ★ 使用するモデルを指定
           PR_AGENT.MODEL: "gemini-pro"
@@ -37,11 +38,11 @@ jobs:
 
       # 3. Discordに通知を送信
       - name: Send Discord Notification
-        # ★ 正しいアクション名を使用
         uses: appleboy/discord-action@master 
-        if: always() # 成功・失敗どちらでも通知
+        # ★ 前のステップが失敗しても通知を実行
+        if: always() 
         with:
-          # ★ 正しい引数名 webhook_url を使用
+          # ★ Webhook URL を使用
           webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }} 
           message: | # メッセージ内容
             CodiumAI Review job finished for PR #${{ github.event.pull_request.number }} ('${{ github.event.pull_request.title }}')
