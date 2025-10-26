@@ -30,7 +30,7 @@ jobs:
           GITHUB_CONTEXT: ${{ toJson(github) }} 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }} 
-          PR_AGENT.MODEL: "gemini-pro"
+          PR_AGENT.MODEL: "gemini-1.5-pro-latest"
           PR_AGENT.LANGUAGE: "japanese"
 
       # 3. Discordに通知を送信
