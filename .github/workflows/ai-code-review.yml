@@ -1,4 +1,3 @@
-# .github/workflows/ai-code-review.yml
 
 name: AI Code Review and Discord Notification
 
@@ -21,23 +20,24 @@ jobs:
         with:
           fetch-depth: 0
 
-      # 2. CodiumAI PR-Agentを実行 (変更なし)
+      # 2. CodiumAI PR-Agentを実行
+      # ★ OPENAI_KEY を GOOGLE_API_KEY に変更
       - name: Run CodiumAI PR-Agent Review
         id: pr_agent_review
         uses: Codium-ai/pr-agent@main
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # ... (必要に応じて他のAPIキーなどを追加) ...
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }} # ★ Gemini APIキーを使用
 
-      # 3. Discordに通知を送信 (★ Zennの記事を参考に修正)
+      # 3. Discordに通知を送信 (変更なし)
       - name: Send Discord Notification
-        uses: appleboy/discord-action@master # ★ アクション名を変更
-        # if: always() # 失敗時も通知したい場合はコメントを外す
+        uses: appleboy/discord-action@master
+        if: always() # 成功・失敗どちらでも通知
         with:
-          webhook_id: ${{ secrets.DISCORD_WEBHOOK_ID }} # ★ Webhook URLからID部分をSecretに設定
-          webhook_token: ${{ secrets.DISCORD_WEBHOOK_TOKEN }} # ★ Webhook URLからToken部分をSecretに設定
+          webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }} 
           message: | # メッセージ内容
-            CodiumAI Review started for PR #${{ github.event.pull_request.number }} ('${{ github.event.pull_request.title }}')
-            Review results will be posted as a comment on the PR.
-            See PR: ${{ github.event.pull_request.html_url }}
+            CodiumAI Review job finished for PR #${{ github.event.pull_request.number }} ('${{ github.event.pull_request.title }}')
+            See results on GitHub Actions and the PR comments.
+            PR: ${{ github.event.pull_request.html_url }}
+
