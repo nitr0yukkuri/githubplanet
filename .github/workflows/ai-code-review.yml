@@ -1,4 +1,3 @@
-# .github/workflows/ai-code-review.yml
 
 name: AI Code Review and Discord Notification
 
@@ -8,10 +7,7 @@ on:
 
 jobs:
   code-review:
-    # CodiumAIのアクションは self-hosted runner では追加設定が必要な場合がありますが、
-    # GitHub標準の ubuntu-latest なら通常問題ありません。
     runs-on: ubuntu-latest
-    # CodiumAIがPRにコメントを書き込めるようにパーミッションを追加します
     permissions:
       pull-requests: write
       issues: write # PRへのコメント書き込みに必要
@@ -26,38 +22,24 @@ jobs:
 
       # 2. CodiumAI PR-Agentを実行
       - name: Run CodiumAI PR-Agent Review
-        id: pr_agent_review # ステップIDを変更 (任意)
-        uses: Codium-ai/pr-agent@main # ★ CodiumAIのアクション名とバージョン (main または最新のリリースバージョン)
-        env: # with: ではなく env: で設定することが多いです
-          GITHUB_CONTEXT: ${{ toJson(github) }} # GitHubのコンテキスト情報を渡す
+        id: pr_agent_review
+        uses: Codium-ai/pr-agent@main
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # OPENAI_KEY: ${{ secrets.OPENAI_API_KEY }} # もしOpenAI APIキーを使う場合 (CodiumAIのデフォルト設定で不要な場合もある)
-          # AZURE_OPENAI_KEY: ${{ secrets.AZURE_OPENAI_KEY }} # Azure OpenAIを使う場合
-          # AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-          # ANTHROPIC_KEY: ${{ secrets.ANTHROPIC_KEY }} # Anthropic APIキーを使う場合
-          # COHERE_KEY: ${{ secrets.COHERE_KEY }} # Cohere APIキーを使う場合
-          # --- CodiumAI固有の設定 (必要なら追加) ---
-          # 例: 特定のファイルを除外する
-          # CONFIG.IGNORE: '["**/package-lock.json"]'
-          # 例: レビューのレベルを設定 (例: 'medium')
-          # CONFIG.PR_REVIEWER.REVIEW_LABELS_ENABLE: true # ラベル付けを有効にするなど
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          # ★ 使用するモデルを "gemini-pro" (または "gemini-1.5-pro") に明示的に指定
+          PR_AGENT.MODEL: "gemini-pro" 
 
       # 3. Discordに通知を送信
       - name: Send Discord Notification
-        uses: nav Vcx/discord-webhook-action@v1.2 # Discordアクション
-        # CodiumAIが失敗した場合でも通知を送りたい場合は if: always() を追加
-        if: always()
+        uses: appleboy/discord-action@master
+        if: always() # 成功・失敗どちらでも通知
         with:
-          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }} # 引数名が 'webhook'
+          # ★ IDとTokenではなく、webhook_url を使用
+          webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }} 
           message: | # メッセージ内容
-            CodiumAI Review started for PR #${{ github.event.pull_request.number }} ('${{ github.event.pull_request.title }}')
-            Review results will be posted as a comment on the PR.
-            See PR: ${{ github.event.pull_request.html_url }}
-            # --- CodiumAIは通常、結果をPRコメントに出力するため、
-            # --- Discord通知には概要やリンクのみを送るのが一般的です。
-            # --- もし特定の結果を steps の output で取得できるならここに追加できますが、
-            # --- CodiumAIのドキュメントで確認が必要です。
-            # Example (もしsummaryが出力されるなら):
-            # ```
-            # ${{ steps.pr_agent_review.outputs.summary }}
-            # ```
+            CodiumAI Review job finished for PR #${{ github.event.pull_request.number }} ('${{ github.event.pull_request.title }}')
+            See results on GitHub Actions and the PR comments.
+            PR: ${{ github.event.pull_request.html_url }}
+
