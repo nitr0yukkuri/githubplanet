@@ -1,12 +1,10 @@
 {
   "dependencies": {
-
     "@supabase/supabase-js": "^2.78.0",
-    "three": "^0.181.0"
+    "three": "^0.181.0",
     "axios": "^1.13.1",
     "express": "^4.21.2",
     "express-session": "^1.18.2"
-
   },
   "type": "module",
   "scripts": {
