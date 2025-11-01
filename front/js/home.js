@@ -24,15 +24,15 @@ function init() {
     controls.autoRotate = false;
     controls.autoRotateSpeed = 0.5;
 
-    const ambientLight = new THREE.AmbientLight(0x888888, 1); // 0x888888 (明るい灰色) に変更
+    const ambientLight = new THREE.AmbientLight(0x888888, 2); // 0x888888 (明るい灰色) に変更
     scene.add(ambientLight);
 
-    const pointLight = new THREE.PointLight(0xffffff, 15, 1000); // 強さを 1.5 -> 15 に
+    const pointLight = new THREE.PointLight(0xffffff, 25, 1000); // 強さを 1.5 -> 15 に
     pointLight.position.set(20, 10, 5); // 位置はそのまま
     scene.add(pointLight);
 
     // 補助的なDirectionalLight（太陽光のような光）を追加
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5); // 白色の光、強さ0.5
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.4); // 白色の光、強さ0.5
     directionalLight.position.set(50, 15, 10); // 左上奥から当たるように設定
     scene.add(directionalLight);
 
@@ -64,14 +64,28 @@ function init() {
 
     planetGroup = new THREE.Group();
 
+    // 1. テクスチャを読み込むための「ローダー」を作成
+    const textureLoader = new THREE.TextureLoader();
+
     // 惑星本体
     const planetGeo = new THREE.SphereGeometry(4, 32, 32);
     const planetMat = new THREE.MeshStandardMaterial({
-        color: 0x3366ff, // ここを明るい青に変更しました
-        metalness: 0.5,
-        roughness: 0.7,
+        color: 0x3366ff,    //好きな色
+        metalness: 0.2,    
+        roughness: 0.8,    
+        aoMapIntensity: 1.5,
     });
+
+    const aoTexture = textureLoader.load('front/img/2k_mars.jpg');
+    planetMat.aoMap = aoTexture;
+
     const planet = new THREE.Mesh(planetGeo, planetMat);
+
+    planet.geometry.setAttribute(
+        'uv2',
+        new THREE.BufferAttribute(planet.geometry.attributes.uv.array, 2)
+    );
+
     planetGroup.add(planet);
 
     // 惑星とリングのグループを傾ける (リングがなくなったので、単に惑星の傾きに)
