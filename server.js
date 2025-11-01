@@ -1,207 +1,190 @@
-// server.js (超詳細デバッグ版)
+// server.js (★ Webページ提供機能 + API機能 ★)
 
-import { createClient } from '@supabase/supabase-js';
+// 1. インポート
 import express from 'express';
+import session from 'express-session';
+import crypto from 'crypto';
+import axios from 'axios';
+import path from 'path'; // ★ ファイルパスを扱うために追加
+import { fileURLToPath } from 'url'; // ★ import.meta.url を使うために追加
 
+// 2. Express の初期化
 const app = express();
 const port = 3000;
 
-const supabaseUrl = 'http://127.0.0.1:54321';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
+// ★★★ GitHub OAuth App の設定 ★★★
+// (unkoブランチのIDとSecretをそのまま使います)
+const GITHUB_CLIENT_ID = 'Ov23lil0pJoHtaeAvXrk';
+const GITHUB_CLIENT_SECRET = '0af8d9d749f799e2c1705e833fdc6930badeda24';
+const CALLBACK_URL = 'http://localhost:3000/callback';
 
-// すべてのリクエストをログ
-app.use((req, res, next) => {
-    console.log(`\n>>> [${new Date().toISOString()}] ${req.method} ${req.url}`);
-    console.log('Query:', req.query);
-    console.log('Headers:', {
-        host: req.headers.host,
-        referer: req.headers.referer,
-        'user-agent': req.headers['user-agent']?.substring(0, 50)
-    });
-    next();
+// --- ESModuleで __dirname を再現 ---
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// 3. セッションの設定 (変更なし)
+app.use(session({
+    secret: 'your-very-secret-key-change-it', // (ここは後で変えてもOK)
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false } // localhost (http) の場合は false
+}));
+
+// (PKCEヘルパー関数 - 変更なし)
+function base64URLEncode(str) {
+    return str.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+function sha256(buffer) {
+    return crypto.createHash('sha256').update(buffer).digest();
+}
+
+// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+// ★ フロントエンド (HTML / JS) の提供
+// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
+// ルートURL (/) にアクセスが来たら index.html を返す
+app.get('/', (req, res) => {
+    // コンソールログを追加して、提供していることを確認
+    console.log('index.html を提供します');
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.use(express.static('public'));
-
-// --- /login エンドポイント ---
-app.get('/login', async (req, res) => {
-    console.log('\n╔════════════════════════════════════╗');
-    console.log('║   GitHubログイン処理開始        ║');
-    console.log('╚════════════════════════════════════╝');
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    console.log('📝 リクエストパラメータ:');
-    console.log('   - Provider: github');
-    console.log('   - RedirectTo: http://localhost:3000/callback');
-    console.log('   - Scopes: user:email');
-
-    const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'github',
-        options: {
-            redirectTo: 'http://localhost:3000/callback',
-            scopes: 'user:email'
-        }
-    });
-
-    if (error) {
-        console.error('❌ Supabase エラー:', error);
-        return res.status(500).send(`
-            <html>
-            <body style="font-family: Arial; padding: 50px;">
-                <h1>❌ エラー</h1>
-                <pre>${JSON.stringify(error, null, 2)}</pre>
-                <a href="/">戻る</a>
-            </body>
-            </html>
-        `);
-    }
-
-    console.log('✅ Supabase レスポンス:', {
-        hasUrl: !!data?.url,
-        urlPreview: data?.url?.substring(0, 100) + '...'
-    });
-
-    if (data?.url) {
-        console.log('🔀 リダイレクト実行:', data.url);
-        console.log('╚════════════════════════════════════╝\n');
-        res.redirect(data.url);
-    } else {
-        console.error('❌ URLなし');
-        res.status(500).send('URL生成失敗');
-    }
+// /client.js へのアクセスが来たら client.js を返す
+app.get('/client.js', (req, res) => {
+    // コンソールログを追加
+    console.log('client.js を提供します');
+    res.sendFile(path.join(__dirname, 'client.js'));
 });
 
-// --- /callback エンドポイント ---
+// --- 4. /login エンドポイント (変更なし) ---
+app.get('/login', (req, res) => {
+    console.log('GitHubログインリクエストを受け取りました');
+    const code_verifier = base64URLEncode(crypto.randomBytes(32));
+    req.session.code_verifier = code_verifier; // セッションに保存
+    const code_challenge = base64URLEncode(sha256(code_verifier));
+
+    const authUrl = new URL('https://github.com/login/oauth/authorize');
+    authUrl.searchParams.set('client_id', GITHUB_CLIENT_ID);
+    authUrl.searchParams.set('redirect_uri', CALLBACK_URL);
+    authUrl.searchParams.set('scope', 'user:email public_repo'); // ★ 惑星データ取得に必要なスコープ
+    authUrl.searchParams.set('state', crypto.randomBytes(16).toString('hex'));
+    authUrl.searchParams.set('code_challenge', code_challenge);
+    authUrl.searchParams.set('code_challenge_method', 'S256');
+
+    console.log('GitHub認証ページにリダイレクトします:', authUrl.href);
+    res.redirect(authUrl.href);
+});
+
+// --- 5. /callback エンドポイント (★ 惑星データ生成＆保存 ★) ---
 app.get('/callback', async (req, res) => {
-    console.log('\n╔════════════════════════════════════╗');
-    console.log('║   /callback 呼び出し             ║');
-    console.log('╚════════════════════════════════════╝');
+    console.log('/callback が呼ばれました');
+    const { code } = req.query;
+    const { code_verifier } = req.session; // セッションから取得
 
-    console.log('📨 受信データ:');
-    console.log('   完全なURL:', req.url);
-    console.log('   Query String:', req.url.split('?')[1] || '(なし)');
-    console.log('   パースされたQuery:', JSON.stringify(req.query, null, 2));
-    console.log('   Referer:', req.headers.referer || '(なし)');
+    if (!code) return res.status(400).send('codeがありません');
+    if (!code_verifier) return res.status(400).send('code_verifierがセッションにありません');
 
-    const queryKeys = Object.keys(req.query);
-    console.log(`   パラメータ数: ${queryKeys.length}`);
+    console.log('受け取ったコード:', code);
 
-    if (queryKeys.length === 0) {
-        console.error('❌ パラメータが全くありません！');
-        console.log('\n🔍 デバッグ情報:');
-        console.log('   req.url:', req.url);
-        console.log('   req.originalUrl:', req.originalUrl);
-        console.log('   req.path:', req.path);
+    try {
+        // 3. アクセストークンと交換
+        const tokenResponse = await axios.post(
+            'https://github.com/login/oauth/access_token',
+            {
+                client_id: GITHUB_CLIENT_ID,
+                client_secret: GITHUB_CLIENT_SECRET,
+                code: code,
+                redirect_uri: CALLBACK_URL,
+                code_verifier: code_verifier // ★ PKCE検証キーを送信
+            },
+            { headers: { 'Accept': 'application/json' } }
+        );
+        const accessToken = tokenResponse.data.access_token;
+        if (!accessToken) throw new Error('アクセストークンが取得できませんでした');
+        console.log('アクセストークン取得成功！');
 
-        return res.send(`
-            <!DOCTYPE html>
-            <html lang="ja">
-            <head>
-                <meta charset="UTF-8">
-                <title>デバッグ情報</title>
-                <style>
-                    body { font-family: monospace; padding: 30px; background: #1e1e1e; color: #d4d4d4; }
-                    .error { color: #f48771; font-size: 20px; margin-bottom: 20px; }
-                    .box { background: #2d2d2d; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #404040; }
-                    .box h3 { color: #4ec9b0; margin-top: 0; }
-                    pre { background: #1e1e1e; padding: 15px; border-radius: 4px; overflow-x: auto; border: 1px solid #404040; }
-                    code { color: #ce9178; }
-                    .step { background: #264f78; padding: 15px; margin: 10px 0; border-radius: 4px; }
-                    a { color: #4fc3f7; }
-                </style>
-            </head>
-            <body>
-                <div class="error">❌ エラー: クエリパラメータが空です</div>
-                
-                <div class="box">
-                    <h3>🔍 受信したリクエスト情報</h3>
-                    <p><strong>URL:</strong> <code>${req.url}</code></p>
-                    <p><strong>Original URL:</strong> <code>${req.originalUrl}</code></p>
-                    <p><strong>Path:</strong> <code>${req.path}</code></p>
-                    <p><strong>Query Object:</strong></p>
-                    <pre>${JSON.stringify(req.query, null, 2)}</pre>
-                    <p><strong>Referer:</strong> <code>${req.headers.referer || 'なし'}</code></p>
-                </div>
+        // 4. ユーザー情報取得
+        const userResponse = await axios.get('https://api.github.com/user', {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        const user = userResponse.data;
+        console.log('ようこそ,', user.login);
 
-                <div class="box">
-                    <h3>🔧 問題の診断</h3>
-                    <p>GitHubからのリダイレクトが正しく機能していません。以下を確認してください：</p>
-                    
-                    <div class="step">
-                        <strong>1. GitHub OAuth App の設定確認</strong>
-                        <ul>
-                            <li>https://github.com/settings/developers にアクセス</li>
-                            <li>OAuth Apps → あなたのアプリを選択</li>
-                            <li><strong>Client ID:</strong> <code>Ov23lil0pJoHtaeAvXrk</code> と一致するか確認</li>
-                        </ul>
-                    </div>
+        // 5. リポジトリ一覧を取得
+        const reposResponse = await axios.get(user.repos_url, {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        const repos = reposResponse.data;
 
-                    <div class="step">
-                        <strong>2. Authorization callback URL の設定</strong>
-                        <p>以下のURLに<strong>正確に</strong>設定されているか確認：</p>
-                        <pre>http://127.0.0.1:54321/auth/v1/callback</pre>
-                        <p style="color: #f48771;">注意: localhostではなく127.0.0.1を使用</p>
-                    </div>
+        // 6. 言語データを集計
+        const languageStats = {};
+        await Promise.all(repos.map(async (repo) => {
+            if (repo.fork || !repo.languages_url) return; // フォークは除外
+            try {
+                const langResponse = await axios.get(repo.languages_url, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                const languages = langResponse.data;
+                for (const [lang, bytes] of Object.entries(languages)) {
+                    languageStats[lang] = (languageStats[lang] || 0) + bytes;
+                }
+            } catch (langError) { /* 取得失敗したリポジトリはスキップ */ }
+        }));
 
-                    <div class="step">
-                        <strong>3. config.toml の確認</strong>
-                        <p>supabase/config.toml で以下を確認：</p>
-                        <pre>[auth.external.github]
-enabled = true
-client_id = "Ov23lil0pJoHtaeAvXrk"
-secret = "90966284ed110870027732138324e6b7a1e21b21"</pre>
-                    </div>
+        // 7. メイン言語を特定
+        let mainLanguage = 'Unknown';
+        let maxBytes = 0;
+        for (const [lang, bytes] of Object.entries(languageStats)) {
+            if (bytes > maxBytes) {
+                maxBytes = bytes;
+                mainLanguage = lang;
+            }
+        }
+        console.log('メイン言語:', mainLanguage);
 
-                    <div class="step">
-                        <strong>4. Supabase の再起動</strong>
-                        <p>設定を変更した場合は再起動が必要です：</p>
-                        <pre>npx supabase stop
-npx supabase start</pre>
-                    </div>
-                </div>
+        // 8. 惑星の色を決定
+        let planetColor = '#808080'; // デフォルト
+        if (mainLanguage === 'JavaScript') planetColor = '#f0db4f';
+        if (mainLanguage === 'TypeScript') planetColor = '#007acc';
+        if (mainLanguage === 'Python') planetColor = '#306998';
+        if (mainLanguage === 'HTML') planetColor = '#e34c26';
+        if (mainLanguage === 'CSS') planetColor = '#563d7c';
+        if (mainLanguage === 'Ruby') planetColor = '#CC342D';
+        // ... 他の言語 ...
 
-                <div class="box">
-                    <h3>🧪 テスト手順</h3>
-                    <ol>
-                        <li>上記の設定をすべて確認</li>
-                        <li>Supabaseを再起動</li>
-                        <li>サーバーを再起動（Ctrl+C → node server.js）</li>
-                        <li><a href="/">トップページ</a>から再度ログインを試す</li>
-                        <li>ブラウザの開発者ツール(F12) → Networkタブで通信を確認</li>
-                    </ol>
-                </div>
+        // 9. ★ データをセッションに保存 ★
+        req.session.planetData = {
+            user: user,
+            github_token: accessToken, // トークンも保存
+            planetData: {
+                mainLanguage: mainLanguage,
+                planetColor: planetColor,
+                languageStats: languageStats
+            }
+        };
 
-                <p><a href="/">🏠 トップに戻る</a></p>
-            </body>
-            </html>
-        `);
+        // 10. ★ JSONを返す代わりにホームページ(/)にリダイレクト ★
+        console.log('惑星データ生成完了。/ (ルート) にリダイレクトします。');
+        res.redirect('/');
+
+    } catch (error) {
+        console.error('認証エラー:', error.response ? error.response.data : error.message);
+        res.status(500).send('認証中にエラーが発生しました');
     }
+});
 
-    const { code, error: authError, error_description } = req.query;
-
-    console.log('📦 パラメータ詳細:');
-    console.log(`   - code: ${code ? '✅ あり (' + code.substring(0, 20) + '...)' : '❌ なし'}`);
-    console.log(`   - error: ${authError || '(なし)'}`);
-    console.log(`   - error_description: ${error_description || '(なし)'}`);
-
-    if (authError) {
-        console.error('❌ 認証エラー:', authError);
-        return res.status(400).send(`
-            <html>
-            <body style="font-family: Arial; padding: 50px;">
-                <h1>❌ 認証エラー</h1>
-                <p><strong>エラー:</strong> ${authError}</p>
-                <p><strong>詳細:</strong> ${error_description || 'なし'}</p>
-                <a href="/">戻る</a>
-            </body>
-            </html>
-        `);
-    }
-
-    if (!code) {
-        console.error('❌ codeパラメータなし（authErrorもなし）');
-        return res.status(400).send('codeがありません');
+// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+// ★ 修正点 4: 惑星データを返すAPIエンドポイントを追加
+// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+app.get('/api/me', (req, res) => {
+    if (req.session.planetData) {
+        // セッションに惑星データがあれば、それをJSONで返す
+        console.log('/api/me が呼ばれました。セッションデータを返します。');
+        res.json(req.session.planetData);
+    } else {
+        // セッションが切れているか、未ログイン
+        console.log('/api/me が呼ばれました。認証されていません (401)。');
+        res.status(401).json({ error: 'Not authenticated' });
     }
 
     console.log('✅ code取得成功');
@@ -367,7 +350,7 @@ app.get('/', (req, res) => {
     `);
 });
 
-// --- サーバー起動 ---
+// --- 6. サーバー起動 ---
 app.listen(port, () => {
     console.log('\n╔════════════════════════════════════╗');
     console.log('║     サーバー起動完了           ║');
