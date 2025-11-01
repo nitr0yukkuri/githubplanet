@@ -186,10 +186,178 @@ app.get('/api/me', (req, res) => {
         console.log('/api/me が呼ばれました。認証されていません (401)。');
         res.status(401).json({ error: 'Not authenticated' });
     }
+
+    console.log('✅ code取得成功');
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    console.log('🔄 セッション交換開始...');
+    const { data, error } = await supabase.auth.exchangeCodeForSession(String(code));
+
+    if (error) {
+        console.error('❌ exchangeCodeForSession エラー:', error);
+        return res.status(500).send(`
+            <html>
+            <body style="font-family: Arial; padding: 50px;">
+                <h1>❌ セッション交換エラー</h1>
+                <pre>${JSON.stringify(error, null, 2)}</pre>
+                <a href="/">戻る</a>
+            </body>
+            </html>
+        `);
+    }
+
+    console.log('✅ セッション交換成功');
+
+    const user = data.session?.user;
+    const providerToken = data.session?.provider_token;
+
+    if (!user) {
+        console.error('❌ ユーザー情報なし');
+        return res.status(500).send('ユーザー情報取得失敗');
+    }
+
+    console.log('✅ ユーザー情報取得成功:');
+    console.log(`   - ID: ${user.id}`);
+    console.log(`   - Email: ${user.email}`);
+    console.log(`   - Username: ${user.user_metadata?.user_name || 'N/A'}`);
+    console.log('╚════════════════════════════════════╝\n');
+
+    res.send(`
+        <!DOCTYPE html>
+        <html lang="ja">
+        <head>
+            <meta charset="UTF-8">
+            <title>ログイン成功 🎉</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    max-width: 800px;
+                    margin: 50px auto;
+                    padding: 30px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                }
+                .container {
+                    background: white;
+                    padding: 40px;
+                    border-radius: 15px;
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+                }
+                h1 { color: #2d3748; border-bottom: 3px solid #48bb78; padding-bottom: 15px; }
+                .success { background: #48bb78; color: white; padding: 10px 20px; border-radius: 25px; display: inline-block; margin-bottom: 20px; }
+                .info { background: #f7fafc; padding: 20px; border-radius: 10px; margin: 20px 0; }
+                pre { background: #2d3748; color: #68d391; padding: 20px; border-radius: 10px; overflow-x: auto; }
+                a { display: inline-block; margin-top: 25px; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 8px; }
+                a:hover { background: #5568d3; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="success">🎉 ログイン成功！</div>
+                <h1>ユーザー情報</h1>
+                
+                <div class="info">
+                    <p><strong>👤 ユーザー名:</strong> ${user.user_metadata?.user_name || 'N/A'}</p>
+                    <p><strong>📧 Email:</strong> ${user.email || 'N/A'}</p>
+                    <p><strong>🆔 ID:</strong> ${user.id}</p>
+                    ${providerToken ? `<p><strong>🔑 GitHub Token:</strong> ${providerToken.substring(0, 30)}...</p>` : ''}
+                </div>
+
+                <h2>完全なユーザー情報</h2>
+                <pre>${JSON.stringify(user, null, 2)}</pre>
+
+                <a href="/">🏠 トップに戻る</a>
+            </div>
+        </body>
+        </html>
+    `);
 });
 
+// --- トップページ ---
+app.get('/', (req, res) => {
+    res.send(`
+        <!DOCTYPE html>
+        <html lang="ja">
+        <head>
+            <meta charset="UTF-8">
+            <title>GitHub OAuth テスト</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    max-width: 700px;
+                    margin: 100px auto;
+                    text-align: center;
+                    padding: 20px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    min-height: 100vh;
+                }
+                .card {
+                    background: white;
+                    padding: 50px;
+                    border-radius: 20px;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                }
+                h1 { color: #2d3748; margin-bottom: 15px; }
+                button {
+                    background: #24292e;
+                    color: white;
+                    padding: 18px 40px;
+                    border: none;
+                    border-radius: 10px;
+                    font-size: 18px;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                }
+                button:hover {
+                    background: #2c3338;
+                    transform: translateY(-3px);
+                }
+                .warning {
+                    background: #fff8e1;
+                    border: 2px solid #ffd54f;
+                    padding: 25px;
+                    border-radius: 12px;
+                    margin-top: 40px;
+                    text-align: left;
+                }
+                code {
+                    background: #37474f;
+                    color: #69f0ae;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    font-family: monospace;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <h1>🚀 GitHub OAuth ログイン</h1>
+                <p>Supabase + Express + GitHub OAuth</p>
+                
+                <button onclick="location.href='/login'">🔐 GitHubでログイン</button>
+
+                <div class="warning">
+                    <h3 style="margin-top: 0; color: #f57c00;">⚙️ 必須設定</h3>
+                    <p><strong>GitHub OAuth App の Authorization callback URL:</strong></p>
+                    <code>http://127.0.0.1:54321/auth/v1/callback</code>
+                    <p style="margin-top: 15px; font-size: 14px;">
+                        設定場所: GitHub → Settings → Developer settings → OAuth Apps
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `);
+});
 
 // --- 6. サーバー起動 ---
 app.listen(port, () => {
-    console.log(`サーバーが http://localhost:${port} で起動しました`);
+    console.log('\n╔════════════════════════════════════╗');
+    console.log('║     サーバー起動完了           ║');
+    console.log('╚════════════════════════════════════╝');
+    console.log(`📍 URL: http://localhost:${port}`);
+    console.log('\n📌 GitHub OAuth 設定を確認:');
+    console.log('   Client ID: Ov23lil0pJoHtaeAvXrk');
+    console.log('   Callback URL: http://127.0.0.1:54321/auth/v1/callback');
+    console.log('╚════════════════════════════════════╝\n');
 });
