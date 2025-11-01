@@ -8,5 +8,8 @@
     "express-session": "^1.18.2"
 
   },
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  }
 }

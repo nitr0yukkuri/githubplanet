@@ -10,24 +10,36 @@ import { fileURLToPath } from 'url'; // ★ import.meta.url を使うために�
 
 // 2. Express の初期化
 const app = express();
-const port = 3000;
+// ★ 変更点 1: ポートを環境変数に対応
+const port = process.env.PORT || 3000;
 
 // ★★★ GitHub OAuth App の設定 ★★★
-// (unkoブランチのIDとSecretをそのまま使います)
 const GITHUB_CLIENT_ID = 'Ov23lil0pJoHtaeAvXrk';
-const GITHUB_CLIENT_SECRET = '0af8d9d749f799e2c1705e833fdc6930badeda24';
-const CALLBACK_URL = 'http://localhost:3000/callback';
+const GITHUB_CLIENT_SECRET = '0af8d9d749f799e2c1705e833fdc6930badeda24'; // ★ これは後でRenderの環境変数に移動
+
+// ★ 変更点 2: コールバックURLを環境変数から取得
+const CALLBACK_URL = process.env.CALLBACK_URL || 'http://localhost:3000/callback';
 
 // --- ESModuleで __dirname を再現 ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 3. セッションの設定 (変更なし)
+// ★ 変更点 3: Render (HTTPS) でセッションを動作させる設定
+if (process.env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1); // プロキシを信頼する
+}
+
+// 3. セッションの設定
 app.use(session({
     secret: 'your-very-secret-key-change-it', // (ここは後で変えてもOK)
     resave: false,
     saveUninitialized: true,
-    cookie: { secure: false } // localhost (http) の場合は false
+    // ★ 変更点 4: 本番環境 (HTTPS) では secure: true にする
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: 'lax'
+    }
 }));
 
 // (PKCEヘルパー関数 - 変更なし)
@@ -174,7 +186,7 @@ app.get('/callback', async (req, res) => {
 });
 
 // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-// ★ 修正点 4: 惑星データを返すAPIエンドポイントを追加
+// ★ 惑星データを返すAPIエンドポイントを追加
 // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 app.get('/api/me', (req, res) => {
     if (req.session.planetData) {
@@ -191,5 +203,6 @@ app.get('/api/me', (req, res) => {
 
 // --- 6. サーバー起動 ---
 app.listen(port, () => {
-    console.log(`サーバーが http://localhost:${port} で起動しました`);
+    // 起動時のログも修正
+    console.log(`サーバーが ポート ${port} で起動しました`);
 });

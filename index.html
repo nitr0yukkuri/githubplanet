@@ -1,5 +1,71 @@
 <!DOCTYPE html>
 <html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Planet</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: grid;
+            place-items: center;
+            min-height: 100vh;
+            background: #1a1a1a;
+            color: white;
+            margin: 0;
+        }
+
+        #app {
+            text-align: center;
+        }
+
+        #planet {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: #333;
+            transition: background-color 0.5s;
+            border: 2px solid #444;
+        }
+
+        #login-btn a {
+            display: inline-block;
+            padding: 12px 20px;
+            background: #238636;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        #info {
+            display: none;
+        }
+
+        /* JSでログイン後に表示する */
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <h1>GitHub Planet</h1>
+
+        <div id="login-btn">
+            <a href="/login">GitHubでログインして惑星を生成</a>
+        </div>
+
+        <div id="info">
+            <p><span id="username"></span> さんの惑星</p>
+            <div id="planet"></div>
+            <p>メイン言語: <span id="language"></span></p>
+        </div>
+    </div>
+
+    <script src="/client.js"></script>
+</body>
+
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -28,4 +94,5 @@
     </script>
     <script type="module" src="./front/js/home.js"></script>
 </body>
+
 </html>
