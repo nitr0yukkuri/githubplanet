@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js GitHub Planet</title>
+    <link rel="stylesheet" href="./front/css/home.css">
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div class="ui-top-left">
+        <div class="ui-button">✨</div>
+    </div>
+    <div class="ui-bottom-left">
+        <div class="ui-button">← 戻る</div>
+    </div>
+    <div class="ui-bottom-right">
+        <div class="ui-text">ドラッグで回転 | スクロールでズーム</div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@latest/build/three.module.js",
+            "three/examples/jsm/controls/OrbitControls.js": "https://cdn.jsdelivr.net/npm/three@latest/examples/jsm/controls/OrbitControls.js"
+        }
+    }
+    </script>
+    <script type="module" src="./front/js/home.js"></script>
+</body>
+</html>
