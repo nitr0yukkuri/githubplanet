@@ -14,19 +14,21 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // ★★★ GitHub OAuth App の設定 ★★★
+// (unkoブランチのIDとSecretをそのまま使います)
 const GITHUB_CLIENT_ID = 'Ov23lil0pJoHtaeAvXrk';
-const GITHUB_CLIENT_SECRET = '0af8d9d749f799e2c1705e833fdc6930badeda24'; // ★ これは後でRenderの環境変数に移動
-
-// ★ 変更点 2: コールバックURLを環境変数から取得
+// ★ 変更点 2: SecretはRenderの環境変数から読み込む
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '0af8d9d749f799e2c1705e833fdc6930badeda24';
+// ★ 変更点 3: コールバックURLを環境変数から取得
 const CALLBACK_URL = process.env.CALLBACK_URL || 'http://localhost:3000/callback';
 
 // --- ESModuleで __dirname を再現 ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ★ 変更点 3: Render (HTTPS) でセッションを動作させる設定
+// ★ 変更点 4: Render (HTTPS) でセッションを動作させる設定
+// 本番環境 (Render) の場合、プロキシを信頼する設定
 if (process.env.NODE_ENV === 'production') {
-    app.set('trust proxy', 1); // プロキシを信頼する
+    app.set('trust proxy', 1);
 }
 
 // 3. セッションの設定
@@ -34,7 +36,7 @@ app.use(session({
     secret: 'your-very-secret-key-change-it', // (ここは後で変えてもOK)
     resave: false,
     saveUninitialized: true,
-    // ★ 変更点 4: 本番環境 (HTTPS) では secure: true にする
+    // ★ 変更点 5: 本番環境 (HTTPS) では secure: true にする
     cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
@@ -186,7 +188,7 @@ app.get('/callback', async (req, res) => {
 });
 
 // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-// ★ 惑星データを返すAPIエンドポイントを追加
+// ★ 修正点 4: 惑星データを返すAPIエンドポイントを追加
 // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 app.get('/api/me', (req, res) => {
     if (req.session.planetData) {
@@ -203,6 +205,6 @@ app.get('/api/me', (req, res) => {
 
 // --- 6. サーバー起動 ---
 app.listen(port, () => {
-    // 起動時のログも修正
+    // ★ 変更点 6: ログのポート番号を修正
     console.log(`サーバーが ポート ${port} で起動しました`);
 });
