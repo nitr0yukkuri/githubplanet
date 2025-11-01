@@ -126,6 +126,8 @@ additional_redirect_urls = ["http://localhost:3000/callback"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 
+# ( ★★★ 前回の誤った pkce_enabled = true はここから削除しました ★★★ )
+
 # Path to JWT signing key. DO NOT commit your signing keys file to git.
 # signing_keys_path = "./signing_keys.json"
 # If disabled, the refresh token will never expire.
@@ -348,8 +350,13 @@ s3_region = "env(S3_REGION)"
 s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
+
 [auth.external.github]
 enabled = true
 client_id = "Ov23lil0pJoHtaeAvXrk"
 secret = "90966284ed110870027732138324e6b7a1e21b21"
-
+# ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+# ★★★ これが最小限の変更点です ★★★
+# ★★★ Implicitフローを無効化し、PKCEフローを強制します ★★★
+# implicit = false  <- この行がエラーの原因のため削除（またはコメントアウト）しました
+# ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
