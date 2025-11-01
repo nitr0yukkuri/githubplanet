@@ -1,0 +1,61 @@
+/* 基本的なリセット */
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Sans', 'Noto Sans CJK JP', sans-serif;
+    background-color: #000;
+    color: white;
+    overflow: hidden; /* スクロールバーを非表示に */
+}
+
+/* Three.jsのキャンバスを配置するコンテナ */
+#canvas-container {
+    position: fixed; /* 全画面表示の基準 */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1; /* UIより下に配置 */
+}
+
+/* UI要素の共通スタイル */
+.ui-button,
+.ui-text {
+    background-color: rgba(30, 30, 30, 0.7); /* 半透明の背景 */
+    backdrop-filter: blur(5px); /* 背景をぼかす（ガラス効果） */
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.ui-button {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.ui-button:hover {
+    background-color: rgba(50, 50, 50, 0.9);
+}
+
+/* UIの配置 */
+.ui-top-left {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 2; /* キャンバスより上 */
+}
+
+.ui-bottom-left {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 2;
+}
+
+.ui-bottom-right {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 2;
+    background-color: rgba(0, 0, 0, 0.5); /* こちらは少し暗く */
+}
