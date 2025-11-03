@@ -14,10 +14,10 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // ★★★ GitHub OAuth App の設定 ★★★
-// (unkoブランチのIDとSecretをそのまま使います)
-const GITHUB_CLIENT_ID = 'Ov23lil0pJoHtaeAvXrk';
+// (↓先ほど登録した localplanet の値に更新↓)
+const GITHUB_CLIENT_ID = 'Ov23liiff1uvGf1ThXkI'; // ★★★ 新しいID ★★★
 // ★ 変更点 2: SecretはRenderの環境変数から読み込む
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '0af8d9d749f799e2c1705e833fdc6930badeda24';
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '601f033befdb67ee00c019d5f7368c0eaf94d0e2'; // ★★★ 新しいSecret ★★★
 // ★ 変更点 3: コールバックURLを環境変数から取得
 const CALLBACK_URL = process.env.CALLBACK_URL || 'http://localhost:3000/callback';
 
