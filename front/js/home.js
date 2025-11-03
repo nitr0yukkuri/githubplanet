@@ -4,7 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 let scene, camera, renderer, controls;
 let planetGroup;
 
-// 初期化関数
+// 初期化関数aaaa
 function init() {
     scene = new THREE.Scene();
     scene.fog = new THREE.Fog(0x000000, 10, 50);
