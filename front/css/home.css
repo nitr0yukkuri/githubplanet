@@ -59,3 +59,115 @@ body {
     z-index: 2;
     background-color: rgba(0, 0, 0, 0.5); /* こちらは少し暗く */
 }
+
+/* front/css/home.css */
+
+/* --- 惑星選択モーダル（全体） --- */
+#select-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(10, 10, 20, 0.6); /* 少し青みがかった背景 */
+    backdrop-filter: blur(8px);
+    z-index: 10;
+
+    display: flex; /* Flexboxで中央揃え */
+    justify-content: center;
+    align-items: center;
+
+    /* 表示・非表示のアニメーション */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s, visibility 0.4s;
+}
+
+#select-modal.is-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* --- ボタン3つを横に並べるコンテナ --- */
+.select-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 200px; /* ボタン間のスペース */
+    width: 80%;
+    max-width: 900px;
+}
+
+/* --- 各ボタンのラッパー（ボタンとラベルをまとめる） --- */
+.planet-button-wrapper {
+    text-align: center;
+    position: relative;
+}
+
+/* --- 惑星ボタン本体のスタイル --- */
+.planet-button {
+    display: block;
+    text-decoration: none;
+}
+
+.planet-icon {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%; /* 完全な円に */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    transition: transform 0.3s ease;
+}
+
+.planet-icon:hover {
+    transform: scale(1.05); /* ホバー時に少し大きく */
+}
+
+/* アイコン（SVG）のサイズ */
+.planet-icon svg {
+    width: 60px;
+    height: 60px;
+}
+
+/* 惑星のリング（擬似要素で作成） */
+.planet-icon::before {
+    content: '';
+    position: absolute;
+    width: 120%;
+    height: 120%;
+    border-radius: 50%;
+    border: 3px solid;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotateX(75deg); /* 傾ける */
+    opacity: 0.5;
+}
+
+/* 色のバリエーション */
+.planet-icon.pink {
+    background: radial-gradient(circle, #ff80c0, #e04090);
+}
+.planet-icon.pink::before {
+    border-color: #ff80c0;
+}
+
+.planet-icon.blue {
+    background: radial-gradient(circle, #70d0ff, #3090f0);
+}
+.planet-icon.blue::before {
+    border-color: #70d0ff;
+}
+
+/* ボタンの下のテキストラベル */
+.planet-label {
+    margin-top: 20px;
+    color: #e0e0e0;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+
