@@ -2,7 +2,7 @@
 
 ###  クローン（コードのコピー）
 
-git clone https://github.com/nitr0yukkuri/umekita_tech_base
+git clone https://github.com/nitr0yukkuri/githubplanet
 
 → 現時点のGitHubにあるコードをローカルにコピーする
 
