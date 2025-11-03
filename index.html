@@ -16,31 +16,44 @@
     </div>
 
     <div id="select-modal">
-    <div class="select-container">
+        <div class="select-container">
 
-        <div class="planet-button-wrapper">
-            <a href="#" class="planet-button">
-                <div class="planet-icon pink">
-                    <svg viewBox="0 0 24 24" fill="white">
-                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                    </svg>
-                </div>
-            </a>
-            <p class="planet-label">誰かの星を見に行く</p>
-        </div>
-        
-        <div class="planet-button-wrapper">
-            <a href="#" class="planet-button">
-                <div class="planet-icon blue">
-                    <svg viewBox="0 0 24 24" fill="white">
-                        <path d="M12 2l2.35 7.16h7.65l-6.18 4.48 2.36 7.16-6.18-4.48-6.18 4.48 2.36-7.16-6.18-4.48h7.65z"/>
-                    </svg>
-                </div>
-            </a>
-            <p class="planet-label">ランダムで星を見に行く</p>
-        </div>
+            <div class="planet-button-wrapper" id="my-planet-btn-wrapper">
+                <a href="/login" class="planet-button">
+                    <div class="planet-icon green">
+                        <svg viewBox="0 0 24 24" fill="white">
+                            <path
+                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+                        </svg>
+                    </div>
+                </a>
+                <p class="planet-label">自分の星を作る</p>
+            </div>
+            <div class="planet-button-wrapper">
+                <a href="#" class="planet-button">
+                    <div class="planet-icon pink">
+                        <svg viewBox="0 0 24 24" fill="white">
+                            <path
+                                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                        </svg>
+                    </div>
+                </a>
+                <p class="planet-label">誰かの星を見に行く</p>
+            </div>
 
-    </div>
+            <div class="planet-button-wrapper">
+                <a href="#" class="planet-button">
+                    <div class="planet-icon blue">
+                        <svg viewBox="0 0 24 24" fill="white">
+                            <path
+                                d="M12 2l2.35 7.16h7.65l-6.18 4.48 2.36 7.16-6.18-4.48-6.18 4.48 2.36-7.16-6.18-4.48h7.65z" />
+                        </svg>
+                    </div>
+                </a>
+                <p class="planet-label">ランダムで星を見に行く</p>
+            </div>
+
+        </div>
     </div>
     <script type="importmap">
     {
@@ -50,7 +63,7 @@
         }
     }
     </script>
-    
+
     <script type="module" src="./front/js/home.js"></script>
 </body>
 

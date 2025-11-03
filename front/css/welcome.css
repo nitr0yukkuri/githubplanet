@@ -1,0 +1,66 @@
+/* に基づくスタイル */
+body {
+    margin: 0;
+    background-color: #111; /* 背景は暗く */
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Sans', 'Noto Sans CJK JP', sans-serif;
+    
+    /* ★ の背景（星空）をSkybox画像で再現します */
+    background-image: url('/img/skybox/top.png'); /* */
+    background-size: cover;
+    background-position: center;
+}
+
+#welcome-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    z-index: 10;
+    backdrop-filter: blur(3px); /* 背景を少しぼかします */
+}
+
+.modal-content {
+    /* のデザインを再現 */
+    background-color: rgba(10, 10, 10, 0.85); 
+    border: 2px solid white;
+    border-radius: 20px;
+    padding: 30px 40px;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+    color: white;
+}
+
+.modal-content h1 {
+    font-size: 1.8rem;
+    margin-top: 0;
+}
+
+.modal-content p {
+    font-size: 1rem;
+    color: #ccc; /* */
+    line-height: 1.6;
+}
+
+.modal-content button {
+    /* のボタンデザイン */
+    background-color: transparent;
+    border: 2px solid white;
+    color: white;
+    padding: 10px 40px;
+    border-radius: 30px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+    margin-top: 20px;
+}
+
+.modal-content button:hover {
+    background-color: white;
+    color: black;
+}
