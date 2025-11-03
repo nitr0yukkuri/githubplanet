@@ -25,6 +25,12 @@ const CALLBACK_URL = process.env.CALLBACK_URL || 'http://localhost:3000/callback
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+// ★ 最小限の変更点 (A): 'front' ディレクトリを静的ファイルとして配信
+// これにより /front/css/home.css や /front/js/home.js 等にアクセス可能になる
+app.use('/front', express.static(path.join(__dirname, 'front')));
+// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
 // ★ 変更点 4: Render (HTTPS) でセッションを動作させる設定
 // 本番環境 (Render) の場合、プロキシを信頼する設定
 if (process.env.NODE_ENV === 'production') {
@@ -63,12 +69,17 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// /client.js へのアクセスが来たら client.js を返す
+// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+// ★ 最小限の変更点 (B): /client.js の配信ルートを削除 (home.jsに統合したため)
+/*
 app.get('/client.js', (req, res) => {
     // コンソールログを追加
     console.log('client.js を提供します');
     res.sendFile(path.join(__dirname, 'client.js'));
 });
+*/
+// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
 
 // --- 4. /login エンドポイント (変更なし) ---
 app.get('/login', (req, res) => {
