@@ -15,8 +15,7 @@ async function fetchPlanetData() {
         if (!response.ok) {
             // セッションが切れているか、未ログイン
             console.log('ログインしていません');
-            // 「自分の星」ボタンを表示 (ログインしていないので)
-            document.getElementById('my-planet-btn-wrapper').style.display = 'block';
+            // ★ (前回の変更で削除済み) document.getElementById('my-planet-btn-wrapper').style.display = 'block';
             return null;
         }
 
@@ -24,16 +23,14 @@ async function fetchPlanetData() {
         const data = await response.json();
         console.log('ユーザーデータ:', data);
 
-        // 「自分の星」ボタンを隠す (ログイン済みなので)
-        document.getElementById('my-planet-btn-wrapper').style.display = 'none';
+        // ★ (前回の変更で削除済み) document.getElementById('my-planet-btn-wrapper').style.display = 'none';
 
         // 惑星データを返す
         return data.planetData;
 
     } catch (error) {
         console.error('データ取得エラー:', error);
-        // エラー時も「自分の星」ボタンは表示しておく
-        document.getElementById('my-planet-btn-wrapper').style.display = 'block';
+        // ★ (前回の変更で削除済み) document.getElementById('my-planet-btn-wrapper').style.display = 'block';
         return null;
     }
 }
@@ -76,46 +73,59 @@ async function init() { // ★ async に変更
     scene.background = textureCube;
 
     // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-    // ★ 最小限の変更点 (E): 惑星データを取得し、色を適用する
+    // ★ 最小限の変更点 (E): 惑星データを取得し、処理を分岐する
     // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
     const myPlanetData = await fetchPlanetData(); // ★ データを待つ
 
-    planetGroup = new THREE.Group();
-    const textureLoader = new THREE.TextureLoader();
-    const planetGeo = new THREE.SphereGeometry(4, 32, 32);
+    if (myPlanetData) {
+        // ★★★ ログイン時: 惑星を作成する (元の処理) ★★★
+        planetGroup = new THREE.Group();
+        const textureLoader = new THREE.TextureLoader();
+        const planetGeo = new THREE.SphereGeometry(4, 32, 32);
 
-    // マテリアルの色をサーバーデータから設定
-    let defaultColor = 0x3366ff; // デフォルトの色 (ログインしていない場合)
-    if (myPlanetData && myPlanetData.planetColor) {
-        try {
-            // planetColor (例: '#f0db4f') を Three.js の色 (0xf0db4f) に変換
-            defaultColor = new THREE.Color(myPlanetData.planetColor).getHex();
-            console.log('惑星の色を適用:', myPlanetData.planetColor);
-        } catch (e) {
-            console.error('色の変換に失敗:', e);
-            // 失敗したらデフォルト色のまま
+        // マテリアルの色をサーバーデータから設定
+        let defaultColor = 0x3366ff; // デフォルトの色 (ログインしていない場合)
+        if (myPlanetData && myPlanetData.planetColor) {
+            try {
+                // planetColor (例: '#f0db4f') を Three.js の色 (0xf0db4f) に変換
+                defaultColor = new THREE.Color(myPlanetData.planetColor).getHex();
+                console.log('惑星の色を適用:', myPlanetData.planetColor);
+            } catch (e) {
+                console.error('色の変換に失敗:', e);
+                // 失敗したらデフォルト色のまま
+            }
         }
-    }
 
-    planetMat = new THREE.MeshStandardMaterial({
-        color: defaultColor, // ★ 取得した色を適用
-        metalness: 0.2,
-        roughness: 0.8,
-        aoMapIntensity: 1.5,
-    });
+        planetMat = new THREE.MeshStandardMaterial({
+            color: defaultColor, // ★ 取得した色を適用
+            metalness: 0.2,
+            roughness: 0.8,
+            aoMapIntensity: 1.5,
+        });
+        // ★★★ (ここまで修正) ★★★
+
+        const aoTexture = textureLoader.load('front/img/2k_mars.jpg');
+        planetMat.aoMap = aoTexture;
+        const planet = new THREE.Mesh(planetGeo, planetMat);
+        planet.geometry.setAttribute(
+            'uv2',
+            new THREE.BufferAttribute(planet.geometry.attributes.uv.array, 2)
+        );
+        planetGroup.add(planet);
+        planetGroup.rotation.x = Math.PI * 0.4;
+        planetGroup.rotation.y = Math.PI * 0.1;
+        scene.add(planetGroup);
+    } else {
+        // ★★★ 未ログイン時: メッセージを表示し、カメラコントロールを無効化 ★★★
+        const messageEl = document.getElementById('not-logged-in-message');
+        if (messageEl) {
+            messageEl.style.display = 'block';
+        }
+        // 惑星がないのでカメラコントロールも無効にする
+        controls.enabled = false;
+    }
     // ★★★ (ここまで修正) ★★★
 
-    const aoTexture = textureLoader.load('front/img/2k_mars.jpg');
-    planetMat.aoMap = aoTexture;
-    const planet = new THREE.Mesh(planetGeo, planetMat);
-    planet.geometry.setAttribute(
-        'uv2',
-        new THREE.BufferAttribute(planet.geometry.attributes.uv.array, 2)
-    );
-    planetGroup.add(planet);
-    planetGroup.rotation.x = Math.PI * 0.4;
-    planetGroup.rotation.y = Math.PI * 0.1;
-    scene.add(planetGroup);
 
     window.addEventListener('resize', onWindowResize);
 
@@ -133,7 +143,12 @@ function onWindowResize() {
 
 function animate() {
     requestAnimationFrame(animate);
-    planetGroup.rotation.z += 0.001;
+
+    // ★★★ 最小限の変更点: planetGroup が存在する場合のみ回転させる ★★★
+    if (planetGroup) {
+        planetGroup.rotation.z += 0.001;
+    }
+
     controls.update();
     renderer.render(scene, camera);
 }

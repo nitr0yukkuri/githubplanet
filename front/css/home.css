@@ -170,4 +170,18 @@ body {
     font-weight: bold;
 }
 
-
+/* ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★ */
+/* ★ 最小限の変更点: 未ログイン時メッセージのスタイル ★ */
+/* ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★ */
+#not-logged-in-message {
+    display: none; /* デフォルトは非表示 */
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 5; /* UIとキャンバスの間ぐらい */
+    color: #aaa; /* 目立ちすぎない色 */
+    font-size: 25px;
+    font-weight: bold;
+    text-align: center;
+}
