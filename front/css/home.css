@@ -215,3 +215,39 @@ body {
     background-color: white;
     color: black;
 }
+
+
+/* ここから追加: 流れ星ボタンのスタイル */
+
+#open-select-modal-btn {
+    /* 既存の .ui-button スタイルを上書き */
+    width: 60px;  /* ボックスの幅 */
+    height: 60px; /* ボックスの高さ */
+    padding: 0; /* 画像を中央に配置するため余白は0 */
+    background-color: #2c2a4a; /* 濃い紺色/紫色 */
+    border-radius: 10px; /* 角丸四角形 */
+    
+    /* 画像をボタンの中央に配置するためのFlexbox設定 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    /* 既存の .ui-button から持ってくるスタイル */
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.2s;
+    backdrop-filter: none; /* ガラス効果は解除 */
+}
+
+#open-select-modal-btn:hover {
+    background-color: #403d61; /* ホバー色 */
+}
+
+/* ボタン内の画像にスタイルを適用 */
+#open-select-modal-btn img {
+    width: 100%; /* ボタンの幅いっぱいに広げる */
+    height: 100%; /* ボタンの高さに合わせる */
+    object-fit: contain; /* 画像がボタン内に収まるように調整 */
+    /* 画像がボタンの角丸からはみ出ないように */
+    border-radius: 5px; /* ボタンの角丸(10px)より少し小さく */
+}
