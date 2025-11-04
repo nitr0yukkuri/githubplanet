@@ -171,17 +171,47 @@ body {
 }
 
 /* ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★ */
-/* ★ 最小限の変更点: 未ログイン時メッセージのスタイル ★ */
+/* ★ 最小限の変更点: 未ログイン時コンテナのスタイル ★ */
 /* ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★ */
-#not-logged-in-message {
+#not-logged-in-container {
     display: none; /* デフォルトは非表示 */
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 5; /* UIとキャンバスの間ぐらい */
-    color: #aaa; /* 目立ちすぎない色 */
-    font-size: 25px;
+    z-index: 5;
+    
+    /* 縦に並べて中央揃え */
+    flex-direction: column;
+    align-items: center;
+    gap: 30px; /* テキストとボタンの間隔 */
+}
+
+/* ★ 最小限の変更点: 未ログイン時テキストのスタイル ★ */
+#not-logged-in-text {
+    color: #e0e0e0;
+    font-size: 1.7rem; /* 20px */
+    font-weight: 500;
+    text-shadow: 0 0 5px rgba(0,0,0,0.5);
+    margin: 0;
+}
+
+/* ★ 最小限の変更点: ログインボタンのスタイル ★ */
+#login-button {
+    /* welcome.css のボタンデザインを流用 */
+    background-color: rgba(10, 10, 10, 0.85); 
+    border: 2px solid white;
+    border-radius: 30px;
+    padding: 12px 35px; /* 少し調整 */
+    color: white;
+    font-size: 1.4rem; /* 18px */
     font-weight: bold;
-    text-align: center;
+    text-decoration: none;
+    transition: background-color 0.2s, color 0.2s;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+}
+
+#login-button:hover {
+    background-color: white;
+    color: black;
 }

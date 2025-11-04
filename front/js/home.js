@@ -116,10 +116,10 @@ async function init() { // ★ async に変更
         planetGroup.rotation.y = Math.PI * 0.1;
         scene.add(planetGroup);
     } else {
-        // ★★★ 未ログイン時: メッセージを表示し、カメラコントロールを無効化 ★★★
-        const messageEl = document.getElementById('not-logged-in-message');
-        if (messageEl) {
-            messageEl.style.display = 'block';
+        // ★★★ 未ログイン時: メッセージとボタンを表示し、カメラコントロールを無効化 ★★★
+        const messageContainer = document.getElementById('not-logged-in-container');
+        if (messageContainer) {
+            messageContainer.style.display = 'flex'; // ★ 'block' から 'flex' に変更
         }
         // 惑星がないのでカメラコントロールも無効にする
         controls.enabled = false;
@@ -144,7 +144,7 @@ function onWindowResize() {
 function animate() {
     requestAnimationFrame(animate);
 
-    // ★★★ 最小限の変更点: planetGroup が存在する場合のみ回転させる ★★★
+    // ★ 最小限の変更点: planetGroup が存在する場合のみ回転させる ★
     if (planetGroup) {
         planetGroup.rotation.z += 0.001;
     }
