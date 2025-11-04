@@ -5,44 +5,33 @@ import express from 'express';
 import session from 'express-session';
 import crypto from 'crypto';
 import axios from 'axios';
-import path from 'path'; // ★ ファイルパスを扱うために追加
-import { fileURLToPath } from 'url'; // ★ import.meta.url を使うために追加
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 // 2. Express の初期化
 const app = express();
-// ★ 変更点 1: ポートを環境変数に対応
 const port = process.env.PORT || 3000;
 
 // ★★★ GitHub OAuth App の設定 ★★★
-// (↓先ほど登録した localplanet の値に更新↓)
-const GITHUB_CLIENT_ID = 'Ov23liiff1uvGf1ThXkI'; // ★★★ 新しいID ★★★
-// ★ 変更点 2: SecretはRenderの環境変数から読み込む
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '601f033befdb67ee00c019d5f7368c0eaf94d0e2'; // ★★★ 新しいSecret ★★★
-// ★ 変更点 3: コールバックURLを環境変数から取得
+const GITHUB_CLIENT_ID = 'Ov23liiff1uvGf1ThXkI';
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '601f033befdb67ee00c019d5f7368c0eaf94d0e2';
 const CALLBACK_URL = process.env.CALLBACK_URL || 'http://localhost:3000/callback';
 
 // --- ESModuleで __dirname を再現 ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-// ★ 最小限の変更点 (A): 'front' ディレクトリを静的ファイルとして配信
-// これにより /front/css/home.css や /front/js/home.js 等にアクセス可能になる
 app.use('/front', express.static(path.join(__dirname, 'front')));
-// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
-// ★ 変更点 4: Render (HTTPS) でセッションを動作させる設定
-// 本番環境 (Render) の場合、プロキシを信頼する設定
 if (process.env.NODE_ENV === 'production') {
     app.set('trust proxy', 1);
 }
 
 // 3. セッションの設定
 app.use(session({
-    secret: 'your-very-secret-key-change-it', // (ここは後で変えてもOK)
+    secret: 'your-very-secret-key-change-it',
     resave: false,
     saveUninitialized: true,
-    // ★ 変更点 5: 本番環境 (HTTPS) では secure: true にする
     cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
@@ -64,34 +53,21 @@ function sha256(buffer) {
 
 // ルートURL (/) にアクセスが来たら index.html を返す
 app.get('/', (req, res) => {
-    // コンソールログを追加して、提供していることを確認
     console.log('index.html を提供します');
     res.sendFile(path.join(__dirname, 'index.html'));
 });
-
-// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-// ★ 最小限の変更点 (B): /client.js の配信ルートを削除 (home.jsに統合したため)
-/*
-app.get('/client.js', (req, res) => {
-    // コンソールログを追加
-    console.log('client.js を提供します');
-    res.sendFile(path.join(__dirname, 'client.js'));
-});
-*/
-// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-
 
 // --- 4. /login エンドポイント (変更なし) ---
 app.get('/login', (req, res) => {
     console.log('GitHubログインリクエストを受け取りました');
     const code_verifier = base64URLEncode(crypto.randomBytes(32));
-    req.session.code_verifier = code_verifier; // セッションに保存
+    req.session.code_verifier = code_verifier;
     const code_challenge = base64URLEncode(sha256(code_verifier));
 
     const authUrl = new URL('https://github.com/login/oauth/authorize');
     authUrl.searchParams.set('client_id', GITHUB_CLIENT_ID);
     authUrl.searchParams.set('redirect_uri', CALLBACK_URL);
-    authUrl.searchParams.set('scope', 'user:email public_repo'); // ★ 惑星データ取得に必要なスコープ
+    authUrl.searchParams.set('scope', 'user:email public_repo');
     authUrl.searchParams.set('state', crypto.randomBytes(16).toString('hex'));
     authUrl.searchParams.set('code_challenge', code_challenge);
     authUrl.searchParams.set('code_challenge_method', 'S256');
@@ -104,12 +80,10 @@ app.get('/login', (req, res) => {
 app.get('/callback', async (req, res) => {
     console.log('/callback が呼ばれました');
     const { code } = req.query;
-    const { code_verifier } = req.session; // セッションから取得
+    const { code_verifier } = req.session;
 
     if (!code) return res.status(400).send('codeがありません');
     if (!code_verifier) return res.status(400).send('code_verifierがセッションにありません');
-
-    console.log('受け取ったコード:', code);
 
     try {
         // 3. アクセストークンと交換
@@ -120,7 +94,7 @@ app.get('/callback', async (req, res) => {
                 client_secret: GITHUB_CLIENT_SECRET,
                 code: code,
                 redirect_uri: CALLBACK_URL,
-                code_verifier: code_verifier // ★ PKCE検証キーを送信
+                code_verifier: code_verifier
             },
             { headers: { 'Accept': 'application/json' } }
         );
@@ -136,15 +110,20 @@ app.get('/callback', async (req, res) => {
         console.log('ようこそ,', user.login);
 
         // 5. リポジトリ一覧を取得
-        const reposResponse = await axios.get(user.repos_url, {
+        // ★ 取得件数を増やし、API呼び出し回数を減らす
+        const reposResponse = await axios.get(user.repos_url + '?per_page=100', {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
         const repos = reposResponse.data;
 
-        // 6. 言語データを集計
+        // 6. 言語データとコミット数を集計
         const languageStats = {};
+        let totalCommits = 0; // ★ 総コミット数集計用の変数
+
         await Promise.all(repos.map(async (repo) => {
-            if (repo.fork || !repo.languages_url) return; // フォークは除外
+            if (repo.fork || !repo.languages_url) return;
+
+            // 6-1. 言語データ集計 (既存)
             try {
                 const langResponse = await axios.get(repo.languages_url, {
                     headers: { 'Authorization': `Bearer ${accessToken}` }
@@ -153,8 +132,24 @@ app.get('/callback', async (req, res) => {
                 for (const [lang, bytes] of Object.entries(languages)) {
                     languageStats[lang] = (languageStats[lang] || 0) + bytes;
                 }
-            } catch (langError) { /* 取得失敗したリポジトリはスキップ */ }
+            } catch (langError) { /* スキップ */ }
+
+            // 6-2. ★ コミット数集計 (新規追加)
+            try {
+                // ユーザー自身のコミット（最大100件）を取得しカウントします。
+                // 注: 正確な総コミット数取得には、ページネーションが必要です。
+                const commitsUrl = `https://api.github.com/repos/${user.login}/${repo.name}/commits?author=${user.login}&per_page=100`;
+                const commitResponse = await axios.get(commitsUrl, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                const commitsCount = commitResponse.data.length;
+                totalCommits += commitsCount;
+            } catch (commitError) {
+                /* スキップ */
+            }
         }));
+
+        console.log('総コミット数 (近似値):', totalCommits);
 
         // 7. メイン言語を特定
         let mainLanguage = 'Unknown';
@@ -167,28 +162,40 @@ app.get('/callback', async (req, res) => {
         }
         console.log('メイン言語:', mainLanguage);
 
-        // 8. 惑星の色を決定
-        let planetColor = '#808080'; // デフォルト
+        // 8. 惑星の色とサイズを決定
+        let planetColor = '#808080';
         if (mainLanguage === 'JavaScript') planetColor = '#f0db4f';
         if (mainLanguage === 'TypeScript') planetColor = '#007acc';
         if (mainLanguage === 'Python') planetColor = '#306998';
         if (mainLanguage === 'HTML') planetColor = '#e34c26';
         if (mainLanguage === 'CSS') planetColor = '#563d7c';
         if (mainLanguage === 'Ruby') planetColor = '#CC342D';
-        // ... 他の言語 ...
 
-        // 9. ★ データをセッションに保存 ★
+        // ★ 惑星サイズ要因を決定 (新規追加): コミット数が多いほど大きくなる
+        const baseSize = 1.0;
+        const maxCommitsScale = 500; // 500コミットを一つの基準とする
+        // 対数スケールでサイズを調整（急激な変化を抑えるため）
+        let planetSizeFactor = baseSize + Math.min(1.0, Math.log10(totalCommits + 1) / Math.log10(maxCommitsScale));
+        planetSizeFactor = parseFloat(planetSizeFactor.toFixed(2));
+        if (totalCommits === 0) planetSizeFactor = 1.0;
+        console.log('惑星サイズ要因:', planetSizeFactor);
+
+
+        // 9. ★ データをセッションに保存 (更新) ★
         req.session.planetData = {
             user: user,
-            github_token: accessToken, // トークンも保存
+            github_token: accessToken,
             planetData: {
                 mainLanguage: mainLanguage,
                 planetColor: planetColor,
-                languageStats: languageStats
+                languageStats: languageStats,
+                // ★ 新しいプロパティを追加
+                totalCommits: totalCommits,
+                planetSizeFactor: planetSizeFactor,
             }
         };
 
-        // 10. ★ JSONを返す代わりにホームページ(/)にリダイレクト ★
+        // 10. ホームページ(/)にリダイレクト
         console.log('惑星データ生成完了。/ (ルート) にリダイレクトします。');
         res.redirect('/');
 
@@ -199,23 +206,20 @@ app.get('/callback', async (req, res) => {
 });
 
 // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-// ★ 修正点 4: 惑星データを返すAPIエンドポイントを追加
+// ★ 惑星データを返すAPIエンドポイント (変更なし)
 // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 app.get('/api/me', (req, res) => {
     if (req.session.planetData) {
-        // セッションに惑星データがあれば、それをJSONで返す
         console.log('/api/me が呼ばれました。セッションデータを返します。');
         res.json(req.session.planetData);
     } else {
-        // セッションが切れているか、未ログイン
         console.log('/api/me が呼ばれました。認証されていません (401)。');
         res.status(401).json({ error: 'Not authenticated' });
     }
 });
 
 
-// --- 6. サーバー起動 ---
+// --- 6. サーバー起動 (変更なし) ---
 app.listen(port, () => {
-    // ★ 変更点 6: ログのポート番号を修正
     console.log(`サーバーが ポート ${port} で起動しました`);
 });
