@@ -1,4 +1,4 @@
-// server.js (★ ローカル/本番 自動切り替え対応版 ★)
+// server.js (★ ローカル/本番 自動切り替え対応版 + DBテーブル自動作成 ★)
 
 // 1. インポート
 import express from 'express';
@@ -32,12 +32,6 @@ if (isProduction) {
     GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET_LOCAL || '601f033befdb67ee00c019d5f7368c0eaf94d0e2'; // 以前の古いSecret
     CALLBACK_URL = 'http://localhost:3000/callback';
 }
-console.log('--- DEBUG INFO ---');
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('isProduction:', isProduction);
-console.log('Using Client ID:', GITHUB_CLIENT_ID);
-console.log('Callback URL:', CALLBACK_URL);
-console.log('------------------');
 // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
 
@@ -49,6 +43,21 @@ if (connectionString) {
         connectionString: connectionString,
         ssl: { rejectUnauthorized: false }
     });
+
+    // ▼▼▼ ここから追加: テーブル自動作成処理 ▼▼▼
+    pool.query(`
+        CREATE TABLE IF NOT EXISTS planets (
+            github_id BIGINT PRIMARY KEY,
+            username TEXT NOT NULL,
+            planet_color TEXT,
+            planet_size_factor REAL,
+            main_language TEXT,
+            last_updated TIMESTAMP DEFAULT NOW()
+        );
+    `)
+        .then(() => console.log('[DB] planetsテーブルの準備ができました'))
+        .catch(err => console.error('[DB] テーブル作成に失敗しました:', err));
+    // ▲▲▲ ここまで追加 ▲▲▲
 }
 
 // --- ESModuleで __dirname を再現 ---
