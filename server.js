@@ -1,4 +1,4 @@
-// server.js (★ ローカル/本番 自動切り替え対応版 + DBテーブル自動作成 ★)
+// server.js (★ ランダム取得時のデータ形式を統一版 ★)
 
 // 1. インポート
 import express from 'express';
@@ -22,18 +22,16 @@ let GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, CALLBACK_URL;
 if (isProduction) {
     // --- 本番環境 (Render) 用の設定 ---
     console.log('★ 本番環境(Render)の設定を使用します');
-    GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || 'Ov23lij7ExiRQ0SunKG9'; // 画像にあった新しいID
-    GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || 'c6d39664a728fe06d2272028ea4adbe81e39a5b5'; // 画像にあった新しいSecret
+    GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || 'Ov23lij7ExiRQ0SunKG9';
+    GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || 'c6d39664a728fe06d2272028ea4adbe81e39a5b5';
     CALLBACK_URL = process.env.CALLBACK_URL || 'https://githubplanet.onrender.com/callback';
 } else {
     // --- ローカル環境 (localhost) 用の設定 ---
     console.log('★ ローカル環境の設定を使用します');
-    GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID_LOCAL || 'Ov23liiff1uvGf1ThXkI'; // 以前の古いID
-    GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET_LOCAL || '601f033befdb67ee00c019d5f7368c0eaf94d0e2'; // 以前の古いSecret
+    GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID_LOCAL || 'Ov23liiff1uvGf1ThXkI';
+    GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET_LOCAL || '601f033befdb67ee00c019d5f7368c0eaf94d0e2';
     CALLBACK_URL = 'http://localhost:3000/callback';
 }
-// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-
 
 // ★★★ Render PostgreSQL への接続設定 ★★★
 const connectionString = process.env.DATABASE_URL;
@@ -44,7 +42,7 @@ if (connectionString) {
         ssl: { rejectUnauthorized: false }
     });
 
-    // ▼▼▼ ここから追加: テーブル自動作成処理 ▼▼▼
+    // テーブル自動作成処理
     pool.query(`
         CREATE TABLE IF NOT EXISTS planets (
             github_id BIGINT PRIMARY KEY,
@@ -57,7 +55,6 @@ if (connectionString) {
     `)
         .then(() => console.log('[DB] planetsテーブルの準備ができました'))
         .catch(err => console.error('[DB] テーブル作成に失敗しました:', err));
-    // ▲▲▲ ここまで追加 ▲▲▲
 }
 
 // --- ESModuleで __dirname を再現 ---
@@ -76,7 +73,7 @@ app.use(session({
     resave: false,
     saveUninitialized: true,
     cookie: {
-        secure: isProduction, // 本番環境のみ true
+        secure: isProduction,
         httpOnly: true,
         sameSite: 'lax'
     }
@@ -106,7 +103,6 @@ app.get('/login', (req, res) => {
     const authUrl = new URL('https://github.com/login/oauth/authorize');
     authUrl.searchParams.set('client_id', GITHUB_CLIENT_ID);
     authUrl.searchParams.set('redirect_uri', CALLBACK_URL);
-    // デプロイ権限を追加
     authUrl.searchParams.set('scope', 'user:email public_repo repo_deployment');
     authUrl.searchParams.set('state', crypto.randomBytes(16).toString('hex'));
     authUrl.searchParams.set('code_challenge', code_challenge);
@@ -228,13 +224,24 @@ app.get('/api/me', (req, res) => {
     req.session.planetData ? res.json(req.session.planetData) : res.status(401).json({ error: 'Not authenticated' });
 });
 
+// ★★★ ここを変更: フロントエンドで扱いやすい形式で返す ★★★
 app.get('/api/planets/random', async (req, res) => {
-    if (!pool) return res.status(503).json({ error: 'DB未接続' });
+    if (!pool) return res.status(503).json({ error: 'DB unavailable' });
     try {
         const result = await pool.query('SELECT username, planet_color, planet_size_factor, main_language FROM planets ORDER BY RANDOM() LIMIT 1');
-        result.rows.length > 0 ? res.json(result.rows[0]) : res.status(404).json({ error: 'データなし' });
+        if (result.rows.length === 0) return res.status(404).json({ error: 'No planets found' });
+
+        const row = result.rows[0];
+        // フロントが期待するキャメルケースに変換
+        res.json({
+            username: row.username,
+            planetColor: row.planet_color,
+            planetSizeFactor: row.planet_size_factor,
+            mainLanguage: row.main_language
+        });
     } catch (e) {
-        res.status(500).json({ error: '取得エラー' });
+        console.error(e);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
