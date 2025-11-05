@@ -198,6 +198,7 @@ app.get('/api/me', (req, res) => {
     req.session.planetData ? res.json(req.session.planetData) : res.status(401).json({ error: 'Not logged in' });
 });
 
+// ★★★ ここを変更: フロントエンドで扱いやすい形式で返す ★★★
 app.get('/api/planets/random', async (req, res) => {
     if (!pool) return res.status(503).json({ error: 'DB unavailable' });
     try {
