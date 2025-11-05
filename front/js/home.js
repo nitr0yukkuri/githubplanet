@@ -175,7 +175,22 @@ function setupUIEventListeners() {
         });
     }
 }
-// ★★★ ここまで追加 ★★★
 
 // 最後に初期化関数を実行
 init();
+
+// DOM要素の取得
+const planetDetailsPanel = document.getElementById('planet-details-panel');
+const toggleDetailsBtn = document.getElementById('toggle-details-btn');
+const arrowIcon = toggleDetailsBtn.querySelector('.arrow-icon');
+
+// ボタンクリックイベントリスナー
+toggleDetailsBtn.addEventListener('click', () => {
+    // パネルとボタンに 'is-open' クラスをトグル
+    planetDetailsPanel.classList.toggle('is-open');
+    toggleDetailsBtn.classList.toggle('is-open');
+
+    // 矢印の向きをトグル
+    arrowIcon.classList.toggle('right');
+    arrowIcon.classList.toggle('left');
+});
