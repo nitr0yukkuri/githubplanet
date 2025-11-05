@@ -65,8 +65,19 @@ async function init() {
     const dl = new THREE.DirectionalLight(0xffffff, 0.4); dl.position.set(50, 15, 10); scene.add(dl);
     new THREE.CubeTextureLoader().setPath('front/img/skybox/').load(['right.png', 'left.png', 'top.png', 'bottom.png', 'front.png', 'back.png'], (tex) => scene.background = tex);
     const data = await fetchMyPlanetData();
-    if (data) loadPlanet(data);
-    else { document.getElementById('not-logged-in-container').style.display = 'flex'; controls.enabled = false; }
+    const notLoggedInContainer = document.getElementById('not-logged-in-container');
+
+    // もしそのコンテナが存在するページ (index.html) だった場合だけ、
+    // ログイン状態に応じた処理を実行する
+    if (notLoggedInContainer) {
+        if (data) {
+            loadPlanet(data);
+        } else {
+            // ログインしていない時の表示
+            notLoggedInContainer.style.display = 'flex';
+            controls.enabled = false;
+        }
+    }
     window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
     setupUI(); animate();
 }
