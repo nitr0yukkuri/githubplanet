@@ -16,12 +16,33 @@
         <p id="not-logged-in-text">まだ何もありません...</p>
         <a href="/login" id="login-button">星を誕生させる</a>
     </div>
+
     <div class="ui-top-left">
         <div class="ui-button" id="open-select-modal-btn">
             <img src="/front/img/staricon.png" alt="Select Planet">
         </div>
-        </div>
+    </div>
 
+    <div id="planet-details-panel">
+        <div class="details-header">
+            <h3>星のステータス</h3>
+        </div>
+        <div class="details-content">
+            <div class="language-stats">
+                <p>TypeScript<span>30%</span></p>
+                <p>JavaScript<span>20%</span></p>
+                <p>CSS<span>15%</span></p>
+            </div>
+            <p class="commit-count">コミット数<span>404</span></p>
+            <p class="planet-name">なんかすっごい惑星名</p>
+        </div>
+    </div>
+
+    <div id="toggle-details-btn" class="ui-button">
+        <svg class="arrow-icon right" viewBox="0 0 24 24" fill="white">
+            <path d="M8.59 16.34l4.58-4.59-4.58-4.59L10 5.75l6 6-6 6z"/>
+        </svg>
+    </div>
     <div id="select-modal">
         <div class="select-container">
 

@@ -251,3 +251,146 @@ body {
     /* 画像がボタンの角丸からはみ出ないように */
     border-radius: 5px; /* ボタンの角丸(10px)より少し小さく */
 }
+
+#planet-details-panel {
+    position: fixed;
+    top: 50%; /* 画面の縦方向中央に配置 */
+    transform: translateY(-50%); /* 自身の高さの半分だけ上にずらして中央揃え */
+    height: 400px; /* ★パネルの固定高さ */
+    max-height: calc(100vh - 80px); /* 画面の高さ-上下の余白(40px*2)を超えないように */
+
+    left: -320px; /* 初期状態は完全に画面外 */
+    width: 300px; /* パネルの幅 */
+    background-color: rgba(30, 30, 60, 0.9); /* 少し暗い青紫の背景 */
+    backdrop-filter: blur(8px);
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+    z-index: 5; /* 他のUIより手前に */
+    transition: left 0.4s ease-out; /* スライドアニメーション */
+    display: flex;
+    flex-direction: column; /* 要素を縦に並べる */
+    
+    border-radius: 0 5px 5px 0; /* 右側は角丸、左側は直線を追加 */
+    border: 3px solid white; /* 白い枠線を追加 */
+    box-sizing: border-box; /* paddingとborderをwidth/heightに含める */
+}
+
+/* パネルが開いている状態 */
+#planet-details-panel.is-open {
+    left: 0; /* 画面内にスライドイン */
+}
+
+/* パネルヘッダー */
+.details-header {
+    background-color: #2c2a4a; /* ヘッダーの背景色 (ボタンと同じ) */
+    padding: 15px 20px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    /* ヘッダーが縮まないようにする */
+    flex-shrink: 0; 
+}
+
+.details-header h3 {
+    margin: 0;
+    font-size: 1.6rem;
+    color: white;
+}
+
+/* パネルコンテンツ */
+.details-content {
+    flex-grow: 1; /* 残りのスペースを埋める */
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    /* gap: 15px; */ /* ★ gap を削除し、個別のマージン制御に切り替え */
+    overflow: hidden; /* 内容がはみ出た場合に備える */
+}
+
+/* ★ 修正: .planet-name 以外の p タグにだけ flex を適用 */
+.details-content p:not(.planet-name) {
+    margin: 0;
+    display: flex;
+    justify-content: space-between; /* ラベルと値を左右に配置 */
+    align-items: center;
+    color: #e0e0e0;
+    font-size: 1.2rem;
+    line-height: 1.8;
+}
+
+/* ★ 修正: span (右側の値) のスタイルはここにまとめる */
+.details-content p:not(.planet-name) span {
+    font-weight: bold;
+    color: white;
+    font-size: 1.2rem;
+    line-height: 1.8;
+}
+
+.language-stats {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 15px;
+    /* ★ 「コミット数」との間隔を 10px に設定 (ご希望の「少し上」) */
+    margin-bottom: 10px; 
+    flex-shrink: 0; /* 縮まないように */
+}
+
+.language-stats p {
+    margin-bottom: 8px;
+}
+.language-stats p:last-child {
+    margin-bottom: 0;
+}
+
+.planet-name {
+    /* ★ display: flex を上書き */
+    display: block; 
+    text-align: center; /* ★ 中央揃え */
+    
+    margin-top: auto; /* ★ 一番下に配置 */
+    margin-bottom: 50px; /* ★ パネル下部との余白 */
+
+    font-size: 1.3rem;
+    font-weight: bold;
+}
+
+
+/* パネル開閉ボタン */
+#toggle-details-btn {
+    position: fixed;
+    top: 50%; /* 画面中央に配置 */
+    left: 0px; /* ★ 初期位置を 0px に変更 (パネルと重ならないように) */
+    transform: translateY(-50%);
+    width: 40px; /* ボタンの幅 */
+    height: 60px; /* ボタンの高さ */
+    padding: 0;
+    background-color: #2c2a4a; /* 濃い紺色/紫色 */
+    border: 3px solid white;
+    border-radius: 0 10px 10px 0; /* 左側は直線、右側は角丸 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 6; /* パネルより手前 */
+    transition: left 0.4s ease-out; /* パネルと連動するアニメーション */
+}
+
+/* パネルが開いている時のボタンの位置 */
+#toggle-details-btn.is-open {
+    left: 300px; /* パネルの幅分右に移動 */
+    border-radius: 10px 0 0 10px; /* 矢印の向きに合わせて角丸の方向を変える */
+}
+
+/* 矢印SVGのスタイル */
+.arrow-icon {
+    width: 24px;
+    height: 24px;
+    fill: white;
+    transition: transform 0.4s; /* 矢印回転のアニメーション */
+}
+
+/* 右向き矢印 (デフォルト) */
+.arrow-icon.right {
+    transform: rotate(0deg);
+}
+
+/* 左向き矢印 (パネルが開いている時) */
+.arrow-icon.left {
+    transform: rotate(180deg);
+}
