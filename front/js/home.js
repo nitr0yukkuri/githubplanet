@@ -1,45 +1,70 @@
+// front/js/home.js
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 let scene, camera, renderer, controls;
 let planetGroup;
-let planetMat; // ★ マテリアルをスコープ外から参照できるように変更
 
-// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-// ★ 最小限の変更点 (D): ログイン状態と惑星データを取得する関数 (旧 client.js のロジック)
-// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-async function fetchPlanetData() {
+// ★ 惑星データ取得
+async function fetchMyPlanetData() {
     try {
-        const response = await fetch('/api/me');
-
-        if (!response.ok) {
-            // セッションが切れているか、未ログイン
-            console.log('ログインしていません');
-            // ★ (前回の変更で削除済み) document.getElementById('my-planet-btn-wrapper').style.display = 'block';
-            return null;
-        }
-
-        // ログイン成功時の処理
-        const data = await response.json();
-        console.log('ユーザーデータ:', data);
-
-        // ★ (前回の変更で削除済み) document.getElementById('my-planet-btn-wrapper').style.display = 'none';
-
-        // 惑星データを返す
+        const res = await fetch('/api/me');
+        if (!res.ok) return null;
+        const data = await res.json();
         return data.planetData;
-
-    } catch (error) {
-        console.error('データ取得エラー:', error);
-        // ★ (前回の変更で削除済み) document.getElementById('my-planet-btn-wrapper').style.display = 'block';
-        return null;
-    }
+    } catch (e) { return null; }
 }
 
-// 初期化関数
-async function init() { // ★ async に変更
+// ★★★ 新規追加: 惑星を作成・更新する関数 ★★★
+function loadPlanet(data) {
+    if (!data) return;
+
+    // 既に惑星があれば削除して作り直す
+    if (planetGroup) {
+        scene.remove(planetGroup);
+        planetGroup = undefined;
+    }
+
+    planetGroup = new THREE.Group();
+    const planetGeo = new THREE.SphereGeometry(4, 32, 32);
+
+    // 色の決定
+    let colorHex = 0x808080;
+    if (data.planetColor) {
+        colorHex = new THREE.Color(data.planetColor).getHex();
+    }
+
+    const planetMat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        metalness: 0.2,
+        roughness: 0.8,
+        aoMapIntensity: 1.5,
+    });
+
+    const textureLoader = new THREE.TextureLoader();
+    planetMat.aoMap = textureLoader.load('front/img/2k_mars.jpg');
+
+    const planet = new THREE.Mesh(planetGeo, planetMat);
+    planet.geometry.setAttribute('uv2', new THREE.BufferAttribute(planet.geometry.attributes.uv.array, 2));
+
+    // サイズの適用 (デフォルト1.0)
+    const scale = data.planetSizeFactor || 1.0;
+    planetGroup.scale.set(scale, scale, scale);
+
+    planetGroup.add(planet);
+    planetGroup.rotation.x = Math.PI * 0.4;
+    planetGroup.rotation.y = Math.PI * 0.1;
+    scene.add(planetGroup);
+
+    // 惑星がロードされたらログインメッセージは隠す
+    const msgContainer = document.getElementById('not-logged-in-container');
+    if (msgContainer) msgContainer.style.display = 'none';
+    controls.enabled = true;
+}
+
+async function init() {
     scene = new THREE.Scene();
     scene.fog = new THREE.Fog(0x000000, 10, 50);
-
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.z = 15;
 
@@ -56,121 +81,73 @@ async function init() { // ★ async に変更
 
     const ambientLight = new THREE.AmbientLight(0x888888, 2);
     scene.add(ambientLight);
-
     const pointLight = new THREE.PointLight(0xffffff, 25, 1000);
     pointLight.position.set(20, 10, 5);
     scene.add(pointLight);
-
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.4);
     directionalLight.position.set(50, 15, 10);
     scene.add(directionalLight);
 
     const cubeLoader = new THREE.CubeTextureLoader();
     cubeLoader.setPath('front/img/skybox/');
-    const textureCube = cubeLoader.load([
-        'right.png', 'left.png', 'top.png', 'bottom.png', 'front.png', 'back.png'
-    ]);
-    scene.background = textureCube;
+    scene.background = cubeLoader.load(['right.png', 'left.png', 'top.png', 'bottom.png', 'front.png', 'back.png']);
 
-    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-    // ★ 最小限の変更点 (E): 惑星データを取得し、処理を分岐する
-    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-    const myPlanetData = await fetchPlanetData(); // ★ データを待つ
-
-    if (myPlanetData) {
-        // ★★★ ログイン時: 惑星を作成する (元の処理) ★★★
-        planetGroup = new THREE.Group();
-        const textureLoader = new THREE.TextureLoader();
-        const planetGeo = new THREE.SphereGeometry(4, 32, 32);
-
-        // マテリアルの色をサーバーデータから設定
-        let defaultColor = 0x3366ff; // デフォルトの色 (ログインしていない場合)
-        if (myPlanetData && myPlanetData.planetColor) {
-            try {
-                // planetColor (例: '#f0db4f') を Three.js の色 (0xf0db4f) に変換
-                defaultColor = new THREE.Color(myPlanetData.planetColor).getHex();
-                console.log('惑星の色を適用:', myPlanetData.planetColor);
-            } catch (e) {
-                console.error('色の変換に失敗:', e);
-                // 失敗したらデフォルト色のまま
-            }
-        }
-
-        planetMat = new THREE.MeshStandardMaterial({
-            color: defaultColor, // ★ 取得した色を適用
-            metalness: 0.2,
-            roughness: 0.8,
-            aoMapIntensity: 1.5,
-        });
-        // ★★★ (ここまで修正) ★★★
-
-        const aoTexture = textureLoader.load('front/img/2k_mars.jpg');
-        planetMat.aoMap = aoTexture;
-        const planet = new THREE.Mesh(planetGeo, planetMat);
-        planet.geometry.setAttribute(
-            'uv2',
-            new THREE.BufferAttribute(planet.geometry.attributes.uv.array, 2)
-        );
-        planetGroup.add(planet);
-        planetGroup.rotation.x = Math.PI * 0.4;
-        planetGroup.rotation.y = Math.PI * 0.1;
-        scene.add(planetGroup);
+    // 初回ロード: 自分の惑星があれば表示
+    const myData = await fetchMyPlanetData();
+    if (myData) {
+        loadPlanet(myData);
     } else {
-        // ★★★ 未ログイン時: メッセージとボタンを表示し、カメラコントロールを無効化 ★★★
-        const messageContainer = document.getElementById('not-logged-in-container');
-        if (messageContainer) {
-            messageContainer.style.display = 'flex'; // ★ 'block' から 'flex' に変更
-        }
-        // 惑星がないのでカメラコントロールも無効にする
+        const msgContainer = document.getElementById('not-logged-in-container');
+        if (msgContainer) msgContainer.style.display = 'flex';
         controls.enabled = false;
     }
-    // ★★★ (ここまで修正) ★★★
 
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
 
-    window.addEventListener('resize', onWindowResize);
-
-    // ★★★ UIイベントリスナーを設定する関数を呼び出し ★★★
     setupUIEventListeners();
-
     animate();
-}
-
-function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 function animate() {
     requestAnimationFrame(animate);
-
-    // ★ 最小限の変更点: planetGroup が存在する場合のみ回転させる ★
     if (planetGroup) {
         planetGroup.rotation.z += 0.001;
     }
-
     controls.update();
     renderer.render(scene, camera);
 }
 
-// ★★★ ここから新しい関数を追加 ★★★
 function setupUIEventListeners() {
-    const openButton = document.getElementById('open-select-modal-btn');
     const modal = document.getElementById('select-modal');
-
-    // ボタンをクリックしたらモーダルを表示
-    if (openButton && modal) {
-        openButton.addEventListener('click', () => {
-            modal.classList.add('is-visible');
+    const openBtn = document.getElementById('open-select-modal-btn');
+    if (openBtn && modal) {
+        openBtn.addEventListener('click', () => modal.classList.add('is-visible'));
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.remove('is-visible');
         });
     }
 
-    // モーダルの背景をクリックしたらモーダルを非表示
-    if (modal) {
-        modal.addEventListener('click', (event) => {
-            // event.target (クリックされた要素) が modal (背景) 自身だった場合のみ閉じる
-            if (event.target === modal) {
-                modal.classList.remove('is-visible');
+    // ★★★ ランダム訪問ボタンの処理 ★★★
+    const randomBtn = document.getElementById('random-visit-btn');
+    if (randomBtn) {
+        randomBtn.addEventListener('click', async (e) => {
+            e.preventDefault(); // リンク遷移を無効化
+            try {
+                const res = await fetch('/api/planets/random');
+                if (res.ok) {
+                    const data = await res.json();
+                    console.log('ランダム訪問:', data.username);
+                    loadPlanet(data); // 取得したデータで惑星を再描画
+                    modal.classList.remove('is-visible'); // モーダルを閉じる
+                } else {
+                    alert('他の惑星が見つかりませんでした');
+                }
+            } catch (err) {
+                console.error('ランダム訪問エラー', err);
             }
         });
     }
@@ -179,18 +156,16 @@ function setupUIEventListeners() {
 // 最後に初期化関数を実行
 init();
 
-// DOM要素の取得
+// DOM要素の取得とパネル開閉処理 (既存のコードを維持)
 const planetDetailsPanel = document.getElementById('planet-details-panel');
 const toggleDetailsBtn = document.getElementById('toggle-details-btn');
-const arrowIcon = toggleDetailsBtn.querySelector('.arrow-icon');
+const arrowIcon = toggleDetailsBtn ? toggleDetailsBtn.querySelector('.arrow-icon') : null;
 
-// ボタンクリックイベントリスナー
-toggleDetailsBtn.addEventListener('click', () => {
-    // パネルとボタンに 'is-open' クラスをトグル
-    planetDetailsPanel.classList.toggle('is-open');
-    toggleDetailsBtn.classList.toggle('is-open');
-
-    // 矢印の向きをトグル
-    arrowIcon.classList.toggle('right');
-    arrowIcon.classList.toggle('left');
-});
+if (toggleDetailsBtn && planetDetailsPanel && arrowIcon) {
+    toggleDetailsBtn.addEventListener('click', () => {
+        planetDetailsPanel.classList.toggle('is-open');
+        toggleDetailsBtn.classList.toggle('is-open');
+        arrowIcon.classList.toggle('right');
+        arrowIcon.classList.toggle('left');
+    });
+}
