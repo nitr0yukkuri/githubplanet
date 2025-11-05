@@ -7,15 +7,34 @@ import crypto from 'crypto';
 import axios from 'axios';
 import path from 'path';
 import { fileURLToPath } from 'url';
+// ★★★ 最小限の変更点: 'pg' (PostgreSQLライブラリ) をインポート ★★★
+import pg from 'pg';
 
 // 2. Express の初期化
 const app = express();
 const port = process.env.PORT || 3000;
 
 // ★★★ GitHub OAuth App の設定 ★★★
-const GITHUB_CLIENT_ID = 'Ov23liiff1uvGf1ThXkI';
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || 'Ov23liiff1uvGf1ThXkI';
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '601f033befdb67ee00c019d5f7368c0eaf94d0e2';
 const CALLBACK_URL = process.env.CALLBACK_URL || 'http://localhost:3000/callback';
+
+// ★★★ 最小限の変更点: Render PostgreSQL への接続設定 ★★★
+// (Render が提供する DATABASE_URL (Internal) を環境変数に設定してください)
+const connectionString = process.env.DATABASE_URL;
+// DB接続設定が存在する場合のみプールを作成（ローカル等でのエラー回避のため）
+let pool;
+if (connectionString) {
+    pool = new pg.Pool({
+        connectionString: connectionString,
+        // Render の DB には SSL 接続が必要
+        ssl: {
+            rejectUnauthorized: false
+        }
+    });
+}
+// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
 
 // --- ESModuleで __dirname を再現 ---
 const __filename = fileURLToPath(import.meta.url);
@@ -29,7 +48,7 @@ if (process.env.NODE_ENV === 'production') {
 
 // 3. セッションの設定
 app.use(session({
-    secret: 'your-very-secret-key-change-it',
+    secret: process.env.SESSION_SECRET || 'your-very-secret-key-change-it',
     resave: false,
     saveUninitialized: true,
     cookie: {
@@ -57,7 +76,7 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// --- 4. /login エンドポイント (変更なし) ---
+// --- 4. /login エンドポイント ---
 app.get('/login', (req, res) => {
     console.log('GitHubログインリクエストを受け取りました');
     const code_verifier = base64URLEncode(crypto.randomBytes(32));
@@ -67,7 +86,9 @@ app.get('/login', (req, res) => {
     const authUrl = new URL('https://github.com/login/oauth/authorize');
     authUrl.searchParams.set('client_id', GITHUB_CLIENT_ID);
     authUrl.searchParams.set('redirect_uri', CALLBACK_URL);
-    authUrl.searchParams.set('scope', 'user:email public_repo');
+    // ★★★ 変更点: repo_deployment スコープを追加 ★★★
+    authUrl.searchParams.set('scope', 'user:email public_repo repo_deployment');
+    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
     authUrl.searchParams.set('state', crypto.randomBytes(16).toString('hex'));
     authUrl.searchParams.set('code_challenge', code_challenge);
     authUrl.searchParams.set('code_challenge_method', 'S256');
@@ -76,7 +97,7 @@ app.get('/login', (req, res) => {
     res.redirect(authUrl.href);
 });
 
-// --- 5. /callback エンドポイント (★ 惑星データ生成＆保存 ★) ---
+// --- 5. /callback エンドポイント (★ 惑星データ生成＆DB保存 ★) ---
 app.get('/callback', async (req, res) => {
     console.log('/callback が呼ばれました');
     const { code } = req.query;
@@ -86,7 +107,7 @@ app.get('/callback', async (req, res) => {
     if (!code_verifier) return res.status(400).send('code_verifierがセッションにありません');
 
     try {
-        // 3. アクセストークンと交換
+        // 3. アクセストークンと交換 (変更なし)
         const tokenResponse = await axios.post(
             'https://github.com/login/oauth/access_token',
             {
@@ -102,28 +123,24 @@ app.get('/callback', async (req, res) => {
         if (!accessToken) throw new Error('アクセストークンが取得できませんでした');
         console.log('アクセストークン取得成功！');
 
-        // 4. ユーザー情報取得
+        // 4. ユーザー情報取得 (変更なし)
         const userResponse = await axios.get('https://api.github.com/user', {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
         const user = userResponse.data;
         console.log('ようこそ,', user.login);
 
-        // 5. リポジトリ一覧を取得
-        // ★ 取得件数を増やし、API呼び出し回数を減らす
+        // 5. リポジトリ一覧を取得 (変更なし)
         const reposResponse = await axios.get(user.repos_url + '?per_page=100', {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
         const repos = reposResponse.data;
 
-        // 6. 言語データとコミット数を集計
+        // 6. 言語データとコミット数を集計 (変更なし)
         const languageStats = {};
-        let totalCommits = 0; // ★ 総コミット数集計用の変数
-
+        let totalCommits = 0;
         await Promise.all(repos.map(async (repo) => {
             if (repo.fork || !repo.languages_url) return;
-
-            // 6-1. 言語データ集計 (既存)
             try {
                 const langResponse = await axios.get(repo.languages_url, {
                     headers: { 'Authorization': `Bearer ${accessToken}` }
@@ -133,25 +150,18 @@ app.get('/callback', async (req, res) => {
                     languageStats[lang] = (languageStats[lang] || 0) + bytes;
                 }
             } catch (langError) { /* スキップ */ }
-
-            // 6-2. ★ コミット数集計 (新規追加)
             try {
-                // ユーザー自身のコミット（最大100件）を取得しカウントします。
-                // 注: 正確な総コミット数取得には、ページネーションが必要です。
                 const commitsUrl = `https://api.github.com/repos/${user.login}/${repo.name}/commits?author=${user.login}&per_page=100`;
                 const commitResponse = await axios.get(commitsUrl, {
                     headers: { 'Authorization': `Bearer ${accessToken}` }
                 });
                 const commitsCount = commitResponse.data.length;
                 totalCommits += commitsCount;
-            } catch (commitError) {
-                /* スキップ */
-            }
+            } catch (commitError) { /* スキップ */ }
         }));
-
         console.log('総コミット数 (近似値):', totalCommits);
 
-        // 7. メイン言語を特定
+        // 7. メイン言語を特定 (変更なし)
         let mainLanguage = 'Unknown';
         let maxBytes = 0;
         for (const [lang, bytes] of Object.entries(languageStats)) {
@@ -162,7 +172,7 @@ app.get('/callback', async (req, res) => {
         }
         console.log('メイン言語:', mainLanguage);
 
-        // 8. 惑星の色とサイズを決定
+        // 8. 惑星の色とサイズを決定 (変更なし)
         let planetColor = '#808080';
         if (mainLanguage === 'JavaScript') planetColor = '#f0db4f';
         if (mainLanguage === 'TypeScript') planetColor = '#007acc';
@@ -171,29 +181,57 @@ app.get('/callback', async (req, res) => {
         if (mainLanguage === 'CSS') planetColor = '#563d7c';
         if (mainLanguage === 'Ruby') planetColor = '#CC342D';
 
-        // ★ 惑星サイズ要因を決定 (新規追加): コミット数が多いほど大きくなる
         const baseSize = 1.0;
-        const maxCommitsScale = 500; // 500コミットを一つの基準とする
-        // 対数スケールでサイズを調整（急激な変化を抑えるため）
+        const maxCommitsScale = 500;
         let planetSizeFactor = baseSize + Math.min(1.0, Math.log10(totalCommits + 1) / Math.log10(maxCommitsScale));
         planetSizeFactor = parseFloat(planetSizeFactor.toFixed(2));
         if (totalCommits === 0) planetSizeFactor = 1.0;
         console.log('惑星サイズ要因:', planetSizeFactor);
 
-
-        // 9. ★ データをセッションに保存 (更新) ★
+        // 9. ★ データをセッションに保存 (変更なし) ★
+        const planetDataToSave = {
+            mainLanguage: mainLanguage,
+            planetColor: planetColor,
+            languageStats: languageStats,
+            totalCommits: totalCommits,
+            planetSizeFactor: planetSizeFactor,
+        };
         req.session.planetData = {
             user: user,
             github_token: accessToken,
-            planetData: {
-                mainLanguage: mainLanguage,
-                planetColor: planetColor,
-                languageStats: languageStats,
-                // ★ 新しいプロパティを追加
-                totalCommits: totalCommits,
-                planetSizeFactor: planetSizeFactor,
-            }
+            planetData: planetDataToSave
         };
+
+        // ★★★ 最小限の変更点: データを DB に保存/更新 ★★★
+        if (pool) {
+            try {
+                const query = `
+                    INSERT INTO planets (github_id, username, planet_color, planet_size_factor, main_language, last_updated)
+                    VALUES ($1, $2, $3, $4, $5, NOW())
+                    ON CONFLICT (github_id) 
+                    DO UPDATE SET 
+                        username = $2,
+                        planet_color = $3,
+                        planet_size_factor = $4,
+                        main_language = $5,
+                        last_updated = NOW();
+                `;
+                const values = [
+                    user.id, // GitHub ID (数値)
+                    user.login, // GitHub Username
+                    planetDataToSave.planetColor,
+                    planetDataToSave.planetSizeFactor,
+                    planetDataToSave.mainLanguage
+                ];
+
+                await pool.query(query, values);
+                console.log(`[DB] ユーザー ${user.login} の惑星データを保存/更新しました。`);
+
+            } catch (dbError) {
+                console.error('[DB] 惑星データの保存に失敗しました:', dbError);
+            }
+        }
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
         // 10. ホームページ(/)にリダイレクト
         console.log('惑星データ生成完了。/ (ルート) にリダイレクトします。');
@@ -217,6 +255,33 @@ app.get('/api/me', (req, res) => {
         res.status(401).json({ error: 'Not authenticated' });
     }
 });
+
+// ★★★ 最小限の変更点: ランダムな惑星データを返すAPI ★★★
+app.get('/api/planets/random', async (req, res) => {
+    console.log('/api/planets/random が呼ばれました。');
+    if (!pool) {
+        console.log('DB接続が設定されていません');
+        return res.status(503).json({ error: 'データベース接続がありません' });
+    }
+    try {
+        // データベースからランダムに1件の惑星データを取得
+        const result = await pool.query(
+            'SELECT username, planet_color, planet_size_factor, main_language FROM planets ORDER BY RANDOM() LIMIT 1'
+        );
+
+        if (result.rows.length > 0) {
+            console.log('ランダムな惑星を返します:', result.rows[0].username);
+            res.json(result.rows[0]);
+        } else {
+            console.log('DB に惑星データがありません (404)');
+            res.status(404).json({ error: 'まだ誰も惑星を持っていません' });
+        }
+    } catch (error) {
+        console.error('[DB] ランダムな惑星データの取得エラー:', error);
+        res.status(500).json({ error: 'データの取得に失敗しました' });
+    }
+});
+// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
 
 // --- 6. サーバー起動 (変更なし) ---
