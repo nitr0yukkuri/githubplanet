@@ -32,6 +32,12 @@ if (isProduction) {
     GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET_LOCAL || '601f033befdb67ee00c019d5f7368c0eaf94d0e2'; // 以前の古いSecret
     CALLBACK_URL = 'http://localhost:3000/callback';
 }
+console.log('--- DEBUG INFO ---');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('isProduction:', isProduction);
+console.log('Using Client ID:', GITHUB_CLIENT_ID);
+console.log('Callback URL:', CALLBACK_URL);
+console.log('------------------');
 // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
 
