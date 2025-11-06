@@ -3,13 +3,20 @@
     /* モーダルのボタンを縦並びにする */
     .select-container {
         flex-direction: column;
-        gap: 40px; /* 元の200pxから縮小 */
-        width: 90%;
+        align-items: center;
+        justify-content: center; /* 縦方向も中央に */
+        gap: 60px; /* 少し狭める */
+        width: 100%; /* コンテナ幅を最大に */
+        max-width: none; /* max-widthを解除 */
     }
 
-    /* 縦並びにした際のマージン調整 */
+    /* 縦並びにした際のマージン調整と完全な中央揃え */
     .planet-button-wrapper {
-        margin-bottom: 10px;
+        margin: 0 auto; /* 左右中央揃え */
+        width: auto;    /* 幅をなりゆきに */
+        display: flex;  /* 中身もフレックスで中央揃え */
+        flex-direction: column;
+        align-items: center;
     }
 }
 
@@ -18,9 +25,8 @@
     /* 詳細パネルが画面からはみ出ないように幅を調整 */
     #planet-details-panel {
         width: 85%;
-        left: -90%; /* 完全に隠れる位置へ調整 */
+        left: -90%;
     }
-    /* パネルが開いた時のボタン位置も合わせる */
     #toggle-details-btn.is-open {
         left: 85%;
     }
@@ -38,7 +44,7 @@
     /* 未ログイン時のテキストとボタンを少し小さく */
     #not-logged-in-text {
         font-size: 1.4rem;
-        white-space: nowrap; /* ★追加: 改行を禁止 */
+        white-space: nowrap;
     }
     #login-button {
         font-size: 1.2rem;
