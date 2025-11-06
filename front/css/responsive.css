@@ -1,0 +1,47 @@
+/* タブレット・スマホ向け (画面幅 768px 以下) */
+@media (max-width: 768px) {
+    /* モーダルのボタンを縦並びにする */
+    .select-container {
+        flex-direction: column;
+        gap: 40px; /* 元の200pxから縮小 */
+        width: 90%;
+    }
+
+    /* 縦並びにした際のマージン調整 */
+    .planet-button-wrapper {
+        margin-bottom: 10px;
+    }
+}
+
+/* スマホ向け (画面幅 480px 以下) */
+@media (max-width: 480px) {
+    /* 詳細パネルが画面からはみ出ないように幅を調整 */
+    #planet-details-panel {
+        width: 85%;
+        left: -90%; /* 完全に隠れる位置へ調整 */
+    }
+    /* パネルが開いた時のボタン位置も合わせる */
+    #toggle-details-btn.is-open {
+        left: 85%;
+    }
+
+    /* モーダルのアイコンを少し小さく */
+    .planet-icon {
+        width: 130px;
+        height: 130px;
+    }
+    .planet-icon svg {
+        width: 50px;
+        height: 50px;
+    }
+
+    /* 未ログイン時のテキストとボタンを少し小さく */
+    #not-logged-in-text {
+        font-size: 1.4rem;
+        white-space: nowrap; /* ★追加: 改行を禁止 */
+    }
+    #login-button {
+        font-size: 1.2rem;
+        padding: 10px 30px;
+    }
+}
