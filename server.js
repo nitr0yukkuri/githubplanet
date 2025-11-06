@@ -156,8 +156,6 @@ app.get('/callback', async (req, res) => {
             } catch (e) { totalCommits += 5; }
         }));
 
-        // ★★★ 修正: 補正倍率を5.5倍に変更 ★★★
-        // (注: ユーザーのコードでは 6.3倍 になっていましたのでそのままにします)
         totalCommits = Math.floor(totalCommits * 6.3);
 
         let mainLanguage = 'Unknown';
@@ -179,13 +177,14 @@ app.get('/callback', async (req, res) => {
         };
 
         if (pool) {
+            // ★ JSONB型にはオブジェクトを直接渡すのが最適です。JSON.stringifyを削除しました。
             await pool.query(`
                 INSERT INTO planets (github_id, username, planet_color, planet_size_factor, main_language, language_stats, total_commits, last_updated)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
                 ON CONFLICT (github_id) DO UPDATE SET
                     username = $2, planet_color = $3, planet_size_factor = $4, main_language = $5,
                     language_stats = $6, total_commits = $7, last_updated = NOW()
-            `, [user.id, user.login, planetColor, planetSizeFactor, mainLanguage, JSON.stringify(languageStats), totalCommits]);
+            `, [user.id, user.login, planetColor, planetSizeFactor, mainLanguage, languageStats, totalCommits]);
         }
 
         res.redirect('/');
@@ -199,7 +198,8 @@ app.get('/api/me', (req, res) => {
     req.session.planetData ? res.json(req.session.planetData) : res.status(401).json({ error: 'Not logged in' });
 });
 
-// ★★★ ランダム訪問API ★★★
+// ★★★ 修正の核心部分 ★★★
+// データベースの列名(スネークケース)を、フロントエンドが要求する名前(キャメルケース)に確実に変換します。
 app.get('/api/planets/random', async (req, res) => {
     if (!pool) return res.status(503).json({ error: 'DB unavailable' });
     try {
@@ -207,18 +207,21 @@ app.get('/api/planets/random', async (req, res) => {
         if (result.rows.length === 0) return res.status(404).json({ error: 'No planets found' });
 
         const row = result.rows[0];
+        // 名前を再生成（念のため最新のロジックで）
         const planetName = generatePlanetName(row.main_language, row.planet_color, row.total_commits || 0);
 
-        res.json({
+        // DBから取得したデータをフロントエンド用に整形
+        const responseData = {
             username: row.username,
-            planetColor: row.planet_color,
-            planetSizeFactor: row.planet_size_factor,
-            mainLanguage: row.main_language,
-            // DBのカラム(スネークケース)からフロントエンド用のキー(キャメルケース)へマッピング
-            languageStats: row.language_stats || {},
-            totalCommits: row.total_commits || 0,
+            planetColor: row.planet_color,                 // DB列名: planet_color
+            planetSizeFactor: row.planet_size_factor,      // DB列名: planet_size_factor
+            mainLanguage: row.main_language,               // DB列名: main_language
+            languageStats: row.language_stats || {},       // DB列名: language_stats → フロント期待: languageStats
+            totalCommits: row.total_commits || 0,          // DB列名: total_commits  → フロント期待: totalCommits
             planetName: planetName
-        });
+        };
+
+        res.json(responseData);
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: 'Internal Server Error' });
