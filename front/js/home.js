@@ -36,7 +36,7 @@ function loadPlanet(data) {
     updatePlanetDetails(data);
     if (planetGroup) { scene.remove(planetGroup); planetGroup = undefined; }
     planetGroup = new THREE.Group();
-    const geo = new THREE.SphereGeometry(4, 32, 32);
+    const geo = new THREE.SphereGeometry(4, 32, 32); // 惑星本体 (半径 4)
     const mat = new THREE.MeshStandardMaterial({
         color: data.planetColor ? new THREE.Color(data.planetColor).getHex() : 0x808080,
         metalness: 0.2, roughness: 0.8, aoMapIntensity: 1.5
@@ -47,6 +47,136 @@ function loadPlanet(data) {
     const s = data.planetSizeFactor || 1.0;
     planetGroup.scale.set(s, s, s);
     planetGroup.add(planet);
+
+    // ★ 星 (Points) の追加
+    const starCount = Math.floor((data.totalCommits || 0) / 75);
+
+    if (starCount > 0) {
+        const vertices = [];
+        const starBaseRadius = 7;
+
+        for (let i = 0; i < starCount; i++) {
+            const phi = Math.random() * Math.PI * 2;
+            const theta = Math.random() * Math.PI;
+            const radius = starBaseRadius + (Math.random() * 2);
+
+            const x = radius * Math.sin(theta) * Math.cos(phi);
+            const y = radius * Math.sin(theta) * Math.sin(phi);
+            const z = radius * Math.cos(theta);
+            vertices.push(x, y, z);
+        }
+
+        const starGeometry = new THREE.BufferGeometry();
+        starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+        // 星用の頂点シェーダー
+        const vertexShader = `
+            void main() {
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                gl_Position = projectionMatrix * mvPosition;
+                gl_PointSize = 800.0 / -mvPosition.z;
+            }
+        `;
+
+        // 星用のフラグメントシェーダー (光条4本)
+        const fragmentShader = `
+            void main() {
+                vec2 p = gl_PointCoord * 2.0 - 1.0; 
+                float r = length(p); 
+                if (r > 1.0) discard; 
+
+                float core = 1.0 - smoothstep(0.0, 0.05, r);
+                float a = atan(p.y, p.x); 
+                float numRays = 4.0; 
+                float rayIntensity = pow(abs(cos(a * numRays / 2.0)), 30.0);
+                float rayFalloff = 1.0 - smoothstep(0.0, 1.0, r);
+                rayFalloff = pow(rayFalloff, 2.0); 
+                float rays = rayIntensity * rayFalloff * 2.5; 
+                float glow = 1.0 - smoothstep(0.0, 1.0, r);
+                glow = pow(glow, 4.0); 
+                float alpha = core * 2.0 + rays + glow * 1.0;
+                alpha = clamp(alpha, 0.0, 1.0); 
+
+                gl_FragColor = vec4(1.0, 1.0, 1.0, alpha);
+            }
+        `;
+
+        const starMaterial = new THREE.ShaderMaterial({
+            uniforms: {}, 
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+            blending: THREE.AdditiveBlending, 
+            transparent: true,
+            depthWrite: false 
+        });
+        
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        planetGroup.add(stars);
+    }
+    
+    // ★ ここから変更: 星の数に応じて惑星にオーラ（疑似ブルーム）を追加
+    if (starCount > 0) {
+        // 惑星（半径4）より少し大きい球 (半径 4.05)
+        const auraGeo = new THREE.SphereGeometry(4.05, 32, 32);
+
+        // オーラ用の頂点シェーダー
+        // 役割: 法線と視線ベクトルをフラグメントシェーダーに渡す
+        const auraVertexShader = `
+            varying vec3 vNormal;
+            varying vec3 vViewPosition;
+            void main() {
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                vViewPosition = -mvPosition.xyz; // 視点へのベクトル
+                vNormal = normalize(normalMatrix * normal); // 法線ベクトル
+                gl_Position = projectionMatrix * mvPosition;
+            }
+        `;
+
+        // オーラ用のフラグメントシェーダー
+        // 役割: 縁（ふち）に近いほど光るように（フレネル効果）
+        const auraFragmentShader = `
+            uniform vec3 glowColor;
+            uniform float intensity; // 星の数に応じた強度
+            varying vec3 vNormal;
+            varying vec3 vViewPosition;
+            void main() {
+                // 視線ベクトルと法線の内積
+                float fresnel = dot(normalize(vViewPosition), vNormal);
+                
+                // 縁に近いほど 1.0 に、中心に近いほど 0.0 になるように計算
+                fresnel = 1.0 - fresnel; 
+                fresnel = pow(fresnel, 3.0); // 縁の光り方をシャープに (値 1.0〜5.0 で調整)
+
+                // 縁(fresnel) * 全体の強度(intensity)
+                float alpha = fresnel * intensity;
+                alpha = clamp(alpha, 0.0, 1.0); // 1.0 を超えないように
+
+                gl_FragColor = vec4(glowColor, alpha);
+            }
+        `;
+
+        // 星の数に応じて強度を計算 (星5個ごとに0.3ずつ強度が増加、最大3.0)
+        const auraIntensity = Math.min(3.0, (starCount / 5.0) * 0.3); 
+
+        const auraMat = new THREE.ShaderMaterial({
+            uniforms: {
+                // 惑星の色（or デフォルト色）
+                glowColor: { value: new THREE.Color(data.planetColor ? data.planetColor : 0x808080) },
+                // 計算した強度
+                intensity: { value: auraIntensity } 
+            },
+            vertexShader: auraVertexShader,
+            fragmentShader: auraFragmentShader,
+            transparent: true,
+            blending: THREE.AdditiveBlending, // 加算合成で光らせる
+            side: THREE.FrontSide // 表面（こちら側）を描画
+        });
+
+        const aura = new THREE.Mesh(auraGeo, auraMat);
+        planetGroup.add(aura); // 惑星グループに追加
+    }
+    // ★ 変更ここまで
+    
     planetGroup.rotation.x = Math.PI * 0.4; planetGroup.rotation.y = Math.PI * 0.1;
     scene.add(planetGroup);
     const msg = document.getElementById('not-logged-in-container');
@@ -67,13 +197,10 @@ async function init() {
     const data = await fetchMyPlanetData();
     const notLoggedInContainer = document.getElementById('not-logged-in-container');
 
-    // もしそのコンテナが存在するページ (index.html) だった場合だけ、
-    // ログイン状態に応じた処理を実行する
     if (notLoggedInContainer) {
         if (data) {
             loadPlanet(data);
         } else {
-            // ログインしていない時の表示
             notLoggedInContainer.style.display = 'flex';
             controls.enabled = false;
         }
