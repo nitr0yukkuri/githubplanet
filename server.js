@@ -157,6 +157,7 @@ app.get('/callback', async (req, res) => {
         }));
 
         // ★★★ 修正: 補正倍率を5.5倍に変更 ★★★
+        // (注: ユーザーのコードでは 6.3倍 になっていましたのでそのままにします)
         totalCommits = Math.floor(totalCommits * 6.3);
 
         let mainLanguage = 'Unknown';
@@ -198,7 +199,7 @@ app.get('/api/me', (req, res) => {
     req.session.planetData ? res.json(req.session.planetData) : res.status(401).json({ error: 'Not logged in' });
 });
 
-// ★★★ ここを変更: フロントエンドで扱いやすい形式で返す ★★★
+// ★★★ ランダム訪問API ★★★
 app.get('/api/planets/random', async (req, res) => {
     if (!pool) return res.status(503).json({ error: 'DB unavailable' });
     try {
@@ -213,6 +214,7 @@ app.get('/api/planets/random', async (req, res) => {
             planetColor: row.planet_color,
             planetSizeFactor: row.planet_size_factor,
             mainLanguage: row.main_language,
+            // DBのカラム(スネークケース)からフロントエンド用のキー(キャメルケース)へマッピング
             languageStats: row.language_stats || {},
             totalCommits: row.total_commits || 0,
             planetName: planetName
