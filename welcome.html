@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GitHub Planetへようこそ</title>
-    
+
     <link rel="stylesheet" href="./front/css/home.css">
-    
+
     <style>
         /* ウェルカムモーダル用のスタイル */
         .welcome-modal {
@@ -15,27 +16,34 @@
             left: 50%;
             transform: translate(-50%, -50%);
             width: 90%;
-            max-width: 450px; /* 画像の見た目に合わせて幅を調整 */
-            
+            max-width: 450px;
+            /* 画像の見た目に合わせて幅を調整 */
+
             /* 画像を参考にしたガラス効果（フロスト） */
-            background-color: rgba(25, 25, 30, 0.75); /* 少し暗めで透明度を持たせる */
-            backdrop-filter: blur(10px); /* 背景をぼかす */
+            background-color: rgba(25, 25, 30, 0.75);
+            /* 少し暗めで透明度を持たせる */
+            backdrop-filter: blur(10px);
+            /* 背景をぼかす */
             -webkit-backdrop-filter: blur(10px);
-            
+
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 16px;
-            padding: 25px 30px; /* 余白 */
+            padding: 25px 30px;
+            /* 余白 */
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
             z-index: 10;
             text-align: center;
-            color: #e0e0e0; /* 基本のテキストの色 */
+            color: #e0e0e0;
+            /* 基本のテキストの色 */
         }
 
         /* ロゴ画像 */
         .welcome-logo {
-            width: 220px; /* ロゴのサイズ */
+            width: 350px;
+            /* ロゴのサイズを大きくしました (220px -> 300px) */
             height: auto;
-            margin-bottom: 20px; /* ロゴと見出しの間 */
+            margin-bottom: 20px;
+            /* ロゴと見出しの間 */
         }
 
         /* 見出し (GitHub Planetへようこそ) */
@@ -49,21 +57,25 @@
         /* 説明文 */
         .welcome-modal p {
             font-size: 15px;
-            line-height: 1.7; /* 行間を少し広めに */
+            line-height: 1.7;
+            /* 行間を少し広めに */
             margin-bottom: 30px;
-            text-align: left; /* 説明文は左揃え */
+            text-align: left;
+            /* 説明文は左揃え */
         }
 
         /* OKボタン */
         .ok-button {
-            display: inline-block; /* <a>タグをボタン風に */
+            display: inline-block;
+            /* <a>タグをボタン風に */
             padding: 10px 50px;
             font-size: 18px;
             font-weight: bold;
             color: white;
             background-color: rgba(80, 80, 80, 0.7);
             border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 30px; /* 画像のような楕円形 */
+            border-radius: 30px;
+            /* 画像のような楕円形 */
             text-decoration: none;
             cursor: pointer;
             transition: background-color 0.3s, transform 0.2s;
@@ -71,25 +83,27 @@
 
         .ok-button:hover {
             background-color: rgba(100, 100, 100, 0.9);
-            transform: scale(1.05); /* ホバー時に少し拡大 */
+            transform: scale(1.05);
+            /* ホバー時に少し拡大 */
         }
     </style>
 </head>
+
 <body>
 
     <div id="canvas-container"></div>
 
     <div class="welcome-modal">
-        
+
         <img src="front\img\GitHubPlanet_logo.png" alt="GitHub Planet Logo" class="welcome-logo">
-        
+
         <h2>GitHub Planetへようこそ</h2>
-        
+
         <p>
             GitHub Planetとは<br>
             あなたのGitHubでの活動に応じて育つ惑星を楽しめるウェブサイトです。コミット数やリポジトリで惑星の大きさや色が変わり、自分だけの宇宙を育てられます。
         </p>
-        
+
         <a href="index.html" class="ok-button">OK</a>
     </div>
 
@@ -101,8 +115,9 @@
         }
     }
     </script>
-    
+
     <script type="module" src="./front/js/home.js"></script>
 
 </body>
+
 </html>
