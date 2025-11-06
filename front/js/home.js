@@ -31,6 +31,47 @@ function updatePlanetDetails(data) {
     if (name) name.textContent = data.planetName || '名もなき星';
 }
 
+// ★★★ ここから変更: 星の数を計算するロジックを関数化 ★★★
+/**
+ * 総コミット数に応じて、星の数を計算します。
+ * コミット総数が増えるほど、次の星1個に必要なコミット数が増加します。
+ * @param {number} totalCommits - 総コミット数
+ * @returns {number} - 星の数
+ */
+function calculateStarCount(totalCommits) {
+    let starCount = 0;
+    let commitsUsed = 0; // 星の生成に使ったコミット数
+    let requiredCommitsPerStar = 10; // 初期コスト (最初の5個は10コミットで星1個)
+    const costIncreaseStep = 10; // コストの増加量 (5個ごとに10増える)
+    const levelUpThreshold = 5; // コストが増加する星の数 (5個ごと)
+
+    // 持っているコミット数で、星を何個生成できるか計算する
+    while (true) {
+        // 次の1個の星を生成するのに必要なコスト
+        // (starCount / levelUpThreshold) の整数部で現在のレベル帯を計算
+        const currentLevelCost = requiredCommitsPerStar + (Math.floor(starCount / levelUpThreshold) * costIncreaseStep);
+        
+        // (例: starCount=0 の場合)
+        // currentLevelCost = 50 + (floor(0 / 10) * 25) = 50
+        // (例: starCount=10 の場合)
+        // currentLevelCost = 50 + (floor(10 / 10) * 25) = 75
+        // (例: starCount=20 の場合)
+        // currentLevelCost = 50 + (floor(20 / 10) * 25) = 100
+
+        // 総コミット数が、使用済みコミット＋次のコスト を上回っているか？
+        if (totalCommits >= commitsUsed + currentLevelCost) {
+            starCount++; // 星を1個増やす
+            commitsUsed += currentLevelCost; // 使用済みコミットにコストを加算
+        } else {
+            // コミット数が足りないのでループ終了
+            break;
+        }
+    }
+    return starCount;
+}
+// ★★★ 変更ここまで ★★★
+
+
 function loadPlanet(data) {
     if (!data) return;
     updatePlanetDetails(data);
@@ -49,7 +90,10 @@ function loadPlanet(data) {
     planetGroup.add(planet);
 
     // ★ 星 (Points) の追加
-    const starCount = Math.floor((data.totalCommits || 0) / 75);
+    // ★★★ 調整箇所 ★★★
+    // 以前のロジック: const starCount = Math.floor((data.totalCommits || 0) / 75);
+    // 新しいロジック:
+    const starCount = calculateStarCount(data.totalCommits || 0);
 
     if (starCount > 0) {
         const vertices = [];
@@ -114,42 +158,36 @@ function loadPlanet(data) {
         planetGroup.add(stars);
     }
     
-    // ★ ここから変更: 星の数に応じて惑星にオーラ（疑似ブルーム）を追加
+    // ★ 星の数に応じて惑星にオーラ（疑似ブルーム）を追加
     if (starCount > 0) {
         // 惑星（半径4）より少し大きい球 (半径 4.05)
         const auraGeo = new THREE.SphereGeometry(4.05, 32, 32);
 
         // オーラ用の頂点シェーダー
-        // 役割: 法線と視線ベクトルをフラグメントシェーダーに渡す
         const auraVertexShader = `
             varying vec3 vNormal;
             varying vec3 vViewPosition;
             void main() {
                 vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-                vViewPosition = -mvPosition.xyz; // 視点へのベクトル
-                vNormal = normalize(normalMatrix * normal); // 法線ベクトル
+                vViewPosition = -mvPosition.xyz; 
+                vNormal = normalize(normalMatrix * normal); 
                 gl_Position = projectionMatrix * mvPosition;
             }
         `;
 
         // オーラ用のフラグメントシェーダー
-        // 役割: 縁（ふち）に近いほど光るように（フレネル効果）
         const auraFragmentShader = `
             uniform vec3 glowColor;
-            uniform float intensity; // 星の数に応じた強度
+            uniform float intensity; 
             varying vec3 vNormal;
             varying vec3 vViewPosition;
             void main() {
-                // 視線ベクトルと法線の内積
                 float fresnel = dot(normalize(vViewPosition), vNormal);
-                
-                // 縁に近いほど 1.0 に、中心に近いほど 0.0 になるように計算
                 fresnel = 1.0 - fresnel; 
-                fresnel = pow(fresnel, 3.0); // 縁の光り方をシャープに (値 1.0〜5.0 で調整)
+                fresnel = pow(fresnel, 3.0); 
 
-                // 縁(fresnel) * 全体の強度(intensity)
                 float alpha = fresnel * intensity;
-                alpha = clamp(alpha, 0.0, 1.0); // 1.0 を超えないように
+                alpha = clamp(alpha, 0.0, 1.0); 
 
                 gl_FragColor = vec4(glowColor, alpha);
             }
@@ -160,22 +198,19 @@ function loadPlanet(data) {
 
         const auraMat = new THREE.ShaderMaterial({
             uniforms: {
-                // 惑星の色（or デフォルト色）
                 glowColor: { value: new THREE.Color(data.planetColor ? data.planetColor : 0x808080) },
-                // 計算した強度
                 intensity: { value: auraIntensity } 
             },
             vertexShader: auraVertexShader,
             fragmentShader: auraFragmentShader,
             transparent: true,
-            blending: THREE.AdditiveBlending, // 加算合成で光らせる
-            side: THREE.FrontSide // 表面（こちら側）を描画
+            blending: THREE.AdditiveBlending, 
+            side: THREE.FrontSide 
         });
 
         const aura = new THREE.Mesh(auraGeo, auraMat);
-        planetGroup.add(aura); // 惑星グループに追加
+        planetGroup.add(aura); 
     }
-    // ★ 変更ここまで
     
     planetGroup.rotation.x = Math.PI * 0.4; planetGroup.rotation.y = Math.PI * 0.1;
     scene.add(planetGroup);
