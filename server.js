@@ -177,7 +177,6 @@ app.get('/callback', async (req, res) => {
         };
 
         if (pool) {
-            // ★ JSONB型にはオブジェクトを直接渡すのが最適です。JSON.stringifyを削除しました。
             await pool.query(`
                 INSERT INTO planets (github_id, username, planet_color, planet_size_factor, main_language, language_stats, total_commits, last_updated)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
@@ -198,8 +197,37 @@ app.get('/api/me', (req, res) => {
     req.session.planetData ? res.json(req.session.planetData) : res.status(401).json({ error: 'Not logged in' });
 });
 
-// ★★★ 修正の核心部分 ★★★
-// データベースの列名(スネークケース)を、フロントエンドが要求する名前(キャメルケース)に確実に変換します。
+// ★★★ ここに追加: 特定ユーザーの惑星データ取得 API ★★★
+app.get('/api/planets/user/:username', async (req, res) => {
+    if (!pool) return res.status(503).json({ error: 'DB unavailable' });
+    try {
+        const { username } = req.params;
+        const result = await pool.query('SELECT * FROM planets WHERE username = $1', [username]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Planet not found' });
+        }
+
+        const row = result.rows[0];
+        const planetName = generatePlanetName(row.main_language, row.planet_color, row.total_commits || 0);
+
+        const responseData = {
+            username: row.username,
+            planetColor: row.planet_color,
+            planetSizeFactor: row.planet_size_factor,
+            mainLanguage: row.main_language,
+            languageStats: row.language_stats || {},
+            totalCommits: row.total_commits || 0,
+            planetName: planetName
+        };
+
+        res.json(responseData);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 app.get('/api/planets/random', async (req, res) => {
     if (!pool) return res.status(503).json({ error: 'DB unavailable' });
     try {
