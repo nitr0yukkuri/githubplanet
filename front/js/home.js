@@ -31,53 +31,31 @@ function updatePlanetDetails(data) {
     if (name) name.textContent = data.planetName || '名もなき星';
 }
 
-// ★★★ ここから変更: 星の数を計算するロジックを関数化 ★★★
-/**
- * 総コミット数に応じて、星の数を計算します。
- * コミット総数が増えるほど、次の星1個に必要なコミット数が増加します。
- * @param {number} totalCommits - 総コミット数
- * @returns {number} - 星の数
- */
 function calculateStarCount(totalCommits) {
     let starCount = 0;
-    let commitsUsed = 0; // 星の生成に使ったコミット数
-    let requiredCommitsPerStar = 10; // 初期コスト (最初の5個は10コミットで星1個)
-    const costIncreaseStep = 10; // コストの増加量 (5個ごとに10増える)
-    const levelUpThreshold = 5; // コストが増加する星の数 (5個ごと)
+    let commitsUsed = 0;
+    let requiredCommitsPerStar = 10;
+    const costIncreaseStep = 10;
+    const levelUpThreshold = 5;
 
-    // 持っているコミット数で、星を何個生成できるか計算する
     while (true) {
-        // 次の1個の星を生成するのに必要なコスト
-        // (starCount / levelUpThreshold) の整数部で現在のレベル帯を計算
         const currentLevelCost = requiredCommitsPerStar + (Math.floor(starCount / levelUpThreshold) * costIncreaseStep);
-        
-        // (例: starCount=0 の場合)
-        // currentLevelCost = 50 + (floor(0 / 10) * 25) = 50
-        // (例: starCount=10 の場合)
-        // currentLevelCost = 50 + (floor(10 / 10) * 25) = 75
-        // (例: starCount=20 の場合)
-        // currentLevelCost = 50 + (floor(20 / 10) * 25) = 100
-
-        // 総コミット数が、使用済みコミット＋次のコスト を上回っているか？
         if (totalCommits >= commitsUsed + currentLevelCost) {
-            starCount++; // 星を1個増やす
-            commitsUsed += currentLevelCost; // 使用済みコミットにコストを加算
+            starCount++;
+            commitsUsed += currentLevelCost;
         } else {
-            // コミット数が足りないのでループ終了
             break;
         }
     }
     return starCount;
 }
-// ★★★ 変更ここまで ★★★
-
 
 function loadPlanet(data) {
     if (!data) return;
     updatePlanetDetails(data);
     if (planetGroup) { scene.remove(planetGroup); planetGroup = undefined; }
     planetGroup = new THREE.Group();
-    const geo = new THREE.SphereGeometry(4, 32, 32); // 惑星本体 (半径 4)
+    const geo = new THREE.SphereGeometry(4, 32, 32);
     const mat = new THREE.MeshStandardMaterial({
         color: data.planetColor ? new THREE.Color(data.planetColor).getHex() : 0x808080,
         metalness: 0.2, roughness: 0.8, aoMapIntensity: 1.5
@@ -89,10 +67,6 @@ function loadPlanet(data) {
     planetGroup.scale.set(s, s, s);
     planetGroup.add(planet);
 
-    // ★ 星 (Points) の追加
-    // ★★★ 調整箇所 ★★★
-    // 以前のロジック: const starCount = Math.floor((data.totalCommits || 0) / 75);
-    // 新しいロジック:
     const starCount = calculateStarCount(data.totalCommits || 0);
 
     if (starCount > 0) {
@@ -113,7 +87,6 @@ function loadPlanet(data) {
         const starGeometry = new THREE.BufferGeometry();
         starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
 
-        // 星用の頂点シェーダー
         const vertexShader = `
             void main() {
                 vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
@@ -122,7 +95,6 @@ function loadPlanet(data) {
             }
         `;
 
-        // 星用のフラグメントシェーダー (光条4本)
         const fragmentShader = `
             void main() {
                 vec2 p = gl_PointCoord * 2.0 - 1.0; 
@@ -146,24 +118,20 @@ function loadPlanet(data) {
         `;
 
         const starMaterial = new THREE.ShaderMaterial({
-            uniforms: {}, 
+            uniforms: {},
             vertexShader: vertexShader,
             fragmentShader: fragmentShader,
-            blending: THREE.AdditiveBlending, 
+            blending: THREE.AdditiveBlending,
             transparent: true,
-            depthWrite: false 
+            depthWrite: false
         });
-        
+
         const stars = new THREE.Points(starGeometry, starMaterial);
         planetGroup.add(stars);
     }
-    
-    // ★ 星の数に応じて惑星にオーラ（疑似ブルーム）を追加
-    if (starCount > 0) {
-        // 惑星（半径4）より少し大きい球 (半径 4.05)
-        const auraGeo = new THREE.SphereGeometry(4.05, 32, 32);
 
-        // オーラ用の頂点シェーダー
+    if (starCount > 0) {
+        const auraGeo = new THREE.SphereGeometry(4.05, 32, 32);
         const auraVertexShader = `
             varying vec3 vNormal;
             varying vec3 vViewPosition;
@@ -174,8 +142,6 @@ function loadPlanet(data) {
                 gl_Position = projectionMatrix * mvPosition;
             }
         `;
-
-        // オーラ用のフラグメントシェーダー
         const auraFragmentShader = `
             uniform vec3 glowColor;
             uniform float intensity; 
@@ -192,26 +158,24 @@ function loadPlanet(data) {
                 gl_FragColor = vec4(glowColor, alpha);
             }
         `;
-
-        // 星の数に応じて強度を計算 (星5個ごとに0.3ずつ強度が増加、最大3.0)
-        const auraIntensity = Math.min(3.0, (starCount / 5.0) * 0.3); 
+        const auraIntensity = Math.min(3.0, (starCount / 5.0) * 0.3);
 
         const auraMat = new THREE.ShaderMaterial({
             uniforms: {
                 glowColor: { value: new THREE.Color(data.planetColor ? data.planetColor : 0x808080) },
-                intensity: { value: auraIntensity } 
+                intensity: { value: auraIntensity }
             },
             vertexShader: auraVertexShader,
             fragmentShader: auraFragmentShader,
             transparent: true,
-            blending: THREE.AdditiveBlending, 
-            side: THREE.FrontSide 
+            blending: THREE.AdditiveBlending,
+            side: THREE.FrontSide
         });
 
         const aura = new THREE.Mesh(auraGeo, auraMat);
-        planetGroup.add(aura); 
+        planetGroup.add(aura);
     }
-    
+
     planetGroup.rotation.x = Math.PI * 0.4; planetGroup.rotation.y = Math.PI * 0.1;
     scene.add(planetGroup);
     const msg = document.getElementById('not-logged-in-container');
@@ -250,6 +214,24 @@ function setupUI() {
     const modal = document.getElementById('select-modal');
     document.getElementById('open-select-modal-btn')?.addEventListener('click', () => modal.classList.add('is-visible'));
     modal?.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('is-visible'); });
+
+    // ★追加: 特定ユーザーの惑星を見に行く処理
+    document.getElementById('visit-user-btn')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const username = prompt("見に行きたいユーザーのGitHub IDを入力してください");
+        if (username) {
+            try {
+                const res = await fetch(`/api/planets/user/${username}`);
+                if (res.ok) {
+                    loadPlanet(await res.json());
+                    modal.classList.remove('is-visible');
+                } else {
+                    alert('惑星が見つかりませんでした');
+                }
+            } catch (e) { console.error(e); }
+        }
+    });
+
     document.getElementById('random-visit-btn')?.addEventListener('click', async (e) => {
         e.preventDefault();
         try {
