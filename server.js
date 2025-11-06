@@ -214,9 +214,8 @@ app.get('/api/planets/random', async (req, res) => {
             planetColor: row.planet_color,
             planetSizeFactor: row.planet_size_factor,
             mainLanguage: row.main_language,
-            // DBのカラム(スネークケース)からフロントエンド用のキー(キャメルケース)へマッピング
-            languageStats: row.language_stats || {},
-            totalCommits: row.total_commits || 0,
+            languageStats: row.language_stats || {}, // スネークケースからキャメルケースへ変換
+            totalCommits: row.total_commits || 0,   // スネークケースからキャメルケースへ変換
             planetName: planetName
         });
     } catch (e) {
