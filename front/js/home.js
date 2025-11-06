@@ -1,6 +1,7 @@
 // front/js/home.js
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import anime from 'animejs';
 
 let scene, camera, renderer, controls, planetGroup;
 
@@ -64,7 +65,7 @@ function loadPlanet(data) {
     const planet = new THREE.Mesh(geo, mat);
     planet.geometry.setAttribute('uv2', new THREE.BufferAttribute(geo.attributes.uv.array, 2));
     const s = data.planetSizeFactor || 1.0;
-    planetGroup.scale.set(s, s, s);
+    // planetGroup.scale.set(s, s, s); // <- アニメで設定
     planetGroup.add(planet);
 
     const starCount = calculateStarCount(data.totalCommits || 0);
@@ -176,8 +177,89 @@ function loadPlanet(data) {
         planetGroup.add(aura);
     }
 
-    planetGroup.rotation.x = Math.PI * 0.4; planetGroup.rotation.y = Math.PI * 0.1;
+    // --- ★ ここから変更: アニメーションのタイミングを調整 ★ ---
+    
+    // 1. 「爆発（ショックウェーブ）」用のオブジェクトを作成
+    const shockwaveGeo = new THREE.SphereGeometry(1, 32, 32); 
+    const shockwaveMat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(data.planetColor ? data.planetColor : 0xffffff),
+        transparent: true,
+        blending: THREE.AdditiveBlending, 
+        opacity: 0.0
+    });
+    const shockwave = new THREE.Mesh(shockwaveGeo, shockwaveMat);
+    
+    // 2. 惑星とショックウェーブの初期状態を設定
+    planetGroup.scale.set(0, 0, 0); // 惑星は最初見えない
+    
+    // 待機中の白い点を消すため、初期状態を scale: 0, opacity: 0 に
+    shockwave.scale.set(0, 0, 0);   
+    
+    // 待機中に表示されないよう、メッシュ自体を非表示にする
+    shockwave.visible = false;
+
+    // 3. シーンに追加
     scene.add(planetGroup);
+    scene.add(shockwave); 
+    
+    // 4. anime.js の timeline でアニメーションを実行
+    const tl = anime.timeline({
+        easing: 'easeOutExpo', 
+        complete: () => {
+            scene.remove(shockwave);
+            shockwave.geometry.dispose();
+            shockwave.material.dispose();
+        }
+    });
+
+    const initialDelay = 500; // 0.5秒間、何も起こらない
+
+    // ★★★ 修正箇所: 順番を入れ替え ★★★
+
+    // アニメーション 1-A: 「ぶわー」 (Opacity)
+    // 500msの時点で opacity を 1.0 に戻し、そこから 0.0 へアニメーションさせる
+    tl.add({
+        targets: shockwave.material,
+        // アニメーション開始時(500ms後)に表示する
+        begin: function () {
+            shockwave.visible = true;
+        },
+        opacity: [
+            // 500ms の時点で瞬時に 1.0 にする (duration: 0)
+            { value: 1.0, duration: 0 }, 
+            // 500ms -> 900ms (400ms) かけて 0.0 にする
+            { value: 0.0, duration: 400, easing: 'easeInExpo' } 
+        ],
+        update: () => { shockwave.material.needsUpdate = true; } 
+    }, initialDelay); // 500ms から開始
+
+    // アニメーション 1-B: 「ぶわー」 (スケール)
+    // 500ms後から 400ms かけて拡大 (Opacityの*後*に追加)
+    tl.add({
+        targets: shockwave.scale,
+        x: 15,
+        y: 15,
+        z: 15,
+        duration: 400
+    }, initialDelay); // 500ms から開始
+
+    // ★★★ 修正ここまで ★★★
+
+    // アニメーション 2: 「惑星誕生」
+    // 爆発が始まって 100ms 後 (全体で 600ms 後) から惑星が登場
+    tl.add({
+        targets: planetGroup.scale,
+        x: s,
+        y: s,
+        z: s,
+        duration: 1200,
+        easing: 'easeOutElastic(1, .8)' 
+    }, initialDelay + 100); // 600ms から開始
+    
+    // --- 変更ここまで ---
+    
+    planetGroup.rotation.x = Math.PI * 0.4; planetGroup.rotation.y = Math.PI * 0.1;
+    
     const msg = document.getElementById('not-logged-in-container');
     if (msg) msg.style.display = 'none';
     controls.enabled = true;
@@ -198,6 +280,7 @@ async function init() {
 
     if (notLoggedInContainer) {
         if (data) {
+            // ★ loadPlanet がアニメーションを制御する
             loadPlanet(data);
         } else {
             notLoggedInContainer.style.display = 'flex';
@@ -214,24 +297,6 @@ function setupUI() {
     const modal = document.getElementById('select-modal');
     document.getElementById('open-select-modal-btn')?.addEventListener('click', () => modal.classList.add('is-visible'));
     modal?.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('is-visible'); });
-
-    // ★追加: 特定ユーザーの惑星を見に行く処理
-    document.getElementById('visit-user-btn')?.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const username = prompt("見に行きたいユーザーのGitHub IDを入力してください");
-        if (username) {
-            try {
-                const res = await fetch(`/api/planets/user/${username}`);
-                if (res.ok) {
-                    loadPlanet(await res.json());
-                    modal.classList.remove('is-visible');
-                } else {
-                    alert('惑星が見つかりませんでした');
-                }
-            } catch (e) { console.error(e); }
-        }
-    });
-
     document.getElementById('random-visit-btn')?.addEventListener('click', async (e) => {
         e.preventDefault();
         try {
