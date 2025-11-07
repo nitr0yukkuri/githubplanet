@@ -96,6 +96,11 @@ function generatePlanetName(mainLanguage, planetColor, totalCommits) {
 
 // --- ルート定義 ---
 app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'welcome.html')); // ★ 変更点 1/2: index.html -> welcome.html
+});
+
+// ★ 変更点 2/2: welcome.html の 'OK' ボタン (href="index.html") からトップページへの遷移先
+app.get('/index.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
