@@ -88,6 +88,17 @@ function loadPlanet(data) {
 
     console.log('loadPlanet called with data:', data); // デバッグ用
 
+    // ▼▼▼ 変更点 1/2: ユーザー名を表示する処理を追加 ▼▼▼
+    const ownerDisplay = document.getElementById('planet-owner-display');
+    if (ownerDisplay && data.username) {
+        ownerDisplay.textContent = `${data.username} の星`;
+        ownerDisplay.style.display = 'inline-block'; // CSS側は 'inline-block' ではなく 'block' でもOK
+    }
+    // ▲▲▲ 変更点 1/2 ▲▲▲
+
+
+    // ▼▼▼ 変更点 2/2: パネルを強制的に開く処理を削除 ▼▼▼
+    /*
     // ★★★ 最小限の変更点2: パネルを強制的に開く ★★★
     const panel = document.getElementById('planet-details-panel');
     const toggleBtn = document.getElementById('toggle-details-btn');
@@ -103,8 +114,11 @@ function loadPlanet(data) {
             }
         }
     }
+    */
+    // ▲▲▲ 変更点 2/2 ▲▲▲
 
-    // パネルを更新
+
+    // パネルを更新 (これは残します)
     updatePlanetDetails(data);
 
     if (planetGroup) { scene.remove(planetGroup); planetGroup = undefined; }
