@@ -5,6 +5,12 @@ import anime from 'animejs';
 
 let scene, camera, renderer, controls, planetGroup;
 
+// ▼▼▼ 変更点 1/4: モーダル関連のDOMを先に取得 ▼▼▼
+const welcomeModal = document.getElementById('welcome-modal');
+const okButton = document.getElementById('welcome-ok-btn');
+const mainUiWrapper = document.getElementById('main-ui-wrapper');
+// ▲▲▲ 変更点 1/4 ▲▲▲
+
 async function fetchMyPlanetData() {
     try {
         const res = await fetch('/api/me');
@@ -20,7 +26,6 @@ async function fetchMyPlanetData() {
     } catch (e) { return null; }
 }
 
-// ★★★ 最小限の変更点1: パネル更新関数を改善 ★★★
 function updatePlanetDetails(data) {
     const stats = document.getElementById('lang-stats-container');
     const commits = document.getElementById('commit-count-val');
@@ -88,37 +93,13 @@ function loadPlanet(data) {
 
     console.log('loadPlanet called with data:', data); // デバッグ用
 
-    // ▼▼▼ 変更点 1/2: ユーザー名を表示する処理を追加 ▼▼▼
     const ownerDisplay = document.getElementById('planet-owner-display');
     if (ownerDisplay && data.username) {
         ownerDisplay.textContent = `${data.username} の星`;
-        ownerDisplay.style.display = 'inline-block'; // CSS側は 'inline-block' ではなく 'block' でもOK
+        ownerDisplay.style.display = 'inline-block';
     }
-    // ▲▲▲ 変更点 1/2 ▲▲▲
 
-
-    // ▼▼▼ 変更点 2/2: パネルを強制的に開く処理を削除 ▼▼▼
-    /*
-    // ★★★ 最小限の変更点2: パネルを強制的に開く ★★★
-    const panel = document.getElementById('planet-details-panel');
-    const toggleBtn = document.getElementById('toggle-details-btn');
-
-    if (panel && !panel.classList.contains('is-open')) {
-        panel.classList.add('is-open');
-        if (toggleBtn) {
-            toggleBtn.classList.add('is-open');
-            const arrow = toggleBtn.querySelector('.arrow-icon');
-            if (arrow) {
-                arrow.classList.remove('right');
-                arrow.classList.add('left');
-            }
-        }
-    }
-    */
-    // ▲▲▲ 変更点 2/2 ▲▲▲
-
-
-    // パネルを更新 (これは残します)
+    // パネルを更新
     updatePlanetDetails(data);
 
     if (planetGroup) { scene.remove(planetGroup); planetGroup = undefined; }
@@ -307,7 +288,9 @@ function loadPlanet(data) {
     controls.enabled = true;
 }
 
-async function init() {
+// ▼▼▼ 変更点 2/4: init() 関数を 'async' にし、localStorage 対応に変更 ▼▼▼
+async function init() { // ★ エラー修正: async を追加
+    // 1. Three.jsの基本設定（星空の背景）
     scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x000000, 10, 50);
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.z = 15;
     renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight); renderer.setPixelRatio(window.devicePixelRatio);
@@ -317,9 +300,49 @@ async function init() {
     const pl = new THREE.PointLight(0xffffff, 25, 1000); pl.position.set(20, 10, 5); scene.add(pl);
     const dl = new THREE.DirectionalLight(0xffffff, 0.4); dl.position.set(50, 15, 10); scene.add(dl);
     new THREE.CubeTextureLoader().setPath('front/img/skybox/').load(['right.png', 'left.png', 'top.png', 'bottom.png', 'front.png', 'back.png'], (tex) => scene.background = tex);
+
+    window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+
+    // 2. アニメーションループ開始 (星空が表示される)
+    animate();
+
+    // 3. ★ localStorage で訪問済みかチェック
+    const hasVisited = localStorage.getItem('githubPlanetVisited');
+
+    if (!hasVisited) {
+        // ★ 初回訪問時
+        if (welcomeModal) welcomeModal.style.display = 'block'; // CSSで非表示にしたものを表示
+
+        if (okButton) {
+            okButton.addEventListener('click', async () => {
+                localStorage.setItem('githubPlanetVisited', 'true'); // ★ フラグを立てる
+                if (welcomeModal) welcomeModal.style.display = 'none';
+                await loadMainContent();
+            }, { once: true });
+        } else {
+            // OKボタンがない異常系 (await を追加)
+            await loadMainContent();
+        }
+    } else {
+        // ★ 再訪問時 (ログイン後もここ)
+        if (welcomeModal) welcomeModal.style.display = 'none'; // 念のため非表示
+        await loadMainContent(); // すぐにメインコンテンツをロード (await を追加)
+    }
+}
+// ▲▲▲ 変更点 2/4 ▲▲▲
+
+
+// ▼▼▼ 変更点 3/4: loadMainContent 関数を新設 ▼▼▼
+// (initから分離したメイン処理)
+async function loadMainContent() {
+    // 1. メインUIを表示
+    if (mainUiWrapper) mainUiWrapper.style.display = 'block';
+
+    // 2. 惑星データを取得
     const data = await fetchMyPlanetData();
     const notLoggedInContainer = document.getElementById('not-logged-in-container');
 
+    // 3. データに応じて表示を切り替え
     if (notLoggedInContainer) {
         if (data) {
             loadPlanet(data);
@@ -328,9 +351,12 @@ async function init() {
             controls.enabled = false;
         }
     }
-    window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
-    setupUI(); animate();
+
+    // 4. UIボタン（モーダル開閉など）のイベントリスナーを設定
+    setupUI();
 }
+// ▲▲▲ 変更点 3/4 ▲▲▲
+
 
 function animate() { requestAnimationFrame(animate); if (planetGroup) planetGroup.rotation.z += 0.001; controls.update(); renderer.render(scene, camera); }
 
@@ -388,4 +414,7 @@ function setupUI() {
     });
 }
 
+// ▼▼▼ 変更点 4/4: init() を呼び出す ▼▼▼
+// (defer 属性により、DOMの準備ができてから実行される)
 init();
+// ▲▲▲ 変更点 4/4 ▲▲▲

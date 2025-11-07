@@ -11,63 +11,81 @@
 </head>
 
 <body>
+
+    <div id="welcome-modal" class="welcome-modal">
+        <img src="front/img/GitHubPlanet_logo.png" alt="GitHub Planet Logo" class="welcome-logo">
+        <h2>GitHub Planetへようこそ</h2>
+        <p>
+            GitHub Planetとは<br>
+            あなたのGitHubでの活動に応じて育つ惑星を楽しめるウェブサイトです。コミット数やリポジトリで惑星の大きさや色が変わり、自分だけの宇宙を育てられます。
+        </p>
+        <button type="button" class="ok-button" id="welcome-ok-btn">OK</button>
+    </div>
     <div id="canvas-container"></div>
-    <div id="not-logged-in-container">
-        <p id="not-logged-in-text">まだ何もありません...</p>
-        <a href="/login" id="login-button">星を誕生させる</a>
-    </div>
 
-    <div class="ui-top-left">
-        <div class="ui-button" id="open-select-modal-btn">
-            <img src="/front/img/staricon.png" alt="Select Planet">
-        </div>
-    </div>
+    <div id="main-ui-wrapper" style="display: none;">
 
-    <div id="planet-owner-display" class="ui-text"></div>
-    <div id="planet-details-panel">
-        <div class="details-header">
-            <h3>星のステータス</h3>
+        <div id="not-logged-in-container">
+            <p id="not-logged-in-text">まだ何もありません...</p>
+            <a href="/login" id="login-button">星を誕生させる</a>
         </div>
-        <div class="details-content">
-            <div class="language-stats" id="lang-stats-container"></div>
-            <p class="commit-count">コミット数<span id="commit-count-val">-</span></p>
-            <p class="planet-name" id="planet-name-val">-</p>
-        </div>
-    </div>
-    <div id="toggle-details-btn" class="ui-button">
-        <svg class="arrow-icon right" viewBox="0 0 24 24" fill="white">
-            <path d="M8.59 16.34l4.58-4.59-4.58-4.59L10 5.75l6 6-6 6z" />
-        </svg>
-    </div>
 
-    <div id="select-modal">
-        <div class="select-container">
-            <div class="planet-button-wrapper">
-                <a href="#" class="planet-button" id="visit-user-btn">
-                    <div class="planet-icon pink"><svg viewBox="0 0 24 24" fill="white">
-                            <path
-                                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                        </svg></div>
-                </a>
-                <p class="planet-label">誰かの星を見に行く</p>
-            </div>
-            <div class="planet-button-wrapper">
-                <a href="#" class="planet-button" id="random-visit-btn">
-                    <div class="planet-icon blue"><svg viewBox="0 0 24 24" fill="white">
-                            <path
-                                d="M12 2l2.35 7.16h7.65l-6.18 4.48 2.36 7.16-6.18-4.48-6.18 4.48 2.36-7.16-6.18-4.48h7.65z" />
-                        </svg></div>
-                </a>
-                <p class="planet-label">ランダムで星を見に行く</p>
+        <div class="ui-top-left">
+            <div class="ui-button" id="open-select-modal-btn">
+                <img src="/front/img/staricon.png" alt="Select Planet">
             </div>
         </div>
+
+        <div id="planet-owner-display" class="ui-text"></div>
+
+
+        <div id="planet-details-panel">
+            <div class="details-header">
+                <h3>星のステータス</h3>
+            </div>
+            <div class="details-content">
+                <div class="language-stats" id="lang-stats-container"></div>
+                <p class="commit-count">コミット数<span id="commit-count-val">-</span></p>
+                <p class="planet-name" id="planet-name-val">-</p>
+            </div>
+        </div>
+        <div id="toggle-details-btn" class="ui-button">
+            <svg class="arrow-icon right" viewBox="0 0 24 24" fill="white">
+                <path d="M8.59 16.34l4.58-4.59-4.58-4.59L10 5.75l6 6-6 6z" />
+            </svg>
+        </div>
+
+        <div id="select-modal">
+            <div class="select-container">
+                <div class="planet-button-wrapper">
+                    <a href="#" class="planet-button" id="visit-user-btn">
+                        <div class="planet-icon pink"><svg viewBox="0 0 24 24" fill="white">
+                                <path
+                                    d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                            </svg></div>
+                    </a>
+                    <p class="planet-label">誰かの星を見に行く</p>
+                </div>
+                <div class="planet-button-wrapper">
+                    <a href="#" class="planet-button" id="random-visit-btn">
+                        <div class="planet-icon blue"><svg viewBox="0 0 24 24" fill="white">
+                                <path
+                                    d="M12 2l2.35 7.16h7.65l-6.18 4.48 2.36 7.16-6.18-4.48-6.18 4.48 2.36-7.16-6.18-4.48h7.65z" />
+                            </svg></div>
+                    </a>
+                    <p class="planet-label">ランダムで星を見に行く</p>
+                </div>
+            </div>
+        </div>
+
     </div>
     <script type="importmap">{"imports": {
             "three": "https://cdn.jsdelivr.net/npm/three@latest/build/three.module.js",
             "three/examples/jsm/controls/OrbitControls.js": "https://cdn.jsdelivr.net/npm/three@latest/examples/jsm/controls/OrbitControls.js",
             "animejs": "https://cdn.jsdelivr.net/npm/animejs@latest/lib/anime.es.js"
         }}</script>
-    <script type="module" src="./front/js/home.js"></script>
+
+    <script type="module" src="./front/js/home.js" defer></script>
 </body>
 
 </html>
