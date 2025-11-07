@@ -11,7 +11,6 @@ async function fetchMyPlanetData() {
         if (!res.ok) return null;
         const data = await res.json(); // { user: {...}, planetData: {...} }
 
-        // ★★★ 変更点 ★★★
         // /api/me のレスポンスを、他のAPI (random, user) と同じ形式に整形する
         if (data.planetData && data.user) {
             // planetData オブジェクトに username を追加 (他のAPIと形式を統一)
@@ -19,7 +18,6 @@ async function fetchMyPlanetData() {
             return data.planetData;
         }
         return null;
-        // ★★★ 変更ここまで ★★★
 
     } catch (e) { return null; }
 }
@@ -38,7 +36,14 @@ function updatePlanetDetails(data) {
             stats.appendChild(p);
         });
     }
-    if (commits) commits.textContent = data.totalCommits || '-';
+
+    // ★★★★★★★★★★★★★★★★★★★★★★
+    // ★★★ 最小限の変更点（ここだけ） ★★★
+    // ★★★★★★★★★★★★★★★★★★★★★★
+    // data.totalCommits が 0 の場合に '-' ではなく '0' と表示されるように修正
+    if (commits) commits.textContent = (data.totalCommits !== null && data.totalCommits !== undefined) ? data.totalCommits : '-';
+    // ★★★★★★★★★★★★★★★★★★★★★★
+
     if (name) name.textContent = data.planetName || '名もなき星';
 }
 
