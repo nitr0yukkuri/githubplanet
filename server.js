@@ -197,7 +197,7 @@ app.get('/api/me', (req, res) => {
     req.session.planetData ? res.json(req.session.planetData) : res.status(401).json({ error: 'Not logged in' });
 });
 
-// ★★★ ここに追加: 特定ユーザーの惑星データ取得 API ★★★
+// ★★★ 修正: 特定ユーザーの惑星データ取得 API ★★★
 app.get('/api/planets/user/:username', async (req, res) => {
     if (!pool) return res.status(503).json({ error: 'DB unavailable' });
     try {
@@ -211,23 +211,25 @@ app.get('/api/planets/user/:username', async (req, res) => {
         const row = result.rows[0];
         const planetName = generatePlanetName(row.main_language, row.planet_color, row.total_commits || 0);
 
+        // ★ フロントエンドが期待する形式に完全一致させる
         const responseData = {
             username: row.username,
             planetColor: row.planet_color,
-            planetSizeFactor: row.planet_size_factor,
+            planetSizeFactor: parseFloat(row.planet_size_factor),
             mainLanguage: row.main_language,
             languageStats: row.language_stats || {},
-            totalCommits: row.total_commits || 0,
+            totalCommits: parseInt(row.total_commits) || 0,
             planetName: planetName
         };
 
         res.json(responseData);
     } catch (e) {
-        console.error(e);
+        console.error('[API /user/:username Error]', e);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
+// ★★★ 修正: ランダム惑星取得 API ★★★
 app.get('/api/planets/random', async (req, res) => {
     if (!pool) return res.status(503).json({ error: 'DB unavailable' });
     try {
@@ -235,23 +237,22 @@ app.get('/api/planets/random', async (req, res) => {
         if (result.rows.length === 0) return res.status(404).json({ error: 'No planets found' });
 
         const row = result.rows[0];
-        // 名前を再生成（念のため最新のロジックで）
         const planetName = generatePlanetName(row.main_language, row.planet_color, row.total_commits || 0);
 
-        // DBから取得したデータをフロントエンド用に整形
+        // ★ フロントエンドが期待する形式に完全一致させる
         const responseData = {
             username: row.username,
-            planetColor: row.planet_color,                 // DB列名: planet_color
-            planetSizeFactor: row.planet_size_factor,      // DB列名: planet_size_factor
-            mainLanguage: row.main_language,               // DB列名: main_language
-            languageStats: row.language_stats || {},       // DB列名: language_stats → フロント期待: languageStats
-            totalCommits: row.total_commits || 0,          // DB列名: total_commits  → フロント期待: totalCommits
+            planetColor: row.planet_color,
+            planetSizeFactor: parseFloat(row.planet_size_factor),
+            mainLanguage: row.main_language,
+            languageStats: row.language_stats || {},
+            totalCommits: parseInt(row.total_commits) || 0,
             planetName: planetName
         };
 
         res.json(responseData);
     } catch (e) {
-        console.error(e);
+        console.error('[API /random Error]', e);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
