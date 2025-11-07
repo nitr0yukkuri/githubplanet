@@ -16,12 +16,14 @@
         <p id="not-logged-in-text">まだ何もありません...</p>
         <a href="/login" id="login-button">星を誕生させる</a>
     </div>
+
     <div class="ui-top-left">
         <div class="ui-button" id="open-select-modal-btn">
             <img src="/front/img/staricon.png" alt="Select Planet">
         </div>
     </div>
 
+    <div id="planet-owner-display" class="ui-text"></div>
     <div id="planet-details-panel">
         <div class="details-header">
             <h3>星のステータス</h3>
@@ -60,8 +62,7 @@
             </div>
         </div>
     </div>
-    <script
-        type="importmap">{"imports": {
+    <script type="importmap">{"imports": {
             "three": "https://cdn.jsdelivr.net/npm/three@latest/build/three.module.js",
             "three/examples/jsm/controls/OrbitControls.js": "https://cdn.jsdelivr.net/npm/three@latest/examples/jsm/controls/OrbitControls.js",
             "animejs": "https://cdn.jsdelivr.net/npm/animejs@latest/lib/anime.es.js"
