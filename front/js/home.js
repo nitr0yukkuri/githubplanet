@@ -20,33 +20,47 @@ async function fetchMyPlanetData() {
     } catch (e) { return null; }
 }
 
-// ★★★ パネル更新関数（修正版）★★★
+// ★★★ 最小限の変更点1: パネル更新関数を改善 ★★★
 function updatePlanetDetails(data) {
     const stats = document.getElementById('lang-stats-container');
     const commits = document.getElementById('commit-count-val');
     const name = document.getElementById('planet-name-val');
 
+    console.log('updatePlanetDetails called with:', data); // デバッグ用
+
     // 言語統計の更新
     if (stats && data.languageStats) {
         stats.innerHTML = '';
-        const total = Object.values(data.languageStats).reduce((a, b) => a + b, 0);
-        if (total > 0) {
-            Object.entries(data.languageStats).sort(([, a], [, b]) => b - a).slice(0, 3).forEach(([l, b]) => {
-                const p = document.createElement('p');
-                p.innerHTML = `${l}<span>${Math.round((b / total) * 100)}%</span>`;
-                stats.appendChild(p);
-            });
+        const entries = Object.entries(data.languageStats);
+
+        if (entries.length > 0) {
+            const total = entries.reduce((sum, [, bytes]) => sum + bytes, 0);
+
+            if (total > 0) {
+                entries
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 3)
+                    .forEach(([lang, bytes]) => {
+                        const p = document.createElement('p');
+                        const percentage = Math.round((bytes / total) * 100);
+                        p.innerHTML = `${lang}<span>${percentage}%</span>`;
+                        stats.appendChild(p);
+                    });
+            }
         }
     }
 
     // コミット数の更新（0でも表示）
     if (commits) {
-        commits.textContent = (data.totalCommits !== null && data.totalCommits !== undefined) ? data.totalCommits : '-';
+        const commitCount = (data.totalCommits !== null && data.totalCommits !== undefined) ? data.totalCommits : 0;
+        commits.textContent = commitCount;
+        console.log('Commit count set to:', commitCount); // デバッグ用
     }
 
     // 惑星名の更新
     if (name) {
         name.textContent = data.planetName || '名もなき星';
+        console.log('Planet name set to:', data.planetName); // デバッグ用
     }
 }
 
@@ -72,7 +86,25 @@ function calculateStarCount(totalCommits) {
 function loadPlanet(data) {
     if (!data) return;
 
-    // ★ まず最初にパネルを更新
+    console.log('loadPlanet called with data:', data); // デバッグ用
+
+    // ★★★ 最小限の変更点2: パネルを強制的に開く ★★★
+    const panel = document.getElementById('planet-details-panel');
+    const toggleBtn = document.getElementById('toggle-details-btn');
+
+    if (panel && !panel.classList.contains('is-open')) {
+        panel.classList.add('is-open');
+        if (toggleBtn) {
+            toggleBtn.classList.add('is-open');
+            const arrow = toggleBtn.querySelector('.arrow-icon');
+            if (arrow) {
+                arrow.classList.remove('right');
+                arrow.classList.add('left');
+            }
+        }
+    }
+
+    // パネルを更新
     updatePlanetDetails(data);
 
     if (planetGroup) { scene.remove(planetGroup); planetGroup = undefined; }
@@ -89,6 +121,7 @@ function loadPlanet(data) {
     planetGroup.add(planet);
 
     const starCount = calculateStarCount(data.totalCommits || 0);
+    console.log('Star count:', starCount); // デバッグ用
 
     if (starCount > 0) {
         const vertices = [];
@@ -292,7 +325,6 @@ function setupUI() {
     document.getElementById('open-select-modal-btn')?.addEventListener('click', () => modal.classList.add('is-visible'));
     modal?.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('is-visible'); });
 
-    // ★★★ 誰かの星ボタン（修正版）★★★
     document.getElementById('visit-user-btn')?.addEventListener('click', async (e) => {
         e.preventDefault();
         const username = prompt('見に行きたいGitHubユーザー名を入力してください:');
@@ -302,7 +334,7 @@ function setupUI() {
             const res = await fetch(`/api/planets/user/${username.trim()}`);
             if (res.ok) {
                 const planetData = await res.json();
-                console.log('取得したデータ:', planetData); // デバッグ用
+                console.log('取得したユーザーデータ:', planetData);
                 loadPlanet(planetData);
                 modal.classList.remove('is-visible');
             } else if (res.status === 404) {
@@ -316,14 +348,13 @@ function setupUI() {
         }
     });
 
-    // ★★★ ランダムボタン（修正版）★★★
     document.getElementById('random-visit-btn')?.addEventListener('click', async (e) => {
         e.preventDefault();
         try {
             const res = await fetch('/api/planets/random');
             if (res.ok) {
                 const planetData = await res.json();
-                console.log('取得したデータ:', planetData); // デバッグ用
+                console.log('取得したランダムデータ:', planetData);
                 loadPlanet(planetData);
                 modal.classList.remove('is-visible');
             }
