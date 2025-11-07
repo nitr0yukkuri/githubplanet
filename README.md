@@ -110,23 +110,6 @@ git push origin ブランチ名
 npm install
 ```
 
-### 2. 環境変数設定
-
-GitHub OAuthの認証情報やデータベース接続情報を設定するため、プロジェクトのルートディレクトリに `.env` ファイルを作成し、以下を記述します。
-```bash
-# GitHub OAuth アプリケーション設定 (GitHub Developer Settingsで取得)
-GITHUB_CLIENT_ID=あなたのGitHubクライアントID
-GITHUB_CLIENT_SECRET=あなたのGitHubクライアントシークレット
-GITHUB_CALLBACK_URL=http://localhost:3000/callback
-
-# データベース接続設定 (PostgreSQLを想定)
-# 外部サービス (例: Render, Supabase) の接続情報を設定
-PG_USER=your_db_user
-PG_HOST=your_db_host
-PG_DATABASE=your_db_name
-PG_PASSWORD=your_db_password
-PG_PORT=5432
-```
 
 ### 3. サーバーの起動
 
