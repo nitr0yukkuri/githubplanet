@@ -9,8 +9,16 @@ async function fetchMyPlanetData() {
     try {
         const res = await fetch('/api/me');
         if (!res.ok) return null;
-        const data = await res.json();
-        return data.planetData;
+        const data = await res.json(); // { user: {...}, planetData: {...} }
+
+        // /api/me のレスポンスを、他のAPI (random, user) と同じ形式に整形する
+        if (data.planetData && data.user) {
+            // planetData オブジェクトに username を追加 (他のAPIと形式を統一)
+            data.planetData.username = data.user.login;
+            return data.planetData;
+        }
+        return null;
+
     } catch (e) { return null; }
 }
 
@@ -28,7 +36,14 @@ function updatePlanetDetails(data) {
             stats.appendChild(p);
         });
     }
-    if (commits) commits.textContent = data.totalCommits || '-';
+
+    // ★★★★★★★★★★★★★★★★★★★★★★
+    // ★★★ 最小限の変更点（ここだけ） ★★★
+    // ★★★★★★★★★★★★★★★★★★★★★★
+    // data.totalCommits が 0 の場合に '-' ではなく '0' と表示されるように修正
+    if (commits) commits.textContent = (data.totalCommits !== null && data.totalCommits !== undefined) ? data.totalCommits : '-';
+    // ★★★★★★★★★★★★★★★★★★★★★★
+
     if (name) name.textContent = data.planetName || '名もなき星';
 }
 
@@ -178,33 +193,33 @@ function loadPlanet(data) {
     }
 
     // --- ★ ここから変更: アニメーションのタイミングを調整 ★ ---
-    
+
     // 1. 「爆発（ショックウェーブ）」用のオブジェクトを作成
-    const shockwaveGeo = new THREE.SphereGeometry(1, 32, 32); 
+    const shockwaveGeo = new THREE.SphereGeometry(1, 32, 32);
     const shockwaveMat = new THREE.MeshBasicMaterial({
         color: new THREE.Color(data.planetColor ? data.planetColor : 0xffffff),
         transparent: true,
-        blending: THREE.AdditiveBlending, 
+        blending: THREE.AdditiveBlending,
         opacity: 0.0
     });
     const shockwave = new THREE.Mesh(shockwaveGeo, shockwaveMat);
-    
+
     // 2. 惑星とショックウェーブの初期状態を設定
     planetGroup.scale.set(0, 0, 0); // 惑星は最初見えない
-    
+
     // 待機中の白い点を消すため、初期状態を scale: 0, opacity: 0 に
-    shockwave.scale.set(0, 0, 0);   
-    
+    shockwave.scale.set(0, 0, 0);
+
     // 待機中に表示されないよう、メッシュ自体を非表示にする
     shockwave.visible = false;
 
     // 3. シーンに追加
     scene.add(planetGroup);
-    scene.add(shockwave); 
-    
+    scene.add(shockwave);
+
     // 4. anime.js の timeline でアニメーションを実行
     const tl = anime.timeline({
-        easing: 'easeOutExpo', 
+        easing: 'easeOutExpo',
         complete: () => {
             scene.remove(shockwave);
             shockwave.geometry.dispose();
@@ -226,11 +241,11 @@ function loadPlanet(data) {
         },
         opacity: [
             // 500ms の時点で瞬時に 1.0 にする (duration: 0)
-            { value: 1.0, duration: 0 }, 
+            { value: 1.0, duration: 0 },
             // 500ms -> 900ms (400ms) かけて 0.0 にする
-            { value: 0.0, duration: 400, easing: 'easeInExpo' } 
+            { value: 0.0, duration: 400, easing: 'easeInExpo' }
         ],
-        update: () => { shockwave.material.needsUpdate = true; } 
+        update: () => { shockwave.material.needsUpdate = true; }
     }, initialDelay); // 500ms から開始
 
     // アニメーション 1-B: 「ぶわー」 (スケール)
@@ -253,13 +268,13 @@ function loadPlanet(data) {
         y: s,
         z: s,
         duration: 1200,
-        easing: 'easeOutElastic(1, .8)' 
+        easing: 'easeOutElastic(1, .8)'
     }, initialDelay + 100); // 600ms から開始
-    
+
     // --- 変更ここまで ---
-    
+
     planetGroup.rotation.x = Math.PI * 0.4; planetGroup.rotation.y = Math.PI * 0.1;
-    
+
     const msg = document.getElementById('not-logged-in-container');
     if (msg) msg.style.display = 'none';
     controls.enabled = true;
@@ -297,11 +312,41 @@ function setupUI() {
     const modal = document.getElementById('select-modal');
     document.getElementById('open-select-modal-btn')?.addEventListener('click', () => modal.classList.add('is-visible'));
     modal?.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('is-visible'); });
+
+    // ★★★ 修正点: 「誰かの星」ボタンの処理を追加 ★★★
+    document.getElementById('visit-user-btn')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const username = prompt('見に行きたいGitHubユーザー名を入力してください:');
+        if (!username || username.trim() === '') return; // キャンセルまたは空の場合は何もしない
+
+        try {
+            // 入力されたユーザー名をAPIに渡す
+            const res = await fetch(`/api/planets/user/${username.trim()}`);
+            if (res.ok) {
+                const planetData = await res.json(); // 戻り値は { username, planetColor, ... }
+                loadPlanet(planetData); // 取得したデータで惑星をロード
+                modal.classList.remove('is-visible');
+            } else if (res.status === 404) {
+                alert('そのユーザーの惑星は見つかりませんでした。\n(GitHub Planetにログインしたことがあるユーザーのみ表示できます)');
+            } else {
+                alert('惑星の検索中にエラーが発生しました');
+            }
+        } catch (e) {
+            console.error('Error fetching user planet:', e);
+            alert('通信エラーが発生しました');
+        }
+    });
+    // ★★★ 修正ここまで ★★★
+
     document.getElementById('random-visit-btn')?.addEventListener('click', async (e) => {
         e.preventDefault();
         try {
             const res = await fetch('/api/planets/random');
-            if (res.ok) { loadPlanet(await res.json()); modal.classList.remove('is-visible'); }
+            if (res.ok) {
+                const planetData = await res.json(); // 戻り値は { username, planetColor, ... }
+                loadPlanet(planetData); // 取得したデータで惑星をロード
+                modal.classList.remove('is-visible');
+            }
             else alert('他の惑星が見つかりませんでした');
         } catch (e) { console.error(e); }
     });
