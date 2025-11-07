@@ -77,12 +77,14 @@ function generatePlanetName(mainLanguage, planetColor, totalCommits) {
     const adjectives = {
         JavaScript: '柔軟な', TypeScript: '堅牢な', Python: '賢明な', HTML: '構造的', CSS: '美麗な',
         Ruby: '情熱の', Java: '不変の', C: '原始の', 'C++': '高速の', 'C#': '鋭利な',
-        Go: '疾風の', Rust: '安全な', PHP: '象の', Swift: '迅速な', Kotlin: '静寂の'
+        Go: '疾風の', Rust: '安全な', PHP: '象の', Swift: '迅速な', Kotlin: '静寂の',
+        Unknown: '未知の' // ★ 変更点: 'Unknown' 用の形容詞を追加
     };
     const colorNames = {
         '#f0db4f': '黄金', '#007acc': '蒼穹', '#306998': '深海', '#e34c26': '灼熱', '#563d7c': '紫水晶',
         '#CC342D': '紅蓮', '#b07219': '大地', '#555555': '鋼鉄', '#f34b7d': '桜花', '#178600': '翡翠',
-        '#00ADD8': '氷河', '#dea584': '砂塵', '#4F5D95': '藍染', '#F05138': '朱色', '#A97BFF': '雷光'
+        '#00ADD8': '氷河', '#dea584': '砂塵', '#4F5D95': '藍染', '#F05138': '朱色', '#A97BFF': '雷光',
+        '#808080': '神秘' // ★ 変更点: デフォルトカラー用の色名を追加
     };
     const adj = adjectives[mainLanguage] || '未知の';
     const col = colorNames[planetColor] || '神秘';
@@ -209,17 +211,40 @@ app.get('/api/planets/user/:username', async (req, res) => {
         }
 
         const row = result.rows[0];
-        const planetName = generatePlanetName(row.main_language, row.planet_color, row.total_commits || 0);
+
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // ★★★ 最小限の変更点 1/2 ★★★
+        // ★ データ一貫性チェック ★
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        const totalCommits = parseInt(row.total_commits) || 0;
+        const languageStats = row.language_stats || {};
+        const hasStats = Object.keys(languageStats).length > 0;
+
+        let mainLanguage = row.main_language;
+        let planetColor = row.planet_color;
+
+        // もしコミットが0または言語統計が空なのに、mainLanguageが 'Unknown' 以外（＝古い不完全データ）だったら
+        if ((totalCommits === 0 || !hasStats) && mainLanguage !== 'Unknown') {
+            // データを強制的にデフォルト値（Unknown）に戻す
+            mainLanguage = 'Unknown';
+            planetColor = '#808080'; // 'Unknown' のデフォルトカラー
+        }
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // ★★★ 変更点ここまで ★★★
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
+        // 修正後のデータで惑星名を再生成
+        const planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
 
         // ★ フロントエンドが期待する形式に完全一致させる
         const responseData = {
             username: row.username,
-            planetColor: row.planet_color,
+            planetColor: planetColor, // 修正された可能性のある planetColor を使用
             planetSizeFactor: parseFloat(row.planet_size_factor),
-            mainLanguage: row.main_language,
-            languageStats: row.language_stats || {},
-            totalCommits: parseInt(row.total_commits) || 0,
-            planetName: planetName
+            mainLanguage: mainLanguage, // 修正された可能性のある mainLanguage を使用
+            languageStats: languageStats, // (元々 || {} されている)
+            totalCommits: totalCommits, // (元々 parseInt || 0 されている)
+            planetName: planetName // 修正後のデータで再生成された惑星名
         };
 
         res.json(responseData);
@@ -237,17 +262,40 @@ app.get('/api/planets/random', async (req, res) => {
         if (result.rows.length === 0) return res.status(404).json({ error: 'No planets found' });
 
         const row = result.rows[0];
-        const planetName = generatePlanetName(row.main_language, row.planet_color, row.total_commits || 0);
+
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // ★★★ 最小限の変更点 2/2 ★★★
+        // ★ データ一貫性チェック ★
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        const totalCommits = parseInt(row.total_commits) || 0;
+        const languageStats = row.language_stats || {};
+        const hasStats = Object.keys(languageStats).length > 0;
+
+        let mainLanguage = row.main_language;
+        let planetColor = row.planet_color;
+
+        // もしコミットが0または言語統計が空なのに、mainLanguageが 'Unknown' 以外（＝古い不完全データ）だったら
+        if ((totalCommits === 0 || !hasStats) && mainLanguage !== 'Unknown') {
+            // データを強制的にデフォルト値（Unknown）に戻す
+            mainLanguage = 'Unknown';
+            planetColor = '#808080'; // 'Unknown' のデフォルトカラー
+        }
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // ★★★ 変更点ここまで ★★★
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
+        // 修正後のデータで惑星名を再生成
+        const planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
 
         // ★ フロントエンドが期待する形式に完全一致させる
         const responseData = {
             username: row.username,
-            planetColor: row.planet_color,
+            planetColor: planetColor, // 修正された可能性のある planetColor を使用
             planetSizeFactor: parseFloat(row.planet_size_factor),
-            mainLanguage: row.main_language,
-            languageStats: row.language_stats || {},
-            totalCommits: parseInt(row.total_commits) || 0,
-            planetName: planetName
+            mainLanguage: mainLanguage, // 修正された可能性のある mainLanguage を使用
+            languageStats: languageStats, // (元々 || {} されている)
+            totalCommits: totalCommits, // (元々 parseInt || 0 されている)
+            planetName: planetName // 修正後のデータで再生成された惑星名
         };
 
         res.json(responseData);
