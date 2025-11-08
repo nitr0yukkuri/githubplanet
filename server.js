@@ -259,8 +259,28 @@ app.get('/api/planets/user/:username', async (req, res) => {
 app.get('/api/planets/random', async (req, res) => {
     if (!pool) return res.status(503).json({ error: 'DB unavailable' });
     try {
-        const result = await pool.query('SELECT * FROM planets ORDER BY RANDOM() LIMIT 1');
-        if (result.rows.length === 0) return res.status(404).json({ error: 'No planets found' });
+
+        // ▼▼▼ 最小限の変更点 (ここから) ▼▼▼
+        const loggedInUserId = req.session?.planetData?.user?.id;
+
+        let result;
+        if (loggedInUserId) {
+            // ログイン時は自分を除外してランダム取得
+            result = await pool.query('SELECT * FROM planets WHERE github_id != $1 ORDER BY RANDOM() LIMIT 1', [loggedInUserId]);
+        } else {
+            // 未ログイン時は従来通りランダム取得
+            result = await pool.query('SELECT * FROM planets ORDER BY RANDOM() LIMIT 1');
+        }
+        // ▲▲▲ 最小限の変更点 (ここまで) ▲▲▲
+
+        if (result.rows.length === 0) {
+            // 他にユーザーがいない（自分しか登録していない）場合も、ここに来る可能性がある
+            const fallbackResult = await pool.query('SELECT * FROM planets ORDER BY RANDOM() LIMIT 1');
+            if (fallbackResult.rows.length === 0) {
+                return res.status(404).json({ error: 'No planets found' });
+            }
+            result = fallbackResult;
+        }
 
         const row = result.rows[0];
 
