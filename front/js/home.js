@@ -5,10 +5,8 @@ import anime from 'animejs';
 
 let scene, camera, renderer, controls, planetGroup;
 
-// ▼▼▼ 変更点 1/4: モーダル関連のDOMを先に取得 ▼▼▼
-const welcomeModal = document.getElementById('welcome-modal');
-const okButton = document.getElementById('welcome-ok-btn');
-const mainUiWrapper = document.getElementById('main-ui-wrapper');
+// ▼▼▼ 変更点 1/4: モーダル関連のDOM変数を準備 (取得は init() 内で行う) ▼▼▼
+let welcomeModal, okButton, mainUiWrapper;
 // ▲▲▲ 変更点 1/4 ▲▲▲
 
 async function fetchMyPlanetData() {
@@ -288,8 +286,14 @@ function loadPlanet(data) {
     controls.enabled = true;
 }
 
-// ▼▼▼ 変更点 2/4: init() 関数を 'async' にし、localStorage 対応に変更 ▼▼▼
+// ▼▼▼ 変更点 2/4: init() 関数を 'async' にし、DOM取得とlocalStorage対応に変更 ▼▼▼
 async function init() { // ★ エラー修正: async を追加
+
+    // ★ 変更点: DOMの準備が整ってから要素を取得する
+    welcomeModal = document.getElementById('welcome-modal');
+    okButton = document.getElementById('welcome-ok-btn');
+    mainUiWrapper = document.getElementById('main-ui-wrapper');
+
     // 1. Three.jsの基本設定（星空の背景）
     scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x000000, 10, 50);
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.z = 25;
