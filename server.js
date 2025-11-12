@@ -32,27 +32,36 @@ if (isProduction) {
 // ★★★ Render PostgreSQL への接続設定 ★★★
 const connectionString = process.env.DATABASE_URL;
 let pool;
-if (connectionString) {
-    pool = new pg.Pool({
-        connectionString: connectionString,
-        ssl: { rejectUnauthorized: false }
-    });
 
-    pool.query(`
-        CREATE TABLE IF NOT EXISTS planets (
-            github_id BIGINT PRIMARY KEY,
-            username TEXT NOT NULL,
-            planet_color TEXT,
-            planet_size_factor REAL,
-            main_language TEXT,
-            language_stats JSONB,
-            total_commits INTEGER,
-            last_updated TIMESTAMP DEFAULT NOW()
-        );
-    `)
-        .then(() => console.log('[DB] planetsテーブルの準備ができました'))
-        .catch(err => console.error('[DB] テーブル作成に失敗しました:', err));
+// ▼▼▼ リファクタリング 1/4: DB初期化を async/await で実行 ▼▼▼
+async function initializeDatabase() {
+    if (connectionString) {
+        pool = new pg.Pool({
+            connectionString: connectionString,
+            ssl: { rejectUnauthorized: false }
+        });
+
+        try {
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS planets (
+                    github_id BIGINT PRIMARY KEY,
+                    username TEXT NOT NULL,
+                    planet_color TEXT,
+                    planet_size_factor REAL,
+                    main_language TEXT,
+                    language_stats JSONB,
+                    total_commits INTEGER,
+                    last_updated TIMESTAMP DEFAULT NOW()
+                );
+            `);
+            console.log('[DB] planetsテーブルの準備ができました');
+        } catch (err) {
+            console.error('[DB] テーブル作成に失敗しました:', err);
+        }
+    }
 }
+initializeDatabase();
+// ▲▲▲ リファクタリング 1/4 ▲▲▲
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -65,6 +74,8 @@ app.use(session({
     saveUninitialized: true,
     cookie: { secure: isProduction, httpOnly: true, sameSite: 'lax' }
 }));
+
+// --- ヘルパー関数 ---
 
 function base64URLEncode(str) {
     return str.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
@@ -94,21 +105,100 @@ function generatePlanetName(mainLanguage, planetColor, totalCommits) {
     return `${adj}${col}の${suffix}`;
 }
 
+// ▼▼▼ リファクタリング 2/4: /callback のロジックを関数として分離 ▼▼▼
+async function generateAndSavePlanetData(accessToken, user) {
+    const reposRes = await axios.get(user.repos_url + '?per_page=100', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+
+    const languageStats = {};
+    let totalCommits = 0;
+    await Promise.all(reposRes.data.map(async (repo) => {
+        if (repo.fork) return;
+        if (repo.languages_url) {
+            try {
+                const langRes = await axios.get(repo.languages_url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+                for (const [lang, bytes] of Object.entries(langRes.data)) {
+                    languageStats[lang] = (languageStats[lang] || 0) + bytes;
+                }
+            } catch (e) { }
+        }
+        try {
+            const commitsRes = await axios.get(`https://api.github.com/repos/${user.login}/${repo.name}/commits?author=${user.login}&per_page=1`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            if (commitsRes.headers['link'] && commitsRes.headers['link'].includes('last')) {
+                totalCommits += 10;
+            } else {
+                totalCommits += 1;
+            }
+        } catch (e) { totalCommits += 5; }
+    }));
+
+    totalCommits = Math.floor(totalCommits * 6.3);
+
+    let mainLanguage = 'Unknown';
+    let maxBytes = 0;
+    for (const [lang, bytes] of Object.entries(languageStats)) {
+        if (bytes > maxBytes) { maxBytes = bytes; mainLanguage = lang; }
+    }
+
+    const colors = { JavaScript: '#f0db4f', TypeScript: '#007acc', Python: '#306998', HTML: '#e34c26', CSS: '#563d7c', Ruby: '#CC342D', Java: '#b07219', C: '#555555', 'C++': '#f34b7d', 'C#': '#178600', Go: '#00ADD8', Rust: '#dea584', PHP: '#4F5D95' };
+    const planetColor = colors[mainLanguage] || '#808080';
+    let planetSizeFactor = 1.0 + Math.min(1.0, Math.log10(Math.max(1, totalCommits)) / Math.log10(500));
+    planetSizeFactor = parseFloat(planetSizeFactor.toFixed(2));
+
+    const planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
+
+    const planetData = { mainLanguage, planetColor, languageStats, totalCommits, planetSizeFactor, planetName };
+
+    if (pool) {
+        await pool.query(`
+            INSERT INTO planets (github_id, username, planet_color, planet_size_factor, main_language, language_stats, total_commits, last_updated)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+            ON CONFLICT (github_id) DO UPDATE SET
+                username = $2, planet_color = $3, planet_size_factor = $4, main_language = $5,
+                language_stats = $6, total_commits = $7, last_updated = NOW()
+        `, [user.id, user.login, planetColor, planetSizeFactor, mainLanguage, languageStats, totalCommits]);
+    }
+
+    return planetData;
+}
+// ▲▲▲ リファクタリング 2/4 ▲▲▲
+
+// ▼▼▼ リファクタリング 3/4: DB取得結果の整形処理を共通化 ▼▼▼
+function formatPlanetData(row) {
+    const totalCommits = parseInt(row.total_commits) || 0;
+    const languageStats = row.language_stats || {};
+    const hasStats = Object.keys(languageStats).length > 0;
+
+    let mainLanguage = row.main_language;
+    let planetColor = row.planet_color;
+
+    if ((totalCommits === 0 || !hasStats) && mainLanguage !== 'Unknown') {
+        mainLanguage = 'Unknown';
+        planetColor = '#808080';
+    }
+
+    const planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
+
+    return {
+        username: row.username,
+        planetColor: planetColor,
+        planetSizeFactor: parseFloat(row.planet_size_factor),
+        mainLanguage: mainLanguage,
+        languageStats: languageStats,
+        totalCommits: totalCommits,
+        planetName: planetName
+    };
+}
+// ▲▲▲ リファクタリング 3/4 ▲▲▲
+
+
 // --- ルート定義 ---
-// ▼▼▼ 変更点 1/3: ルートパス / は index.html を返す ▼▼▼
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
-// ▲▲▲ 変更点 1/3 ▲▲▲
-
-// ▼▼▼ 変更点 2/3: /index.html ルートは不要なため削除 ▼▼▼
-/*
-app.get('/index.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-*/
-// ▲▲▲ 変更点 2/3 ▲▲▲
-
 
 app.get('/login', (req, res) => {
     const code_verifier = base64URLEncode(crypto.randomBytes(32));
@@ -141,71 +231,17 @@ app.get('/callback', async (req, res) => {
         });
         const user = userRes.data;
 
-        const reposRes = await axios.get(user.repos_url + '?per_page=100', {
-            headers: { 'Authorization': `Bearer ${accessToken}` }
-        });
+        // ▼▼▼ リファクタリング 4/4: 分離した関数を呼び出す ▼▼▼
+        const planetData = await generateAndSavePlanetData(accessToken, user);
 
-        const languageStats = {};
-        let totalCommits = 0;
-        await Promise.all(reposRes.data.map(async (repo) => {
-            if (repo.fork) return;
-            if (repo.languages_url) {
-                try {
-                    const langRes = await axios.get(repo.languages_url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
-                    for (const [lang, bytes] of Object.entries(langRes.data)) {
-                        languageStats[lang] = (languageStats[lang] || 0) + bytes;
-                    }
-                } catch (e) { }
-            }
-            try {
-                const commitsRes = await axios.get(`https://api.github.com/repos/${user.login}/${repo.name}/commits?author=${user.login}&per_page=1`, {
-                    headers: { 'Authorization': `Bearer ${accessToken}` }
-                });
-                if (commitsRes.headers['link'] && commitsRes.headers['link'].includes('last')) {
-                    totalCommits += 10;
-                } else {
-                    totalCommits += 1;
-                }
-            } catch (e) { totalCommits += 5; }
-        }));
+        req.session.planetData = { user, planetData };
 
-        totalCommits = Math.floor(totalCommits * 6.3);
-
-        let mainLanguage = 'Unknown';
-        let maxBytes = 0;
-        for (const [lang, bytes] of Object.entries(languageStats)) {
-            if (bytes > maxBytes) { maxBytes = bytes; mainLanguage = lang; }
-        }
-
-        const colors = { JavaScript: '#f0db4f', TypeScript: '#007acc', Python: '#306998', HTML: '#e34c26', CSS: '#563d7c', Ruby: '#CC342D', Java: '#b07219', C: '#555555', 'C++': '#f34b7d', 'C#': '#178600', Go: '#00ADD8', Rust: '#dea584', PHP: '#4F5D95' };
-        const planetColor = colors[mainLanguage] || '#808080';
-        let planetSizeFactor = 1.0 + Math.min(1.0, Math.log10(Math.max(1, totalCommits)) / Math.log10(500));
-        planetSizeFactor = parseFloat(planetSizeFactor.toFixed(2));
-
-        const planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
-
-        req.session.planetData = {
-            user,
-            planetData: { mainLanguage, planetColor, languageStats, totalCommits, planetSizeFactor, planetName }
-        };
-
-        if (pool) {
-            await pool.query(`
-                INSERT INTO planets (github_id, username, planet_color, planet_size_factor, main_language, language_stats, total_commits, last_updated)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-                ON CONFLICT (github_id) DO UPDATE SET
-                    username = $2, planet_color = $3, planet_size_factor = $4, main_language = $5,
-                    language_stats = $6, total_commits = $7, last_updated = NOW()
-            `, [user.id, user.login, planetColor, planetSizeFactor, mainLanguage, languageStats, totalCommits]);
-        }
-
-        // ▼▼▼ 変更点 3/3: リダイレクト先を / にする (index.html が表示される) ▼▼▼
         res.redirect('/');
-        // ▲▲▲ 変更点 3/3 ▲▲▲
+        // ▲▲▲ リファクタリング 4/4 ▲▲▲
 
     } catch (error) {
         console.error('Login Error:', error.message);
-        res.redirect('/'); // エラー時も / (index.html) に戻す
+        res.redirect('/');
     }
 });
 
@@ -223,33 +259,10 @@ app.get('/api/planets/user/:username', async (req, res) => {
             return res.status(404).json({ error: 'Planet not found' });
         }
 
-        const row = result.rows[0];
-
-        const totalCommits = parseInt(row.total_commits) || 0;
-        const languageStats = row.language_stats || {};
-        const hasStats = Object.keys(languageStats).length > 0;
-
-        let mainLanguage = row.main_language;
-        let planetColor = row.planet_color;
-
-        if ((totalCommits === 0 || !hasStats) && mainLanguage !== 'Unknown') {
-            mainLanguage = 'Unknown';
-            planetColor = '#808080';
-        }
-
-        const planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
-
-        const responseData = {
-            username: row.username,
-            planetColor: planetColor,
-            planetSizeFactor: parseFloat(row.planet_size_factor),
-            mainLanguage: mainLanguage,
-            languageStats: languageStats,
-            totalCommits: totalCommits,
-            planetName: planetName
-        };
-
+        // ★ 共通化した整形関数を呼び出す
+        const responseData = formatPlanetData(result.rows[0]);
         res.json(responseData);
+
     } catch (e) {
         console.error('[API /user/:username Error]', e);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -259,22 +272,16 @@ app.get('/api/planets/user/:username', async (req, res) => {
 app.get('/api/planets/random', async (req, res) => {
     if (!pool) return res.status(503).json({ error: 'DB unavailable' });
     try {
-
-        // ▼▼▼ 最小限の変更点 (ここから) ▼▼▼
         const loggedInUserId = req.session?.planetData?.user?.id;
-
         let result;
+
         if (loggedInUserId) {
-            // ログイン時は自分を除外してランダム取得
             result = await pool.query('SELECT * FROM planets WHERE github_id != $1 ORDER BY RANDOM() LIMIT 1', [loggedInUserId]);
         } else {
-            // 未ログイン時は従来通りランダム取得
             result = await pool.query('SELECT * FROM planets ORDER BY RANDOM() LIMIT 1');
         }
-        // ▲▲▲ 最小限の変更点 (ここまで) ▲▲▲
 
         if (result.rows.length === 0) {
-            // 他にユーザーがいない（自分しか登録していない）場合も、ここに来る可能性がある
             const fallbackResult = await pool.query('SELECT * FROM planets ORDER BY RANDOM() LIMIT 1');
             if (fallbackResult.rows.length === 0) {
                 return res.status(404).json({ error: 'No planets found' });
@@ -282,33 +289,10 @@ app.get('/api/planets/random', async (req, res) => {
             result = fallbackResult;
         }
 
-        const row = result.rows[0];
-
-        const totalCommits = parseInt(row.total_commits) || 0;
-        const languageStats = row.language_stats || {};
-        const hasStats = Object.keys(languageStats).length > 0;
-
-        let mainLanguage = row.main_language;
-        let planetColor = row.planet_color;
-
-        if ((totalCommits === 0 || !hasStats) && mainLanguage !== 'Unknown') {
-            mainLanguage = 'Unknown';
-            planetColor = '#808080';
-        }
-
-        const planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
-
-        const responseData = {
-            username: row.username,
-            planetColor: planetColor,
-            planetSizeFactor: parseFloat(row.planet_size_factor),
-            mainLanguage: mainLanguage,
-            languageStats: languageStats,
-            totalCommits: totalCommits,
-            planetName: planetName
-        };
-
+        // ★ 共通化した整形関数を呼び出す
+        const responseData = formatPlanetData(result.rows[0]);
         res.json(responseData);
+
     } catch (e) {
         console.error('[API /random Error]', e);
         res.status(500).json({ error: 'Internal Server Error' });
