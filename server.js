@@ -1,3 +1,7 @@
+// ▼▼▼ 最小限の変更点 1/2: .env ファイルを読み込む ▼▼▼
+import 'dotenv/config';
+// ▲▲▲ 最小限の変更点 1/2 ▲▲▲
+
 // server.js
 
 // 1. インポート
@@ -29,13 +33,15 @@ if (isProduction) {
     CALLBACK_URL = 'http://localhost:3000/callback';
 }
 
+// ▼▼▼ 最小限の変更点 2/2: Render DB 接続設定 (オリジナル) ▼▼▼
+
 // ★★★ Render PostgreSQL への接続設定 ★★★
-const connectionString = process.env.DATABASE_URL;
+const connectionString = process.env.DATABASE_URL; // .env から読み込まれる
 let pool;
 if (connectionString) {
     pool = new pg.Pool({
         connectionString: connectionString,
-        ssl: { rejectUnauthorized: false }
+        ssl: { rejectUnauthorized: false } // Render DB への接続に必要
     });
 
     pool.query(`
@@ -51,8 +57,14 @@ if (connectionString) {
         );
     `)
         .then(() => console.log('[DB] planetsテーブルの準備ができました'))
-        .catch(err => console.error('[DB] テーブル作成に失敗しました:', err));
+        .catch(err => console.error('[DB] テーブル作成/接続に失敗しました:', err));
+} else {
+    // 接続文字列がない場合の警告
+    console.warn('[DB] データベース接続文字列(DATABASE_URL)が設定されていません。DB機能は無効になります。');
 }
+
+// ▲▲▲ 最小限の変更点 2/2 ▲▲▲
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
