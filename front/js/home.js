@@ -87,15 +87,30 @@ function calculateStarCount(totalCommits) {
 }
 
 function loadPlanet(data) {
+    // ▼▼▼ 変更点 (ここから) ▼▼▼
+    // 惑星をロードする前に、まずオーナー表示とGitHubリンクを非表示にする
+    const ownerDisplay = document.getElementById('planet-owner-display');
+    const profileLink = document.getElementById('github-profile-link');
+    if (ownerDisplay) ownerDisplay.style.display = 'none';
+    if (profileLink) profileLink.style.display = 'none';
+
+    // データがなければここで処理を終了（UIは非表示のまま）
     if (!data) return;
+    // ▲▲▲ 変更点 (ここまで) ▲▲▲
 
     console.log('loadPlanet called with data:', data); // デバッグ用
 
-    const ownerDisplay = document.getElementById('planet-owner-display');
+    // ▼▼▼ 変更点 (ここから) ▼▼▼
+    // データがある場合のみ、テキストとリンクをセットして再表示する
     if (ownerDisplay && data.username) {
         ownerDisplay.textContent = `${data.username} の星`;
         ownerDisplay.style.display = 'inline-block';
     }
+    if (profileLink && data.username) {
+        profileLink.href = `https://github.com/${data.username}`;
+        profileLink.style.display = 'flex'; // CSSに合わせて 'flex' で表示
+    }
+    // ▲▲▲ 変更点 (ここまで) ▲▲▲
 
     // パネルを更新
     updatePlanetDetails(data);
