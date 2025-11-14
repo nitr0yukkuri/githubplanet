@@ -395,6 +395,18 @@ function setupUI() {
                 const planetData = await res.json();
                 console.log('取得したユーザーデータ:', planetData);
                 loadPlanet(planetData);
+
+                // ▼▼▼ 変更点 (GA 仮想ページビュー) ▼▼▼
+                if (typeof gtag === 'function' && planetData.username) {
+                    const path = `/planet/${planetData.username}`;
+                    gtag('event', 'page_view', {
+                        page_path: path,
+                        page_title: `${planetData.username} の星`,
+                        page_location: window.location.origin + path
+                    });
+                }
+                // ▲▲▲ 変更点 ▲▲▲
+
                 modal.classList.remove('is-visible');
             } else if (res.status === 404) {
                 alert('そのユーザーの惑星は見つかりませんでした。\n(GitHub Planetにログインしたことがあるユーザーのみ表示できます)');
@@ -415,6 +427,18 @@ function setupUI() {
                 const planetData = await res.json();
                 console.log('取得したランダムデータ:', planetData);
                 loadPlanet(planetData);
+
+                // ▼▼▼ 変更点 (GA 仮想ページビュー) ▼▼▼
+                if (typeof gtag === 'function' && planetData.username) {
+                    const path = `/planet/${planetData.username}`;
+                    gtag('event', 'page_view', {
+                        page_path: path,
+                        page_title: `${planetData.username} の星 (Random)`,
+                        page_location: window.location.origin + path
+                    });
+                }
+                // ▲▲▲ 変更点 ▲▲▲
+
                 modal.classList.remove('is-visible');
             }
             else alert('他の惑星が見つかりませんでした');
