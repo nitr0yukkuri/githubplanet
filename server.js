@@ -274,27 +274,57 @@ app.get('/api/planets/random', async (req, res) => {
 
         // ▼▼▼ 最小限の変更点 (ここから) ▼▼▼
         const loggedInUserId = req.session?.planetData?.user?.id;
+        const lastRandomVisitedId = req.session?.lastRandomVisitedId; // ★ 前回訪問IDを取得
+
+        const excludeIds = [];
+        if (loggedInUserId) {
+            excludeIds.push(loggedInUserId);
+        }
+        if (lastRandomVisitedId) { // ★ 前回訪問IDがあれば除外リストに追加
+            excludeIds.push(lastRandomVisitedId);
+        }
 
         let result;
-        if (loggedInUserId) {
-            // ログイン時は自分を除外してランダム取得
-            result = await pool.query('SELECT * FROM planets WHERE github_id != $1 ORDER BY RANDOM() LIMIT 1', [loggedInUserId]);
+        if (excludeIds.length > 0) {
+            // $1, $2, ... のプレースホルダーを作成
+            const placeholders = excludeIds.map((_, i) => `$${i + 1}`).join(', ');
+            // 重複を除外したIDリストでクエリ
+            result = await pool.query(
+                `SELECT * FROM planets WHERE github_id NOT IN (${placeholders}) ORDER BY RANDOM() LIMIT 1`,
+                [...new Set(excludeIds)] // ログインIDと前回訪問IDが同じ場合も考慮
+            );
         } else {
-            // 未ログイン時は従来通りランダム取得
+            // 未ログインかつ初回訪問時
             result = await pool.query('SELECT * FROM planets ORDER BY RANDOM() LIMIT 1');
         }
         // ▲▲▲ 最小限の変更点 (ここまで) ▲▲▲
 
         if (result.rows.length === 0) {
-            // 他にユーザーがいない（自分しか登録していない）場合も、ここに来る可能性がある
-            const fallbackResult = await pool.query('SELECT * FROM planets ORDER BY RANDOM() LIMIT 1');
+            // 除外しすぎて0件になった場合 (例: 2人しかおらず、自分と前回訪問者を除外)
+            // フォールバック: ログインユーザー *だけ* を除外する (前回訪問者が出ることを許容)
+            let fallbackResult;
+            if (loggedInUserId) {
+                fallbackResult = await pool.query('SELECT * FROM planets WHERE github_id != $1 ORDER BY RANDOM() LIMIT 1', [loggedInUserId]);
+            }
+
+            // それでも0件、または未ログインだが0件の場合
+            if (!fallbackResult || fallbackResult.rows.length === 0) {
+                // 最終フォールバック: 誰でもいいからランダムに1件 (自分自身か前回訪問者が出る)
+                fallbackResult = await pool.query('SELECT * FROM planets ORDER BY RANDOM() LIMIT 1');
+            }
+
             if (fallbackResult.rows.length === 0) {
+                // DBが空の場合
                 return res.status(404).json({ error: 'No planets found' });
             }
-            result = fallbackResult;
+            result = fallbackResult; // フォールバック結果を採用
         }
 
         const row = result.rows[0];
+
+        // ▼▼▼ 最小限の変更点 ▼▼▼
+        req.session.lastRandomVisitedId = row.github_id; // ★ 取得したIDをセッションに保存
+        // ▲▲▲ 最小限の変更点 ▲▲▲
 
         const totalCommits = parseInt(row.total_commits) || 0;
         const languageStats = row.language_stats || {};
