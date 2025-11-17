@@ -170,6 +170,13 @@ app.get('/', (req, res) => {
 });
 // ▲▲▲ 変更点 1/3 ▲▲▲
 
+// ▼▼▼ ★★★ 最小限の変更点: 実績ページへのルートを追加 ★★★ ▼▼▼
+app.get('/achievements', (req, res) => {
+    res.sendFile(path.join(__dirname, 'achievements.html'));
+});
+// ▲▲▲ ★★★ 最小限の変更点 ★★★ ▲▲▲
+
+
 // ▼▼▼ 変更点 2/3: /index.html ルートは不要なため削除 ▼▼▼
 /*
 app.get('/index.html', (req, res) => {

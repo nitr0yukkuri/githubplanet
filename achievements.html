@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>実績 - GitHub Planet</title>
+    <link rel="icon" href="/front/img/favicon.png" type="image/png">
+    <link rel="stylesheet" href="./front/css/achievements.css">
+</head>
+
+<body>
+    <div class="achievement-container">
+
+        <header class="achievement-header">
+
+            <div class="header-left">
+                <a href="/" class="back-button">＜ 惑星に戻る</a>
+                <h1 class="title">Achievement</h1>
+            </div>
+
+            <div class="header-center">
+                <div class="rate-control">
+                    <span class="rate-label">Achievement Rate</span>
+                    <span class="rate-value" id="achievement-rate">0%</span>
+                    <div class="rate-chart">
+                        <svg viewBox="0 0 36 36">
+                            <path class="chart-bg"
+                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <path class="chart-bar" id="rate-chart-bar" stroke-dasharray="0, 100"
+                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <div class="user-info">
+                    <p class="info-label">Type: <span id="planet-type">読み込み中...</span></p>
+                    <p class="info-label">User: <span id="user-name">読み込み中...</span></p>
+                </div>
+                <div class="planet-preview">
+                    <div class="planet-icon-placeholder" id="planet-icon">惑星</div>
+                    <div class="planet-ring"></div>
+                </div>
+            </div>
+
+        </header>
+
+
+        <main class="achievement-main">
+            <div class="achievement-list-wrapper">
+                <div class="achievement-list" id="achievement-list">
+                    <p class="loading-text">実績データを読み込み中...</p>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script type="module" src="./front/js/achievements.js"></script>
+</body>
+
+</html>
