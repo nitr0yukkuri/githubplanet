@@ -33,6 +33,17 @@ if (isProduction) {
     CALLBACK_URL = 'http://localhost:3000/callback';
 }
 
+// ▼▼▼ 変更点 1/5: 実績定義 ▼▼▼
+const ACHIEVEMENTS = {
+    FIRST_PLANET: { id: 'FIRST_PLANET', name: '最初の星', description: '初めての惑星を作成した。' },
+    COMMIT_100: { id: 'COMMIT_100', name: 'コミット100', description: '累計コミット数が100を超えた。' },
+    COMMIT_500: { id: 'COMMIT_500', name: 'コミット500', description: '累計コミット数が500を超えた。' },
+    COMMIT_1000: { id: 'COMMIT_1000', name: 'コミット1000', description: '累計コミット数が1000を超えた。' },
+    // 今後、ここに追加の実績（例: 'JS_MASTER' など）を定義できます
+};
+// ▲▲▲ 変更点 1/5 ▲▲▲
+
+
 // ▼▼▼ 最小限の変更点 2/2: Render DB 接続設定 (オリジナル) ▼▼▼
 
 // ★★★ Render PostgreSQL への接続設定 ★★★
@@ -44,6 +55,7 @@ if (connectionString) {
         ssl: { rejectUnauthorized: false } // Render DB への接続に必要
     });
 
+    // ▼▼▼ 変更点 2/5: DBテーブルに achievements 列を追加 ▼▼▼
     pool.query(`
         CREATE TABLE IF NOT EXISTS planets (
             github_id BIGINT PRIMARY KEY,
@@ -56,7 +68,19 @@ if (connectionString) {
             last_updated TIMESTAMP DEFAULT NOW()
         );
     `)
-        .then(() => console.log('[DB] planetsテーブルの準備ができました'))
+        // ▲▲▲ 変更点 2/5 ▲▲▲
+        .then(() => {
+            console.log('[DB] planetsテーブルの準備ができました');
+
+            // ▼▼▼ ★★★ エラー修正: 既存テーブルにカラムを追加 ★★★ ▼▼▼
+            // 既にテーブルが存在する場合に備えて、カラム追加処理を（IF NOT EXISTSで）実行する
+            return pool.query(`
+                ALTER TABLE planets 
+                ADD COLUMN IF NOT EXISTS achievements JSONB DEFAULT '{}'::jsonb;
+            `);
+            // ▲▲▲ ★★★ エラー修正 ★★★ ▲▲▲
+        })
+        .then(() => console.log('[DB] achievementsカラムの準備ができました')) // ★ ログ追加
         .catch(err => console.error('[DB] テーブル作成/接続に失敗しました:', err));
 } else {
     // 接続文字列がない場合の警告
@@ -84,6 +108,39 @@ function base64URLEncode(str) {
 function sha256(buffer) {
     return crypto.createHash('sha256').update(buffer).digest();
 }
+
+// ▼▼▼ 変更点 3/5: 実績チェック関数 ▼▼▼
+/**
+ * 既存の実績と新しいコミット数を比較し、新しい実績オブジェクトを返す
+ * @param {Object} existingAchievements - DBから取得した既存の実績
+ * @param {number} totalCommits - 今回計算したコミット数
+ * @returns {Object} - 新しい実績がマージされたオブジェクト
+ */
+function checkAchievements(existingAchievements, totalCommits) {
+    // 既存の実績をコピー
+    const newAchievements = { ...existingAchievements };
+    const now = new Date().toISOString();
+
+    // 1. 初めての惑星 (既存データになければ必ず達成)
+    if (!newAchievements[ACHIEVEMENTS.FIRST_PLANET.id]) {
+        newAchievements[ACHIEVEMENTS.FIRST_PLANET.id] = { ...ACHIEVEMENTS.FIRST_PLANET, unlockedAt: now };
+    }
+
+    // 2. コミット数 (まだアンロックしていなければチェック)
+    if (totalCommits >= 100 && !newAchievements[ACHIEVEMENTS.COMMIT_100.id]) {
+        newAchievements[ACHIEVEMENTS.COMMIT_100.id] = { ...ACHIEVEMENTS.COMMIT_100, unlockedAt: now };
+    }
+    if (totalCommits >= 500 && !newAchievements[ACHIEVEMENTS.COMMIT_500.id]) {
+        newAchievements[ACHIEVEMENTS.COMMIT_500.id] = { ...ACHIEVEMENTS.COMMIT_500, unlockedAt: now };
+    }
+    if (totalCommits >= 1000 && !newAchievements[ACHIEVEMENTS.COMMIT_1000.id]) {
+        newAchievements[ACHIEVEMENTS.COMMIT_1000.id] = { ...ACHIEVEMENTS.COMMIT_1000, unlockedAt: now };
+    }
+
+    return newAchievements;
+}
+// ▲▲▲ 変更点 3/5 ▲▲▲
+
 
 function generatePlanetName(mainLanguage, planetColor, totalCommits) {
     const adjectives = {
@@ -196,20 +253,40 @@ app.get('/callback', async (req, res) => {
 
         const planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
 
-        req.session.planetData = {
-            user,
-            planetData: { mainLanguage, planetColor, languageStats, totalCommits, planetSizeFactor, planetName }
-        };
-
+        // ▼▼▼ 変更点 4/5: 実績チェックとセッション保存 ▼▼▼
+        let achievements = {}; // デフォルトは空
         if (pool) {
+            // 1. 既存の実績データを取得
+            let existingAchievements = {};
+            try {
+                const existingData = await pool.query('SELECT achievements FROM planets WHERE github_id = $1', [user.id]);
+                if (existingData.rows.length > 0) {
+                    existingAchievements = existingData.rows[0].achievements || {};
+                }
+            } catch (e) {
+                console.error('[DB] 既存実績の取得エラー:', e);
+            }
+
+            // 2. 新しい実績をチェック
+            achievements = checkAchievements(existingAchievements, totalCommits);
+
+            // 3. DBに保存 (achievements も更新対象に追加)
             await pool.query(`
-                INSERT INTO planets (github_id, username, planet_color, planet_size_factor, main_language, language_stats, total_commits, last_updated)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+                INSERT INTO planets (github_id, username, planet_color, planet_size_factor, main_language, language_stats, total_commits, last_updated, achievements)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)
                 ON CONFLICT (github_id) DO UPDATE SET
                     username = $2, planet_color = $3, planet_size_factor = $4, main_language = $5,
-                    language_stats = $6, total_commits = $7, last_updated = NOW()
-            `, [user.id, user.login, planetColor, planetSizeFactor, mainLanguage, languageStats, totalCommits]);
+                    language_stats = $6, total_commits = $7, last_updated = NOW(), achievements = $8
+            `, [user.id, user.login, planetColor, planetSizeFactor, mainLanguage, languageStats, totalCommits, achievements]);
         }
+
+        // 4. セッションデータに実績を追加
+        req.session.planetData = {
+            user,
+            planetData: { mainLanguage, planetColor, languageStats, totalCommits, planetSizeFactor, planetName, achievements }
+        };
+        // ▲▲▲ 変更点 4/5 ▲▲▲
+
 
         // ▼▼▼ 変更点 3/3: リダイレクト先を / にする (index.html が表示される) ▼▼▼
         res.redirect('/');
@@ -222,6 +299,7 @@ app.get('/callback', async (req, res) => {
 });
 
 app.get('/api/me', (req, res) => {
+    // (セッションに実績が含まれているため、変更不要)
     req.session.planetData ? res.json(req.session.planetData) : res.status(401).json({ error: 'Not logged in' });
 });
 
@@ -229,6 +307,8 @@ app.get('/api/planets/user/:username', async (req, res) => {
     if (!pool) return res.status(503).json({ error: 'DB unavailable' });
     try {
         const { username } = req.params;
+
+        // ▼▼▼ 変更点 5/5: SELECT とレスポンスに achievements を追加 ▼▼▼
         const result = await pool.query('SELECT * FROM planets WHERE username = $1', [username]);
 
         if (result.rows.length === 0) {
@@ -258,8 +338,10 @@ app.get('/api/planets/user/:username', async (req, res) => {
             mainLanguage: mainLanguage,
             languageStats: languageStats,
             totalCommits: totalCommits,
-            planetName: planetName
+            planetName: planetName,
+            achievements: row.achievements || {} // 実績データを追加
         };
+        // ▲▲▲ 変更点 5/5 ▲▲▲
 
         res.json(responseData);
     } catch (e) {
@@ -340,6 +422,7 @@ app.get('/api/planets/random', async (req, res) => {
 
         const planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
 
+        // ▼▼▼ 変更点 (API/random にも achievements を追加) ▼▼▼
         const responseData = {
             username: row.username,
             planetColor: planetColor,
@@ -347,8 +430,10 @@ app.get('/api/planets/random', async (req, res) => {
             mainLanguage: mainLanguage,
             languageStats: languageStats,
             totalCommits: totalCommits,
-            planetName: planetName
+            planetName: planetName,
+            achievements: row.achievements || {} // 実績データを追加
         };
+        // ▲▲▲ 変更点 ▲▲▲
 
         res.json(responseData);
     } catch (e) {
