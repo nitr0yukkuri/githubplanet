@@ -50,6 +50,33 @@ body {
     z-index: 2; /* キャンバスより上 */
 }
 
+/* ▼▼▼ 変更点: 右上ボタンコンテナのスタイルを追加 ▼▼▼ */
+.ui-top-right {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 2;
+}
+
+#achievements-btn {
+    width: 60px;
+    height: 60px;
+    padding: 0;
+    background-color: #2c2a4a; /* 左上のボタンと色を合わせる */
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 28px; /* 絵文字のサイズ調整 */
+    text-decoration: none; /* リンクの下線を消す */
+    color: white; /* 絵文字の色（環境依存対策） */
+}
+
+#achievements-btn:hover {
+    background-color: #403d61;
+}
+/* ▲▲▲ 変更点 ▲▲▲ */
+
 
 .ui-bottom-left {
     position: fixed;
