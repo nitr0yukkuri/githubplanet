@@ -386,7 +386,14 @@ function animate() { requestAnimationFrame(animate); if (planetGroup) planetGrou
 function setupUI() {
     const modal = document.getElementById('select-modal');
     document.getElementById('open-select-modal-btn')?.addEventListener('click', () => modal.classList.add('is-visible'));
-    modal?.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('is-visible'); });
+
+    // ▼▼▼ 変更点: 背景(modal)だけでなく、ボタン横の隙間(select-container)でも閉じるように修正 ▼▼▼
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal || e.target.classList.contains('select-container')) {
+            modal.classList.remove('is-visible');
+        }
+    });
+    // ▲▲▲ 変更点 ▲▲▲
 
     document.getElementById('visit-user-btn')?.addEventListener('click', async (e) => {
         e.preventDefault();
