@@ -9,6 +9,10 @@ let scene, camera, renderer, controls, planetGroup;
 let welcomeModal, okButton, mainUiWrapper;
 // ▲▲▲ 変更点 1/4 ▲▲▲
 
+// ▼▼▼ ★★★ 最小限の変更点: ランダム訪問の連打防止フラグ ▼▼▼
+let isFetchingRandomPlanet = false;
+// ▲▲▲ ★★★ 最小限の変更点 ★★★ ▲▲▲
+
 async function fetchMyPlanetData() {
     try {
         const res = await fetch('/api/me');
@@ -421,6 +425,12 @@ function setupUI() {
 
     document.getElementById('random-visit-btn')?.addEventListener('click', async (e) => {
         e.preventDefault();
+
+        // ▼▼▼ ★★★ 最小限の変更点: 連打防止 ▼▼▼
+        if (isFetchingRandomPlanet) return;
+        isFetchingRandomPlanet = true;
+        // ▲▲▲ ★★★ 最小限の変更点 ★★★ ▲▲▲
+
         try {
             const res = await fetch('/api/planets/random');
             if (res.ok) {
@@ -445,6 +455,10 @@ function setupUI() {
         } catch (e) {
             console.error('Error fetching random planet:', e);
             alert('通信エラーが発生しました');
+        } finally {
+            // ▼▼▼ ★★★ 最小限の変更点: フラグ解除 ▼▼▼
+            isFetchingRandomPlanet = false;
+            // ▲▲▲ ★★★ 最小限の変更点 ★★★ ▲▲▲
         }
     });
 

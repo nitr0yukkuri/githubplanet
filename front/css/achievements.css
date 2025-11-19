@@ -5,8 +5,8 @@ body {
     color: #ffffff;
     background-color: #000;
     
-    /* ▼▼▼ 変更点: 背景をスクリーンショットに合わせて星空に変更 ▼▼▼ */
-    background-image: url('/front/img/skybox/top.png');
+    /* ▼▼▼ 変更点: 背景画像を Achievementsimage.jpg に変更 ▼▼▼ */
+    background-image: url('/front/img/Achievementsimage.jpg');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -157,37 +157,19 @@ body {
     color: #fff;
 }
 
-/* 右上の惑星アイコン */
+/* ▼▼▼ 変更点: 惑星アイコンのスタイルを削除 ▼▼▼ */
+/*
 .planet-preview {
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100px; /* 少し小さく */
-    height: 100px;
-    flex-shrink: 0;
+    ...
 }
 .planet-icon-placeholder {
-    width: 70px; /* 少し小さく */
-    height: 70px;
-    border-radius: 50%;
-    background: #6a0dad; /* 紫色の円 */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.7);
-    z-index: 2;
+    ...
 }
 .planet-ring {
-    position: absolute;
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    border: 2px solid rgba(173, 216, 230, 0.5); /* 薄い青紫のリング */
-    transform: rotateX(70deg);
-    z-index: 1;
+    ...
 }
+*/
+/* ▲▲▲ 変更点 ▲▲▲ */
 /* ▲▲▲ 変更点 ▲▲▲ */
 
 
