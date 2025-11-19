@@ -553,3 +553,50 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; ba
     color: #e0e0e0;
     /* 基本のテキストの色 */
 }
+
+/* ★★★ 追記: ロゴ、テキスト、ボタンのスタイル ★★★ */
+
+/* ロゴ画像 */
+.welcome-logo {
+    width: 300px; /* サイズを調整 (350px -> 300px) */
+    height: auto;
+    margin-bottom: 20px; /* ロゴと見出しの間 */
+}
+
+/* 見出し (GitHub Planetへようこそ) */
+.welcome-modal h2 {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #fff;
+    margin-top: 0; /* デフォルトマージンをリセット */
+}
+
+/* 説明文 */
+.welcome-modal p {
+    font-size: 15px;
+    line-height: 1.7; /* 行間を少し広めに */
+    margin-bottom: 30px;
+    text-align: left; /* 説明文は左揃え */
+}
+
+/* OKボタン */
+.ok-button {
+    display: inline-block;
+    /* <a>タグや<button>をボタン風に */
+    padding: 10px 50px;
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    background-color: rgba(80, 80, 80, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 30px; /* 画像のような楕円形 */
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+.ok-button:hover {
+    background-color: rgba(100, 100, 100, 0.9);
+    transform: scale(1.05); /* ホバー時に少し拡大 */
+}
