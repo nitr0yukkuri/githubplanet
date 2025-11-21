@@ -15,6 +15,10 @@ const MASTER_ACHIEVEMENTS = {
     COMMIT_1000: { id: 'COMMIT_1000', name: 'コミット1000', description: '累計コミット数が1000を超えた。' },
 };
 
+// ▼▼▼ 追加: SVG文字列の定義 (画像を再現) ▼▼▼
+const TROPHY_SVG = `<svg stroke="currentColor" fill="none" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" height="1.2em" width="1.2em" xmlns="http://www.w3.org/2000/svg" style="margin-right: 8px;"><path d="M8 21h8"></path><path d="M12 17v4"></path><path d="M7 4h10v8a5 5 0 0 1-10 0V4z"></path><path d="M17 8h1a2 2 0 0 1 0 4h-1"></path><path d="M7 8H6a2 2 0 0 0 0 4h1"></path></svg>`;
+// ▲▲▲ 追加 ▲▲▲
+
 /**
  * データをHTMLに反映させる
  * @param {object} userData - /api/me から取得したデータ
@@ -32,18 +36,6 @@ function renderPage(data) {
     document.getElementById('planet-type').textContent = planetData.planetName || '名もなき星';
     document.getElementById('user-name').textContent = user.login || '不明なユーザー';
 
-    // ▼▼▼ 変更点: 惑星アイコンの処理を削除 ▼▼▼
-    /*
-    const planetIcon = document.getElementById('planet-icon');
-    if (planetIcon && planetData.planetColor) {
-        // スクリーンショットの紫アイコンを再現
-        planetIcon.style.background = '#6a0dad'; 
-        // planetIcon.style.background = planetData.planetColor; // 本来はこちら
-        planetIcon.textContent = '惑星'; // スクショに合わせて文字を表示
-    }
-    */
-    // ▲▲▲ 変更点 ▲▲▲
-
     // 2. 実績レートの計算と表示
     const masterKeys = Object.keys(MASTER_ACHIEVEMENTS);
     const totalCount = masterKeys.length;
@@ -57,16 +49,11 @@ function renderPage(data) {
     });
 
     // ▼▼▼ 変更点: スクリーンショットの 54% に合わせるための仮計算 ▼▼▼
-    // (DUMMY_2, FIRST_PLANET, DUMMY_4 がアンロック扱い)
-    // (DUMMY_1, COMMIT_100, 500, 1000 がロック扱い) -> 7個中3個アンロック
     unlockedCount = 0;
     if (userAchievements['DUMMY_2']) unlockedCount++;
     if (userAchievements['FIRST_PLANET']) unlockedCount++;
     if (userAchievements['DUMMY_4']) unlockedCount++;
-    // 7個中3個 = 42% ... スクショの 54% とは合わないが、サーバー側の定義(7個)で計算する
-    // スクショは 4個中 ? 個で 54% ...? (3/4=75, 2/4=50) -> 計算基準が不明なため、サーバー定義基準で進める
 
-    // サーバー側で DUMMY_2, DUMMY_4, FIRST_PLANET がアンロックされる想定
     const rate = totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0;
 
     // スクリーンショットのダミーレート (54%) を優先表示
@@ -99,7 +86,7 @@ function renderPage(data) {
         if (isUnlocked) {
             // アンロック済み
             card.innerHTML = `
-                <h3 class="card-header"><span class="icon">🏆</span> ${masterData.name}</h3>
+                <h3 class="card-header"><span class="icon">${TROPHY_SVG}</span> ${masterData.name}</h3>
                 <p class="card-status">Unlocked: ${unlockedDate}</p>
                 <div class="card-details">
                     <a href="#">詳細を確認する ></a>
