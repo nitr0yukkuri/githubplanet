@@ -79,11 +79,17 @@ body {
     display: flex;
     align-items: center;
 }
+
+/* ▼▼▼ 変更点: 以下のブロックを削除またはコメントアウト ▼▼▼ */
+/*
 .header-info .title::before {
     content: '🏆';
     font-size: 2.5rem;
     margin-right: 15px;
 }
+*/
+/* ▲▲▲ 変更点 ▲▲▲ */
+
 
 /* ▼▼▼ 変更点: Sort コントロールのスタイルを削除 ▼▼▼ */
 /* .sort-control { ... } */
@@ -157,22 +163,6 @@ body {
     color: #fff;
 }
 
-/* ▼▼▼ 変更点: 惑星アイコンのスタイルを削除 ▼▼▼ */
-/*
-.planet-preview {
-    ...
-}
-.planet-icon-placeholder {
-    ...
-}
-.planet-ring {
-    ...
-}
-*/
-/* ▲▲▲ 変更点 ▲▲▲ */
-/* ▲▲▲ 変更点 ▲▲▲ */
-
-
 /* メイン (リスト) */
 .achievement-main {
     flex-grow: 1; /* 残りの高さをすべて使う */
@@ -181,11 +171,6 @@ body {
     /* padding-top: 20px; を削除 */
     overflow: hidden; /* メインエリアがはみ出ないように */
 }
-
-/* ▼▼▼ 変更点: main-controls を削除 ▼▼▼ */
-/* .main-controls { ... } */
-/* ▲▲▲ 変更点 ▲▲▲ */
-
 
 /* 実績リスト */
 .achievement-list-wrapper {
@@ -252,6 +237,9 @@ body {
     margin: 0 0 8px 0;
     display: flex;
     align-items: center;
+    /* ▼▼▼ 変更点: アイコンを右端に寄せる ▼▼▼ */
+    justify-content: space-between;
+    /* ▲▲▲ 変更点 ▲▲▲ */
 }
 .card-status {
     font-size: 0.9rem;
@@ -278,29 +266,29 @@ body {
 }
 /* ▲▲▲ 変更点 ▲▲▲ */
 
-/* ▼▼▼ 変更点: 空のルールセットを削除 ▼▼▼ */
-/*
-.achievement-card.unlocked {
-}
-*/
-/* ▲▲▲ 変更点 ▲▲▲ */
+/* ▼▼▼ 変更点: アイコンスタイルを整理・更新 ▼▼▼ */
+/* 共通スタイル */
 .card-header .icon {
-    margin-right: 10px;
-    color: #ffd700; /* 金色 */
-    opacity: 1;
+    margin-left: 10px; /* 左側に余白 (右端配置のため) */
 }
 
 /* ロック中 */
 .achievement-card.locked {
     opacity: 0.7;
 }
-.card-header .icon {
-    margin-right: 10px;
+.achievement-card.locked .card-header .icon {
     opacity: 0.5; /* アイコンを暗く */
 }
 .achievement-card.locked .card-status {
     color: #888;
 }
+
+/* アンロック時 */
+.achievement-card.unlocked .card-header .icon {
+    color: #ffd700; /* 金色 */
+    opacity: 1;
+}
+/* ▲▲▲ 変更点 ▲▲▲ */
 
 /* ローディング表示 */
 .loading-text {
