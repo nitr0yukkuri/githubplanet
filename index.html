@@ -6,7 +6,84 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>実績 - GitHub Planet</title>
     <link rel="icon" href="/front/img/favicon.png" type="image/png">
-    <link rel="stylesheet" href="./front/css/achievements.css">
+    <link rel="stylesheet" href="./front/css/home.css">
+    <link rel="stylesheet" href="./front/css/responsive.css">
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-6X54Y51TTZ"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-6X54Y51TTZ');
+    </script>
+
+    <style>
+        .welcome-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 450px;
+            background-color: rgba(25, 25, 30, 0.75);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 25px 30px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            text-align: center;
+            color: #e0e0e0;
+            display: none;
+            /* JSで制御するため初期は非表示 */
+        }
+
+        /* ▼ ロゴサイズの修正箇所 ▼ */
+        .welcome-logo {
+            width: 300px;
+            /* PCなどで適切な幅 */
+            max-width: 100%;
+            /* スマホでは画面幅を超えないようにする */
+            height: auto;
+            /* アスペクト比を維持 */
+            margin-bottom: 20px;
+        }
+
+        .welcome-modal h2 {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #fff;
+            margin-top: 0;
+        }
+
+        .welcome-modal p {
+            font-size: 15px;
+            line-height: 1.7;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .ok-button {
+            display: inline-block;
+            padding: 10px 50px;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            background-color: rgba(80, 80, 80, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 30px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .ok-button:hover {
+            background-color: rgba(100, 100, 100, 0.9);
+            transform: scale(1.05);
+        }
+    </style>
 </head>
 
 <body>
