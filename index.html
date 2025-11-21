@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Three.js GitHub Planet</title>
+    <title>GitHub Planet</title>
     <link rel="icon" href="/front/img/favicon.png" type="image/png">
     <link rel="stylesheet" href="./front/css/home.css">
     <link rel="stylesheet" href="./front/css/responsive.css">
@@ -17,6 +17,75 @@
 
         gtag('config', 'G-6X54Y51TTZ');
     </script>
+
+    <style>
+        /* ウェルカムモーダル用のスタイル（ホーム画面専用） */
+        .welcome-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 450px;
+            /* 画像を参考にしたガラス効果 */
+            background-color: rgba(25, 25, 30, 0.75);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 25px 30px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            text-align: center;
+            color: #e0e0e0;
+            display: none;
+            /* JSで制御するため初期は非表示 */
+        }
+
+        /* ロゴ画像のスタイル修正 */
+        .welcome-logo {
+            width: 350px;
+            /* 300pxから350pxに戻してサイズを大きく */
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
+        .welcome-modal h2 {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #fff;
+            margin-top: 0;
+        }
+
+        .welcome-modal p {
+            font-size: 15px;
+            line-height: 1.7;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .ok-button {
+            display: inline-block;
+            padding: 10px 50px;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            background-color: rgba(80, 80, 80, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 30px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            border: none;
+            /* buttonタグ用にリセット */
+        }
+
+        .ok-button:hover {
+            background-color: rgba(100, 100, 100, 0.9);
+            transform: scale(1.05);
+        }
+    </style>
 </head>
 
 <body>
@@ -28,10 +97,10 @@
             これはあなたのGitHubでの活動に応じて育つ惑星を楽しめる<br>サイトです。使用言語とコミット数によって惑星の色や輝きなどが変わり、自分だけの星を育てられます。
             <br>人の惑星を見に行くこともできます。<br>
             賑やかな宇宙を目指して日頃の開発を頑張りましょう！
-
         </p>
         <button type="button" class="ok-button" id="welcome-ok-btn">OK</button>
     </div>
+
     <div id="canvas-container"></div>
 
     <div id="main-ui-wrapper" style="display: none;">
@@ -42,9 +111,9 @@
         </div>
 
         <div class="ui-top-left">
-            <div class="ui-button" id="open-select-modal-btn">
-                <img src="/front/img/staricon.png" alt="Select Planet">
-            </div>
+            <button id="open-select-modal-btn" class="ui-button" title="惑星を探す">
+                <img src="front/img/staricon.png" alt="Search Planet">
+            </button>
         </div>
 
         <div class="ui-top-right">
@@ -52,6 +121,7 @@
                 🏆
             </a>
         </div>
+
         <div id="planet-owner-container">
             <div id="planet-owner-display" class="ui-text"></div>
             <a href="#" id="github-profile-link" class="ui-button github-link" target="_blank" rel="noopener noreferrer"
@@ -63,6 +133,7 @@
                 </svg>
             </a>
         </div>
+
         <div id="planet-details-panel">
             <div class="details-header">
                 <h3>星のステータス</h3>
@@ -73,6 +144,7 @@
                 <p class="planet-name" id="planet-name-val">-</p>
             </div>
         </div>
+
         <div id="toggle-details-btn" class="ui-button">
             <svg class="arrow-icon right" viewBox="0 0 24 24" fill="white">
                 <path d="M8.59 16.34l4.58-4.59-4.58-4.59L10 5.75l6 6-6 6z" />
@@ -83,19 +155,23 @@
             <div class="select-container">
                 <div class="planet-button-wrapper">
                     <a href="#" class="planet-button" id="visit-user-btn">
-                        <div class="planet-icon pink"><svg viewBox="0 0 24 24" fill="white">
+                        <div class="planet-icon pink">
+                            <svg viewBox="0 0 24 24" fill="white">
                                 <path
                                     d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                            </svg></div>
+                            </svg>
+                        </div>
                     </a>
                     <p class="planet-label">誰かの星を見に行く</p>
                 </div>
                 <div class="planet-button-wrapper">
                     <a href="#" class="planet-button" id="random-visit-btn">
-                        <div class="planet-icon blue"><svg viewBox="0 0 24 24" fill="white">
+                        <div class="planet-icon blue">
+                            <svg viewBox="0 0 24 24" fill="white">
                                 <path
                                     d="M12 2l2.35 7.16h7.65l-6.18 4.48 2.36 7.16-6.18-4.48-6.18 4.48 2.36-7.16-6.18-4.48h7.65z" />
-                            </svg></div>
+                            </svg>
+                        </div>
                     </a>
                     <p class="planet-label">ランダムで星を見に行く</p>
                 </div>
@@ -103,13 +179,18 @@
         </div>
 
     </div>
-    <script type="importmap">{"imports": {
+
+    <script type="importmap">
+    {
+        "imports": {
             "three": "https://cdn.jsdelivr.net/npm/three@latest/build/three.module.js",
             "three/examples/jsm/controls/OrbitControls.js": "https://cdn.jsdelivr.net/npm/three@latest/examples/jsm/controls/OrbitControls.js",
             "animejs": "https://cdn.jsdelivr.net/npm/animejs@latest/lib/anime.es.js"
-        }}</script>
+        }
+    }
+    </script>
 
-    <script type="module" src="./front/js/home.js" defer></script>
+    <script type="module" src="./front/js/home.js"></script>
 </body>
 
 </html>
