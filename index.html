@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>実績 - GitHub Planet</title>
+    <title>GitHub Planet</title>
     <link rel="icon" href="/front/img/favicon.png" type="image/png">
     <link rel="stylesheet" href="./front/css/home.css">
     <link rel="stylesheet" href="./front/css/responsive.css">
@@ -19,6 +19,7 @@
     </script>
 
     <style>
+        /* ウェルカムモーダル用のスタイル（ホーム画面専用） */
         .welcome-modal {
             position: fixed;
             top: 50%;
@@ -26,6 +27,7 @@
             transform: translate(-50%, -50%);
             width: 90%;
             max-width: 450px;
+            /* 画像を参考にしたガラス効果 */
             background-color: rgba(25, 25, 30, 0.75);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -40,14 +42,12 @@
             /* JSで制御するため初期は非表示 */
         }
 
-        /* ▼ ロゴサイズの修正箇所 ▼ */
+        /* ロゴ画像のスタイル修正 */
         .welcome-logo {
-            width: 300px;
-            /* PCなどで適切な幅 */
+            width: 350px;
+            /* 300pxから350pxに戻してサイズを大きく */
             max-width: 100%;
-            /* スマホでは画面幅を超えないようにする */
             height: auto;
-            /* アスペクト比を維持 */
             margin-bottom: 20px;
         }
 
@@ -77,6 +77,8 @@
             border-radius: 30px;
             cursor: pointer;
             transition: background-color 0.3s, transform 0.2s;
+            border: none;
+            /* buttonタグ用にリセット */
         }
 
         .ok-button:hover {
@@ -109,21 +111,11 @@
             <a href="/login" id="login-button">星を誕生させる</a>
         </div>
 
-            <div class="header-left">
-                <a href="/" class="back-button">＜ 惑星に戻る</a>
-                <h1 class="title">
-                    Achievement
-                    <svg stroke="currentColor" fill="none" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round"
-                        stroke-linejoin="round" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"
-                        style="margin-left: 10px;">
-                        <path d="M8 21h8"></path>
-                        <path d="M12 17v4"></path>
-                        <path d="M7 4h10v8a5 5 0 0 1-10 0V4z"></path>
-                        <path d="M17 8h1a2 2 0 0 1 0 4h-1"></path>
-                        <path d="M7 8H6a2 2 0 0 0 0 4h1"></path>
-                    </svg>
-                </h1>
-            </div>
+        <div class="ui-top-left">
+            <button id="open-select-modal-btn" class="ui-button" title="惑星を探す">
+                <img src="front/img/staricon.png" alt="Search Planet">
+            </button>
+        </div>
 
         <div class="ui-top-right">
             <a href="/achievements" class="ui-button" id="achievements-btn" title="実績">
@@ -199,7 +191,7 @@
     }
     </script>
 
-    <script type="module" src="./front/js/achievements.js"></script>
+    <script type="module" src="./front/js/home.js"></script>
 </body>
 
 </html>
