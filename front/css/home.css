@@ -1,3 +1,4 @@
+/* front/css/home.css */
 /* 基本的なリセット */
 body {
     margin: 0;
@@ -80,10 +81,12 @@ body {
     background-color: #403d61; /* ホバー色 */
 }
 
+/* ▼▼▼ 変更点: SVGのサイズとスタイルを調整して適切な大きさにする ▼▼▼ */
 #achievements-btn svg {
-    stroke: white;
-    width: 32px;
+    stroke: white; /* 線を白に */
+    width: 32px;   /* サイズを通常の大きさに調整 */
     height: 32px;
+    stroke-width: 2; /* 線をくっきりさせる */
 }
 /* ▲▲▲ 変更点 ▲▲▲ */
 
