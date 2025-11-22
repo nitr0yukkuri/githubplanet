@@ -1,6 +1,7 @@
-// ▼▼▼ 最小限の変更点 1/2: .env ファイルを読み込む ▼▼▼
+// server.js
+// ▼▼▼ .env ファイルを読み込む ▼▼▼
 import 'dotenv/config';
-// ▲▲▲ 最小限の変更点 1/2 ▲▲▲
+// ▲▲▲ .env ファイルを読み込む ▲▲▲
 
 // server.js
 
@@ -33,20 +34,17 @@ if (isProduction) {
     CALLBACK_URL = 'http://localhost:3000/callback';
 }
 
-// ▼▼▼ 変更点 1/5: 実績定義 ▼▼▼
+// ▼▼▼ 実績定義 ▼▼▼
 const ACHIEVEMENTS = {
     FIRST_PLANET: { id: 'FIRST_PLANET', name: '最初の星', description: '初めての惑星を作成した。' },
     COMMIT_100: { id: 'COMMIT_100', name: 'コミット100', description: '累計コミット数が100を超えた。' },
     COMMIT_500: { id: 'COMMIT_500', name: 'コミット500', description: '累計コミット数が500を超えた。' },
     COMMIT_1000: { id: 'COMMIT_1000', name: 'コミット1000', description: '累計コミット数が1000を超えた。' },
-    // 今後、ここに追加の実績（例: 'JS_MASTER' など）を定義できます
 };
-// ▲▲▲ 変更点 1/5 ▲▲▲
+// ▲▲▲ 実績定義 ▲▲▲
 
 
-// ▼▼▼ 最小限の変更点 2/2: Render DB 接続設定 (オリジナル) ▼▼▼
-
-// ★★★ Render PostgreSQL への接続設定 ★★★
+// ▼▼▼ Render DB 接続設定 ▼▼▼
 const connectionString = process.env.DATABASE_URL; // .env から読み込まれる
 let pool;
 if (connectionString) {
@@ -55,7 +53,6 @@ if (connectionString) {
         ssl: { rejectUnauthorized: false } // Render DB への接続に必要
     });
 
-    // ▼▼▼ 変更点 2/5: DBテーブルに achievements 列を追加 ▼▼▼
     pool.query(`
         CREATE TABLE IF NOT EXISTS planets (
             github_id BIGINT PRIMARY KEY,
@@ -68,26 +65,19 @@ if (connectionString) {
             last_updated TIMESTAMP DEFAULT NOW()
         );
     `)
-        // ▲▲▲ 変更点 2/5 ▲▲▲
         .then(() => {
             console.log('[DB] planetsテーブルの準備ができました');
-
-            // ▼▼▼ ★★★ エラー修正: 既存テーブルにカラムを追加 ★★★ ▼▼▼
-            // 既にテーブルが存在する場合に備えて、カラム追加処理を（IF NOT EXISTSで）実行する
             return pool.query(`
                 ALTER TABLE planets 
                 ADD COLUMN IF NOT EXISTS achievements JSONB DEFAULT '{}'::jsonb;
             `);
-            // ▲▲▲ ★★★ エラー修正 ★★★ ▲▲▲
         })
-        .then(() => console.log('[DB] achievementsカラムの準備ができました')) // ★ ログ追加
+        .then(() => console.log('[DB] achievementsカラムの準備ができました'))
         .catch(err => console.error('[DB] テーブル作成/接続に失敗しました:', err));
 } else {
-    // 接続文字列がない場合の警告
     console.warn('[DB] データベース接続文字列(DATABASE_URL)が設定されていません。DB機能は無効になります。');
 }
-
-// ▲▲▲ 最小限の変更点 2/2 ▲▲▲
+// ▲▲▲ Render DB 接続設定 ▲▲▲
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -109,24 +99,14 @@ function sha256(buffer) {
     return crypto.createHash('sha256').update(buffer).digest();
 }
 
-// ▼▼▼ 変更点 3/5: 実績チェック関数 ▼▼▼
-/**
- * 既存の実績と新しいコミット数を比較し、新しい実績オブジェクトを返す
- * @param {Object} existingAchievements - DBから取得した既存の実績
- * @param {number} totalCommits - 今回計算したコミット数
- * @returns {Object} - 新しい実績がマージされたオブジェクト
- */
+// ▼▼▼ 実績チェック関数 ▼▼▼
 function checkAchievements(existingAchievements, totalCommits) {
-    // 既存の実績をコピー
     const newAchievements = { ...existingAchievements };
     const now = new Date().toISOString();
 
-    // 1. 初めての惑星 (既存データになければ必ず達成)
     if (!newAchievements[ACHIEVEMENTS.FIRST_PLANET.id]) {
         newAchievements[ACHIEVEMENTS.FIRST_PLANET.id] = { ...ACHIEVEMENTS.FIRST_PLANET, unlockedAt: now };
     }
-
-    // 2. コミット数 (まだアンロックしていなければチェック)
     if (totalCommits >= 100 && !newAchievements[ACHIEVEMENTS.COMMIT_100.id]) {
         newAchievements[ACHIEVEMENTS.COMMIT_100.id] = { ...ACHIEVEMENTS.COMMIT_100, unlockedAt: now };
     }
@@ -136,10 +116,9 @@ function checkAchievements(existingAchievements, totalCommits) {
     if (totalCommits >= 1000 && !newAchievements[ACHIEVEMENTS.COMMIT_1000.id]) {
         newAchievements[ACHIEVEMENTS.COMMIT_1000.id] = { ...ACHIEVEMENTS.COMMIT_1000, unlockedAt: now };
     }
-
     return newAchievements;
 }
-// ▲▲▲ 変更点 3/5 ▲▲▲
+// ▲▲▲ 実績チェック関数 ▲▲▲
 
 
 function generatePlanetName(mainLanguage, planetColor, totalCommits) {
@@ -163,28 +142,90 @@ function generatePlanetName(mainLanguage, planetColor, totalCommits) {
     return `${adj}${col}の${suffix}`;
 }
 
+// ▼▼▼ 共通関数: 惑星データ取得・更新・保存 ▼▼▼
+async function updateAndSavePlanetData(user, accessToken) {
+    // 1. リポジトリ情報の取得
+    const reposRes = await axios.get(user.repos_url + '?per_page=100', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+
+    // 2. 言語統計とコミット数の集計
+    const languageStats = {};
+    let totalCommits = 0;
+    await Promise.all(reposRes.data.map(async (repo) => {
+        if (repo.fork) return;
+        if (repo.languages_url) {
+            try {
+                const langRes = await axios.get(repo.languages_url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+                for (const [lang, bytes] of Object.entries(langRes.data)) {
+                    languageStats[lang] = (languageStats[lang] || 0) + bytes;
+                }
+            } catch (e) { }
+        }
+        try {
+            const commitsRes = await axios.get(`https://api.github.com/repos/${user.login}/${repo.name}/commits?author=${user.login}&per_page=1`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            if (commitsRes.headers['link'] && commitsRes.headers['link'].includes('last')) {
+                totalCommits += 10;
+            } else {
+                totalCommits += 1;
+            }
+        } catch (e) { totalCommits += 5; }
+    }));
+
+    totalCommits = Math.floor(totalCommits * 6.3);
+
+    // 3. 惑星パラメータの決定
+    let mainLanguage = 'Unknown';
+    let maxBytes = 0;
+    for (const [lang, bytes] of Object.entries(languageStats)) {
+        if (bytes > maxBytes) { maxBytes = bytes; mainLanguage = lang; }
+    }
+
+    const colors = { JavaScript: '#f0db4f', TypeScript: '#007acc', Python: '#306998', HTML: '#e34c26', CSS: '#563d7c', Ruby: '#CC342D', Java: '#b07219', C: '#555555', 'C++': '#f34b7d', 'C#': '#178600', Go: '#00ADD8', Rust: '#dea584', PHP: '#4F5D95' };
+    const planetColor = colors[mainLanguage] || '#808080';
+    let planetSizeFactor = 1.0 + Math.min(1.0, Math.log10(Math.max(1, totalCommits)) / Math.log10(500));
+    planetSizeFactor = parseFloat(planetSizeFactor.toFixed(2));
+    const planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
+
+    // 4. 実績の更新とDB保存
+    let achievements = {};
+    if (pool) {
+        let existingAchievements = {};
+        try {
+            const existingData = await pool.query('SELECT achievements FROM planets WHERE github_id = $1', [user.id]);
+            if (existingData.rows.length > 0) {
+                existingAchievements = existingData.rows[0].achievements || {};
+            }
+        } catch (e) {
+            console.error('[DB] 既存実績取得エラー:', e);
+        }
+
+        achievements = checkAchievements(existingAchievements, totalCommits);
+
+        await pool.query(`
+            INSERT INTO planets (github_id, username, planet_color, planet_size_factor, main_language, language_stats, total_commits, last_updated, achievements)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)
+            ON CONFLICT (github_id) DO UPDATE SET
+                username = $2, planet_color = $3, planet_size_factor = $4, main_language = $5,
+                language_stats = $6, total_commits = $7, last_updated = NOW(), achievements = $8
+        `, [user.id, user.login, planetColor, planetSizeFactor, mainLanguage, languageStats, totalCommits, achievements]);
+    }
+
+    return { mainLanguage, planetColor, languageStats, totalCommits, planetSizeFactor, planetName, achievements };
+}
+// ▲▲▲ 共通関数 ▲▲▲
+
+
 // --- ルート定義 ---
-// ▼▼▼ 変更点 1/3: ルートパス / は index.html を返す ▼▼▼
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
-// ▲▲▲ 変更点 1/3 ▲▲▲
 
-// ▼▼▼ ★★★ 最小限の変更点: 実績ページへのルートを追加 ★★★ ▼▼▼
 app.get('/achievements', (req, res) => {
     res.sendFile(path.join(__dirname, 'achievements.html'));
 });
-// ▲▲▲ ★★★ 最小限の変更点 ★★★ ▲▲▲
-
-
-// ▼▼▼ 変更点 2/3: /index.html ルートは不要なため削除 ▼▼▼
-/*
-app.get('/index.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-*/
-// ▲▲▲ 変更点 2/3 ▲▲▲
-
 
 app.get('/login', (req, res) => {
     const code_verifier = base64URLEncode(crypto.randomBytes(32));
@@ -217,105 +258,58 @@ app.get('/callback', async (req, res) => {
         });
         const user = userRes.data;
 
-        const reposRes = await axios.get(user.repos_url + '?per_page=100', {
-            headers: { 'Authorization': `Bearer ${accessToken}` }
-        });
+        // ▼▼▼ 変更点: ログイン時更新 + last_updated セット ▼▼▼
+        const planetData = await updateAndSavePlanetData(user, accessToken);
 
-        const languageStats = {};
-        let totalCommits = 0;
-        await Promise.all(reposRes.data.map(async (repo) => {
-            if (repo.fork) return;
-            if (repo.languages_url) {
-                try {
-                    const langRes = await axios.get(repo.languages_url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
-                    for (const [lang, bytes] of Object.entries(langRes.data)) {
-                        languageStats[lang] = (languageStats[lang] || 0) + bytes;
-                    }
-                } catch (e) { }
-            }
-            try {
-                const commitsRes = await axios.get(`https://api.github.com/repos/${user.login}/${repo.name}/commits?author=${user.login}&per_page=1`, {
-                    headers: { 'Authorization': `Bearer ${accessToken}` }
-                });
-                if (commitsRes.headers['link'] && commitsRes.headers['link'].includes('last')) {
-                    totalCommits += 10;
-                } else {
-                    totalCommits += 1;
-                }
-            } catch (e) { totalCommits += 5; }
-        }));
+        req.session.github_token = accessToken;
+        req.session.last_updated = Date.now(); // ★ 更新時刻を記録
+        req.session.planetData = { user, planetData };
+        // ▲▲▲ 変更点 ▲▲▲
 
-        totalCommits = Math.floor(totalCommits * 6.3);
-
-        let mainLanguage = 'Unknown';
-        let maxBytes = 0;
-        for (const [lang, bytes] of Object.entries(languageStats)) {
-            if (bytes > maxBytes) { maxBytes = bytes; mainLanguage = lang; }
-        }
-
-        const colors = { JavaScript: '#f0db4f', TypeScript: '#007acc', Python: '#306998', HTML: '#e34c26', CSS: '#563d7c', Ruby: '#CC342D', Java: '#b07219', C: '#555555', 'C++': '#f34b7d', 'C#': '#178600', Go: '#00ADD8', Rust: '#dea584', PHP: '#4F5D95' };
-        const planetColor = colors[mainLanguage] || '#808080';
-        let planetSizeFactor = 1.0 + Math.min(1.0, Math.log10(Math.max(1, totalCommits)) / Math.log10(500));
-        planetSizeFactor = parseFloat(planetSizeFactor.toFixed(2));
-
-        const planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
-
-        // ▼▼▼ 変更点 4/5: 実績チェックとセッション保存 ▼▼▼
-        let achievements = {}; // デフォルトは空
-        if (pool) {
-            // 1. 既存の実績データを取得
-            let existingAchievements = {};
-            try {
-                const existingData = await pool.query('SELECT achievements FROM planets WHERE github_id = $1', [user.id]);
-                if (existingData.rows.length > 0) {
-                    existingAchievements = existingData.rows[0].achievements || {};
-                }
-            } catch (e) {
-                console.error('[DB] 既存実績の取得エラー:', e);
-            }
-
-            // 2. 新しい実績をチェック
-            achievements = checkAchievements(existingAchievements, totalCommits);
-
-            // 3. DBに保存 (achievements も更新対象に追加)
-            await pool.query(`
-                INSERT INTO planets (github_id, username, planet_color, planet_size_factor, main_language, language_stats, total_commits, last_updated, achievements)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)
-                ON CONFLICT (github_id) DO UPDATE SET
-                    username = $2, planet_color = $3, planet_size_factor = $4, main_language = $5,
-                    language_stats = $6, total_commits = $7, last_updated = NOW(), achievements = $8
-            `, [user.id, user.login, planetColor, planetSizeFactor, mainLanguage, languageStats, totalCommits, achievements]);
-        }
-
-        // 4. セッションデータに実績を追加
-        req.session.planetData = {
-            user,
-            planetData: { mainLanguage, planetColor, languageStats, totalCommits, planetSizeFactor, planetName, achievements }
-        };
-        // ▲▲▲ 変更点 4/5 ▲▲▲
-
-
-        // ▼▼▼ 変更点 3/3: リダイレクト先を / にする (index.html が表示される) ▼▼▼
         res.redirect('/');
-        // ▲▲▲ 変更点 3/3 ▲▲▲
 
     } catch (error) {
         console.error('Login Error:', error.message);
-        res.redirect('/'); // エラー時も / (index.html) に戻す
+        res.redirect('/');
     }
 });
 
-app.get('/api/me', (req, res) => {
-    // (セッションに実績が含まれているため、変更不要)
-    req.session.planetData ? res.json(req.session.planetData) : res.status(401).json({ error: 'Not logged in' });
+// ▼▼▼ 変更点: 1時間のキャッシュ制御を追加 ▼▼▼
+app.get('/api/me', async (req, res) => {
+    if (!req.session.planetData) {
+        return res.status(401).json({ error: 'Not logged in' });
+    }
+
+    const CACHE_DURATION = 3600000; // 1時間
+    const now = Date.now();
+
+    // キャッシュが切れている(または無い)場合のみ更新
+    if (req.session.github_token && (!req.session.last_updated || now - req.session.last_updated > CACHE_DURATION)) {
+        console.log('[Auto Update] キャッシュ期限切れ。データを更新中...');
+        try {
+            const user = req.session.planetData.user;
+            const newPlanetData = await updateAndSavePlanetData(user, req.session.github_token);
+
+            // セッション更新
+            req.session.planetData.planetData = newPlanetData;
+            req.session.last_updated = now;
+            console.log('[Auto Update] 更新完了');
+        } catch (e) {
+            console.error('[Auto Update] 更新失敗 (キャッシュを返します):', e.message);
+        }
+    } else {
+        console.log('[Auto Update] キャッシュ有効。APIコールをスキップします。');
+    }
+
+    res.json(req.session.planetData);
 });
+// ▲▲▲ 変更点 ▲▲▲
 
 app.get('/api/planets/user/:username', async (req, res) => {
     if (!pool) return res.status(503).json({ error: 'DB unavailable' });
     try {
         const { username } = req.params;
 
-        // ▼▼▼ 変更点 5/5: SELECT とレスポンスに achievements を追加 ▼▼▼
         const result = await pool.query('SELECT * FROM planets WHERE username = $1', [username]);
 
         if (result.rows.length === 0) {
@@ -346,9 +340,8 @@ app.get('/api/planets/user/:username', async (req, res) => {
             languageStats: languageStats,
             totalCommits: totalCommits,
             planetName: planetName,
-            achievements: row.achievements || {} // 実績データを追加
+            achievements: row.achievements || {}
         };
-        // ▲▲▲ 変更点 5/5 ▲▲▲
 
         res.json(responseData);
     } catch (e) {
@@ -360,60 +353,45 @@ app.get('/api/planets/user/:username', async (req, res) => {
 app.get('/api/planets/random', async (req, res) => {
     if (!pool) return res.status(503).json({ error: 'DB unavailable' });
     try {
-
-        // ▼▼▼ 最小限の変更点 (ここから) ▼▼▼
         const loggedInUserId = req.session?.planetData?.user?.id;
-        const lastRandomVisitedId = req.session?.lastRandomVisitedId; // ★ 前回訪問IDを取得
+        const lastRandomVisitedId = req.session?.lastRandomVisitedId;
 
         const excludeIds = [];
         if (loggedInUserId) {
             excludeIds.push(loggedInUserId);
         }
-        if (lastRandomVisitedId) { // ★ 前回訪問IDがあれば除外リストに追加
+        if (lastRandomVisitedId) {
             excludeIds.push(lastRandomVisitedId);
         }
 
         let result;
         if (excludeIds.length > 0) {
-            // $1, $2, ... のプレースホルダーを作成
             const placeholders = excludeIds.map((_, i) => `$${i + 1}`).join(', ');
-            // 重複を除外したIDリストでクエリ
             result = await pool.query(
                 `SELECT * FROM planets WHERE github_id NOT IN (${placeholders}) ORDER BY RANDOM() LIMIT 1`,
-                [...new Set(excludeIds)] // ログインIDと前回訪問IDが同じ場合も考慮
+                [...new Set(excludeIds)]
             );
         } else {
-            // 未ログインかつ初回訪問時
             result = await pool.query('SELECT * FROM planets ORDER BY RANDOM() LIMIT 1');
         }
-        // ▲▲▲ 最小限の変更点 (ここまで) ▲▲▲
 
         if (result.rows.length === 0) {
-            // 除外しすぎて0件になった場合 (例: 2人しかおらず、自分と前回訪問者を除外)
-            // フォールバック: ログインユーザー *だけ* を除外する (前回訪問者が出ることを許容)
             let fallbackResult;
             if (loggedInUserId) {
                 fallbackResult = await pool.query('SELECT * FROM planets WHERE github_id != $1 ORDER BY RANDOM() LIMIT 1', [loggedInUserId]);
             }
-
-            // それでも0件、または未ログインだが0件の場合
             if (!fallbackResult || fallbackResult.rows.length === 0) {
-                // 最終フォールバック: 誰でもいいからランダムに1件 (自分自身か前回訪問者が出る)
                 fallbackResult = await pool.query('SELECT * FROM planets ORDER BY RANDOM() LIMIT 1');
             }
 
             if (fallbackResult.rows.length === 0) {
-                // DBが空の場合
                 return res.status(404).json({ error: 'No planets found' });
             }
-            result = fallbackResult; // フォールバック結果を採用
+            result = fallbackResult;
         }
 
         const row = result.rows[0];
-
-        // ▼▼▼ 最小限の変更点 ▼▼▼
-        req.session.lastRandomVisitedId = row.github_id; // ★ 取得したIDをセッションに保存
-        // ▲▲▲ 最小限の変更点 ▲▲▲
+        req.session.lastRandomVisitedId = row.github_id;
 
         const totalCommits = parseInt(row.total_commits) || 0;
         const languageStats = row.language_stats || {};
@@ -429,7 +407,6 @@ app.get('/api/planets/random', async (req, res) => {
 
         const planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
 
-        // ▼▼▼ 変更点 (API/random にも achievements を追加) ▼▼▼
         const responseData = {
             username: row.username,
             planetColor: planetColor,
@@ -438,9 +415,8 @@ app.get('/api/planets/random', async (req, res) => {
             languageStats: languageStats,
             totalCommits: totalCommits,
             planetName: planetName,
-            achievements: row.achievements || {} // 実績データを追加
+            achievements: row.achievements || {}
         };
-        // ▲▲▲ 変更点 ▲▲▲
 
         res.json(responseData);
     } catch (e) {
