@@ -274,31 +274,28 @@ app.get('/callback', async (req, res) => {
     }
 });
 
-// ▼▼▼ 変更点: 1時間のキャッシュ制御を追加 ▼▼▼
+// ▼▼▼ 変更点: 毎回データを更新するように変更 (キャッシュ無効化) ▼▼▼
 app.get('/api/me', async (req, res) => {
     if (!req.session.planetData) {
         return res.status(401).json({ error: 'Not logged in' });
     }
 
-    const CACHE_DURATION = 3600000; // 1時間
-    const now = Date.now();
-
-    // キャッシュが切れている(または無い)場合のみ更新
-    if (req.session.github_token && (!req.session.last_updated || now - req.session.last_updated > CACHE_DURATION)) {
-        console.log('[Auto Update] キャッシュ期限切れ。データを更新中...');
+    // キャッシュチェックを削除し、トークンがあれば常に更新
+    if (req.session.github_token) {
+        console.log('[Auto Update] データを更新中...');
         try {
             const user = req.session.planetData.user;
             const newPlanetData = await updateAndSavePlanetData(user, req.session.github_token);
 
             // セッション更新
             req.session.planetData.planetData = newPlanetData;
-            req.session.last_updated = now;
+            req.session.last_updated = Date.now();
             console.log('[Auto Update] 更新完了');
         } catch (e) {
             console.error('[Auto Update] 更新失敗 (キャッシュを返します):', e.message);
         }
     } else {
-        console.log('[Auto Update] キャッシュ有効。APIコールをスキップします。');
+        console.log('[Auto Update] トークンがないためスキップ');
     }
 
     res.json(req.session.planetData);
