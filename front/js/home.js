@@ -15,7 +15,10 @@ let isFetchingRandomPlanet = false;
 
 async function fetchMyPlanetData() {
     try {
-        const res = await fetch('/api/me');
+        // ★変更点: キャッシュ対策（タイムスタンプ付与 + no-store）を追加
+        // これによりブラウザのキャッシュを回避し、サーバーの自動更新ロジックを確実に実行させます
+        const res = await fetch(`/api/me?t=${Date.now()}`, { cache: 'no-store' });
+
         if (!res.ok) return null;
         const data = await res.json();
 
@@ -36,23 +39,27 @@ function updatePlanetDetails(data) {
     console.log('updatePlanetDetails called with:', data); // デバッグ用
 
     // 言語統計の更新
-    if (stats && data.languageStats) {
+    // ★変更点: statsが存在する場合はまず内容をクリアする（データが空の場合の表示残り防止）
+    if (stats) {
         stats.innerHTML = '';
-        const entries = Object.entries(data.languageStats);
 
-        if (entries.length > 0) {
-            const total = entries.reduce((sum, [, bytes]) => sum + bytes, 0);
+        if (data.languageStats) {
+            const entries = Object.entries(data.languageStats);
 
-            if (total > 0) {
-                entries
-                    .sort(([, a], [, b]) => b - a)
-                    .slice(0, 3)
-                    .forEach(([lang, bytes]) => {
-                        const p = document.createElement('p');
-                        const percentage = Math.round((bytes / total) * 100);
-                        p.innerHTML = `${lang}<span>${percentage}%</span>`;
-                        stats.appendChild(p);
-                    });
+            if (entries.length > 0) {
+                const total = entries.reduce((sum, [, bytes]) => sum + bytes, 0);
+
+                if (total > 0) {
+                    entries
+                        .sort(([, a], [, b]) => b - a)
+                        .slice(0, 3)
+                        .forEach(([lang, bytes]) => {
+                            const p = document.createElement('p');
+                            const percentage = Math.round((bytes / total) * 100);
+                            p.innerHTML = `${lang}<span>${percentage}%</span>`;
+                            stats.appendChild(p);
+                        });
+                }
             }
         }
     }
@@ -401,7 +408,8 @@ function setupUI() {
         if (!username || username.trim() === '') return;
 
         try {
-            const res = await fetch(`/api/planets/user/${username.trim()}`);
+            // ★変更点: キャッシュ対策を追加（他人の惑星データも最新を取得）
+            const res = await fetch(`/api/planets/user/${username.trim()}?t=${Date.now()}`, { cache: 'no-store' });
             if (res.ok) {
                 const planetData = await res.json();
                 console.log('取得したユーザーデータ:', planetData);
@@ -439,7 +447,8 @@ function setupUI() {
         // ▲▲▲ ★★★ 最小限の変更点 ★★★ ▲▲▲
 
         try {
-            const res = await fetch('/api/planets/random');
+            // ★変更点: キャッシュ対策を追加（ランダムデータも最新を取得）
+            const res = await fetch(`/api/planets/random?t=${Date.now()}`, { cache: 'no-store' });
             if (res.ok) {
                 const planetData = await res.json();
                 console.log('取得したランダムデータ:', planetData);
@@ -481,4 +490,4 @@ function setupUI() {
 // ▼▼▼ 変更点 4/4: init() を呼び出す ▼▼▼
 // (defer 属性により、DOMの準備ができてから実行される)
 init();
-// ▲▲▲ 変更点 4/4 ▲▲▲aああああ
+// ▲▲▲ 変更点 4/4 ▲▲▲
