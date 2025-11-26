@@ -24,14 +24,20 @@ let GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, CALLBACK_URL;
 
 if (isProduction) {
     console.log('★ 本番環境(Render)の設定を使用します');
-    GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || 'Ov23lij7ExiRQ0SunKG9';
-    GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || 'c6d39664a728fe06d2272028ea4adbe81e39a5b5';
+    GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
+    GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
     CALLBACK_URL = process.env.CALLBACK_URL || 'https://githubplanet.onrender.com/callback';
 } else {
     console.log('★ ローカル環境の設定を使用します');
-    GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID_LOCAL || 'Ov23liiff1uvGf1ThXkI';
-    GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET_LOCAL || '601f033befdb67ee00c019d5f7368c0eaf94d0e2';
+    // ▼▼▼ 修正: ハードコードされた値を削除し、必ず環境変数を使うように変更 ▼▼▼
+    GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID_LOCAL;
+    GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET_LOCAL;
     CALLBACK_URL = 'http://localhost:3000/callback';
+
+    // 設定がない場合の警告（任意）
+    if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET) {
+        console.error('エラー: .envファイルに GITHUB_CLIENT_ID_LOCAL と GITHUB_CLIENT_SECRET_LOCAL を設定してください。');
+    }
 }
 
 // ▼▼▼ 実績定義 ▼▼▼
@@ -86,7 +92,8 @@ app.use('/front', express.static(path.join(__dirname, 'front')));
 if (isProduction) app.set('trust proxy', 1);
 
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-very-secret-key-change-it',
+    // ▼▼▼ 修正: シークレットも環境変数からのみ読み込む ▼▼▼
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: true,
     cookie: { secure: isProduction, httpOnly: true, sameSite: 'lax' }
