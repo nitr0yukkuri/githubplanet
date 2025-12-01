@@ -56,7 +56,9 @@ let pool;
 if (connectionString) {
     pool = new pg.Pool({
         connectionString: connectionString,
-        ssl: { rejectUnauthorized: false } // Render DB への接続に必要
+        // ▼▼▼ 変更点: 本番環境以外(Dockerなど)ではSSLを無効にする ▼▼▼
+        ssl: isProduction ? { rejectUnauthorized: false } : false
+        // ▲▲▲ 変更点 ▲▲▲
     });
 
     pool.query(`
@@ -100,7 +102,7 @@ app.use(session({
 }));
 
 function base64URLEncode(str) {
-    return str.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    return str.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/\//g, '_').replace(/=/g, '');
 }
 function sha256(buffer) {
     return crypto.createHash('sha256').update(buffer).digest();
