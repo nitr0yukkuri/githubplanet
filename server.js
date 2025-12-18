@@ -47,7 +47,7 @@ const ACHIEVEMENTS = {
 };
 // ▲▲▲ 実績定義 ▲▲▲
 
-// ▼▼▼ GraphQLクエリ定義 (追加) ▼▼▼
+// ▼▼▼ GraphQLクエリ定義 ▼▼▼
 const USER_DATA_QUERY = `
   query($login: String!) {
     user(login: $login) {
@@ -77,7 +77,7 @@ const USER_DATA_QUERY = `
     }
   }
 `;
-// ▲▲▲ GraphQLクエリ定義 (追加) ▲▲▲
+// ▲▲▲ GraphQLクエリ定義 ▲▲▲
 
 // ▼▼▼ Render DB 接続設定 ▼▼▼
 const connectionString = process.env.DATABASE_URL;
@@ -161,13 +161,19 @@ function generatePlanetName(mainLanguage, planetColor, totalCommits) {
         JavaScript: '柔軟な', TypeScript: '堅牢な', Python: '賢明な', HTML: '構造的', CSS: '美麗な',
         Ruby: '情熱の', Java: '不変の', C: '原始の', 'C++': '高速の', 'C#': '鋭利な',
         Go: '疾風の', Rust: '安全な', PHP: '象の', Swift: '迅速な', Kotlin: '静寂の',
+        Shell: '自動の', Dart: '急襲の', Scala: '螺旋の', Perl: '真珠の', Lua: '月光の',
+        Haskell: '純粋な', R: '統計の', Julia: '科学の', Vue: '反応の', Dockerfile: '箱舟の',
+        Svelte: '構築の', Elixir: '錬金の', ObjectiveC: '客観の', VimScript: '操作の',
         Unknown: '未知の'
     };
     const colorNames = {
         '#f0db4f': '黄金', '#007acc': '蒼穹', '#306998': '深海', '#e34c26': '灼熱', '#563d7c': '紫水晶',
         '#CC342D': '紅蓮', '#b07219': '大地', '#555555': '鋼鉄', '#f34b7d': '桜花', '#178600': '翡翠',
         '#00ADD8': '氷河', '#dea584': '砂塵', '#4F5D95': '藍染', '#F05138': '朱色', '#A97BFF': '雷光',
-        '#808080': '神秘'
+        '#808080': '神秘',
+        '#89e051': '若葉', '#00B4AB': '清流', '#c22d40': '薔薇', '#0298c3': '天青', '#000080': '深淵',
+        '#5e5086': '夜空', '#198CE7': '蒼天', '#a270ba': '藤色', '#41b883': '若草', '#384d54': '玄武',
+        '#ff3e00': '橙', '#6e4a7e': '葡萄', '#438eff': '青空', '#199f4b': '常盤'
     };
     const adj = adjectives[mainLanguage] || '未知の';
     const col = colorNames[planetColor] || '神秘';
@@ -177,13 +183,12 @@ function generatePlanetName(mainLanguage, planetColor, totalCommits) {
     return `${adj}${col}の${suffix}`;
 }
 
-// ▼▼▼ 共通関数: 惑星データ取得・更新・保存 (GraphQL版に変更) ▼▼▼
+// ▼▼▼ 共通関数: 惑星データ取得・更新・保存 (GraphQL版) ▼▼▼
 async function updateAndSavePlanetData(user, accessToken) {
     console.log(`[GraphQL] Fetching data for user: ${user.login}`);
 
     let repositories = [];
     try {
-        // 1. GraphQL APIにリクエスト (これ1回で全部取れます！)
         const response = await axios.post(
             'https://api.github.com/graphql',
             {
@@ -198,7 +203,6 @@ async function updateAndSavePlanetData(user, accessToken) {
             }
         );
 
-        // エラーチェック
         if (response.data.errors) {
             console.error('[GraphQL Error]', response.data.errors);
             throw new Error('GraphQL query failed');
@@ -208,16 +212,13 @@ async function updateAndSavePlanetData(user, accessToken) {
 
     } catch (e) {
         console.error('[GraphQL] データ取得失敗:', e.message);
-        // 失敗時は空配列で続行
         repositories = [];
     }
 
-    // 2. データの集計
     const languageStats = {};
     let totalCommits = 0;
 
     for (const repo of repositories) {
-        // 言語統計の集計
         if (repo.languages && repo.languages.edges) {
             for (const edge of repo.languages.edges) {
                 const langName = edge.node.name;
@@ -226,29 +227,33 @@ async function updateAndSavePlanetData(user, accessToken) {
             }
         }
 
-        // コミット数の集計 (defaultBranchRefが存在する場合のみ)
         if (repo.defaultBranchRef && repo.defaultBranchRef.target && repo.defaultBranchRef.target.history) {
             totalCommits += repo.defaultBranchRef.target.history.totalCount;
         }
     }
 
-    // 以前のロジックにあった演出用の倍率を維持
-    totalCommits = Math.floor(totalCommits * 1);
-
-    // 3. 惑星パラメータの決定
     let mainLanguage = 'Unknown';
     let maxBytes = 0;
     for (const [lang, bytes] of Object.entries(languageStats)) {
         if (bytes > maxBytes) { maxBytes = bytes; mainLanguage = lang; }
     }
 
-    const colors = { JavaScript: '#f0db4f', TypeScript: '#007acc', Python: '#306998', HTML: '#e34c26', CSS: '#563d7c', Ruby: '#CC342D', Java: '#b07219', C: '#555555', 'C++': '#f34b7d', 'C#': '#178600', Go: '#00ADD8', Rust: '#dea584', PHP: '#4F5D95' };
+    const colors = {
+        JavaScript: '#f0db4f', TypeScript: '#007acc', Python: '#306998', HTML: '#e34c26', CSS: '#563d7c',
+        Ruby: '#CC342D', Java: '#b07219', C: '#555555', 'C++': '#f34b7d', 'C#': '#178600',
+        Go: '#00ADD8', Rust: '#dea584', PHP: '#4F5D95',
+        Swift: '#F05138', Kotlin: '#A97BFF', Shell: '#89e051', Dart: '#00B4AB',
+        Scala: '#c22d40', Perl: '#0298c3', Lua: '#000080', Haskell: '#5e5086',
+        R: '#198CE7', Julia: '#a270ba', Vue: '#41b883', Dockerfile: '#384d54',
+        Svelte: '#ff3e00', Elixir: '#6e4a7e', 'Objective-C': '#438eff', VimScript: '#199f4b'
+    };
     const planetColor = colors[mainLanguage] || '#808080';
-    let planetSizeFactor = 1.0 + Math.min(1.0, Math.log10(Math.max(1, totalCommits)) / Math.log10(500));
+
+    let planetSizeFactor = 1.0 + Math.min(1.0, Math.log10(Math.max(1, totalCommits)) / 2.5);
     planetSizeFactor = parseFloat(planetSizeFactor.toFixed(2));
+
     const planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
 
-    // 4. 実績の更新とDB保存
     let achievements = {};
     if (pool) {
         let existingAchievements = {};
@@ -317,13 +322,11 @@ app.get('/callback', async (req, res) => {
         });
         const user = userRes.data;
 
-        // ▼▼▼ 変更点: ログイン時更新 + last_updated セット ▼▼▼
         const planetData = await updateAndSavePlanetData(user, accessToken);
 
         req.session.github_token = accessToken;
-        req.session.last_updated = Date.now(); // ★ 更新時刻を記録
+        req.session.last_updated = Date.now();
         req.session.planetData = { user, planetData };
-        // ▲▲▲ 変更点 ▲▲▲
 
         res.redirect('/');
 
@@ -477,4 +480,8 @@ app.get('/api/planets/random', async (req, res) => {
     }
 });
 
-app.listen(port, () => console.log(`Server running on port ${port}`));
+// ▼▼▼ 変更点: クリックできるURLを表示 ▼▼▼
+app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+    console.log(`http://localhost:${port}`);
+});
