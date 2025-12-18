@@ -5,18 +5,11 @@ import anime from 'animejs';
 
 let scene, camera, renderer, controls, planetGroup;
 
-// ▼▼▼ 変更点 1/4: モーダル関連のDOM変数を準備 (取得は init() 内で行う) ▼▼▼
 let welcomeModal, okButton, mainUiWrapper;
-// ▲▲▲ 変更点 1/4 ▲▲▲
-
-// ▼▼▼ ★★★ 最小限の変更点: ランダム訪問の連打防止フラグ ▼▼▼
 let isFetchingRandomPlanet = false;
-// ▲▲▲ ★★★ 最小限の変更点 ★★★ ▲▲▲
 
 async function fetchMyPlanetData() {
     try {
-        // ★変更点: キャッシュ対策（タイムスタンプ付与 + no-store）を追加
-        // これによりブラウザのキャッシュを回避し、サーバーの自動更新ロジックを確実に実行させます
         const res = await fetch(`/api/me?t=${Date.now()}`, { cache: 'no-store' });
 
         if (!res.ok) return null;
@@ -36,10 +29,8 @@ function updatePlanetDetails(data) {
     const commits = document.getElementById('commit-count-val');
     const name = document.getElementById('planet-name-val');
 
-    console.log('updatePlanetDetails called with:', data); // デバッグ用
+    console.log('updatePlanetDetails called with:', data);
 
-    // 言語統計の更新
-    // ★変更点: statsが存在する場合はまず内容をクリアする（データが空の場合の表示残り防止）
     if (stats) {
         stats.innerHTML = '';
 
@@ -64,17 +55,15 @@ function updatePlanetDetails(data) {
         }
     }
 
-    // コミット数の更新（0でも表示）
     if (commits) {
         const commitCount = (data.totalCommits !== null && data.totalCommits !== undefined) ? data.totalCommits : 0;
         commits.textContent = commitCount;
-        console.log('Commit count set to:', commitCount); // デバッグ用
+        console.log('Commit count set to:', commitCount);
     }
 
-    // 惑星名の更新
     if (name) {
         name.textContent = data.planetName || '名もなき星';
-        console.log('Planet name set to:', data.planetName); // デバッグ用
+        console.log('Planet name set to:', data.planetName);
     }
 }
 
@@ -98,32 +87,24 @@ function calculateStarCount(totalCommits) {
 }
 
 function loadPlanet(data) {
-    // ▼▼▼ 変更点 (ここから) ▼▼▼
-    // 惑星をロードする前に、まずオーナー表示とGitHubリンクを非表示にする
     const ownerDisplay = document.getElementById('planet-owner-display');
     const profileLink = document.getElementById('github-profile-link');
     if (ownerDisplay) ownerDisplay.style.display = 'none';
     if (profileLink) profileLink.style.display = 'none';
 
-    // データがなければここで処理を終了（UIは非表示のまま）
     if (!data) return;
-    // ▲▲▲ 変更点 (ここまで) ▲▲▲
 
-    console.log('loadPlanet called with data:', data); // デバッグ用
+    console.log('loadPlanet called with data:', data);
 
-    // ▼▼▼ 変更点 (ここから) ▼▼▼
-    // データがある場合のみ、テキストとリンクをセットして再表示する
     if (ownerDisplay && data.username) {
         ownerDisplay.textContent = `${data.username} の星`;
         ownerDisplay.style.display = 'inline-block';
     }
     if (profileLink && data.username) {
         profileLink.href = `https://github.com/${data.username}`;
-        profileLink.style.display = 'flex'; // CSSに合わせて 'flex' で表示
+        profileLink.style.display = 'flex';
     }
-    // ▲▲▲ 変更点 (ここまで) ▲▲▲
 
-    // パネルを更新
     updatePlanetDetails(data);
 
     if (planetGroup) { scene.remove(planetGroup); planetGroup = undefined; }
@@ -140,7 +121,7 @@ function loadPlanet(data) {
     planetGroup.add(planet);
 
     const starCount = calculateStarCount(data.totalCommits || 0);
-    console.log('Star count:', starCount); // デバッグ用
+    console.log('Star count:', starCount);
 
     if (starCount > 0) {
         const vertices = [];
@@ -160,13 +141,17 @@ function loadPlanet(data) {
         const starGeometry = new THREE.BufferGeometry();
         starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
 
+        // ▼▼▼ 変更点: スマホ(高DPI)対策で pixelRatio を考慮 ▼▼▼
         const vertexShader = `
+            uniform float pixelRatio;
             void main() {
                 vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
                 gl_Position = projectionMatrix * mvPosition;
-                gl_PointSize = 800.0 / -mvPosition.z;
+                // pixelRatioを掛けて、スマホでも適切なサイズに見えるように補正
+                gl_PointSize = (800.0 * pixelRatio) / -mvPosition.z;
             }
         `;
+        // ▲▲▲ 変更点 ▲▲▲
 
         const fragmentShader = `
             void main() {
@@ -191,7 +176,11 @@ function loadPlanet(data) {
         `;
 
         const starMaterial = new THREE.ShaderMaterial({
-            uniforms: {},
+            // ▼▼▼ 変更点: pixelRatio を渡す ▼▼▼
+            uniforms: {
+                pixelRatio: { value: window.devicePixelRatio }
+            },
+            // ▲▲▲ 変更点 ▲▲▲
             vertexShader: vertexShader,
             fragmentShader: fragmentShader,
             blending: THREE.AdditiveBlending,
@@ -312,15 +301,12 @@ function loadPlanet(data) {
     controls.enabled = true;
 }
 
-// ▼▼▼ 変更点 2/4: init() 関数を 'async' にし、DOM取得とlocalStorage対応に変更 ▼▼▼
-async function init() { // ★ エラー修正: async を追加
+async function init() {
 
-    // ★ 変更点: DOMの準備が整ってから要素を取得する
     welcomeModal = document.getElementById('welcome-modal');
     okButton = document.getElementById('welcome-ok-btn');
     mainUiWrapper = document.getElementById('main-ui-wrapper');
 
-    // 1. Three.jsの基本設定（星空の背景）
     scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x000000, 10, 50);
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.z = 25;
     renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight); renderer.setPixelRatio(window.devicePixelRatio);
@@ -333,46 +319,34 @@ async function init() { // ★ エラー修正: async を追加
 
     window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
 
-    // 2. アニメーションループ開始 (星空が表示される)
     animate();
 
-    // 3. ★ localStorage で訪問済みかチェック
     const hasVisited = localStorage.getItem('githubPlanetVisited');
 
     if (!hasVisited) {
-        // ★ 初回訪問時
-        if (welcomeModal) welcomeModal.style.display = 'block'; // CSSで非表示にしたものを表示
+        if (welcomeModal) welcomeModal.style.display = 'block';
 
         if (okButton) {
             okButton.addEventListener('click', async () => {
-                localStorage.setItem('githubPlanetVisited', 'true'); // ★ フラグを立てる
+                localStorage.setItem('githubPlanetVisited', 'true');
                 if (welcomeModal) welcomeModal.style.display = 'none';
                 await loadMainContent();
             }, { once: true });
         } else {
-            // OKボタンがない異常系 (await を追加)
             await loadMainContent();
         }
     } else {
-        // ★ 再訪問時 (ログイン後もここ)
-        if (welcomeModal) welcomeModal.style.display = 'none'; // 念のため非表示
-        await loadMainContent(); // すぐにメインコンテンツをロード (await を追加)
+        if (welcomeModal) welcomeModal.style.display = 'none';
+        await loadMainContent();
     }
 }
-// ▲▲▲ 変更点 2/4 ▲▲▲
 
-
-// ▼▼▼ 変更点 3/4: loadMainContent 関数を新設 ▼▼▼
-// (initから分離したメイン処理)
 async function loadMainContent() {
-    // 1. メインUIを表示
     if (mainUiWrapper) mainUiWrapper.style.display = 'block';
 
-    // 2. 惑星データを取得
     const data = await fetchMyPlanetData();
     const notLoggedInContainer = document.getElementById('not-logged-in-container');
 
-    // 3. データに応じて表示を切り替え
     if (notLoggedInContainer) {
         if (data) {
             loadPlanet(data);
@@ -382,11 +356,8 @@ async function loadMainContent() {
         }
     }
 
-    // 4. UIボタン（モーダル開閉など）のイベントリスナーを設定
     setupUI();
 }
-// ▲▲▲ 変更点 3/4 ▲▲▲
-
 
 function animate() { requestAnimationFrame(animate); if (planetGroup) planetGroup.rotation.z += 0.001; controls.update(); renderer.render(scene, camera); }
 
@@ -394,13 +365,11 @@ function setupUI() {
     const modal = document.getElementById('select-modal');
     document.getElementById('open-select-modal-btn')?.addEventListener('click', () => modal.classList.add('is-visible'));
 
-    // ▼▼▼ 変更点: 背景(modal)だけでなく、ボタン横の隙間(select-container)でも閉じるように修正 ▼▼▼
     modal?.addEventListener('click', (e) => {
         if (e.target === modal || e.target.classList.contains('select-container')) {
             modal.classList.remove('is-visible');
         }
     });
-    // ▲▲▲ 変更点 ▲▲▲
 
     document.getElementById('visit-user-btn')?.addEventListener('click', async (e) => {
         e.preventDefault();
@@ -408,14 +377,12 @@ function setupUI() {
         if (!username || username.trim() === '') return;
 
         try {
-            // ★変更点: キャッシュ対策を追加（他人の惑星データも最新を取得）
             const res = await fetch(`/api/planets/user/${username.trim()}?t=${Date.now()}`, { cache: 'no-store' });
             if (res.ok) {
                 const planetData = await res.json();
                 console.log('取得したユーザーデータ:', planetData);
                 loadPlanet(planetData);
 
-                // ▼▼▼ 変更点 (GA 仮想ページビュー) ▼▼▼
                 if (typeof gtag === 'function' && planetData.username) {
                     const path = `/planet/${planetData.username}`;
                     gtag('event', 'page_view', {
@@ -424,7 +391,6 @@ function setupUI() {
                         page_location: window.location.origin + path
                     });
                 }
-                // ▲▲▲ 変更点 ▲▲▲
 
                 modal.classList.remove('is-visible');
             } else if (res.status === 404) {
@@ -441,20 +407,16 @@ function setupUI() {
     document.getElementById('random-visit-btn')?.addEventListener('click', async (e) => {
         e.preventDefault();
 
-        // ▼▼▼ ★★★ 最小限の変更点: 連打防止 ▼▼▼
         if (isFetchingRandomPlanet) return;
         isFetchingRandomPlanet = true;
-        // ▲▲▲ ★★★ 最小限の変更点 ★★★ ▲▲▲
 
         try {
-            // ★変更点: キャッシュ対策を追加（ランダムデータも最新を取得）
             const res = await fetch(`/api/planets/random?t=${Date.now()}`, { cache: 'no-store' });
             if (res.ok) {
                 const planetData = await res.json();
                 console.log('取得したランダムデータ:', planetData);
                 loadPlanet(planetData);
 
-                // ▼▼▼ 変更点 (GA 仮想ページビュー) ▼▼▼
                 if (typeof gtag === 'function' && planetData.username) {
                     const path = `/planet/${planetData.username}`;
                     gtag('event', 'page_view', {
@@ -463,7 +425,6 @@ function setupUI() {
                         page_location: window.location.origin + path
                     });
                 }
-                // ▲▲▲ 変更点 ▲▲▲
 
                 modal.classList.remove('is-visible');
             }
@@ -472,9 +433,7 @@ function setupUI() {
             console.error('Error fetching random planet:', e);
             alert('通信エラーが発生しました');
         } finally {
-            // ▼▼▼ ★★★ 最小限の変更点: フラグ解除 ▼▼▼
             isFetchingRandomPlanet = false;
-            // ▲▲▲ ★★★ 最小限の変更点 ★★★ ▲▲▲
         }
     });
 
@@ -487,7 +446,4 @@ function setupUI() {
     });
 }
 
-// ▼▼▼ 変更点 4/4: init() を呼び出す ▼▼▼
-// (defer 属性により、DOMの準備ができてから実行される)
 init();
-// ▲▲▲ 変更点 4/4 ▲▲▲
