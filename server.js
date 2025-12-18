@@ -29,12 +29,10 @@ if (isProduction) {
     CALLBACK_URL = process.env.CALLBACK_URL || 'https://githubplanet.onrender.com/callback';
 } else {
     console.log('★ ローカル環境の設定を使用します');
-    // ▼▼▼ 修正: ハードコードされた値を削除し、必ず環境変数を使うように変更 ▼▼▼
     GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID_LOCAL;
     GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET_LOCAL;
     CALLBACK_URL = 'http://localhost:3000/callback';
 
-    // 設定がない場合の警告（任意）
     if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET) {
         console.error('エラー: .envファイルに GITHUB_CLIENT_ID_LOCAL と GITHUB_CLIENT_SECRET_LOCAL を設定してください。');
     }
@@ -49,16 +47,45 @@ const ACHIEVEMENTS = {
 };
 // ▲▲▲ 実績定義 ▲▲▲
 
+// ▼▼▼ GraphQLクエリ定義 (追加) ▼▼▼
+const USER_DATA_QUERY = `
+  query($login: String!) {
+    user(login: $login) {
+      repositories(first: 100, ownerAffiliations: OWNER, isFork: false, orderBy: {field: PUSHED_AT, direction: DESC}) {
+        nodes {
+          name
+          languages(first: 5, orderBy: {field: SIZE, direction: DESC}) {
+            edges {
+              size
+              node {
+                name
+                color
+              }
+            }
+          }
+          defaultBranchRef {
+            target {
+              ... on Commit {
+                history {
+                  totalCount
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+// ▲▲▲ GraphQLクエリ定義 (追加) ▲▲▲
 
 // ▼▼▼ Render DB 接続設定 ▼▼▼
-const connectionString = process.env.DATABASE_URL; // .env から読み込まれる
+const connectionString = process.env.DATABASE_URL;
 let pool;
 if (connectionString) {
     pool = new pg.Pool({
         connectionString: connectionString,
-        // ▼▼▼ 変更点: 本番環境以外(Dockerなど)ではSSLを無効にする ▼▼▼
         ssl: isProduction ? { rejectUnauthorized: false } : false
-        // ▲▲▲ 変更点 ▲▲▲
     });
 
     pool.query(`
@@ -94,7 +121,6 @@ app.use('/front', express.static(path.join(__dirname, 'front')));
 if (isProduction) app.set('trust proxy', 1);
 
 app.use(session({
-    // ▼▼▼ 修正: シークレットも環境変数からのみ読み込む ▼▼▼
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: true,
@@ -151,39 +177,63 @@ function generatePlanetName(mainLanguage, planetColor, totalCommits) {
     return `${adj}${col}の${suffix}`;
 }
 
-// ▼▼▼ 共通関数: 惑星データ取得・更新・保存 ▼▼▼
+// ▼▼▼ 共通関数: 惑星データ取得・更新・保存 (GraphQL版に変更) ▼▼▼
 async function updateAndSavePlanetData(user, accessToken) {
-    // 1. リポジトリ情報の取得
-    const reposRes = await axios.get(user.repos_url + '?per_page=100', {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
-    });
+    console.log(`[GraphQL] Fetching data for user: ${user.login}`);
 
-    // 2. 言語統計とコミット数の集計
+    let repositories = [];
+    try {
+        // 1. GraphQL APIにリクエスト (これ1回で全部取れます！)
+        const response = await axios.post(
+            'https://api.github.com/graphql',
+            {
+                query: USER_DATA_QUERY,
+                variables: { login: user.login }
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                }
+            }
+        );
+
+        // エラーチェック
+        if (response.data.errors) {
+            console.error('[GraphQL Error]', response.data.errors);
+            throw new Error('GraphQL query failed');
+        }
+
+        repositories = response.data.data.user.repositories.nodes;
+
+    } catch (e) {
+        console.error('[GraphQL] データ取得失敗:', e.message);
+        // 失敗時は空配列で続行
+        repositories = [];
+    }
+
+    // 2. データの集計
     const languageStats = {};
     let totalCommits = 0;
-    await Promise.all(reposRes.data.map(async (repo) => {
-        if (repo.fork) return;
-        if (repo.languages_url) {
-            try {
-                const langRes = await axios.get(repo.languages_url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
-                for (const [lang, bytes] of Object.entries(langRes.data)) {
-                    languageStats[lang] = (languageStats[lang] || 0) + bytes;
-                }
-            } catch (e) { }
-        }
-        try {
-            const commitsRes = await axios.get(`https://api.github.com/repos/${user.login}/${repo.name}/commits?author=${user.login}&per_page=1`, {
-                headers: { 'Authorization': `Bearer ${accessToken}` }
-            });
-            if (commitsRes.headers['link'] && commitsRes.headers['link'].includes('last')) {
-                totalCommits += 10;
-            } else {
-                totalCommits += 1;
-            }
-        } catch (e) { totalCommits += 5; }
-    }));
 
-    totalCommits = Math.floor(totalCommits * 6.3);
+    for (const repo of repositories) {
+        // 言語統計の集計
+        if (repo.languages && repo.languages.edges) {
+            for (const edge of repo.languages.edges) {
+                const langName = edge.node.name;
+                const size = edge.size;
+                languageStats[langName] = (languageStats[langName] || 0) + size;
+            }
+        }
+
+        // コミット数の集計 (defaultBranchRefが存在する場合のみ)
+        if (repo.defaultBranchRef && repo.defaultBranchRef.target && repo.defaultBranchRef.target.history) {
+            totalCommits += repo.defaultBranchRef.target.history.totalCount;
+        }
+    }
+
+    // 以前のロジックにあった演出用の倍率を維持
+    totalCommits = Math.floor(totalCommits * 1);
 
     // 3. 惑星パラメータの決定
     let mainLanguage = 'Unknown';
@@ -283,20 +333,17 @@ app.get('/callback', async (req, res) => {
     }
 });
 
-// ▼▼▼ 変更点: 毎回データを更新するように変更 (キャッシュ無効化) ▼▼▼
 app.get('/api/me', async (req, res) => {
     if (!req.session.planetData) {
         return res.status(401).json({ error: 'Not logged in' });
     }
 
-    // キャッシュチェックを削除し、トークンがあれば常に更新
     if (req.session.github_token) {
         console.log('[Auto Update] データを更新中...');
         try {
             const user = req.session.planetData.user;
             const newPlanetData = await updateAndSavePlanetData(user, req.session.github_token);
 
-            // セッション更新
             req.session.planetData.planetData = newPlanetData;
             req.session.last_updated = Date.now();
             console.log('[Auto Update] 更新完了');
@@ -309,7 +356,6 @@ app.get('/api/me', async (req, res) => {
 
     res.json(req.session.planetData);
 });
-// ▲▲▲ 変更点 ▲▲▲
 
 app.get('/api/planets/user/:username', async (req, res) => {
     if (!pool) return res.status(503).json({ error: 'DB unavailable' });
