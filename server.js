@@ -85,7 +85,9 @@ let pool;
 if (connectionString) {
     pool = new pg.Pool({
         connectionString: connectionString,
-        ssl: isProduction ? { rejectUnauthorized: false } : false
+        // ▼▼▼ 変更点: ローカルでもNeon DBにつなげるようSSLを強制有効化 ▼▼▼
+        ssl: { rejectUnauthorized: false }
+        // ▲▲▲ 変更点 ▲▲▲
     });
 
     pool.query(`
@@ -247,7 +249,85 @@ async function updateAndSavePlanetData(user, accessToken) {
         R: '#198CE7', Julia: '#a270ba', Vue: '#41b883', Dockerfile: '#384d54',
         Svelte: '#ff3e00', Elixir: '#6e4a7e', 'Objective-C': '#438eff', VimScript: '#199f4b'
     };
-    const planetColor = colors[mainLanguage] || '#808080';
+
+    // ▼▼▼ 変更点: モデル一覧を問い合わせて、使えるものを自動で使う最強ロジック ▼▼▼
+    let planetColor = colors[mainLanguage];
+
+    if (!planetColor && mainLanguage !== 'Unknown' && process.env.GEMINI_API_KEY) {
+        console.log(`[Gemini] 未定義の言語 "${mainLanguage}" の色を生成します (モデル自動探索)...`);
+
+        const cleanApiKey = process.env.GEMINI_API_KEY.trim();
+        const prompt = `Programming language: ${mainLanguage}. Provide a suitable hex color code (e.g., #ff0000) for this language. Return ONLY the hex code string.`;
+
+        try {
+            // 1. Googleに「今、私のキーで使えるモデルは何？」と聞く
+            console.log('[Gemini] 利用可能なモデルを問い合わせ中...');
+            const listModelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanApiKey}`;
+            const listRes = await axios.get(listModelsUrl);
+
+            const allModels = listRes.data.models || [];
+
+            // 2. "generateContent" に対応しているモデルだけ抽出
+            let availableModels = allModels.filter(m =>
+                m.supportedGenerationMethods &&
+                m.supportedGenerationMethods.includes('generateContent')
+            );
+
+            if (availableModels.length === 0) {
+                console.error('[Gemini] 生成に使用できるモデルが見つかりませんでした。');
+            } else {
+                // 3. 優先順位: 1.5-flash -> 1.5-pro -> その他
+                availableModels.sort((a, b) => {
+                    const nA = a.name; const nB = b.name;
+                    if (nA.includes('1.5-flash') && !nB.includes('1.5-flash')) return -1;
+                    if (!nA.includes('1.5-flash') && nB.includes('1.5-flash')) return 1;
+                    if (nA.includes('1.5-pro') && !nB.includes('1.5-pro')) return -1;
+                    if (!nA.includes('1.5-pro') && nB.includes('1.5-pro')) return 1;
+                    return 0;
+                });
+
+                console.log(`[Gemini] 候補モデル: ${availableModels.map(m => m.name.split('/').pop()).join(', ')}`);
+
+                // 4. 上から順に試す
+                for (const model of availableModels) {
+                    // model.name は "models/gemini-1.5-flash" のように返ってくる
+                    // APIURLを作るときは "models/" を除去して埋め込むのが確実
+                    const modelId = model.name.split('/').pop();
+
+                    try {
+                        const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${cleanApiKey}`;
+
+                        const geminiRes = await axios.post(generateUrl, {
+                            contents: [{ parts: [{ text: prompt }] }]
+                        }, { headers: { 'Content-Type': 'application/json' } });
+
+                        const text = geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (text) {
+                            const match = text.match(/#[0-9a-fA-F]{6}/);
+                            if (match) {
+                                planetColor = match[0];
+                                console.log(`[Gemini] ★成功★ (使用モデル: ${modelId})`);
+                                console.log(`[Gemini] "${mainLanguage}" の色を決定しました: ${planetColor}`);
+                                break; // 成功したら終了
+                            }
+                        }
+                    } catch (err) {
+                        const errorMsg = err.response?.data?.error?.message || err.message;
+                        console.warn(`[Gemini] スキップ (${modelId}): ${errorMsg}`);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('[Gemini] モデル一覧の取得に失敗しました:', e.message);
+        }
+    }
+
+    // AIが全滅した場合はデフォルトのグレー
+    if (!planetColor) {
+        console.error('[Gemini] 色の生成に失敗しました。デフォルト色を使用します。');
+        planetColor = '#808080';
+    }
+    // ▲▲▲ 変更点終了 ▲▲▲
 
     let planetSizeFactor = 1.0 + Math.min(1.0, Math.log10(Math.max(1, totalCommits)) / 2.5);
     planetSizeFactor = parseFloat(planetSizeFactor.toFixed(2));
