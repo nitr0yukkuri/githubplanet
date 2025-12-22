@@ -13,10 +13,17 @@ import axios from 'axios';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pg from 'pg';
+// ▼▼▼ 追加: セッションストア用ライブラリ ▼▼▼
+import connectPgSimple from 'connect-pg-simple';
+// ▲▲▲ 追加終了 ▲▲▲
 
 // 2. Express の初期化
 const app = express();
 const port = process.env.PORT || 3000;
+
+// ▼▼▼ 追加: セッションストアの初期化 ▼▼▼
+const PgSession = connectPgSimple(session);
+// ▲▲▲ 追加終了 ▲▲▲
 
 // ★★★ GitHub OAuth App 設定 ★★★
 const isProduction = process.env.NODE_ENV === 'production';
@@ -123,6 +130,12 @@ app.use('/front', express.static(path.join(__dirname, 'front')));
 if (isProduction) app.set('trust proxy', 1);
 
 app.use(session({
+    // ▼▼▼ 修正: DB接続がある場合はPostgreSQLにセッションを保存 ▼▼▼
+    store: pool ? new PgSession({
+        pool: pool,
+        createTableIfMissing: true // セッション用テーブルがない場合に自動作成
+    }) : undefined,
+    // ▲▲▲ 修正終了 ▲▲▲
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: true,
@@ -214,7 +227,9 @@ async function updateAndSavePlanetData(user, accessToken) {
 
     } catch (e) {
         console.error('[GraphQL] データ取得失敗:', e.message);
-        repositories = [];
+        // ▼▼▼ 修正: エラー時は空配列にせず、例外を投げて処理を中断する（データ上書き防止） ▼▼▼
+        throw e;
+        // ▲▲▲ 修正終了 ▲▲▲
     }
 
     const languageStats = {};
@@ -366,6 +381,63 @@ async function updateAndSavePlanetData(user, accessToken) {
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
+
+// ▼▼▼ 追加: Gemini APIテスト用エンドポイント ▼▼▼
+app.get('/api/test-gemini', async (req, res) => {
+    if (!process.env.GEMINI_API_KEY) {
+        return res.json({ status: 'error', message: 'GEMINI_API_KEY が設定されていません。' });
+    }
+
+    try {
+        const cleanApiKey = process.env.GEMINI_API_KEY.trim();
+        const listModelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanApiKey}`;
+        const listRes = await axios.get(listModelsUrl);
+        const allModels = listRes.data.models || [];
+
+        let availableModels = allModels.filter(m =>
+            m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent')
+        );
+
+        if (availableModels.length === 0) {
+            return res.json({ status: 'error', message: '利用可能なモデルが見つかりませんでした。' });
+        }
+
+        // 優先順位付け
+        availableModels.sort((a, b) => {
+            const nA = a.name; const nB = b.name;
+            if (nA.includes('1.5-flash') && !nB.includes('1.5-flash')) return -1;
+            if (!nA.includes('1.5-flash') && nB.includes('1.5-flash')) return 1;
+            return 0;
+        });
+
+        // 最も優先度の高いモデルでテスト生成
+        const model = availableModels[0];
+        const modelId = model.name.split('/').pop();
+        const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${cleanApiKey}`;
+
+        const prompt = "Explain 'Hello World' in one short sentence.";
+        const geminiRes = await axios.post(generateUrl, {
+            contents: [{ parts: [{ text: prompt }] }]
+        }, { headers: { 'Content-Type': 'application/json' } });
+
+        const output = geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        res.json({
+            status: 'success',
+            model_used: modelId,
+            output: output,
+            available_models_count: availableModels.length
+        });
+
+    } catch (e) {
+        res.json({
+            status: 'error',
+            message: e.message,
+            detail: e.response?.data || 'No details'
+        });
+    }
+});
+// ▲▲▲ 追加終了 ▲▲▲
 
 app.get('/achievements', (req, res) => {
     res.sendFile(path.join(__dirname, 'achievements.html'));
@@ -564,4 +636,7 @@ app.get('/api/planets/random', async (req, res) => {
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
     console.log(`http://localhost:${port}`);
+    // ▼▼▼ 追加: テスト用URLの案内 ▼▼▼
+    console.log(`Test Gemini API: http://localhost:${port}/api/test-gemini`);
+    // ▲▲▲ 追加終了 ▲▲▲
 });
