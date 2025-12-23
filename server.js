@@ -638,5 +638,5 @@ app.listen(port, () => {
     console.log(`http://localhost:${port}`);
     // ▼▼▼ 追加: テスト用URLの案内 ▼▼▼
     console.log(`Test Gemini API: http://localhost:${port}/api/test-gemini`);
-    // ▲▲▲ 追加終了 ▲▲▲
+    // ▲▲▲ 追加終了 ▲▲▲aa
 });
