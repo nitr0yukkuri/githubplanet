@@ -2,11 +2,18 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import anime from 'animejs';
+// ▼▼▼ 追加: Socket.IO Client ▼▼▼
+import { io } from 'socket.io-client';
+// ▲▲▲ 追加終了 ▲▲▲
 
 let scene, camera, renderer, controls, planetGroup;
 
 let welcomeModal, okButton, mainUiWrapper;
 let isFetchingRandomPlanet = false;
+
+// ▼▼▼ 追加: Socket.IO インスタンス ▼▼▼
+const socket = io();
+// ▲▲▲ 追加終了 ▲▲▲
 
 async function fetchMyPlanetData() {
     try {
@@ -141,7 +148,6 @@ function loadPlanet(data) {
         const starGeometry = new THREE.BufferGeometry();
         starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
 
-        // ▼▼▼ 変更点: スマホ(高DPI)対策で pixelRatio を考慮 ▼▼▼
         const vertexShader = `
             uniform float pixelRatio;
             void main() {
@@ -151,7 +157,6 @@ function loadPlanet(data) {
                 gl_PointSize = (800.0 * pixelRatio) / -mvPosition.z;
             }
         `;
-        // ▲▲▲ 変更点 ▲▲▲
 
         const fragmentShader = `
             void main() {
@@ -176,11 +181,9 @@ function loadPlanet(data) {
         `;
 
         const starMaterial = new THREE.ShaderMaterial({
-            // ▼▼▼ 変更点: pixelRatio を渡す ▼▼▼
             uniforms: {
                 pixelRatio: { value: window.devicePixelRatio }
             },
-            // ▲▲▲ 変更点 ▲▲▲
             vertexShader: vertexShader,
             fragmentShader: fragmentShader,
             blending: THREE.AdditiveBlending,
@@ -301,6 +304,80 @@ function loadPlanet(data) {
     controls.enabled = true;
 }
 
+// ▼▼▼ 追加: 君の名は。風 流星生成関数 ▼▼▼
+function spawnMeteor(data) {
+    if (!scene) return;
+
+    // 言語カラー + 白いコア
+    const baseColor = new THREE.Color(data.color || '#ffffff');
+    const meteorGroup = new THREE.Group();
+
+    // 1. 光る核 (Head)
+    const headGeo = new THREE.SphereGeometry(0.5, 16, 16);
+    const headMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const head = new THREE.Mesh(headGeo, headMat);
+    meteorGroup.add(head);
+
+    // 2. 尾 (Tail) - 円錐を伸ばして光の筋にする
+    const tailLength = 20;
+    const tailGeo = new THREE.CylinderGeometry(0.1, 0.6, tailLength, 8, 1, true);
+    tailGeo.translate(0, tailLength / 2, 0); // 原点を先端に合わせる
+    tailGeo.rotateX(Math.PI / 2); // 進行方向に向ける
+
+    const tailMat = new THREE.MeshBasicMaterial({
+        color: baseColor,
+        transparent: true,
+        opacity: 0.6,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+    const tail = new THREE.Mesh(tailGeo, tailMat);
+    meteorGroup.add(tail);
+
+    // 3. 軌道計算: 右上(遠く)から左下(近く)へ
+    // スタート位置: 画面外の右上奥
+    const startX = 50 + Math.random() * 20;
+    const startY = 30 + Math.random() * 20;
+    const startZ = -20 - Math.random() * 20;
+
+    // ゴール位置: 画面左下、惑星の裏側あたりを通過
+    const endX = -30 - Math.random() * 10;
+    const endY = -10 - Math.random() * 10;
+    const endZ = 10 + Math.random() * 10;
+
+    meteorGroup.position.set(startX, startY, startZ);
+
+    // 進行方向を向く
+    meteorGroup.lookAt(endX, endY, endZ);
+
+    scene.add(meteorGroup);
+
+    // アニメーション
+    const duration = 2000 + Math.random() * 1000; // 2~3秒かけて流れる
+
+    anime({
+        targets: meteorGroup.position,
+        x: endX,
+        y: endY,
+        z: endZ,
+        easing: 'easeInQuad', // 加速しながら落ちる
+        duration: duration,
+        update: () => {
+            // 尾の長さを速度に応じて変えたり、点滅させたりする演出を入れるとより良い
+            tail.material.opacity = 1.0 - (anime.running[0].progress / 100); // 最後は消える
+        },
+        complete: () => {
+            scene.remove(meteorGroup);
+            headGeo.dispose();
+            headMat.dispose();
+            tailGeo.dispose();
+            tailMat.dispose();
+        }
+    });
+}
+// ▲▲▲ 追加終了 ▲▲▲
+
+
 async function init() {
 
     welcomeModal = document.getElementById('welcome-modal');
@@ -316,6 +393,13 @@ async function init() {
     const pl = new THREE.PointLight(0xffffff, 25, 1000); pl.position.set(20, 10, 5); scene.add(pl);
     const dl = new THREE.DirectionalLight(0xffffff, 0.4); dl.position.set(50, 15, 10); scene.add(dl);
     new THREE.CubeTextureLoader().setPath('front/img/skybox/').load(['right.png', 'left.png', 'top.png', 'bottom.png', 'front.png', 'back.png'], (tex) => scene.background = tex);
+
+    // ▼▼▼ 追加: Socketイベントリスナー ▼▼▼
+    socket.on('meteor', (data) => {
+        console.log('Meteor received:', data);
+        spawnMeteor(data);
+    });
+    // ▲▲▲ 追加終了 ▲▲▲
 
     window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
 
