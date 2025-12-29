@@ -304,9 +304,9 @@ function loadPlanet(data) {
     controls.enabled = true;
 }
 
-// ▼▼▼ 修正: 描写範囲を大幅に拡大 ▼▼▼
+// ▼▼▼ 修正: カメラ基準の座標系に変更 ▼▼▼
 function spawnMeteor(data) {
-    if (!scene) return;
+    if (!scene || !camera) return;
 
     const baseColor = new THREE.Color(data.color || '#ffffff');
     const meteorGroup = new THREE.Group();
@@ -365,35 +365,44 @@ function spawnMeteor(data) {
     meteorGroup.add(glow);
 
 
-    // --- 動きの制御: 範囲を大幅に拡大 ---
-    // スタート: Xを100以上に設定し、かなり遠くから飛んでくるように
-    // Yも少し幅を持たせる (10〜30程度)
-    // Zも奥行きを持たせる (-50〜50)
-    const startX = 100 + Math.random() * 50;
-    const startY = 10 + Math.random() * 20;
-    const startZ = -50 - Math.random() * 50;
+    // --- 動きの制御: カメラ基準で計算 ---
+    // これにより、カメラがどこを向いていても常に「画面の奥」から流れてくる
 
-    // ゴール: 反対側へ突き抜ける
-    const endX = -100 - Math.random() * 50;
-    const endY = 10 + Math.random() * 20;
-    const endZ = 50 + Math.random() * 50;
+    // カメラ座標系でのスタート位置 (画面右寄り、上寄り、奥)
+    const localStart = new THREE.Vector3(
+        40 + Math.random() * 40,   // 右
+        10 + Math.random() * 30,   // 上
+        -100 - Math.random() * 50  // 奥 (カメラ座標系ではマイナスZが視線方向)
+    );
 
-    meteorGroup.position.set(startX, startY, startZ);
-    meteorGroup.lookAt(endX, endY, endZ);
+    // カメラ座標系でのゴール位置 (画面左寄り、下寄り、手前)
+    const localEnd = new THREE.Vector3(
+        -40 - Math.random() * 40,  // 左
+        -10 - Math.random() * 30,  // 下
+        20 + Math.random() * 20    // 手前
+    );
+
+    // ワールド座標に変換
+    // ベクトルをカメラの回転に合わせて回転させ、カメラの位置を足す
+    const startPos = localStart.applyQuaternion(camera.quaternion).add(camera.position);
+    const endPos = localEnd.applyQuaternion(camera.quaternion).add(camera.position);
+
+    meteorGroup.position.copy(startPos);
+    meteorGroup.lookAt(endPos);
 
     scene.add(meteorGroup);
 
-    const duration = 3500 + Math.random() * 2000;
+    const duration = 3000 + Math.random() * 1500;
 
     anime({
         targets: meteorGroup.position,
-        x: endX,
-        y: endY,
-        z: endZ,
+        x: endPos.x,
+        y: endPos.y,
+        z: endPos.z,
         easing: 'easeInQuad',
         duration: duration,
-        update: () => {
-            const progress = anime.running[0].progress;
+        update: (anim) => {
+            const progress = anim.progress;
             if (progress > 80) {
                 const fade = 1.0 - ((progress - 80) / 20);
                 head.material.opacity = fade;
