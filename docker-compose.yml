@@ -3,6 +3,7 @@ services:
     build: .
     ports:
       - "3000:3000"
+      - "9229:9229"
     environment:
       - PORT=3000
       - DATABASE_URL=postgres://githubplanet:password@db:5432/githubplanet
@@ -13,6 +14,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    command: node --inspect=0.0.0.0:9229 server.js
 
   db:
     image: postgres:15-alpine

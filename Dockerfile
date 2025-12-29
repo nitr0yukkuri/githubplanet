@@ -12,6 +12,7 @@ COPY . .
 
 # ポート公開
 EXPOSE 3000
+EXPOSE 9229
 
 # サーバー起動
 CMD ["npm", "start"]
