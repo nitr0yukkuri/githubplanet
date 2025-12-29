@@ -16,10 +16,17 @@ import pg from 'pg';
 // ▼▼▼ 追加: セッションストア用ライブラリ ▼▼▼
 import connectPgSimple from 'connect-pg-simple';
 // ▲▲▲ 追加終了 ▲▲▲
+// ▼▼▼ 追加: Socket.IO ▼▼▼
+import { Server } from 'socket.io';
+// ▲▲▲ 追加終了 ▲▲▲
 
 // 2. Express の初期化
 const app = express();
 const port = process.env.PORT || 3000;
+
+// ▼▼▼ 追加: Webhook用JSONパース ▼▼▼
+app.use(express.json());
+// ▲▲▲ 追加終了 ▲▲▲
 
 // ▼▼▼ 追加: セッションストアの初期化 ▼▼▼
 const PgSession = connectPgSimple(session);
@@ -45,6 +52,18 @@ if (isProduction) {
     }
 }
 
+// ▼▼▼ 言語カラー定義 (共有用) ▼▼▼
+const LANGUAGE_COLORS = {
+    JavaScript: '#f0db4f', TypeScript: '#007acc', Python: '#306998', HTML: '#e34c26', CSS: '#563d7c',
+    Ruby: '#CC342D', Java: '#b07219', C: '#555555', 'C++': '#f34b7d', 'C#': '#178600',
+    Go: '#00ADD8', Rust: '#dea584', PHP: '#4F5D95',
+    Swift: '#F05138', Kotlin: '#A97BFF', Shell: '#89e051', Dart: '#00B4AB',
+    Scala: '#c22d40', Perl: '#0298c3', Lua: '#000080', Haskell: '#5e5086',
+    R: '#198CE7', Julia: '#a270ba', Vue: '#41b883', Dockerfile: '#384d54',
+    Svelte: '#ff3e00', Elixir: '#6e4a7e', 'Objective-C': '#438eff', VimScript: '#199f4b'
+};
+// ▲▲▲ 言語カラー定義 ▲▲▲
+
 // ▼▼▼ 実績定義 ▼▼▼
 const ACHIEVEMENTS = {
     FIRST_PLANET: { id: 'FIRST_PLANET', name: '最初の星', description: '初めての惑星を作成した。' },
@@ -55,7 +74,6 @@ const ACHIEVEMENTS = {
 // ▲▲▲ 実績定義 ▲▲▲
 
 // ▼▼▼ GraphQLクエリ定義 ▼▼▼
-// 修正: repositoriesContributedTo を追加して、貢献したリポジトリも取得するように変更
 const USER_DATA_QUERY = `
   query($login: String!) {
     user(login: $login) {
@@ -114,7 +132,6 @@ const USER_DATA_QUERY = `
 const connectionString = process.env.DATABASE_URL;
 let pool;
 if (connectionString) {
-    // ▼▼▼ 修正: 接続先がローカル(db, localhost)以外ならSSLを強制有効化する判定を追加 ▼▼▼
     const isLocalDatabase = connectionString.includes('@localhost') ||
         connectionString.includes('@127.0.0.1') ||
         connectionString.includes('@db');
@@ -123,7 +140,6 @@ if (connectionString) {
         connectionString: connectionString,
         ssl: isLocalDatabase ? undefined : { rejectUnauthorized: false }
     });
-    // ▲▲▲ 修正終了 ▲▲▲
 
     pool.query(`
         CREATE TABLE IF NOT EXISTS planets (
@@ -158,12 +174,10 @@ app.use('/front', express.static(path.join(__dirname, 'front')));
 if (isProduction) app.set('trust proxy', 1);
 
 app.use(session({
-    // ▼▼▼ 修正: DB接続がある場合はPostgreSQLにセッションを保存 ▼▼▼
     store: pool ? new PgSession({
         pool: pool,
-        createTableIfMissing: true // セッション用テーブルがない場合に自動作成
+        createTableIfMissing: true
     }) : undefined,
-    // ▲▲▲ 修正終了 ▲▲▲
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: true,
@@ -251,17 +265,13 @@ async function updateAndSavePlanetData(user, accessToken) {
             throw new Error('GraphQL query failed');
         }
 
-        // ▼▼▼ 修正: 所有リポジトリと貢献リポジトリを合算する ▼▼▼
         const ownedRepos = response.data.data.user.repositories.nodes || [];
         const contributedRepos = response.data.data.user.repositoriesContributedTo.nodes || [];
         repositories = [...ownedRepos, ...contributedRepos];
-        // ▲▲▲ 修正終了 ▲▲▲
 
     } catch (e) {
         console.error('[GraphQL] データ取得失敗:', e.message);
-        // ▼▼▼ 修正: エラー時は空配列にせず、例外を投げて処理を中断する（データ上書き防止） ▼▼▼
         throw e;
-        // ▲▲▲ 修正終了 ▲▲▲
     }
 
     const languageStats = {};
@@ -287,21 +297,8 @@ async function updateAndSavePlanetData(user, accessToken) {
         if (bytes > maxBytes) { maxBytes = bytes; mainLanguage = lang; }
     }
 
-    const colors = {
-        JavaScript: '#f0db4f', TypeScript: '#007acc', Python: '#306998', HTML: '#e34c26', CSS: '#563d7c',
-        Ruby: '#CC342D', Java: '#b07219', C: '#555555', 'C++': '#f34b7d', 'C#': '#178600',
-        Go: '#00ADD8', Rust: '#dea584', PHP: '#4F5D95',
-        Swift: '#F05138', Kotlin: '#A97BFF', Shell: '#89e051', Dart: '#00B4AB',
-        Scala: '#c22d40', Perl: '#0298c3', Lua: '#000080', Haskell: '#5e5086',
-        R: '#198CE7', Julia: '#a270ba', Vue: '#41b883', Dockerfile: '#384d54',
-        Svelte: '#ff3e00', Elixir: '#6e4a7e', 'Objective-C': '#438eff', VimScript: '#199f4b'
-    };
-
-    // ▼▼▼ 変更点: Geminiモデルを共有するための変数を定義 ▼▼▼
     let geminiModels = [];
-    // ▲▲▲ 変更点終了 ▲▲▲
-
-    let planetColor = colors[mainLanguage];
+    let planetColor = LANGUAGE_COLORS[mainLanguage];
 
     if (!planetColor && mainLanguage !== 'Unknown' && process.env.GEMINI_API_KEY) {
         console.log(`[Gemini] 未定義の言語 "${mainLanguage}" の色を生成します (モデル自動探索)...`);
@@ -310,14 +307,11 @@ async function updateAndSavePlanetData(user, accessToken) {
         const prompt = `Programming language: ${mainLanguage}. Provide a suitable hex color code (e.g., #ff0000) for this language. Return ONLY the hex code string.`;
 
         try {
-            // 1. Googleに「今、私のキーで使えるモデルは何？」と聞く
             console.log('[Gemini] 利用可能なモデルを問い合わせ中...');
             const listModelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanApiKey}`;
             const listRes = await axios.get(listModelsUrl);
-
             const allModels = listRes.data.models || [];
 
-            // 2. "generateContent" に対応しているモデルだけ抽出
             geminiModels = allModels.filter(m =>
                 m.supportedGenerationMethods &&
                 m.supportedGenerationMethods.includes('generateContent')
@@ -326,7 +320,6 @@ async function updateAndSavePlanetData(user, accessToken) {
             if (geminiModels.length === 0) {
                 console.error('[Gemini] 生成に使用できるモデルが見つかりませんでした。');
             } else {
-                // 3. 優先順位: 1.5-flash -> 1.5-pro -> その他
                 geminiModels.sort((a, b) => {
                     const nA = a.name; const nB = b.name;
                     if (nA.includes('1.5-flash') && !nB.includes('1.5-flash')) return -1;
@@ -336,15 +329,10 @@ async function updateAndSavePlanetData(user, accessToken) {
                     return 0;
                 });
 
-                console.log(`[Gemini] 候補モデル: ${geminiModels.map(m => m.name.split('/').pop()).join(', ')}`);
-
-                // 4. 上から順に試す
                 for (const model of geminiModels) {
                     const modelId = model.name.split('/').pop();
-
                     try {
                         const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${cleanApiKey}`;
-
                         const geminiRes = await axios.post(generateUrl, {
                             contents: [{ parts: [{ text: prompt }] }]
                         }, { headers: { 'Content-Type': 'application/json' } });
@@ -355,13 +343,11 @@ async function updateAndSavePlanetData(user, accessToken) {
                             if (match) {
                                 planetColor = match[0];
                                 console.log(`[Gemini] ★成功★ (使用モデル: ${modelId})`);
-                                console.log(`[Gemini] "${mainLanguage}" の色を決定しました: ${planetColor}`);
-                                break; // 成功したら終了
+                                break;
                             }
                         }
                     } catch (err) {
-                        const errorMsg = err.response?.data?.error?.message || err.message;
-                        console.warn(`[Gemini] スキップ (${modelId}): ${errorMsg}`);
+                        console.warn(`[Gemini] スキップ (${modelId}): ${err.message}`);
                     }
                 }
             }
@@ -370,9 +356,7 @@ async function updateAndSavePlanetData(user, accessToken) {
         }
     }
 
-    // AIが全滅した場合はデフォルトのグレー
     if (!planetColor) {
-        console.error('[Gemini] 色の生成に失敗しました。デフォルト色を使用します。');
         planetColor = '#808080';
     }
 
@@ -381,11 +365,8 @@ async function updateAndSavePlanetData(user, accessToken) {
 
     let planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
 
-    // ▼▼▼ 追加: Gemini APIでかっこいい名前を生成する処理 ▼▼▼
-    // 既存リストで対応できない場合(「未知の」や「神秘」が含まれる場合)に、Geminiに名前を考えてもらう
     if (process.env.GEMINI_API_KEY && (planetName.includes('未知の') || planetName.includes('神秘'))) {
         console.log(`[Gemini] 暫定名 "${planetName}" をかっこいい名前に修正します...`);
-
         const cleanApiKey = process.env.GEMINI_API_KEY.trim();
         let suffix = '星';
         if (totalCommits > 1000) suffix = '帝星';
@@ -398,13 +379,11 @@ async function updateAndSavePlanetData(user, accessToken) {
         Return ONLY the name string.`;
 
         try {
-            // モデルリストがが未取得なら取得する
             if (geminiModels.length === 0) {
                 const listModelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanApiKey}`;
                 const listRes = await axios.get(listModelsUrl);
                 const allModels = listRes.data.models || [];
                 geminiModels = allModels.filter(m => m.supportedGenerationMethods?.includes('generateContent'));
-                // 優先順位付け (Flash -> Pro)
                 geminiModels.sort((a, b) => {
                     const nA = a.name; const nB = b.name;
                     if (nA.includes('1.5-flash') && !nB.includes('1.5-flash')) return -1;
@@ -426,8 +405,6 @@ async function updateAndSavePlanetData(user, accessToken) {
                         const cleanName = text.trim().replace(/(\r\n|\n|\r)/gm, "");
                         if (cleanName.length > 0) {
                             planetName = cleanName;
-                            console.log(`[Gemini] ★命名成功★ (使用モデル: ${modelId})`);
-                            console.log(`[Gemini] 新しい名前: ${planetName}`);
                             break;
                         }
                     }
@@ -439,7 +416,6 @@ async function updateAndSavePlanetData(user, accessToken) {
             console.error('[Gemini Name] 名前の生成に失敗しました:', e.message);
         }
     }
-    // ▲▲▲ 追加終了 ▲▲▲
 
     let achievements = {};
     if (pool) {
@@ -474,7 +450,30 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ▼▼▼ 追加: Gemini APIテスト用エンドポイント ▼▼▼
+// ▼▼▼ 追加: Webhook エンドポイント (Socket.IOイベント発火) ▼▼▼
+app.post('/webhook', (req, res) => {
+    try {
+        const payload = req.body;
+        // GitHub Push Event
+        if (payload && payload.repository) {
+            const lang = payload.repository.language || 'Unknown';
+            // 言語から色を決定（なければデフォルト）
+            const color = LANGUAGE_COLORS[lang] || '#ffffff';
+
+            console.log(`[Webhook] Commit detected! Language: ${lang}, Color: ${color}`);
+
+            // 全クライアントに流星イベントを通知
+            io.emit('meteor', { color: color, language: lang });
+        }
+        res.status(200).send('OK');
+    } catch (e) {
+        console.error('[Webhook Error]', e);
+        res.status(500).send('Error');
+    }
+});
+// ▲▲▲ 追加終了 ▲▲▲
+
+// Gemini APIテスト用
 app.get('/api/test-gemini', async (req, res) => {
     if (!process.env.GEMINI_API_KEY) {
         return res.json({ status: 'error', message: 'GEMINI_API_KEY が設定されていません。' });
@@ -494,7 +493,6 @@ app.get('/api/test-gemini', async (req, res) => {
             return res.json({ status: 'error', message: '利用可能なモデルが見つかりませんでした。' });
         }
 
-        // 優先順位付け
         availableModels.sort((a, b) => {
             const nA = a.name; const nB = b.name;
             if (nA.includes('1.5-flash') && !nB.includes('1.5-flash')) return -1;
@@ -502,7 +500,6 @@ app.get('/api/test-gemini', async (req, res) => {
             return 0;
         });
 
-        // 最も優先度の高いモデルでテスト生成
         const model = availableModels[0];
         const modelId = model.name.split('/').pop();
         const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${cleanApiKey}`;
@@ -530,7 +527,7 @@ app.get('/api/test-gemini', async (req, res) => {
     }
 });
 
-// ▼▼▼ 追加: 指定した言語の色をGeminiに決めさせるテスト用URL (NEW) ▼▼▼
+// 色生成デバッグ用
 app.get('/api/debug-color/:lang', async (req, res) => {
     const mainLanguage = req.params.lang;
     const cleanApiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim() : '';
@@ -544,11 +541,9 @@ app.get('/api/debug-color/:lang', async (req, res) => {
     let usedModel = 'None';
 
     try {
-        // 1. モデル一覧取得
         const listRes = await axios.get(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanApiKey}`);
         const allModels = listRes.data.models || [];
 
-        // 2. 生成可能なモデルを抽出 & 優先順位付け
         let availableModels = allModels.filter(m => m.supportedGenerationMethods?.includes('generateContent'));
         availableModels.sort((a, b) => {
             const nA = a.name; const nB = b.name;
@@ -557,7 +552,6 @@ app.get('/api/debug-color/:lang', async (req, res) => {
             return 0;
         });
 
-        // 3. 問い合わせ実行
         for (const model of availableModels) {
             const modelId = model.name.split('/').pop();
             const prompt = `Programming language: ${mainLanguage}. Provide a suitable hex color code (e.g., #ff0000) for this language. Return ONLY the hex code string.`;
@@ -574,7 +568,7 @@ app.get('/api/debug-color/:lang', async (req, res) => {
                     if (match) {
                         planetColor = match[0];
                         usedModel = modelId;
-                        break; // 成功したら終了
+                        break;
                     }
                 }
             } catch (err) {
@@ -591,13 +585,12 @@ app.get('/api/debug-color/:lang', async (req, res) => {
         model_used: usedModel
     });
 });
-// ▲▲▲ 追加終了 ▲▲▲
 
-// ▼▼▼ 追加: 指定した言語と色の名前をGeminiに決めさせるテスト用URL (NEW) ▼▼▼
+// 名前生成デバッグ用
 app.get('/api/debug-name/:lang', async (req, res) => {
     const mainLanguage = req.params.lang;
-    const planetColor = req.query.color || '#808080'; // クエリパラメータで色指定可 (?color=#ff0000)
-    const totalCommits = parseInt(req.query.commits || '100'); // コミット数も指定可
+    const planetColor = req.query.color || '#808080';
+    const totalCommits = parseInt(req.query.commits || '100');
     const cleanApiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim() : '';
 
     if (!cleanApiKey) {
@@ -609,11 +602,9 @@ app.get('/api/debug-name/:lang', async (req, res) => {
     let usedModel = 'None';
 
     try {
-        // 1. モデル一覧取得
         const listRes = await axios.get(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanApiKey}`);
         const allModels = listRes.data.models || [];
 
-        // 2. 生成可能なモデルを抽出 & 優先順位付け
         let availableModels = allModels.filter(m => m.supportedGenerationMethods?.includes('generateContent'));
         availableModels.sort((a, b) => {
             const nA = a.name; const nB = b.name;
@@ -622,7 +613,6 @@ app.get('/api/debug-name/:lang', async (req, res) => {
             return 0;
         });
 
-        // 3. プロンプト作成
         let suffix = '星';
         if (totalCommits > 1000) suffix = '帝星';
         else if (totalCommits > 500) suffix = '巨星';
@@ -633,7 +623,6 @@ app.get('/api/debug-name/:lang', async (req, res) => {
         Example: "JavaScript" -> "柔軟な黄金の${suffix}".
         Return ONLY the name string.`;
 
-        // 4. 問い合わせ実行
         for (const model of availableModels) {
             const modelId = model.name.split('/').pop();
             try {
@@ -666,7 +655,6 @@ app.get('/api/debug-name/:lang', async (req, res) => {
         model_used: usedModel
     });
 });
-// ▲▲▲ 追加終了 ▲▲▲
 
 app.get('/achievements', (req, res) => {
     res.sendFile(path.join(__dirname, 'achievements.html'));
@@ -861,11 +849,18 @@ app.get('/api/planets/random', async (req, res) => {
     }
 });
 
-// ▼▼▼ 変更点: クリックできるURLを表示 ▼▼▼
-app.listen(port, () => {
+// ▼▼▼ 修正: Socket.IO用に戻り値のserverを使用 ▼▼▼
+const server = app.listen(port, () => {
     console.log(`Server running on port ${port}`);
     console.log(`http://localhost:${port}`);
-    // ▼▼▼ 追加: テスト用URLの案内 ▼▼▼
     console.log(`Test Gemini API: http://localhost:${port}/api/test-gemini`);
-    // ▲▲▲ 追加終了 ▲▲▲
 });
+
+// Socket.IOの初期化
+const io = new Server(server);
+
+// Socket.IO 接続イベント
+io.on('connection', (socket) => {
+    console.log('Client connected to socket');
+});
+// ▲▲▲ 修正終了 ▲▲▲
