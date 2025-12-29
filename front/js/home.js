@@ -304,7 +304,7 @@ function loadPlanet(data) {
     controls.enabled = true;
 }
 
-// ▼▼▼ 修正: 描写範囲を大幅に拡大 ▼▼▼
+// ▼▼▼ 修正: 奥の方から出てくるように座標を調整 ▼▼▼
 function spawnMeteor(data) {
     if (!scene) return;
 
@@ -365,18 +365,16 @@ function spawnMeteor(data) {
     meteorGroup.add(glow);
 
 
-    // --- 動きの制御: 範囲を大幅に拡大 ---
-    // スタート: Xを100以上に設定し、かなり遠くから飛んでくるように
-    // Yも少し幅を持たせる (10〜30程度)
-    // Zも奥行きを持たせる (-50〜50)
-    const startX = 100 + Math.random() * 50;
-    const startY = 10 + Math.random() * 20;
-    const startZ = -50 - Math.random() * 50;
+    // --- 動きの制御: 奥から手前へ ---
+    // スタート: Zをかなり奥（-200〜-300）にし、Yの範囲も広げる
+    const startX = 60 + Math.random() * 60;   // 右側
+    const startY = Math.random() * 30 - 10;   // 上下バラつき (-10 ~ 20)
+    const startZ = -200 - Math.random() * 100; // かなり奥
 
-    // ゴール: 反対側へ突き抜ける
-    const endX = -100 - Math.random() * 50;
-    const endY = 10 + Math.random() * 20;
-    const endZ = 50 + Math.random() * 50;
+    // ゴール: 手前左へ
+    const endX = -60 - Math.random() * 60;
+    const endY = Math.random() * 30 - 10;
+    const endZ = 100 + Math.random() * 50;
 
     meteorGroup.position.set(startX, startY, startZ);
     meteorGroup.lookAt(endX, endY, endZ);
@@ -392,8 +390,8 @@ function spawnMeteor(data) {
         z: endZ,
         easing: 'easeInQuad',
         duration: duration,
-        update: () => {
-            const progress = anime.running[0].progress;
+        update: (anim) => {
+            const progress = anim.progress;
             if (progress > 80) {
                 const fade = 1.0 - ((progress - 80) / 20);
                 head.material.opacity = fade;
