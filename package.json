@@ -6,6 +6,7 @@
     "express": "^4.21.2",
     "express-session": "^1.18.2",
     "pg": "^8.16.3",
+    "socket.io": "^4.7.2",
     "three": "^0.181.0"
   },
   "type": "module",
