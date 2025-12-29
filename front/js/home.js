@@ -304,78 +304,113 @@ function loadPlanet(data) {
     controls.enabled = true;
 }
 
-// ▼▼▼ 追加: 君の名は。風 流星生成関数 ▼▼▼
+// ▼▼▼ 修正: サイズ縮小 & 光を濃く ▼▼▼
 function spawnMeteor(data) {
     if (!scene) return;
 
-    // 言語カラー + 白いコア
     const baseColor = new THREE.Color(data.color || '#ffffff');
     const meteorGroup = new THREE.Group();
+    meteorGroup.renderOrder = 9999;
 
-    // 1. 光る核 (Head)
-    const headGeo = new THREE.SphereGeometry(0.5, 16, 16);
-    const headMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    // --- 1. Head: 星型(Star Shape) - 少し小さく ---
+    const starShape = new THREE.Shape();
+    const points = 5;
+    // サイズを小さく (0.8/0.4 -> 0.5/0.25)
+    const outerRadius = 0.5;
+    const innerRadius = 0.25;
+
+    for (let i = 0; i < points * 2; i++) {
+        const angle = (i * Math.PI) / points;
+        const radius = i % 2 === 0 ? outerRadius : innerRadius;
+        const x = Math.sin(angle) * radius;
+        const y = Math.cos(angle) * radius;
+        if (i === 0) starShape.moveTo(x, y);
+        else starShape.lineTo(x, y);
+    }
+    starShape.closePath();
+
+    const headGeo = new THREE.ExtrudeGeometry(starShape, {
+        depth: 0.1, // 厚みも薄く
+        bevelEnabled: false
+    });
+    headGeo.center();
+
+    const headMat = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 1.0,
+        blending: THREE.AdditiveBlending
+    });
     const head = new THREE.Mesh(headGeo, headMat);
     meteorGroup.add(head);
 
-    // 2. 尾 (Tail) - 円錐を伸ばして光の筋にする
-    const tailLength = 20;
-    const tailGeo = new THREE.CylinderGeometry(0.1, 0.6, tailLength, 8, 1, true);
-    tailGeo.translate(0, tailLength / 2, 0); // 原点を先端に合わせる
-    tailGeo.rotateX(Math.PI / 2); // 進行方向に向ける
 
-    const tailMat = new THREE.MeshBasicMaterial({
+    // --- 2. Tail: Glowのみ - 細く・濃く ---
+    const tailLength = 35; // 少し短く
+
+    // 半径を小さく (1.0 -> 0.6)
+    const glowGeo = new THREE.CylinderGeometry(0.6, 0.0, tailLength * 0.9, 16, 1, true);
+    glowGeo.translate(0, -tailLength / 2 + 0.5, 0);
+    glowGeo.rotateX(Math.PI / 2);
+
+    const glowMat = new THREE.MeshBasicMaterial({
         color: baseColor,
         transparent: true,
-        opacity: 0.6,
+        opacity: 0.6, // 0.3 -> 0.6 に上げて濃くする
         blending: THREE.AdditiveBlending,
-        depthWrite: false
+        depthWrite: false,
+        side: THREE.DoubleSide
     });
-    const tail = new THREE.Mesh(tailGeo, tailMat);
-    meteorGroup.add(tail);
+    const glow = new THREE.Mesh(glowGeo, glowMat);
+    meteorGroup.add(glow);
 
-    // 3. 軌道計算: 右上(遠く)から左下(近く)へ
-    // スタート位置: 画面外の右上奥
+
+    // --- 動きの制御 (変更なし) ---
     const startX = 50 + Math.random() * 20;
-    const startY = 30 + Math.random() * 20;
+    const startY = 25 + Math.random() * 15;
     const startZ = -20 - Math.random() * 20;
 
-    // ゴール位置: 画面左下、惑星の裏側あたりを通過
-    const endX = -30 - Math.random() * 10;
-    const endY = -10 - Math.random() * 10;
-    const endZ = 10 + Math.random() * 10;
+    const endX = -50 - Math.random() * 20;
+    const endY = -15 - Math.random() * 15;
+    const endZ = 30 + Math.random() * 20;
 
     meteorGroup.position.set(startX, startY, startZ);
-
-    // 進行方向を向く
     meteorGroup.lookAt(endX, endY, endZ);
 
     scene.add(meteorGroup);
 
-    // アニメーション
-    const duration = 2000 + Math.random() * 1000; // 2~3秒かけて流れる
+    const duration = 3500 + Math.random() * 2000;
 
     anime({
         targets: meteorGroup.position,
         x: endX,
         y: endY,
         z: endZ,
-        easing: 'easeInQuad', // 加速しながら落ちる
+        easing: 'easeInQuad',
         duration: duration,
         update: () => {
-            // 尾の長さを速度に応じて変えたり、点滅させたりする演出を入れるとより良い
-            tail.material.opacity = 1.0 - (anime.running[0].progress / 100); // 最後は消える
+            const progress = anime.running[0].progress;
+            if (progress > 80) {
+                const fade = 1.0 - ((progress - 80) / 20);
+                head.material.opacity = fade;
+                glow.material.opacity = 0.6 * fade; // 初期値に合わせて調整
+            }
         },
         complete: () => {
             scene.remove(meteorGroup);
-            headGeo.dispose();
-            headMat.dispose();
-            tailGeo.dispose();
-            tailMat.dispose();
+            headGeo.dispose(); headMat.dispose();
+            glowGeo.dispose(); glowMat.dispose();
         }
     });
+
+    anime({
+        targets: head.rotation,
+        z: Math.PI * 10,
+        easing: 'linear',
+        duration: duration
+    });
 }
-// ▲▲▲ 追加終了 ▲▲▲
+// ▲▲▲ 修正終了 ▲▲▲
 
 
 async function init() {
