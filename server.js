@@ -91,8 +91,6 @@ const connectionString = process.env.DATABASE_URL;
 let pool;
 if (connectionString) {
     // ▼▼▼ 修正: 接続先がローカル(db, localhost)以外ならSSLを強制有効化する判定を追加 ▼▼▼
-    // これにより、ローカルからNeon等の外部DBにつなぐ場合はSSLが有効になり、
-    // Docker内のdbコンテナにつなぐ場合はSSLが無効になります。
     const isLocalDatabase = connectionString.includes('@localhost') ||
         connectionString.includes('@127.0.0.1') ||
         connectionString.includes('@db');
@@ -271,7 +269,10 @@ async function updateAndSavePlanetData(user, accessToken) {
         Svelte: '#ff3e00', Elixir: '#6e4a7e', 'Objective-C': '#438eff', VimScript: '#199f4b'
     };
 
-    // ▼▼▼ 変更点: モデル一覧を問い合わせて、使えるものを自動で使う最強ロジック ▼▼▼
+    // ▼▼▼ 変更点: Geminiモデルを共有するための変数を定義 ▼▼▼
+    let geminiModels = [];
+    // ▲▲▲ 変更点終了 ▲▲▲
+
     let planetColor = colors[mainLanguage];
 
     if (!planetColor && mainLanguage !== 'Unknown' && process.env.GEMINI_API_KEY) {
@@ -289,16 +290,16 @@ async function updateAndSavePlanetData(user, accessToken) {
             const allModels = listRes.data.models || [];
 
             // 2. "generateContent" に対応しているモデルだけ抽出
-            let availableModels = allModels.filter(m =>
+            geminiModels = allModels.filter(m =>
                 m.supportedGenerationMethods &&
                 m.supportedGenerationMethods.includes('generateContent')
             );
 
-            if (availableModels.length === 0) {
+            if (geminiModels.length === 0) {
                 console.error('[Gemini] 生成に使用できるモデルが見つかりませんでした。');
             } else {
                 // 3. 優先順位: 1.5-flash -> 1.5-pro -> その他
-                availableModels.sort((a, b) => {
+                geminiModels.sort((a, b) => {
                     const nA = a.name; const nB = b.name;
                     if (nA.includes('1.5-flash') && !nB.includes('1.5-flash')) return -1;
                     if (!nA.includes('1.5-flash') && nB.includes('1.5-flash')) return 1;
@@ -307,12 +308,10 @@ async function updateAndSavePlanetData(user, accessToken) {
                     return 0;
                 });
 
-                console.log(`[Gemini] 候補モデル: ${availableModels.map(m => m.name.split('/').pop()).join(', ')}`);
+                console.log(`[Gemini] 候補モデル: ${geminiModels.map(m => m.name.split('/').pop()).join(', ')}`);
 
                 // 4. 上から順に試す
-                for (const model of availableModels) {
-                    // model.name は "models/gemini-1.5-flash" のように返ってくる
-                    // APIURLを作るときは "models/" を除去して埋め込むのが確実
+                for (const model of geminiModels) {
                     const modelId = model.name.split('/').pop();
 
                     try {
@@ -348,12 +347,71 @@ async function updateAndSavePlanetData(user, accessToken) {
         console.error('[Gemini] 色の生成に失敗しました。デフォルト色を使用します。');
         planetColor = '#808080';
     }
-    // ▲▲▲ 変更点終了 ▲▲▲
 
     let planetSizeFactor = 1.0 + Math.min(1.0, Math.log10(Math.max(1, totalCommits)) / 2.5);
     planetSizeFactor = parseFloat(planetSizeFactor.toFixed(2));
 
-    const planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
+    let planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
+
+    // ▼▼▼ 追加: Gemini APIでかっこいい名前を生成する処理 ▼▼▼
+    // 既存リストで対応できない場合(「未知の」や「神秘」が含まれる場合)に、Geminiに名前を考えてもらう
+    if (process.env.GEMINI_API_KEY && (planetName.includes('未知の') || planetName.includes('神秘'))) {
+        console.log(`[Gemini] 暫定名 "${planetName}" をかっこいい名前に修正します...`);
+
+        const cleanApiKey = process.env.GEMINI_API_KEY.trim();
+        let suffix = '星';
+        if (totalCommits > 1000) suffix = '帝星';
+        else if (totalCommits > 500) suffix = '巨星';
+
+        const prompt = `Programming language: ${mainLanguage}. Color: ${planetColor}.
+        Generate a cool Japanese planet name in the format: "[Adjective][ColorName]の${suffix}".
+        The adjective should describe the nature of "${mainLanguage}". The color name should describe the color "${planetColor}".
+        Example: "JavaScript" -> "柔軟な黄金の${suffix}".
+        Return ONLY the name string.`;
+
+        try {
+            // モデルリストが未取得なら取得する
+            if (geminiModels.length === 0) {
+                const listModelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanApiKey}`;
+                const listRes = await axios.get(listModelsUrl);
+                const allModels = listRes.data.models || [];
+                geminiModels = allModels.filter(m => m.supportedGenerationMethods?.includes('generateContent'));
+                // 優先順位付け (Flash -> Pro)
+                geminiModels.sort((a, b) => {
+                    const nA = a.name; const nB = b.name;
+                    if (nA.includes('1.5-flash') && !nB.includes('1.5-flash')) return -1;
+                    if (!nA.includes('1.5-flash') && nB.includes('1.5-flash')) return 1;
+                    return 0;
+                });
+            }
+
+            for (const model of geminiModels) {
+                const modelId = model.name.split('/').pop();
+                try {
+                    const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${cleanApiKey}`;
+                    const geminiRes = await axios.post(generateUrl, {
+                        contents: [{ parts: [{ text: prompt }] }]
+                    }, { headers: { 'Content-Type': 'application/json' } });
+
+                    const text = geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text) {
+                        const cleanName = text.trim().replace(/(\r\n|\n|\r)/gm, "");
+                        if (cleanName.length > 0) {
+                            planetName = cleanName;
+                            console.log(`[Gemini] ★命名成功★ (使用モデル: ${modelId})`);
+                            console.log(`[Gemini] 新しい名前: ${planetName}`);
+                            break;
+                        }
+                    }
+                } catch (err) {
+                    console.warn(`[Gemini Name] スキップ (${modelId}): ${err.message}`);
+                }
+            }
+        } catch (e) {
+            console.error('[Gemini Name] 名前の生成に失敗しました:', e.message);
+        }
+    }
+    // ▲▲▲ 追加終了 ▲▲▲
 
     let achievements = {};
     if (pool) {
@@ -442,6 +500,143 @@ app.get('/api/test-gemini', async (req, res) => {
             detail: e.response?.data || 'No details'
         });
     }
+});
+
+// ▼▼▼ 追加: 指定した言語の色をGeminiに決めさせるテスト用URL (NEW) ▼▼▼
+app.get('/api/debug-color/:lang', async (req, res) => {
+    const mainLanguage = req.params.lang;
+    const cleanApiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim() : '';
+
+    if (!cleanApiKey) {
+        return res.json({ error: 'GEMINI_API_KEYが設定されていません' });
+    }
+
+    console.log(`[Test] "${mainLanguage}" の色をGeminiに問い合わせます...`);
+    let planetColor = null;
+    let usedModel = 'None';
+
+    try {
+        // 1. モデル一覧取得
+        const listRes = await axios.get(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanApiKey}`);
+        const allModels = listRes.data.models || [];
+
+        // 2. 生成可能なモデルを抽出 & 優先順位付け
+        let availableModels = allModels.filter(m => m.supportedGenerationMethods?.includes('generateContent'));
+        availableModels.sort((a, b) => {
+            const nA = a.name; const nB = b.name;
+            if (nA.includes('1.5-flash') && !nB.includes('1.5-flash')) return -1;
+            if (!nA.includes('1.5-flash') && nB.includes('1.5-flash')) return 1;
+            return 0;
+        });
+
+        // 3. 問い合わせ実行
+        for (const model of availableModels) {
+            const modelId = model.name.split('/').pop();
+            const prompt = `Programming language: ${mainLanguage}. Provide a suitable hex color code (e.g., #ff0000) for this language. Return ONLY the hex code string.`;
+
+            try {
+                const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${cleanApiKey}`;
+                const geminiRes = await axios.post(generateUrl, {
+                    contents: [{ parts: [{ text: prompt }] }]
+                }, { headers: { 'Content-Type': 'application/json' } });
+
+                const text = geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) {
+                    const match = text.match(/#[0-9a-fA-F]{6}/);
+                    if (match) {
+                        planetColor = match[0];
+                        usedModel = modelId;
+                        break; // 成功したら終了
+                    }
+                }
+            } catch (err) {
+                console.warn(`[Test] Skip ${modelId}: ${err.message}`);
+            }
+        }
+    } catch (e) {
+        return res.json({ error: e.message, detail: e.response?.data });
+    }
+
+    res.json({
+        target_language: mainLanguage,
+        generated_color: planetColor || '失敗（デフォルト色になります）',
+        model_used: usedModel
+    });
+});
+// ▲▲▲ 追加終了 ▲▲▲
+
+// ▼▼▼ 追加: 指定した言語と色の名前をGeminiに決めさせるテスト用URL (NEW) ▼▼▼
+app.get('/api/debug-name/:lang', async (req, res) => {
+    const mainLanguage = req.params.lang;
+    const planetColor = req.query.color || '#808080'; // クエリパラメータで色指定可 (?color=#ff0000)
+    const totalCommits = parseInt(req.query.commits || '100'); // コミット数も指定可
+    const cleanApiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim() : '';
+
+    if (!cleanApiKey) {
+        return res.json({ error: 'GEMINI_API_KEYが設定されていません' });
+    }
+
+    console.log(`[Test Name] "${mainLanguage}" (Color: ${planetColor}) の名前をGeminiに問い合わせます...`);
+    let generatedName = null;
+    let usedModel = 'None';
+
+    try {
+        // 1. モデル一覧取得
+        const listRes = await axios.get(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanApiKey}`);
+        const allModels = listRes.data.models || [];
+
+        // 2. 生成可能なモデルを抽出 & 優先順位付け
+        let availableModels = allModels.filter(m => m.supportedGenerationMethods?.includes('generateContent'));
+        availableModels.sort((a, b) => {
+            const nA = a.name; const nB = b.name;
+            if (nA.includes('1.5-flash') && !nB.includes('1.5-flash')) return -1;
+            if (!nA.includes('1.5-flash') && nB.includes('1.5-flash')) return 1;
+            return 0;
+        });
+
+        // 3. プロンプト作成
+        let suffix = '星';
+        if (totalCommits > 1000) suffix = '帝星';
+        else if (totalCommits > 500) suffix = '巨星';
+
+        const prompt = `Programming language: ${mainLanguage}. Color: ${planetColor}.
+        Generate a cool Japanese planet name in the format: "[Adjective][ColorName]の${suffix}".
+        The adjective should describe the nature of "${mainLanguage}". The color name should describe the color "${planetColor}".
+        Example: "JavaScript" -> "柔軟な黄金の${suffix}".
+        Return ONLY the name string.`;
+
+        // 4. 問い合わせ実行
+        for (const model of availableModels) {
+            const modelId = model.name.split('/').pop();
+            try {
+                const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${cleanApiKey}`;
+                const geminiRes = await axios.post(generateUrl, {
+                    contents: [{ parts: [{ text: prompt }] }]
+                }, { headers: { 'Content-Type': 'application/json' } });
+
+                const text = geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) {
+                    const cleanName = text.trim().replace(/(\r\n|\n|\r)/gm, "");
+                    if (cleanName.length > 0) {
+                        generatedName = cleanName;
+                        usedModel = modelId;
+                        break;
+                    }
+                }
+            } catch (err) {
+                console.warn(`[Test Name] Skip ${modelId}: ${err.message}`);
+            }
+        }
+    } catch (e) {
+        return res.json({ error: e.message, detail: e.response?.data });
+    }
+
+    res.json({
+        input_language: mainLanguage,
+        input_color: planetColor,
+        generated_name: generatedName || '生成失敗',
+        model_used: usedModel
+    });
 });
 // ▲▲▲ 追加終了 ▲▲▲
 
@@ -644,5 +839,5 @@ app.listen(port, () => {
     console.log(`http://localhost:${port}`);
     // ▼▼▼ 追加: テスト用URLの案内 ▼▼▼
     console.log(`Test Gemini API: http://localhost:${port}/api/test-gemini`);
-    // ▲▲▲ 追加終了 ▲▲▲aa
+    // ▲▲▲ 追加終了 ▲▲▲
 });
