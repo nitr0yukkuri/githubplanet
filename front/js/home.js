@@ -304,7 +304,7 @@ function loadPlanet(data) {
     controls.enabled = true;
 }
 
-// ▼▼▼ 修正: サイズ縮小 & 光を濃く ▼▼▼
+// ▼▼▼ 修正: 描写範囲を大幅に拡大 ▼▼▼
 function spawnMeteor(data) {
     if (!scene) return;
 
@@ -312,10 +312,9 @@ function spawnMeteor(data) {
     const meteorGroup = new THREE.Group();
     meteorGroup.renderOrder = 9999;
 
-    // --- 1. Head: 星型(Star Shape) - 少し小さく ---
+    // --- 1. Head: 星型 ---
     const starShape = new THREE.Shape();
     const points = 5;
-    // サイズを小さく (0.8/0.4 -> 0.5/0.25)
     const outerRadius = 0.5;
     const innerRadius = 0.25;
 
@@ -330,7 +329,7 @@ function spawnMeteor(data) {
     starShape.closePath();
 
     const headGeo = new THREE.ExtrudeGeometry(starShape, {
-        depth: 0.1, // 厚みも薄く
+        depth: 0.1,
         bevelEnabled: false
     });
     headGeo.center();
@@ -339,16 +338,16 @@ function spawnMeteor(data) {
         color: 0xffffff,
         transparent: true,
         opacity: 1.0,
-        blending: THREE.AdditiveBlending
+        blending: THREE.AdditiveBlending,
+        depthTest: false
     });
     const head = new THREE.Mesh(headGeo, headMat);
     meteorGroup.add(head);
 
 
-    // --- 2. Tail: Glowのみ - 細く・濃く ---
-    const tailLength = 35; // 少し短く
+    // --- 2. Tail: Glow ---
+    const tailLength = 35;
 
-    // 半径を小さく (1.0 -> 0.6)
     const glowGeo = new THREE.CylinderGeometry(0.6, 0.0, tailLength * 0.9, 16, 1, true);
     glowGeo.translate(0, -tailLength / 2 + 0.5, 0);
     glowGeo.rotateX(Math.PI / 2);
@@ -356,23 +355,28 @@ function spawnMeteor(data) {
     const glowMat = new THREE.MeshBasicMaterial({
         color: baseColor,
         transparent: true,
-        opacity: 0.6, // 0.3 -> 0.6 に上げて濃くする
+        opacity: 0.6,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
-        side: THREE.DoubleSide
+        side: THREE.DoubleSide,
+        depthTest: false
     });
     const glow = new THREE.Mesh(glowGeo, glowMat);
     meteorGroup.add(glow);
 
 
-    // --- 動きの制御 (変更なし) ---
-    const startX = 50 + Math.random() * 20;
-    const startY = 25 + Math.random() * 15;
-    const startZ = -20 - Math.random() * 20;
+    // --- 動きの制御: 範囲を大幅に拡大 ---
+    // スタート: Xを100以上に設定し、かなり遠くから飛んでくるように
+    // Yも少し幅を持たせる (10〜30程度)
+    // Zも奥行きを持たせる (-50〜50)
+    const startX = 100 + Math.random() * 50;
+    const startY = 10 + Math.random() * 20;
+    const startZ = -50 - Math.random() * 50;
 
-    const endX = -50 - Math.random() * 20;
-    const endY = -15 - Math.random() * 15;
-    const endZ = 30 + Math.random() * 20;
+    // ゴール: 反対側へ突き抜ける
+    const endX = -100 - Math.random() * 50;
+    const endY = 10 + Math.random() * 20;
+    const endZ = 50 + Math.random() * 50;
 
     meteorGroup.position.set(startX, startY, startZ);
     meteorGroup.lookAt(endX, endY, endZ);
@@ -393,7 +397,7 @@ function spawnMeteor(data) {
             if (progress > 80) {
                 const fade = 1.0 - ((progress - 80) / 20);
                 head.material.opacity = fade;
-                glow.material.opacity = 0.6 * fade; // 初期値に合わせて調整
+                glow.material.opacity = 0.6 * fade;
             }
         },
         complete: () => {
