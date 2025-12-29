@@ -370,7 +370,7 @@ async function updateAndSavePlanetData(user, accessToken) {
         Return ONLY the name string.`;
 
         try {
-            // モデルリストが未取得なら取得する
+            // モデルリストがが未取得なら取得する
             if (geminiModels.length === 0) {
                 const listModelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanApiKey}`;
                 const listRes = await axios.get(listModelsUrl);
