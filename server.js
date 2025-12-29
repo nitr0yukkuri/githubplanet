@@ -55,10 +55,34 @@ const ACHIEVEMENTS = {
 // ▲▲▲ 実績定義 ▲▲▲
 
 // ▼▼▼ GraphQLクエリ定義 ▼▼▼
+// 修正: repositoriesContributedTo を追加して、貢献したリポジトリも取得するように変更
 const USER_DATA_QUERY = `
   query($login: String!) {
     user(login: $login) {
       repositories(first: 100, ownerAffiliations: OWNER, isFork: false, orderBy: {field: PUSHED_AT, direction: DESC}) {
+        nodes {
+          name
+          languages(first: 5, orderBy: {field: SIZE, direction: DESC}) {
+            edges {
+              size
+              node {
+                name
+                color
+              }
+            }
+          }
+          defaultBranchRef {
+            target {
+              ... on Commit {
+                history {
+                  totalCount
+                }
+              }
+            }
+          }
+        }
+      }
+      repositoriesContributedTo(first: 20, includeUserRepositories: false, contributionTypes: [COMMIT, PULL_REQUEST, PULL_REQUEST_REVIEW], orderBy: {field: PUSHED_AT, direction: DESC}) {
         nodes {
           name
           languages(first: 5, orderBy: {field: SIZE, direction: DESC}) {
@@ -227,7 +251,11 @@ async function updateAndSavePlanetData(user, accessToken) {
             throw new Error('GraphQL query failed');
         }
 
-        repositories = response.data.data.user.repositories.nodes;
+        // ▼▼▼ 修正: 所有リポジトリと貢献リポジトリを合算する ▼▼▼
+        const ownedRepos = response.data.data.user.repositories.nodes || [];
+        const contributedRepos = response.data.data.user.repositoriesContributedTo.nodes || [];
+        repositories = [...ownedRepos, ...contributedRepos];
+        // ▲▲▲ 修正終了 ▲▲▲
 
     } catch (e) {
         console.error('[GraphQL] データ取得失敗:', e.message);
