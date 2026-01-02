@@ -304,7 +304,7 @@ function loadPlanet(data) {
     controls.enabled = true;
 }
 
-// ▼▼▼ 修正: depthWrite: false を追加し、チラつきを防止 ▼▼▼
+// ▼▼▼ 修正: サイズ縮小、距離感の確保、右から左への移動 ▼▼▼
 function spawnMeteor(data) {
     if (!scene || !camera) return;
 
@@ -312,11 +312,12 @@ function spawnMeteor(data) {
     const meteorGroup = new THREE.Group();
     meteorGroup.renderOrder = 9999;
 
-    // --- 1. Head: 星型 ---
+    // --- 1. Head: 星型（サイズを程よく調整） ---
     const starShape = new THREE.Shape();
     const points = 5;
-    const outerRadius = 0.5;
-    const innerRadius = 0.25;
+    // ★修正: でかすぎるのを解消 (1.8 -> 0.7)
+    const outerRadius = 0.7;
+    const innerRadius = 0.35;
 
     for (let i = 0; i < points * 2; i++) {
         const angle = (i * Math.PI) / points;
@@ -329,7 +330,7 @@ function spawnMeteor(data) {
     starShape.closePath();
 
     const headGeo = new THREE.ExtrudeGeometry(starShape, {
-        depth: 0.1,
+        depth: 0.15, // 厚みも調整
         bevelEnabled: false
     });
     headGeo.center();
@@ -337,29 +338,31 @@ function spawnMeteor(data) {
     const headMat = new THREE.MeshBasicMaterial({
         color: 0xffffff,
         transparent: true,
-        opacity: 0.0, // フェードイン開始前
+        opacity: 0.0,
         blending: THREE.AdditiveBlending,
         depthTest: true,
-        depthWrite: false, // ★重要修正: 深度書き込みを無効化し、回転しても透けたり薄くなったりしないようにする
+        depthWrite: true, // 修正維持
         fog: false
     });
     const head = new THREE.Mesh(headGeo, headMat);
     meteorGroup.add(head);
 
 
-    // --- 2. Tail: Glow ---
-    const tailLength = 35;
+    // --- 2. Tail: Glow（太さと長さを調整） ---
+    // ★修正: 長さはある程度キープしつつ (60)
+    const tailLength = 60;
 
-    const glowGeo = new THREE.CylinderGeometry(0.6, 0.0, tailLength * 0.9, 16, 1, true);
+    // ★修正: 太すぎないように (2.5 -> 1.0)
+    const glowGeo = new THREE.CylinderGeometry(1.0, 0.0, tailLength * 0.9, 16, 1, true);
     glowGeo.translate(0, -tailLength / 2 + 0.5, 0);
     glowGeo.rotateX(Math.PI / 2);
 
     const glowMat = new THREE.MeshBasicMaterial({
         color: baseColor,
         transparent: true,
-        opacity: 0.0, // フェードイン開始前
+        opacity: 0.0,
         blending: THREE.AdditiveBlending,
-        depthWrite: false, // こちらは元からOK
+        depthWrite: false,
         side: THREE.DoubleSide,
         depthTest: true,
         fog: false
@@ -368,71 +371,77 @@ function spawnMeteor(data) {
     meteorGroup.add(glow);
 
 
-    // --- 動きの制御: カメラ基準 ---
+    // --- 3. 動きの制御: 「右から左へ」「距離感をとる」 ---
+    // Z座標を -60 〜 -100 程度（カメラより奥）に設定し、手前に近づかないようにする
+    // X座標を +120 から -120 へ移動させることで、画面を横切らせる
+
+    // 出現位置のランダム性
+    const startZ = -60 - Math.random() * 40; // 奥行き (距離感)
+    const startY = 30 + Math.random() * 20;  // 高さ (惑星回避)
+
     const localStart = new THREE.Vector3(
-        40 + Math.random() * 40,   // 右
-        10 + Math.random() * 30,   // 上
-        -100 - Math.random() * 50  // 奥
+        120,      // 右奥
+        startY,
+        startZ
     );
 
     const localEnd = new THREE.Vector3(
-        -40 - Math.random() * 40,  // 左
-        -10 - Math.random() * 30,  // 下
-        20 + Math.random() * 20    // 手前
+        -120,     // 左奥
+        startY - 10, // 少し下がりながら流れる
+        startZ    // ★修正: 奥行きを変えないことで「近づいてくる感」をなくす
     );
 
+    // カメラの回転だけ適用 (位置はずらさないことで背景的に扱う)
     const startPos = localStart.applyQuaternion(camera.quaternion).add(camera.position);
     const endPos = localEnd.applyQuaternion(camera.quaternion).add(camera.position);
 
     meteorGroup.position.copy(startPos);
     meteorGroup.lookAt(endPos);
-    // 初期スケール0
     meteorGroup.scale.set(0, 0, 0);
 
     scene.add(meteorGroup);
 
-    const duration = 3000 + Math.random() * 1500;
+    // 時間は早めのまま
+    const duration = 1000 + Math.random() * 500;
 
     // --- アニメーション ---
 
-    // 拡大（ポップイン）
+    // 拡大
     anime({
         targets: meteorGroup.scale,
         x: 1, y: 1, z: 1,
         easing: 'easeOutElastic(1, .6)',
-        duration: 800
+        duration: 400
     });
 
-    // フェードイン（最初だけ素早く）
+    // フェードイン
     anime({
         targets: head.material,
-        opacity: 1.0, // しっかり濃くする
+        opacity: 1.0,
         easing: 'easeOutQuad',
-        duration: 300
+        duration: 200
     });
     anime({
         targets: glow.material,
-        opacity: 0.6, // 適度な濃さで維持
+        opacity: 0.8,
         easing: 'easeOutQuad',
-        duration: 300
+        duration: 200
     });
 
-    // 移動 & 最後の最後だけフェードアウト
+    // 移動
     anime({
         targets: meteorGroup.position,
         x: endPos.x,
         y: endPos.y,
         z: endPos.z,
-        easing: 'easeInQuad',
+        easing: 'linear',
         duration: duration,
         update: (anim) => {
-            // 移動中は不透明度を維持し、残り10%で消す
-            // これにより「途中で薄くなったり濃くなったり」するのを防ぐ
             const progress = anim.progress;
-            if (progress > 90) {
-                const fade = 1.0 - ((progress - 90) / 10);
+            if (progress > 85) {
+                const fade = 1.0 - ((progress - 85) / 15);
                 head.material.opacity = fade;
-                glow.material.opacity = 0.6 * fade;
+                glow.material.opacity = 0.8 * fade;
             }
         },
         complete: () => {
