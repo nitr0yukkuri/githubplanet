@@ -304,7 +304,11 @@ function loadPlanet(data) {
     controls.enabled = true;
 }
 
+<<<<<<< HEAD
 // ▼▼▼ 修正: サイズ縮小、距離感の確保、右から左への移動 ▼▼▼
+=======
+// ▼▼▼ 修正: depthWrite: false を追加し、チラつきを防止 ▼▼▼
+>>>>>>> 8c592c073ad2e41b477af89809d62c3ddea30a83
 function spawnMeteor(data) {
     if (!scene || !camera) return;
 
@@ -338,10 +342,17 @@ function spawnMeteor(data) {
     const headMat = new THREE.MeshBasicMaterial({
         color: 0xffffff,
         transparent: true,
+<<<<<<< HEAD
         opacity: 0.0,
         blending: THREE.AdditiveBlending,
         depthTest: true,
         depthWrite: true, // 修正維持
+=======
+        opacity: 0.0, // フェードイン開始前
+        blending: THREE.AdditiveBlending,
+        depthTest: true,
+        depthWrite: false, // ★重要修正: 深度書き込みを無効化し、回転しても透けたり薄くなったりしないようにする
+>>>>>>> 8c592c073ad2e41b477af89809d62c3ddea30a83
         fog: false
     });
     const head = new THREE.Mesh(headGeo, headMat);
@@ -360,9 +371,13 @@ function spawnMeteor(data) {
     const glowMat = new THREE.MeshBasicMaterial({
         color: baseColor,
         transparent: true,
+<<<<<<< HEAD
         opacity: 0.0,
+=======
+        opacity: 0.0, // フェードイン開始前
+>>>>>>> 8c592c073ad2e41b477af89809d62c3ddea30a83
         blending: THREE.AdditiveBlending,
-        depthWrite: false,
+        depthWrite: false, // こちらは元からOK
         side: THREE.DoubleSide,
         depthTest: true,
         fog: false
@@ -371,6 +386,7 @@ function spawnMeteor(data) {
     meteorGroup.add(glow);
 
 
+<<<<<<< HEAD
     // --- 3. 動きの制御: 「右から左へ」「距離感をとる」 ---
     // Z座標を -60 〜 -100 程度（カメラより奥）に設定し、手前に近づかないようにする
     // X座標を +120 から -120 へ移動させることで、画面を横切らせる
@@ -392,25 +408,53 @@ function spawnMeteor(data) {
     );
 
     // カメラの回転だけ適用 (位置はずらさないことで背景的に扱う)
+=======
+    // --- 動きの制御: カメラ基準 ---
+    const localStart = new THREE.Vector3(
+        40 + Math.random() * 40,   // 右
+        10 + Math.random() * 30,   // 上
+        -100 - Math.random() * 50  // 奥
+    );
+
+    const localEnd = new THREE.Vector3(
+        -40 - Math.random() * 40,  // 左
+        -10 - Math.random() * 30,  // 下
+        20 + Math.random() * 20    // 手前
+    );
+
+>>>>>>> 8c592c073ad2e41b477af89809d62c3ddea30a83
     const startPos = localStart.applyQuaternion(camera.quaternion).add(camera.position);
     const endPos = localEnd.applyQuaternion(camera.quaternion).add(camera.position);
 
     meteorGroup.position.copy(startPos);
     meteorGroup.lookAt(endPos);
+<<<<<<< HEAD
+=======
+    // 初期スケール0
+>>>>>>> 8c592c073ad2e41b477af89809d62c3ddea30a83
     meteorGroup.scale.set(0, 0, 0);
 
     scene.add(meteorGroup);
 
+<<<<<<< HEAD
     // 時間は早めのまま
     const duration = 1000 + Math.random() * 500;
 
     // --- アニメーション ---
 
     // 拡大
+=======
+    const duration = 3000 + Math.random() * 1500;
+
+    // --- アニメーション ---
+
+    // 拡大（ポップイン）
+>>>>>>> 8c592c073ad2e41b477af89809d62c3ddea30a83
     anime({
         targets: meteorGroup.scale,
         x: 1, y: 1, z: 1,
         easing: 'easeOutElastic(1, .6)',
+<<<<<<< HEAD
         duration: 400
     });
 
@@ -429,17 +473,48 @@ function spawnMeteor(data) {
     });
 
     // 移動
+=======
+        duration: 800
+    });
+
+    // フェードイン（最初だけ素早く）
+    anime({
+        targets: head.material,
+        opacity: 1.0, // しっかり濃くする
+        easing: 'easeOutQuad',
+        duration: 300
+    });
+    anime({
+        targets: glow.material,
+        opacity: 0.6, // 適度な濃さで維持
+        easing: 'easeOutQuad',
+        duration: 300
+    });
+
+    // 移動 & 最後の最後だけフェードアウト
+>>>>>>> 8c592c073ad2e41b477af89809d62c3ddea30a83
     anime({
         targets: meteorGroup.position,
         x: endPos.x,
         y: endPos.y,
         z: endPos.z,
+<<<<<<< HEAD
         easing: 'linear',
         duration: duration,
         update: (anim) => {
             const progress = anim.progress;
             if (progress > 85) {
                 const fade = 1.0 - ((progress - 85) / 15);
+=======
+        easing: 'easeInQuad',
+        duration: duration,
+        update: (anim) => {
+            // 移動中は不透明度を維持し、残り10%で消す
+            // これにより「途中で薄くなったり濃くなったり」するのを防ぐ
+            const progress = anim.progress;
+            if (progress > 90) {
+                const fade = 1.0 - ((progress - 90) / 10);
+>>>>>>> 8c592c073ad2e41b477af89809d62c3ddea30a83
                 head.material.opacity = fade;
                 glow.material.opacity = 0.8 * fade;
             }
