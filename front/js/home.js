@@ -304,9 +304,9 @@ function loadPlanet(data) {
     controls.enabled = true;
 }
 
-// ▼▼▼ 修正: 描写範囲を大幅に拡大 ▼▼▼
+// ▼▼▼ 修正: depthWrite: false を追加し、チラつきを防止 ▼▼▼
 function spawnMeteor(data) {
-    if (!scene) return;
+    if (!scene || !camera) return;
 
     const baseColor = new THREE.Color(data.color || '#ffffff');
     const meteorGroup = new THREE.Group();
@@ -337,9 +337,11 @@ function spawnMeteor(data) {
     const headMat = new THREE.MeshBasicMaterial({
         color: 0xffffff,
         transparent: true,
-        opacity: 1.0,
+        opacity: 0.0, // フェードイン開始前
         blending: THREE.AdditiveBlending,
-        depthTest: false
+        depthTest: true,
+        depthWrite: false, // ★重要修正: 深度書き込みを無効化し、回転しても透けたり薄くなったりしないようにする
+        fog: false
     });
     const head = new THREE.Mesh(headGeo, headMat);
     meteorGroup.add(head);
@@ -355,47 +357,80 @@ function spawnMeteor(data) {
     const glowMat = new THREE.MeshBasicMaterial({
         color: baseColor,
         transparent: true,
-        opacity: 0.6,
+        opacity: 0.0, // フェードイン開始前
         blending: THREE.AdditiveBlending,
-        depthWrite: false,
+        depthWrite: false, // こちらは元からOK
         side: THREE.DoubleSide,
-        depthTest: false
+        depthTest: true,
+        fog: false
     });
     const glow = new THREE.Mesh(glowGeo, glowMat);
     meteorGroup.add(glow);
 
 
-    // --- 動きの制御: 範囲を大幅に拡大 ---
-    // スタート: Xを100以上に設定し、かなり遠くから飛んでくるように
-    // Yも少し幅を持たせる (10〜30程度)
-    // Zも奥行きを持たせる (-50〜50)
-    const startX = 100 + Math.random() * 50;
-    const startY = 10 + Math.random() * 20;
-    const startZ = -50 - Math.random() * 50;
+    // --- 動きの制御: カメラ基準 ---
+    const localStart = new THREE.Vector3(
+        40 + Math.random() * 40,   // 右
+        10 + Math.random() * 30,   // 上
+        -100 - Math.random() * 50  // 奥
+    );
 
-    // ゴール: 反対側へ突き抜ける
-    const endX = -100 - Math.random() * 50;
-    const endY = 10 + Math.random() * 20;
-    const endZ = 50 + Math.random() * 50;
+    const localEnd = new THREE.Vector3(
+        -40 - Math.random() * 40,  // 左
+        -10 - Math.random() * 30,  // 下
+        20 + Math.random() * 20    // 手前
+    );
 
-    meteorGroup.position.set(startX, startY, startZ);
-    meteorGroup.lookAt(endX, endY, endZ);
+    const startPos = localStart.applyQuaternion(camera.quaternion).add(camera.position);
+    const endPos = localEnd.applyQuaternion(camera.quaternion).add(camera.position);
+
+    meteorGroup.position.copy(startPos);
+    meteorGroup.lookAt(endPos);
+    // 初期スケール0
+    meteorGroup.scale.set(0, 0, 0);
 
     scene.add(meteorGroup);
 
-    const duration = 3500 + Math.random() * 2000;
+    const duration = 3000 + Math.random() * 1500;
 
+    // --- アニメーション ---
+
+    // 拡大（ポップイン）
+    anime({
+        targets: meteorGroup.scale,
+        x: 1, y: 1, z: 1,
+        easing: 'easeOutElastic(1, .6)',
+        duration: 800
+    });
+
+    // フェードイン（最初だけ素早く）
+    anime({
+        targets: head.material,
+        opacity: 1.0, // しっかり濃くする
+        easing: 'easeOutQuad',
+        duration: 300
+    });
+    anime({
+        targets: glow.material,
+        opacity: 0.6, // 適度な濃さで維持
+        easing: 'easeOutQuad',
+        duration: 300
+    });
+
+    // 移動 & 最後の最後だけフェードアウト
     anime({
         targets: meteorGroup.position,
-        x: endX,
-        y: endY,
-        z: endZ,
+        x: endPos.x,
+        y: endPos.y,
+        z: endPos.z,
         easing: 'easeInQuad',
         duration: duration,
-        update: () => {
-            const progress = anime.running[0].progress;
-            if (progress > 80) {
-                const fade = 1.0 - ((progress - 80) / 20);
+        update: (anim) => {
+            // 移動中は不透明度を維持し、残り10%で消す
+            // これにより「途中で薄くなったり濃くなったり」するのを防ぐ
+            const progress = anim.progress;
+            if (progress > 90) {
+                const fade = 1.0 - ((progress - 90) / 10);
                 head.material.opacity = fade;
                 glow.material.opacity = 0.6 * fade;
             }
@@ -407,6 +442,7 @@ function spawnMeteor(data) {
         }
     });
 
+    // 回転
     anime({
         targets: head.rotation,
         z: Math.PI * 10,
