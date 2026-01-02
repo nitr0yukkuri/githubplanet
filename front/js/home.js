@@ -596,7 +596,7 @@ function setupUI() {
 
                 modal.classList.remove('is-visible');
             }
-            else alert('他の惑星が見つかりませんでした');
+            else alert('他の惑星が見つかりませんでした!');
         } catch (e) {
             console.error('Error fetching random planet:', e);
             alert('通信エラーが発生しました');
