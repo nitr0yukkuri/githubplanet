@@ -1,11 +1,5 @@
 // server.js
-// ▼▼▼ .env ファイルを読み込む ▼▼▼
 import 'dotenv/config';
-// ▲▲▲ .env ファイルを読み込む ▲▲▲
-
-// server.js
-
-// 1. インポート
 import express from 'express';
 import session from 'express-session';
 import crypto from 'crypto';
@@ -13,29 +7,18 @@ import axios from 'axios';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pg from 'pg';
-// ▼▼▼ 追加: セッションストア用ライブラリ ▼▼▼
 import connectPgSimple from 'connect-pg-simple';
-// ▲▲▲ 追加終了 ▲▲▲
-// ▼▼▼ 追加: Socket.IO ▼▼▼
 import { Server } from 'socket.io';
-// ▲▲▲ 追加終了 ▲▲▲
-// ▼▼▼ 追加: Puppeteer (撮影用) ▼▼▼
 import puppeteer from 'puppeteer';
-// ▲▲▲ 追加終了 ▲▲▲
 
-// 2. Express の初期化
 const app = express();
-const port = process.env.PORT || 3000;
+// ★ ポート3000が埋まりがちなので3001をデフォルトに変更
+const port = process.env.PORT || 3001;
 
-// ▼▼▼ 追加: Webhook用JSONパース ▼▼▼
 app.use(express.json());
-// ▲▲▲ 追加終了 ▲▲▲
 
-// ▼▼▼ 追加: セッションストアの初期化 ▼▼▼
 const PgSession = connectPgSimple(session);
-// ▲▲▲ 追加終了 ▲▲▲
 
-// ★★★ GitHub OAuth App 設定 ★★★
 const isProduction = process.env.NODE_ENV === 'production';
 let GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, CALLBACK_URL;
 
@@ -48,14 +31,13 @@ if (isProduction) {
     console.log('★ ローカル環境の設定を使用します');
     GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID_LOCAL;
     GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET_LOCAL;
-    CALLBACK_URL = 'http://localhost:3000/callback';
+    CALLBACK_URL = `http://localhost:${port}/callback`;
 
     if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET) {
         console.error('エラー: .envファイルに GITHUB_CLIENT_ID_LOCAL と GITHUB_CLIENT_SECRET_LOCAL を設定してください。');
     }
 }
 
-// ▼▼▼ 言語カラー定義 (共有用) ▼▼▼
 const LANGUAGE_COLORS = {
     JavaScript: '#f0db4f', TypeScript: '#007acc', Python: '#306998', HTML: '#e34c26', CSS: '#563d7c',
     Ruby: '#CC342D', Java: '#b07219', C: '#555555', 'C++': '#f34b7d', 'C#': '#178600',
@@ -65,20 +47,15 @@ const LANGUAGE_COLORS = {
     R: '#198CE7', Julia: '#a270ba', Vue: '#41b883', Dockerfile: '#384d54',
     Svelte: '#ff3e00', Elixir: '#6e4a7e', 'Objective-C': '#438eff', VimScript: '#199f4b'
 };
-// Geminiが生成した色を一時的にキャッシュする場所
 const DYNAMIC_COLOR_CACHE = {};
-// ▲▲▲ 言語カラー定義 ▲▲▲
 
-// ▼▼▼ 実績定義 ▼▼▼
 const ACHIEVEMENTS = {
     FIRST_PLANET: { id: 'FIRST_PLANET', name: '最初の星', description: '初めての惑星を作成した。' },
     COMMIT_100: { id: 'COMMIT_100', name: 'コミット100', description: '累計コミット数が100を超えた。' },
     COMMIT_500: { id: 'COMMIT_500', name: 'コミット500', description: '累計コミット数が500を超えた。' },
     COMMIT_1000: { id: 'COMMIT_1000', name: 'コミット1000', description: '累計コミット数が1000を超えた。' },
 };
-// ▲▲▲ 実績定義 ▲▲▲
 
-// ▼▼▼ GraphQLクエリ定義 ▼▼▼
 const USER_DATA_QUERY = `
   query($login: String!) {
     user(login: $login) {
@@ -131,9 +108,7 @@ const USER_DATA_QUERY = `
     }
   }
 `;
-// ▲▲▲ GraphQLクエリ定義 ▲▲▲
 
-// ▼▼▼ Render DB 接続設定 ▼▼▼
 const connectionString = process.env.DATABASE_URL;
 let pool;
 if (connectionString) {
@@ -170,8 +145,6 @@ if (connectionString) {
 } else {
     console.warn('[DB] データベース接続文字列(DATABASE_URL)が設定されていません。DB機能は無効になります。');
 }
-// ▲▲▲ Render DB 接続設定 ▲▲▲
-
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -196,7 +169,6 @@ function sha256(buffer) {
     return crypto.createHash('sha256').update(buffer).digest();
 }
 
-// ▼▼▼ 実績チェック関数 ▼▼▼
 function checkAchievements(existingAchievements, totalCommits) {
     const newAchievements = { ...existingAchievements };
     const now = new Date().toISOString();
@@ -215,10 +187,7 @@ function checkAchievements(existingAchievements, totalCommits) {
     }
     return newAchievements;
 }
-// ▲▲▲ 実績チェック関数 ▲▲▲
 
-
-// ▼▼▼ Gemini共通関数 (モデル探索＆生成) ▼▼▼
 async function askGemini(prompt) {
     if (!process.env.GEMINI_API_KEY) return null;
     const cleanApiKey = process.env.GEMINI_API_KEY.trim();
@@ -234,17 +203,13 @@ async function askGemini(prompt) {
 
         if (geminiModels.length === 0) return null;
 
-        // モデルを優先度順にソート (flash優先)
         geminiModels.sort((a, b) => {
             const nA = a.name; const nB = b.name;
             if (nA.includes('1.5-flash') && !nB.includes('1.5-flash')) return -1;
             if (!nA.includes('1.5-flash') && nB.includes('1.5-flash')) return 1;
-            if (nA.includes('1.5-pro') && !nB.includes('1.5-pro')) return -1;
-            if (!nA.includes('1.5-pro') && nB.includes('1.5-pro')) return 1;
             return 0;
         });
 
-        // 順に試行
         for (const model of geminiModels) {
             const modelId = model.name.split('/').pop();
             try {
@@ -266,24 +231,15 @@ async function askGemini(prompt) {
     }
     return null;
 }
-// ▲▲▲ Gemini共通関数 ▲▲▲
 
-
-// ▼▼▼ AIによるカラー解決関数 (惑星・流星共通) ▼▼▼
 async function resolveLanguageColor(language) {
     if (!language || language === 'Unknown') return '#808080';
-
-    // 1. 定義済みリストにあるか
     if (LANGUAGE_COLORS[language]) {
         return LANGUAGE_COLORS[language];
     }
-
-    // 2. キャッシュにあるか
     if (DYNAMIC_COLOR_CACHE[language]) {
         return DYNAMIC_COLOR_CACHE[language];
     }
-
-    // 3. なければGeminiに聞く
     console.log(`[Color AI] 未知の言語 "${language}" の色を生成します...`);
     const prompt = `Programming language: ${language}. Provide a suitable hex color code (e.g., #ff0000) for this language. Return ONLY the hex code string.`;
 
@@ -292,17 +248,13 @@ async function resolveLanguageColor(language) {
         const match = text.match(/#[0-9a-fA-F]{6}/);
         if (match) {
             const color = match[0];
-            DYNAMIC_COLOR_CACHE[language] = color; // キャッシュ保存
+            DYNAMIC_COLOR_CACHE[language] = color;
             console.log(`[Color AI] 生成完了: ${language} -> ${color}`);
             return color;
         }
     }
-
-    // 失敗時はグレー
     return '#808080';
 }
-// ▲▲▲ AIによるカラー解決関数 ▲▲▲
-
 
 function generatePlanetName(mainLanguage, planetColor, totalCommits) {
     const adjectives = {
@@ -331,7 +283,6 @@ function generatePlanetName(mainLanguage, planetColor, totalCommits) {
     return `${adj}${col}の${suffix}`;
 }
 
-// ▼▼▼ 共通関数: 惑星データ取得・更新・保存 (GraphQL版) ▼▼▼
 async function updateAndSavePlanetData(user, accessToken) {
     console.log(`[GraphQL] Fetching data for user: ${user.login}`);
 
@@ -388,7 +339,6 @@ async function updateAndSavePlanetData(user, accessToken) {
         if (bytes > maxBytes) { maxBytes = bytes; mainLanguage = lang; }
     }
 
-    // ★修正: AIカラー解決関数を使用 (共通化してスッキリ)
     let planetColor = await resolveLanguageColor(mainLanguage);
 
     let planetSizeFactor = 1.0 + Math.min(1.0, Math.log10(Math.max(1, totalCommits)) / 2.5);
@@ -396,7 +346,6 @@ async function updateAndSavePlanetData(user, accessToken) {
 
     let planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
 
-    // AI命名処理 (共通関数 askGemini を使用してスッキリ)
     if (process.env.GEMINI_API_KEY && (planetName.includes('未知の') || planetName.includes('神秘'))) {
         console.log(`[Gemini] 暫定名 "${planetName}" をかっこいい名前に修正します...`);
         let suffix = '星';
@@ -440,34 +389,23 @@ async function updateAndSavePlanetData(user, accessToken) {
 
     return { mainLanguage, planetColor, languageStats, totalCommits, planetSizeFactor, planetName, achievements };
 }
-// ▲▲▲ 共通関数 ▲▲▲
 
-
-// --- ルート定義 ---
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// card.html へのルートも念のため明示
+// card.htmlのルート
 app.get('/card.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'card.html'));
 });
 
-// ▼▼▼ 修正: Webhook エンドポイント (AIカラー対応) ▼▼▼
 app.post('/webhook', async (req, res) => {
     try {
         const payload = req.body;
-        // GitHub Push Event
         if (payload && payload.repository) {
             const lang = payload.repository.language || 'Unknown';
-
-            // ★修正: AIを使って色を解決 (リストにあれば即答、なければAI生成)
-            // これにより「未知の言語」でもカラフルな流星が飛ぶようになります
             const color = await resolveLanguageColor(lang);
-
             console.log(`[Webhook] Commit detected! Language: ${lang}, Color: ${color}`);
-
-            // 全クライアントに流星イベントを通知
             io.emit('meteor', { color: color, language: lang });
         }
         res.status(200).send('OK');
@@ -476,9 +414,7 @@ app.post('/webhook', async (req, res) => {
         res.status(500).send('Error');
     }
 });
-// ▲▲▲ 修正終了 ▲▲▲
 
-// Gemini APIテスト用
 app.get('/api/test-gemini', async (req, res) => {
     const output = await askGemini("Explain 'Hello World' in one short sentence.");
     res.json({
@@ -487,7 +423,6 @@ app.get('/api/test-gemini', async (req, res) => {
     });
 });
 
-// 色生成デバッグ用
 app.get('/api/debug-color/:lang', async (req, res) => {
     const mainLanguage = req.params.lang;
     const color = await resolveLanguageColor(mainLanguage);
@@ -497,7 +432,6 @@ app.get('/api/debug-color/:lang', async (req, res) => {
     });
 });
 
-// 名前生成デバッグ用 (簡易化)
 app.get('/api/debug-name/:lang', async (req, res) => {
     const mainLanguage = req.params.lang;
     const planetColor = req.query.color || '#808080';
@@ -722,14 +656,16 @@ app.get('/api/card/:username', async (req, res) => {
 
     let browser = null;
     try {
+        // ★修正: Windows環境(ローカル)でクラッシュしない設定
+        // Render(Linux)でも動作する安全な構成
         browser = await puppeteer.launch({
-            headless: 'new',
+            headless: 'new', // または true
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--no-zygote',
-                '--single-process'
+                // '--no-zygote',       <-- Windowsでクラッシュの原因になるので削除
+                // '--single-process'   <-- Windowsでクラッシュの原因になるので削除
             ]
         });
 
@@ -768,7 +704,6 @@ app.get('/api/card/:username', async (req, res) => {
     }
 });
 // ▲▲▲ 追加終了 ▲▲▲
-
 
 const server = app.listen(port, () => {
     console.log(`Server running on port ${port}`);
