@@ -19,6 +19,9 @@ import connectPgSimple from 'connect-pg-simple';
 // ▼▼▼ 追加: Socket.IO ▼▼▼
 import { Server } from 'socket.io';
 // ▲▲▲ 追加終了 ▲▲▲
+// ▼▼▼ 追加: Puppeteer (撮影用) ▼▼▼
+import puppeteer from 'puppeteer';
+// ▲▲▲ 追加終了 ▲▲▲
 
 // 2. Express の初期化
 const app = express();
@@ -62,6 +65,8 @@ const LANGUAGE_COLORS = {
     R: '#198CE7', Julia: '#a270ba', Vue: '#41b883', Dockerfile: '#384d54',
     Svelte: '#ff3e00', Elixir: '#6e4a7e', 'Objective-C': '#438eff', VimScript: '#199f4b'
 };
+// Geminiが生成した色を一時的にキャッシュする場所
+const DYNAMIC_COLOR_CACHE = {};
 // ▲▲▲ 言語カラー定義 ▲▲▲
 
 // ▼▼▼ 実績定義 ▼▼▼
@@ -213,6 +218,92 @@ function checkAchievements(existingAchievements, totalCommits) {
 // ▲▲▲ 実績チェック関数 ▲▲▲
 
 
+// ▼▼▼ Gemini共通関数 (モデル探索＆生成) ▼▼▼
+async function askGemini(prompt) {
+    if (!process.env.GEMINI_API_KEY) return null;
+    const cleanApiKey = process.env.GEMINI_API_KEY.trim();
+
+    try {
+        const listModelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanApiKey}`;
+        const listRes = await axios.get(listModelsUrl);
+        const allModels = listRes.data.models || [];
+
+        const geminiModels = allModels.filter(m =>
+            m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent')
+        );
+
+        if (geminiModels.length === 0) return null;
+
+        // モデルを優先度順にソート (flash優先)
+        geminiModels.sort((a, b) => {
+            const nA = a.name; const nB = b.name;
+            if (nA.includes('1.5-flash') && !nB.includes('1.5-flash')) return -1;
+            if (!nA.includes('1.5-flash') && nB.includes('1.5-flash')) return 1;
+            if (nA.includes('1.5-pro') && !nB.includes('1.5-pro')) return -1;
+            if (!nA.includes('1.5-pro') && nB.includes('1.5-pro')) return 1;
+            return 0;
+        });
+
+        // 順に試行
+        for (const model of geminiModels) {
+            const modelId = model.name.split('/').pop();
+            try {
+                const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${cleanApiKey}`;
+                const geminiRes = await axios.post(generateUrl, {
+                    contents: [{ parts: [{ text: prompt }] }]
+                }, { headers: { 'Content-Type': 'application/json' } });
+
+                const text = geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) {
+                    return text.trim();
+                }
+            } catch (err) {
+                console.warn(`[Gemini] スキップ (${modelId}): ${err.message}`);
+            }
+        }
+    } catch (e) {
+        console.error('[Gemini] 生成失敗:', e.message);
+    }
+    return null;
+}
+// ▲▲▲ Gemini共通関数 ▲▲▲
+
+
+// ▼▼▼ AIによるカラー解決関数 (惑星・流星共通) ▼▼▼
+async function resolveLanguageColor(language) {
+    if (!language || language === 'Unknown') return '#808080';
+
+    // 1. 定義済みリストにあるか
+    if (LANGUAGE_COLORS[language]) {
+        return LANGUAGE_COLORS[language];
+    }
+
+    // 2. キャッシュにあるか
+    if (DYNAMIC_COLOR_CACHE[language]) {
+        return DYNAMIC_COLOR_CACHE[language];
+    }
+
+    // 3. なければGeminiに聞く
+    console.log(`[Color AI] 未知の言語 "${language}" の色を生成します...`);
+    const prompt = `Programming language: ${language}. Provide a suitable hex color code (e.g., #ff0000) for this language. Return ONLY the hex code string.`;
+
+    const text = await askGemini(prompt);
+    if (text) {
+        const match = text.match(/#[0-9a-fA-F]{6}/);
+        if (match) {
+            const color = match[0];
+            DYNAMIC_COLOR_CACHE[language] = color; // キャッシュ保存
+            console.log(`[Color AI] 生成完了: ${language} -> ${color}`);
+            return color;
+        }
+    }
+
+    // 失敗時はグレー
+    return '#808080';
+}
+// ▲▲▲ AIによるカラー解決関数 ▲▲▲
+
+
 function generatePlanetName(mainLanguage, planetColor, totalCommits) {
     const adjectives = {
         JavaScript: '柔軟な', TypeScript: '堅牢な', Python: '賢明な', HTML: '構造的', CSS: '美麗な',
@@ -297,77 +388,17 @@ async function updateAndSavePlanetData(user, accessToken) {
         if (bytes > maxBytes) { maxBytes = bytes; mainLanguage = lang; }
     }
 
-    let geminiModels = [];
-    let planetColor = LANGUAGE_COLORS[mainLanguage];
-
-    if (!planetColor && mainLanguage !== 'Unknown' && process.env.GEMINI_API_KEY) {
-        console.log(`[Gemini] 未定義の言語 "${mainLanguage}" の色を生成します (モデル自動探索)...`);
-
-        const cleanApiKey = process.env.GEMINI_API_KEY.trim();
-        const prompt = `Programming language: ${mainLanguage}. Provide a suitable hex color code (e.g., #ff0000) for this language. Return ONLY the hex code string.`;
-
-        try {
-            console.log('[Gemini] 利用可能なモデルを問い合わせ中...');
-            const listModelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanApiKey}`;
-            const listRes = await axios.get(listModelsUrl);
-            const allModels = listRes.data.models || [];
-
-            geminiModels = allModels.filter(m =>
-                m.supportedGenerationMethods &&
-                m.supportedGenerationMethods.includes('generateContent')
-            );
-
-            if (geminiModels.length === 0) {
-                console.error('[Gemini] 生成に使用できるモデルが見つかりませんでした。');
-            } else {
-                geminiModels.sort((a, b) => {
-                    const nA = a.name; const nB = b.name;
-                    if (nA.includes('1.5-flash') && !nB.includes('1.5-flash')) return -1;
-                    if (!nA.includes('1.5-flash') && nB.includes('1.5-flash')) return 1;
-                    if (nA.includes('1.5-pro') && !nB.includes('1.5-pro')) return -1;
-                    if (!nA.includes('1.5-pro') && nB.includes('1.5-pro')) return 1;
-                    return 0;
-                });
-
-                for (const model of geminiModels) {
-                    const modelId = model.name.split('/').pop();
-                    try {
-                        const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${cleanApiKey}`;
-                        const geminiRes = await axios.post(generateUrl, {
-                            contents: [{ parts: [{ text: prompt }] }]
-                        }, { headers: { 'Content-Type': 'application/json' } });
-
-                        const text = geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (text) {
-                            const match = text.match(/#[0-9a-fA-F]{6}/);
-                            if (match) {
-                                planetColor = match[0];
-                                console.log(`[Gemini] ★成功★ (使用モデル: ${modelId})`);
-                                break;
-                            }
-                        }
-                    } catch (err) {
-                        console.warn(`[Gemini] スキップ (${modelId}): ${err.message}`);
-                    }
-                }
-            }
-        } catch (e) {
-            console.error('[Gemini] モデル一覧の取得に失敗しました:', e.message);
-        }
-    }
-
-    if (!planetColor) {
-        planetColor = '#808080';
-    }
+    // ★修正: AIカラー解決関数を使用 (共通化してスッキリ)
+    let planetColor = await resolveLanguageColor(mainLanguage);
 
     let planetSizeFactor = 1.0 + Math.min(1.0, Math.log10(Math.max(1, totalCommits)) / 2.5);
     planetSizeFactor = parseFloat(planetSizeFactor.toFixed(2));
 
     let planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
 
+    // AI命名処理 (共通関数 askGemini を使用してスッキリ)
     if (process.env.GEMINI_API_KEY && (planetName.includes('未知の') || planetName.includes('神秘'))) {
         console.log(`[Gemini] 暫定名 "${planetName}" をかっこいい名前に修正します...`);
-        const cleanApiKey = process.env.GEMINI_API_KEY.trim();
         let suffix = '星';
         if (totalCommits > 1000) suffix = '帝星';
         else if (totalCommits > 500) suffix = '巨星';
@@ -378,42 +409,9 @@ async function updateAndSavePlanetData(user, accessToken) {
         Example: "JavaScript" -> "柔軟な黄金の${suffix}".
         Return ONLY the name string.`;
 
-        try {
-            if (geminiModels.length === 0) {
-                const listModelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanApiKey}`;
-                const listRes = await axios.get(listModelsUrl);
-                const allModels = listRes.data.models || [];
-                geminiModels = allModels.filter(m => m.supportedGenerationMethods?.includes('generateContent'));
-                geminiModels.sort((a, b) => {
-                    const nA = a.name; const nB = b.name;
-                    if (nA.includes('1.5-flash') && !nB.includes('1.5-flash')) return -1;
-                    if (!nA.includes('1.5-flash') && nB.includes('1.5-flash')) return 1;
-                    return 0;
-                });
-            }
-
-            for (const model of geminiModels) {
-                const modelId = model.name.split('/').pop();
-                try {
-                    const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${cleanApiKey}`;
-                    const geminiRes = await axios.post(generateUrl, {
-                        contents: [{ parts: [{ text: prompt }] }]
-                    }, { headers: { 'Content-Type': 'application/json' } });
-
-                    const text = geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (text) {
-                        const cleanName = text.trim().replace(/(\r\n|\n|\r)/gm, "");
-                        if (cleanName.length > 0) {
-                            planetName = cleanName;
-                            break;
-                        }
-                    }
-                } catch (err) {
-                    console.warn(`[Gemini Name] スキップ (${modelId}): ${err.message}`);
-                }
-            }
-        } catch (e) {
-            console.error('[Gemini Name] 名前の生成に失敗しました:', e.message);
+        const aiName = await askGemini(prompt);
+        if (aiName) {
+            planetName = aiName.replace(/(\r\n|\n|\r)/gm, "");
         }
     }
 
@@ -450,15 +448,22 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ▼▼▼ 追加: Webhook エンドポイント (Socket.IOイベント発火) ▼▼▼
-app.post('/webhook', (req, res) => {
+// card.html へのルートも念のため明示
+app.get('/card.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'card.html'));
+});
+
+// ▼▼▼ 修正: Webhook エンドポイント (AIカラー対応) ▼▼▼
+app.post('/webhook', async (req, res) => {
     try {
         const payload = req.body;
         // GitHub Push Event
         if (payload && payload.repository) {
             const lang = payload.repository.language || 'Unknown';
-            // 言語から色を決定（なければデフォルト）
-            const color = LANGUAGE_COLORS[lang] || '#ffffff';
+
+            // ★修正: AIを使って色を解決 (リストにあれば即答、なければAI生成)
+            // これにより「未知の言語」でもカラフルな流星が飛ぶようになります
+            const color = await resolveLanguageColor(lang);
 
             console.log(`[Webhook] Commit detected! Language: ${lang}, Color: ${color}`);
 
@@ -471,188 +476,49 @@ app.post('/webhook', (req, res) => {
         res.status(500).send('Error');
     }
 });
-// ▲▲▲ 追加終了 ▲▲▲
+// ▲▲▲ 修正終了 ▲▲▲
 
 // Gemini APIテスト用
 app.get('/api/test-gemini', async (req, res) => {
-    if (!process.env.GEMINI_API_KEY) {
-        return res.json({ status: 'error', message: 'GEMINI_API_KEY が設定されていません。' });
-    }
-
-    try {
-        const cleanApiKey = process.env.GEMINI_API_KEY.trim();
-        const listModelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanApiKey}`;
-        const listRes = await axios.get(listModelsUrl);
-        const allModels = listRes.data.models || [];
-
-        let availableModels = allModels.filter(m =>
-            m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent')
-        );
-
-        if (availableModels.length === 0) {
-            return res.json({ status: 'error', message: '利用可能なモデルが見つかりませんでした。' });
-        }
-
-        availableModels.sort((a, b) => {
-            const nA = a.name; const nB = b.name;
-            if (nA.includes('1.5-flash') && !nB.includes('1.5-flash')) return -1;
-            if (!nA.includes('1.5-flash') && nB.includes('1.5-flash')) return 1;
-            return 0;
-        });
-
-        const model = availableModels[0];
-        const modelId = model.name.split('/').pop();
-        const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${cleanApiKey}`;
-
-        const prompt = "Explain 'Hello World' in one short sentence.";
-        const geminiRes = await axios.post(generateUrl, {
-            contents: [{ parts: [{ text: prompt }] }]
-        }, { headers: { 'Content-Type': 'application/json' } });
-
-        const output = geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        res.json({
-            status: 'success',
-            model_used: modelId,
-            output: output,
-            available_models_count: availableModels.length
-        });
-
-    } catch (e) {
-        res.json({
-            status: 'error',
-            message: e.message,
-            detail: e.response?.data || 'No details'
-        });
-    }
+    const output = await askGemini("Explain 'Hello World' in one short sentence.");
+    res.json({
+        status: output ? 'success' : 'error',
+        output: output
+    });
 });
 
 // 色生成デバッグ用
 app.get('/api/debug-color/:lang', async (req, res) => {
     const mainLanguage = req.params.lang;
-    const cleanApiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim() : '';
-
-    if (!cleanApiKey) {
-        return res.json({ error: 'GEMINI_API_KEYが設定されていません' });
-    }
-
-    console.log(`[Test] "${mainLanguage}" の色をGeminiに問い合わせます...`);
-    let planetColor = null;
-    let usedModel = 'None';
-
-    try {
-        const listRes = await axios.get(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanApiKey}`);
-        const allModels = listRes.data.models || [];
-
-        let availableModels = allModels.filter(m => m.supportedGenerationMethods?.includes('generateContent'));
-        availableModels.sort((a, b) => {
-            const nA = a.name; const nB = b.name;
-            if (nA.includes('1.5-flash') && !nB.includes('1.5-flash')) return -1;
-            if (!nA.includes('1.5-flash') && nB.includes('1.5-flash')) return 1;
-            return 0;
-        });
-
-        for (const model of availableModels) {
-            const modelId = model.name.split('/').pop();
-            const prompt = `Programming language: ${mainLanguage}. Provide a suitable hex color code (e.g., #ff0000) for this language. Return ONLY the hex code string.`;
-
-            try {
-                const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${cleanApiKey}`;
-                const geminiRes = await axios.post(generateUrl, {
-                    contents: [{ parts: [{ text: prompt }] }]
-                }, { headers: { 'Content-Type': 'application/json' } });
-
-                const text = geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (text) {
-                    const match = text.match(/#[0-9a-fA-F]{6}/);
-                    if (match) {
-                        planetColor = match[0];
-                        usedModel = modelId;
-                        break;
-                    }
-                }
-            } catch (err) {
-                console.warn(`[Test] Skip ${modelId}: ${err.message}`);
-            }
-        }
-    } catch (e) {
-        return res.json({ error: e.message, detail: e.response?.data });
-    }
-
+    const color = await resolveLanguageColor(mainLanguage);
     res.json({
         target_language: mainLanguage,
-        generated_color: planetColor || '失敗（デフォルト色になります）',
-        model_used: usedModel
+        generated_color: color
     });
 });
 
-// 名前生成デバッグ用
+// 名前生成デバッグ用 (簡易化)
 app.get('/api/debug-name/:lang', async (req, res) => {
     const mainLanguage = req.params.lang;
     const planetColor = req.query.color || '#808080';
     const totalCommits = parseInt(req.query.commits || '100');
-    const cleanApiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim() : '';
 
-    if (!cleanApiKey) {
-        return res.json({ error: 'GEMINI_API_KEYが設定されていません' });
-    }
+    let suffix = '星';
+    if (totalCommits > 1000) suffix = '帝星';
+    else if (totalCommits > 500) suffix = '巨星';
 
-    console.log(`[Test Name] "${mainLanguage}" (Color: ${planetColor}) の名前をGeminiに問い合わせます...`);
-    let generatedName = null;
-    let usedModel = 'None';
+    const prompt = `Programming language: ${mainLanguage}. Color: ${planetColor}.
+    Generate a cool Japanese planet name in the format: "[Adjective][ColorName]の${suffix}".
+    The adjective should describe the nature of "${mainLanguage}". The color name should describe the color "${planetColor}".
+    Example: "JavaScript" -> "柔軟な黄金の${suffix}".
+    Return ONLY the name string.`;
 
-    try {
-        const listRes = await axios.get(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanApiKey}`);
-        const allModels = listRes.data.models || [];
-
-        let availableModels = allModels.filter(m => m.supportedGenerationMethods?.includes('generateContent'));
-        availableModels.sort((a, b) => {
-            const nA = a.name; const nB = b.name;
-            if (nA.includes('1.5-flash') && !nB.includes('1.5-flash')) return -1;
-            if (!nA.includes('1.5-flash') && nB.includes('1.5-flash')) return 1;
-            return 0;
-        });
-
-        let suffix = '星';
-        if (totalCommits > 1000) suffix = '帝星';
-        else if (totalCommits > 500) suffix = '巨星';
-
-        const prompt = `Programming language: ${mainLanguage}. Color: ${planetColor}.
-        Generate a cool Japanese planet name in the format: "[Adjective][ColorName]の${suffix}".
-        The adjective should describe the nature of "${mainLanguage}". The color name should describe the color "${planetColor}".
-        Example: "JavaScript" -> "柔軟な黄金の${suffix}".
-        Return ONLY the name string.`;
-
-        for (const model of availableModels) {
-            const modelId = model.name.split('/').pop();
-            try {
-                const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${cleanApiKey}`;
-                const geminiRes = await axios.post(generateUrl, {
-                    contents: [{ parts: [{ text: prompt }] }]
-                }, { headers: { 'Content-Type': 'application/json' } });
-
-                const text = geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (text) {
-                    const cleanName = text.trim().replace(/(\r\n|\n|\r)/gm, "");
-                    if (cleanName.length > 0) {
-                        generatedName = cleanName;
-                        usedModel = modelId;
-                        break;
-                    }
-                }
-            } catch (err) {
-                console.warn(`[Test Name] Skip ${modelId}: ${err.message}`);
-            }
-        }
-    } catch (e) {
-        return res.json({ error: e.message, detail: e.response?.data });
-    }
+    const generatedName = await askGemini(prompt);
 
     res.json({
         input_language: mainLanguage,
         input_color: planetColor,
-        generated_name: generatedName || '生成失敗',
-        model_used: usedModel
+        generated_name: generatedName || '生成失敗'
     });
 });
 
@@ -849,18 +715,69 @@ app.get('/api/planets/random', async (req, res) => {
     }
 });
 
-// ▼▼▼ 修正: Socket.IO用に戻り値のserverを使用 ▼▼▼
+// ▼▼▼ 追加: 画像生成 API (Puppeteer) ▼▼▼
+app.get('/api/card/:username', async (req, res) => {
+    const { username } = req.params;
+    console.log(`[Card] Generating image for ${username}...`);
+
+    let browser = null;
+    try {
+        browser = await puppeteer.launch({
+            headless: 'new',
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--no-zygote',
+                '--single-process'
+            ]
+        });
+
+        const page = await browser.newPage();
+        await page.setViewport({ width: 800, height: 400, deviceScaleFactor: 2 });
+
+        const baseUrl = isProduction ? 'https://githubplanet.onrender.com' : `http://localhost:${port}`;
+        const targetUrl = `${baseUrl}/card.html?username=${username}`;
+
+        console.log(`[Card] Opening: ${targetUrl}`);
+
+        await page.goto(targetUrl, { waitUntil: 'networkidle0', timeout: 15000 });
+
+        try {
+            await page.waitForSelector('#ready-signal', { timeout: 10000 });
+        } catch (e) {
+            console.warn('[Card] Warning: Ready signal timed out, taking screenshot anyway.');
+        }
+
+        const imageBuffer = await page.screenshot({
+            clip: { x: 0, y: 0, width: 800, height: 400 },
+            type: 'png'
+        });
+
+        await browser.close();
+        browser = null;
+
+        res.set('Content-Type', 'image/png');
+        res.set('Cache-Control', 'public, max-age=86400');
+        res.send(imageBuffer);
+
+    } catch (e) {
+        console.error('[Card Error]', e);
+        if (browser) await browser.close();
+        res.status(500).send('Error generating planet card');
+    }
+});
+// ▲▲▲ 追加終了 ▲▲▲
+
+
 const server = app.listen(port, () => {
     console.log(`Server running on port ${port}`);
     console.log(`http://localhost:${port}`);
     console.log(`Test Gemini API: http://localhost:${port}/api/test-gemini`);
 });
 
-// Socket.IOの初期化
 const io = new Server(server);
 
-// Socket.IO 接続イベント
 io.on('connection', (socket) => {
     console.log('Client connected to socket');
 });
-// ▲▲▲ 修正終了 ▲▲▲
