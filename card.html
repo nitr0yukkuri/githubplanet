@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planet Card</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/front/css/card.css">
+</head>
+
+<body>
+
+    <div id="card-container">
+        <div class="bg-space"></div>
+        <div class="bg-aurora"></div>
+        <div class="bg-stars" id="star-container"></div>
+        <div class="scanlines"></div>
+
+        <div id="planet-canvas"></div>
+
+        <div id="stats-panel">
+            <div class="header-group">
+                <div class="holo-line"></div>
+                <h1 id="username-display" class="glitch-text">USER_NAME</h1>
+                <div class="planet-name-wrapper">
+                    <div class="planet-name" id="planet-name-sub">PLANET NAME</div>
+                    <div class="planet-type">CLASS: GALAXY</div>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <span class="label">LEVEL</span>
+                    <span class="value glow-cyan" id="level-val">00</span>
+                    <div class="stat-bar">
+                        <div class="stat-fill" style="width: 70%"></div>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <span class="label">TOTAL COMMITS</span>
+                    <span class="value glow-purple" id="commits-val">0</span>
+                    <div class="stat-bar">
+                        <div class="stat-fill purple" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lang-section">
+                <div class="lang-header">
+                    <span class="label">PRIMARY LANGUAGE SYSTEM</span>
+                    <span class="value main-lang" id="main-lang-val">Unknown</span>
+                </div>
+                <div class="lang-bar-outer">
+                    <div class="lang-bar-container" id="lang-bar"></div>
+                </div>
+                <div class="tech-readout">
+                    <span>SYS.OP.244</span>
+                    <span class="blink">● ONLINE</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="corner-accents">
+            <div class="corner tl"></div>
+            <div class="corner tr"></div>
+            <div class="corner bl"></div>
+            <div class="corner br"></div>
+        </div>
+    </div>
+
+    <script type="module" src="/front/js/card.js"></script>
+</body>
+
+</html>
