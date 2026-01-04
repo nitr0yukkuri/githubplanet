@@ -25,7 +25,6 @@ camera.position.set(5.5, 0, 8);
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setSize(width, height);
 renderer.setPixelRatio(window.devicePixelRatio);
-// トーンマッピング: 光の表現を自然に
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 canvasContainer.appendChild(renderer.domElement);
@@ -34,6 +33,7 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 controls.enableZoom = false;
+// ★修正: 公転はOFF
 controls.autoRotate = false;
 
 // ターゲットを右にずらして惑星を左に配置
@@ -41,10 +41,11 @@ controls.target.set(3.5, 0, 0);
 
 // テクスチャ
 const textureLoader = new THREE.TextureLoader();
+// パスは前回のコードで問題なかったと仮定
 const planetTexture = textureLoader.load('/front/img/2k_mars.jpg');
 
 // ライト設定
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
 scene.add(ambientLight);
 
 // 主光源（白）
@@ -52,8 +53,8 @@ const dirLight = new THREE.DirectionalLight(0xffffff, 1.8);
 dirLight.position.set(5, 3, 5);
 scene.add(dirLight);
 
-// バックライト（青系固定）
-const backLight = new THREE.PointLight(0x4444ff, 1.5, 20);
+// ★リムライト（背後光）: これの色を変えてオーラを表現する
+const backLight = new THREE.PointLight(0xffffff, 0, 50);
 backLight.position.set(-5, 2, -10);
 scene.add(backLight);
 
@@ -93,8 +94,6 @@ function updateUI(data) {
 
     mainLangStat.textContent = (data.mainLanguage || 'UNKNOWN').toUpperCase();
 
-    // ★修正: ここでUIの色（--accent）を変える処理を削除しました。
-    // バーの色だけは言語ごとのデータに従います。
     if (data.planetColor) {
         langBar.style.background = data.planetColor;
         langBar.style.boxShadow = `0 0 10px ${data.planetColor}`;
@@ -122,24 +121,28 @@ function createPlanet(data) {
 
     const geometry = new THREE.SphereGeometry(1.0 * (data.planetSizeFactor || 1), 64, 64);
 
-    // ★レベル計算: バックエンドのロジックに準拠して発光強度を決める
+    // ★レベル計算: バックエンドのロジックに準拠
     const level = Math.floor((data.totalCommits || 0) / 30) + 1;
-    const glowIntensity = Math.min(0.2 + (level * 0.05), 2.0);
+    const glowIntensity = Math.min(0.5 + (level * 0.1), 3.0); // 最大3.0まで
 
     // ★マテリアル設定: 
-    // バックエンドから来た色(data.planetColor)を素直に使用
+    // colorを白にすることで、火星のテクスチャをそのまま表示（濁らせない）
     const material = new THREE.MeshStandardMaterial({
         map: planetTexture,
-        color: data.planetColor || 0xffffff, // 言語の色
+        color: 0xffffff,
         roughness: 0.6,
         metalness: 0.1,
-        // バックエンドを元にした発光
+        // 言語の色でほんのり内側から光らせる
         emissive: data.planetColor || 0x000000,
-        emissiveIntensity: glowIntensity
+        emissiveIntensity: 0.2 // テクスチャが消えない程度に弱く
     });
 
     planetMesh = new THREE.Mesh(geometry, material);
     planetGroup.add(planetMesh);
+
+    // ★背後のライトの色と言語色を同期させ、強度をレベルで制御 -> これがオーラになる
+    backLight.color.set(data.planetColor || 0xffffff);
+    backLight.intensity = glowIntensity;
 
     addParticles(data.planetColor);
 }
@@ -167,7 +170,7 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
 
-    // 自転
+    // ★自転: 惑星そのものを回す
     if (planetMesh) {
         planetMesh.rotation.y += 0.003;
     }
