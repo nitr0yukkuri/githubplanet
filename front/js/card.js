@@ -1,163 +1,182 @@
-import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 const params = new URLSearchParams(window.location.search);
-const username = params.get('username');
+const username = params.get('username') || 'NITROYUKKURI';
 
-// ★背景の星を生成する関数
-function createStars() {
-    const container = document.getElementById('star-container');
-    const starCount = 50; // 星の数
-    for (let i = 0; i < starCount; i++) {
-        const star = document.createElement('div');
-        star.className = 'star';
-        // ランダムな位置
-        const x = Math.random() * 100;
-        const y = Math.random() * 100;
-        // ランダムなサイズ
-        const size = Math.random() * 2 + 1;
-        // ランダムな点滅遅延
-        const delay = Math.random() * 3;
+const containerElement = document.getElementById('card-container');
+const canvasContainer = document.getElementById('planet-canvas');
+const usernameDisplay = document.getElementById('username-display');
+const planetNameSub = document.getElementById('planet-name-sub');
+const mainLangStat = document.getElementById('main-lang-stat');
+const commitsVal = document.getElementById('commits-val');
+const langBar = document.getElementById('lang-bar');
 
-        star.style.left = `${x}%`;
-        star.style.top = `${y}%`;
-        star.style.width = `${size}px`;
-        star.style.height = `${size}px`;
-        star.style.animationDelay = `${delay}s`;
+const width = 800;
+const height = 400;
 
-        container.appendChild(star);
+// シーン
+const scene = new THREE.Scene();
+
+// カメラ設定
+const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+camera.position.set(5.5, 0, 8);
+
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setSize(width, height);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+canvasContainer.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.enableZoom = false;
+// ★修正: 公転はOFF
+controls.autoRotate = false;
+
+// ターゲットを右にずらして惑星を左に配置
+controls.target.set(3.5, 0, 0);
+
+// テクスチャ
+const textureLoader = new THREE.TextureLoader();
+// パスは前回のコードで問題なかったと仮定
+const planetTexture = textureLoader.load('/front/img/2k_mars.jpg');
+
+// ライト設定
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+scene.add(ambientLight);
+
+// 主光源（白）
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.8);
+dirLight.position.set(5, 3, 5);
+scene.add(dirLight);
+
+// ★リムライト（背後光）: これの色を変えてオーラを表現する
+const backLight = new THREE.PointLight(0xffffff, 0, 50);
+backLight.position.set(-5, 2, -10);
+scene.add(backLight);
+
+// 惑星グループ
+const planetGroup = new THREE.Group();
+scene.add(planetGroup);
+
+let planetMesh;
+
+async function init() {
+    try {
+        const res = await fetch(`/api/planets/user/${username}`);
+        if (!res.ok) throw new Error('Data fetch failed');
+        const data = await res.json();
+        updateUI(data);
+        createPlanet(data);
+    } catch (e) {
+        console.error(e);
+        const dummyData = {
+            username: username,
+            planetName: 'Error Planet',
+            totalCommits: 0,
+            planetSizeFactor: 1,
+            planetColor: '#808080',
+            mainLanguage: 'Unknown'
+        };
+        updateUI(dummyData);
+        createPlanet(dummyData);
     }
 }
 
-async function init() {
-    createStars(); // 星を降らせる
+function updateUI(data) {
+    usernameDisplay.textContent = data.username || username;
+    planetNameSub.textContent = (data.planetName || 'UNKNOWN').toUpperCase();
 
-    if (!username) return;
+    animateValue(commitsVal, 0, data.totalCommits || 0, 1500);
 
-    try {
-        const res = await fetch(`/api/planets/user/${username}`);
-        if (!res.ok) throw new Error('Fetch failed');
-        const data = await res.json();
+    mainLangStat.textContent = (data.mainLanguage || 'UNKNOWN').toUpperCase();
 
-        // テキスト反映
-        document.getElementById('username-display').textContent = data.username.toUpperCase();
-        document.getElementById('planet-name-sub').textContent = data.planetName || 'UNKNOWN SYSTEM';
-        document.getElementById('commits-val').textContent = (data.totalCommits || 0).toLocaleString();
-        document.getElementById('main-lang-val').textContent = data.mainLanguage || 'N/A';
-
-        // レベル
-        const level = Math.floor(Math.sqrt(data.totalCommits || 0)) + 1;
-        document.getElementById('level-val').textContent = level.toString().padStart(2, '0');
-
-        // 言語バー生成
-        const langBar = document.getElementById('lang-bar');
-        if (data.languageStats) {
-            const total = Object.values(data.languageStats).reduce((a, b) => a + b, 0);
-
-            // ネオンカラー定義
-            const colors = {
-                JavaScript: '#f7df1e', TypeScript: '#3178c6', Python: '#3776ab',
-                HTML: '#e34c26', CSS: '#563d7c', Vue: '#42b883', React: '#61dafb',
-                Java: '#b07219', C: '#555555', Go: '#00ADD8', Rust: '#dea584'
-            };
-
-            const sorted = Object.entries(data.languageStats).sort(([, a], [, b]) => b - a).slice(0, 5);
-
-            sorted.forEach(([lang, bytes]) => {
-                const percent = (bytes / total) * 100;
-                const el = document.createElement('div');
-                el.className = 'lang-segment';
-                el.style.width = `${percent}%`;
-                // フォールバック色はシアン
-                const color = colors[lang] || '#0ff';
-                el.style.backgroundColor = color;
-                // セグメントごとの発光
-                el.style.boxShadow = `0 0 8px ${color}`;
-                langBar.appendChild(el);
-            });
-        }
-
-        // --- Three.js Setup ---
-        const w = 460, h = 460;
-        const scene = new THREE.Scene();
-
-        const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
-        camera.position.z = 11;
-
-        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-        renderer.setSize(w, h);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        document.getElementById('planet-canvas').appendChild(renderer.domElement);
-
-        // ライティング（ドラマチックに）
-        scene.add(new THREE.AmbientLight(0xffffff, 0.2)); // 環境光は弱く
-
-        // メインライト（右上から強く）
-        const dl = new THREE.DirectionalLight(0xffffff, 1.8);
-        dl.position.set(8, 5, 10);
-        scene.add(dl);
-
-        // リムライト（左下から青く怪しく光る）
-        const rim = new THREE.DirectionalLight(0x00ffff, 2.5);
-        rim.position.set(-8, -5, -5);
-        scene.add(rim);
-
-        // 惑星本体
-        const geo = new THREE.SphereGeometry(3.5, 64, 64);
-        const mat = new THREE.MeshStandardMaterial({
-            color: new THREE.Color(data.planetColor || '#808080'),
-            roughness: 0.4,  // ツヤツヤにする
-            metalness: 0.7,  // 金属感を強く
-            emissive: new THREE.Color(data.planetColor), // ほんのり自発光させる
-            emissiveIntensity: 0.1
-        });
-
-        new THREE.TextureLoader().load('/front/img/2k_mars.jpg', (tex) => {
-            mat.map = tex;
-            mat.needsUpdate = true;
-            finish();
-        }, undefined, finish);
-
-        const mesh = new THREE.Mesh(geo, mat);
-        scene.add(mesh);
-
-        // 角度調整
-        mesh.rotation.y = -0.8;
-        mesh.rotation.z = 0.3;
-        mesh.rotation.x = 0.3;
-
-        // 星屑のようなパーティクルを3D空間にも飛ばす
-        const starsGeo = new THREE.BufferGeometry();
-        const starsCount = 200;
-        const posArray = new Float32Array(starsCount * 3);
-        for (let i = 0; i < starsCount * 3; i++) {
-            posArray[i] = (Math.random() - 0.5) * 20; // 範囲広めに
-        }
-        starsGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-        const starsMat = new THREE.PointsMaterial({
-            size: 0.05, color: 0xffffff, transparent: true, opacity: 0.8
-        });
-        const starsMesh = new THREE.Points(starsGeo, starsMat);
-        scene.add(starsMesh);
-
-        // アニメーションループ（ブラウザで見た時用）
-        function animate() {
-            requestAnimationFrame(animate);
-            mesh.rotation.y += 0.002; // ゆっくり回す
-            starsMesh.rotation.y -= 0.001; // 背景の星も逆回転
-            renderer.render(scene, camera);
-        }
-        animate();
-
-        function finish() {
-            // 撮影の合図
-            setTimeout(() => {
-                const div = document.createElement('div');
-                div.id = 'ready-signal';
-                document.body.appendChild(div);
-            }, 1000); // アニメーションが馴染むまで少し待つ
-        }
-
-    } catch (e) { console.error(e); }
+    if (data.planetColor) {
+        langBar.style.background = data.planetColor;
+        langBar.style.boxShadow = `0 0 10px ${data.planetColor}`;
+    }
+    setTimeout(() => { langBar.style.width = '100%'; }, 100);
 }
 
+function animateValue(obj, start, end, duration) {
+    let startTimestamp = null;
+    const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        obj.innerHTML = Math.floor(progress * (end - start) + start);
+        if (progress < 1) {
+            window.requestAnimationFrame(step);
+        }
+    };
+    window.requestAnimationFrame(step);
+}
+
+function createPlanet(data) {
+    while (planetGroup.children.length > 0) {
+        planetGroup.remove(planetGroup.children[0]);
+    }
+
+    const geometry = new THREE.SphereGeometry(1.0 * (data.planetSizeFactor || 1), 64, 64);
+
+    // ★レベル計算: バックエンドのロジックに準拠
+    const level = Math.floor((data.totalCommits || 0) / 30) + 1;
+    const glowIntensity = Math.min(0.5 + (level * 0.1), 3.0); // 最大3.0まで
+
+    // ★マテリアル設定: 
+    // colorを白にすることで、火星のテクスチャをそのまま表示（濁らせない）
+    const material = new THREE.MeshStandardMaterial({
+        map: planetTexture,
+        color: 0xffffff,
+        roughness: 0.6,
+        metalness: 0.1,
+        // 言語の色でほんのり内側から光らせる
+        emissive: data.planetColor || 0x000000,
+        emissiveIntensity: 0.2 // テクスチャが消えない程度に弱く
+    });
+
+    planetMesh = new THREE.Mesh(geometry, material);
+    planetGroup.add(planetMesh);
+
+    // ★背後のライトの色と言語色を同期させ、強度をレベルで制御 -> これがオーラになる
+    backLight.color.set(data.planetColor || 0xffffff);
+    backLight.intensity = glowIntensity;
+
+    addParticles(data.planetColor);
+}
+
+function addParticles(color) {
+    const particlesGeometry = new THREE.BufferGeometry();
+    const particleCount = 200;
+    const posArray = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount * 3; i++) {
+        posArray[i] = (Math.random() - 0.5) * 8;
+    }
+    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+    const material = new THREE.PointsMaterial({
+        size: 0.02,
+        color: color || 0xffffff,
+        transparent: true,
+        opacity: 0.4,
+        blending: THREE.AdditiveBlending
+    });
+    const particlesMesh = new THREE.Points(particlesGeometry, material);
+    planetGroup.add(particlesMesh);
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+
+    // ★自転: 惑星そのものを回す
+    if (planetMesh) {
+        planetMesh.rotation.y += 0.003;
+    }
+
+    renderer.render(scene, camera);
+}
+
+animate();
 init();
