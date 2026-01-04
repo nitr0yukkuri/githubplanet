@@ -25,23 +25,21 @@ camera.position.set(5.5, 0, 8);
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setSize(width, height);
 renderer.setPixelRatio(window.devicePixelRatio);
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
+// ToneMappingはデフォルト(Linear)でhome.jsと一致させる
 canvasContainer.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 controls.enableZoom = false;
-// ★修正: 公転はOFF
 controls.autoRotate = false;
+controls.enabled = false;
 
 // ターゲットを右にずらして惑星を左に配置
 controls.target.set(3.5, 0, 0);
 
 // テクスチャ
 const textureLoader = new THREE.TextureLoader();
-// パスは前回のコードで問題なかったと仮定
 const planetTexture = textureLoader.load('/front/img/2k_mars.jpg');
 
 // ライト設定
@@ -49,12 +47,12 @@ const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
 scene.add(ambientLight);
 
 // 主光源（白）
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.8);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
 dirLight.position.set(5, 3, 5);
 scene.add(dirLight);
 
-// ★リムライト（背後光）: これの色を変えてオーラを表現する
-const backLight = new THREE.PointLight(0xffffff, 0, 50);
+// リムライト（背後光）
+const backLight = new THREE.PointLight(0xffffff, 0.5, 50);
 backLight.position.set(-5, 2, -10);
 scene.add(backLight);
 
@@ -114,35 +112,171 @@ function animateValue(obj, start, end, duration) {
     window.requestAnimationFrame(step);
 }
 
+// 星の数を計算する関数
+function calculateStarCount(totalCommits) {
+    let starCount = 0;
+    let commitsUsed = 0;
+    let requiredCommitsPerStar = 10;
+    const costIncreaseStep = 10;
+    const levelUpThreshold = 5;
+
+    while (true) {
+        const currentLevelCost = requiredCommitsPerStar + (Math.floor(starCount / levelUpThreshold) * costIncreaseStep);
+        if (totalCommits >= commitsUsed + currentLevelCost) {
+            starCount++;
+            commitsUsed += currentLevelCost;
+        } else {
+            break;
+        }
+    }
+    return starCount;
+}
+
 function createPlanet(data) {
     while (planetGroup.children.length > 0) {
         planetGroup.remove(planetGroup.children[0]);
     }
 
-    const geometry = new THREE.SphereGeometry(1.0 * (data.planetSizeFactor || 1), 64, 64);
+    // サイズ倍率 1.3
+    const baseSize = 1.3 * (data.planetSizeFactor || 1);
 
-    // ★レベル計算: バックエンドのロジックに準拠
+    const geometry = new THREE.SphereGeometry(baseSize, 64, 64);
+    geometry.setAttribute('uv2', new THREE.BufferAttribute(geometry.attributes.uv.array, 2));
+
+    // ★レベル計算
     const level = Math.floor((data.totalCommits || 0) / 30) + 1;
-    const glowIntensity = Math.min(0.5 + (level * 0.1), 3.0); // 最大3.0まで
+    // オーラ強度計算
+    const auraIntensity = Math.min(3.0, (level / 5.0) * 0.5);
 
-    // ★マテリアル設定: 
-    // colorを白にすることで、火星のテクスチャをそのまま表示（濁らせない）
+    // ★マテリアル設定
     const material = new THREE.MeshStandardMaterial({
-        map: planetTexture,
-        color: 0xffffff,
-        roughness: 0.6,
-        metalness: 0.1,
-        // 言語の色でほんのり内側から光らせる
-        emissive: data.planetColor || 0x000000,
-        emissiveIntensity: 0.2 // テクスチャが消えない程度に弱く
+        color: data.planetColor || 0xffffff,
+        aoMap: planetTexture,
+        aoMapIntensity: 1.5,
+        roughness: 0.8,
+        metalness: 0.2
     });
 
     planetMesh = new THREE.Mesh(geometry, material);
     planetGroup.add(planetMesh);
 
-    // ★背後のライトの色と言語色を同期させ、強度をレベルで制御 -> これがオーラになる
-    backLight.color.set(data.planetColor || 0xffffff);
-    backLight.intensity = glowIntensity;
+    // ★星の生成
+    const starCount = calculateStarCount(data.totalCommits || 0);
+
+    if (starCount > 0) {
+        const vertices = [];
+        const starBaseRadius = baseSize * 1.75;
+
+        for (let i = 0; i < starCount; i++) {
+            const phi = Math.random() * Math.PI * 2;
+            const theta = Math.random() * Math.PI;
+            const radius = starBaseRadius + (Math.random() * (baseSize * 0.5));
+
+            const x = radius * Math.sin(theta) * Math.cos(phi);
+            const y = radius * Math.sin(theta) * Math.sin(phi);
+            const z = radius * Math.cos(theta);
+            vertices.push(x, y, z);
+        }
+
+        const starGeometry = new THREE.BufferGeometry();
+        starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+        const vertexShader = `
+            uniform float pixelRatio;
+            void main() {
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                gl_Position = projectionMatrix * mvPosition;
+                // ★修正: サイズをさらに縮小 300.0 -> 80.0 (サポート程度の控えめな大きさに)
+                gl_PointSize = (200.0 * pixelRatio) / -mvPosition.z;
+            }
+        `;
+
+        const fragmentShader = `
+            void main() {
+                vec2 p = gl_PointCoord * 2.0 - 1.0; 
+                float r = length(p); 
+                if (r > 1.0) discard; 
+
+                float core = 1.0 - smoothstep(0.0, 0.05, r);
+                float a = atan(p.y, p.x); 
+                float numRays = 4.0; 
+                float rayIntensity = pow(abs(cos(a * numRays / 2.0)), 30.0);
+                float rayFalloff = 1.0 - smoothstep(0.0, 1.0, r);
+                rayFalloff = pow(rayFalloff, 2.0); 
+                float rays = rayIntensity * rayFalloff * 2.5; 
+                float glow = 1.0 - smoothstep(0.0, 1.0, r);
+                glow = pow(glow, 4.0); 
+                float alpha = core * 2.0 + rays + glow * 1.0;
+                alpha = clamp(alpha, 0.0, 1.0); 
+
+                // ★修正: アルファを 0.4倍 にして輝度を下げ、地味にする
+                gl_FragColor = vec4(1.0, 1.0, 1.0, alpha * 0.7);
+            }
+        `;
+
+        const starMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                pixelRatio: { value: window.devicePixelRatio }
+            },
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+            blending: THREE.AdditiveBlending,
+            transparent: true,
+            depthWrite: false
+        });
+
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        planetGroup.add(stars);
+    }
+
+    // ★オーラシェーダー
+    if (auraIntensity > 0) {
+        const auraGeo = new THREE.SphereGeometry(baseSize * 1.02, 64, 64);
+
+        const auraVertexShader = `
+            varying vec3 vNormal;
+            varying vec3 vViewPosition;
+            void main() {
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                vViewPosition = -mvPosition.xyz; 
+                vNormal = normalize(normalMatrix * normal); 
+                gl_Position = projectionMatrix * mvPosition;
+            }
+        `;
+
+        const auraFragmentShader = `
+            uniform vec3 glowColor;
+            uniform float intensity; 
+            varying vec3 vNormal;
+            varying vec3 vViewPosition;
+            void main() {
+                float fresnel = dot(normalize(vViewPosition), vNormal);
+                fresnel = 1.0 - fresnel; 
+                fresnel = pow(fresnel, 5.0); 
+
+                float alpha = fresnel * intensity;
+                alpha = clamp(alpha, 0.0, 1.0); 
+
+                gl_FragColor = vec4(glowColor, alpha);
+            }
+        `;
+
+        const auraMat = new THREE.ShaderMaterial({
+            uniforms: {
+                glowColor: { value: new THREE.Color(data.planetColor || 0xffffff) },
+                intensity: { value: auraIntensity + 1.0 }
+            },
+            vertexShader: auraVertexShader,
+            fragmentShader: auraFragmentShader,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            side: THREE.FrontSide,
+            depthWrite: false
+        });
+
+        const aura = new THREE.Mesh(auraGeo, auraMat);
+        planetGroup.add(aura);
+    }
 
     addParticles(data.planetColor);
 }
@@ -170,10 +304,9 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
 
-    // ★自転: 惑星そのものを回す
-    if (planetMesh) {
-        planetMesh.rotation.y += 0.003;
-    }
+    // ★修正: planetMeshではなくplanetGroup全体を回すことで、
+    // 惑星と星が一緒に同期して回転するように変更
+    planetGroup.rotation.y += 0.003;
 
     renderer.render(scene, camera);
 }
