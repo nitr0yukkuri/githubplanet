@@ -1,18 +1,34 @@
 // server.js
 import 'dotenv/config';
+
+// ▼▼▼ Windows/Local環境でもThree.jsを動かすためのポリフィル ▼▼▼
+global.window = global;
+global.self = global;
+global.document = {
+    createElement: (tag) => {
+        return { style: {}, getContext: () => { }, addEventListener: () => { }, removeEventListener: () => { } };
+    },
+    createElementNS: (ns, tag) => { return { style: {} }; }
+};
+global.requestAnimationFrame = (callback) => setTimeout(callback, 1000 / 60);
+global.cancelAnimationFrame = (id) => clearTimeout(id);
+// ▲▲▲ ポリフィル終了 ▲▲▲
+
 import express from 'express';
 import session from 'express-session';
 import crypto from 'crypto';
 import axios from 'axios';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import pg from 'pg';
 import connectPgSimple from 'connect-pg-simple';
 import { Server } from 'socket.io';
-import puppeteer from 'puppeteer';
+import gl from 'gl';
+import { createCanvas, loadImage } from 'canvas';
+import * as THREE from 'three';
 
 const app = express();
-// ★ ポート3000が埋まりがちなので3001をデフォルトに変更
 const port = process.env.PORT || 3001;
 
 app.use(express.json());
@@ -114,7 +130,8 @@ let pool;
 if (connectionString) {
     const isLocalDatabase = connectionString.includes('@localhost') ||
         connectionString.includes('@127.0.0.1') ||
-        connectionString.includes('@db');
+        connectionString.includes('@db') ||
+        connectionString.includes('localhost'); // Windowsローカル対応
 
     pool = new pg.Pool({
         connectionString: connectionString,
@@ -141,7 +158,7 @@ if (connectionString) {
             `);
         })
         .then(() => console.log('[DB] achievementsカラムの準備ができました'))
-        .catch(err => console.error('[DB] テーブル作成/接続に失敗しました:', err));
+        .catch(err => console.error('[DB] テーブル作成/接続に失敗しました (ローカルDBが起動していない可能性があります):', err.message));
 } else {
     console.warn('[DB] データベース接続文字列(DATABASE_URL)が設定されていません。DB機能は無効になります。');
 }
@@ -156,7 +173,7 @@ app.use(session({
         pool: pool,
         createTableIfMissing: true
     }) : undefined,
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || 'dev_secret',
     resave: false,
     saveUninitialized: true,
     cookie: { secure: isProduction, httpOnly: true, sameSite: 'lax' }
@@ -649,58 +666,285 @@ app.get('/api/planets/random', async (req, res) => {
     }
 });
 
-// ▼▼▼ 追加: 画像生成 API (Puppeteer) ▼▼▼
+// ▼▼▼ 画像生成 API (headless-gl + CanvasTexture) ▼▼▼
 app.get('/api/card/:username', async (req, res) => {
     const { username } = req.params;
-    console.log(`[Card] Generating image for ${username}...`);
+    console.log(`[Card] Generating image (Native) for ${username}...`);
 
-    let browser = null;
     try {
-        // ★修正: Windows環境(ローカル)でクラッシュしない設定
-        // Render(Linux)でも動作する安全な構成
-        browser = await puppeteer.launch({
-            headless: 'new', // または true
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                // '--no-zygote',       <-- Windowsでクラッシュの原因になるので削除
-                // '--single-process'   <-- Windowsでクラッシュの原因になるので削除
-            ]
-        });
-
-        const page = await browser.newPage();
-        await page.setViewport({ width: 800, height: 400, deviceScaleFactor: 2 });
-
-        const baseUrl = isProduction ? 'https://githubplanet.onrender.com' : `http://localhost:${port}`;
-        const targetUrl = `${baseUrl}/card.html?username=${username}`;
-
-        console.log(`[Card] Opening: ${targetUrl}`);
-
-        await page.goto(targetUrl, { waitUntil: 'networkidle0', timeout: 15000 });
-
-        try {
-            await page.waitForSelector('#ready-signal', { timeout: 10000 });
-        } catch (e) {
-            console.warn('[Card] Warning: Ready signal timed out, taking screenshot anyway.');
+        let data = null;
+        if (pool) {
+            const result = await pool.query('SELECT * FROM planets WHERE username = $1', [username]);
+            if (result.rows.length > 0) {
+                const row = result.rows[0];
+                data = {
+                    username: row.username,
+                    planetName: generatePlanetName(row.main_language, row.planet_color, row.total_commits),
+                    totalCommits: parseInt(row.total_commits) || 0,
+                    mainLanguage: row.main_language,
+                    planetColor: row.planet_color || '#808080',
+                    planetSizeFactor: parseFloat(row.planet_size_factor) || 1.0
+                };
+            }
         }
 
-        const imageBuffer = await page.screenshot({
-            clip: { x: 0, y: 0, width: 800, height: 400 },
-            type: 'png'
-        });
+        if (!data) {
+            data = {
+                username: username,
+                planetName: 'UNKNOWN PLANET',
+                totalCommits: 0,
+                mainLanguage: 'Unknown',
+                planetColor: '#808080',
+                planetSizeFactor: 1.0
+            };
+        }
 
-        await browser.close();
-        browser = null;
+        const width = 800;
+        const height = 400;
+
+        const glContext = gl(width, height, { preserveDrawingBuffer: true });
+
+        if (!glContext) {
+            console.error('[Card Error] Failed to create WebGL context. "headless-gl" might be missing system dependencies.');
+            throw new Error('Failed to create WebGL context (gl returned null)');
+        }
+
+        const mockCanvas = {
+            width, height,
+            style: { width: `${width}px`, height: `${height}px` },
+            addEventListener: (event, func) => { },
+            removeEventListener: (event, func) => { },
+            setAttribute: (name, value) => { },
+            getContext: () => glContext,
+            clientWidth: width,
+            clientHeight: height,
+        };
+
+        const renderer = new THREE.WebGLRenderer({
+            context: glContext,
+            canvas: mockCanvas,
+            alpha: true,
+            antialias: true
+        });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(1);
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+
+        camera.position.set(5.5, 0, 8);
+        camera.lookAt(3.5, 0, 0);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
+        dirLight.position.set(5, 3, 5);
+        scene.add(dirLight);
+        const backLight = new THREE.PointLight(0xffffff, 0.5, 50);
+        backLight.position.set(-5, 2, -10);
+        scene.add(backLight);
+
+        // テクスチャをCanvas経由で読み込む
+        const texturePath = path.join(__dirname, 'front/img/2k_mars.jpg');
+        if (!fs.existsSync(texturePath)) {
+            console.error(`[Card Error] Texture file not found at: ${texturePath}`);
+            throw new Error('Texture file missing');
+        }
+
+        const image = await loadImage(texturePath);
+        const texCanvas = createCanvas(image.width, image.height);
+        const texCtx = texCanvas.getContext('2d');
+        texCtx.drawImage(image, 0, 0);
+
+        const planetTexture = new THREE.CanvasTexture(texCanvas);
+        planetTexture.colorSpace = THREE.SRGBColorSpace;
+
+        const planetGroup = new THREE.Group();
+        scene.add(planetGroup);
+
+        const baseSize = 1.3 * data.planetSizeFactor;
+        const geometry = new THREE.SphereGeometry(baseSize, 64, 64);
+        geometry.setAttribute('uv2', new THREE.BufferAttribute(geometry.attributes.uv.array, 2));
+
+        const material = new THREE.MeshStandardMaterial({
+            color: data.planetColor,
+            aoMap: planetTexture,
+            aoMapIntensity: 1.5,
+            roughness: 0.8,
+            metalness: 0.2
+        });
+        const planetMesh = new THREE.Mesh(geometry, material);
+        planetGroup.add(planetMesh);
+
+        // 星 (Stars)
+        const calculateStarCount = (commits) => {
+            let count = 0; let used = 0; let req = 10; const step = 10; const thres = 5;
+            while (true) {
+                const cost = req + (Math.floor(count / thres) * step);
+                if (commits >= used + cost) { count++; used += cost; } else break;
+            }
+            return count;
+        };
+        const starCount = calculateStarCount(data.totalCommits);
+
+        if (starCount > 0) {
+            const vertices = [];
+            const starBaseRadius = baseSize * 1.75;
+            for (let i = 0; i < starCount; i++) {
+                const phi = Math.random() * Math.PI * 2;
+                const theta = Math.random() * Math.PI;
+                const r = starBaseRadius + (Math.random() * (baseSize * 0.5));
+                vertices.push(r * Math.sin(theta) * Math.cos(phi), r * Math.sin(theta) * Math.sin(phi), r * Math.cos(theta));
+            }
+            const starGeo = new THREE.BufferGeometry();
+            starGeo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+            const vShader = `uniform float pixelRatio; void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; gl_PointSize = (200.0 * pixelRatio) / -mv.z; }`;
+            const fShader = `void main() { vec2 p = gl_PointCoord * 2.0 - 1.0; float r = length(p); if (r > 1.0) discard; float a = atan(p.y, p.x); float rays = pow(abs(cos(a * 2.0)), 30.0) * (1.0 - r) * 2.5; float glow = pow(1.0 - r, 4.0); gl_FragColor = vec4(1.0, 1.0, 1.0, (rays + glow) * 0.7); }`;
+
+            const starMat = new THREE.ShaderMaterial({
+                uniforms: { pixelRatio: { value: 1.0 } },
+                vertexShader: vShader, fragmentShader: fShader,
+                blending: THREE.AdditiveBlending, transparent: true, depthWrite: false
+            });
+            planetGroup.add(new THREE.Points(starGeo, starMat));
+        }
+
+        // オーラ (Aura)
+        const level = Math.floor(data.totalCommits / 30) + 1;
+        const auraIntensity = Math.min(3.0, (level / 5.0) * 0.5);
+        if (auraIntensity > 0) {
+            const auraGeo = new THREE.SphereGeometry(baseSize * 1.02, 64, 64);
+            const aVShader = `varying vec3 vN; varying vec3 vP; void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); vP = -mv.xyz; vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * mv; }`;
+            const aFShader = `uniform vec3 c; uniform float i; varying vec3 vN; varying vec3 vP; void main() { float f = pow(1.0 - dot(normalize(vP), vN), 5.0); gl_FragColor = vec4(c, f * i); }`;
+            const auraMat = new THREE.ShaderMaterial({
+                uniforms: { c: { value: new THREE.Color(data.planetColor) }, i: { value: auraIntensity + 1.0 } },
+                vertexShader: aVShader, fragmentShader: aFShader,
+                transparent: true, blending: THREE.AdditiveBlending, side: THREE.FrontSide, depthWrite: false
+            });
+            planetGroup.add(new THREE.Mesh(auraGeo, auraMat));
+        }
+
+        planetGroup.rotation.y = 0.5;
+        renderer.render(scene, camera);
+
+        // --- Phase 2: 2D Canvas Compositing ---
+
+        const canvas2d = createCanvas(width, height);
+        const ctx = canvas2d.getContext('2d');
+
+        // Background
+        const grad = ctx.createRadialGradient(width * 0.3, height * 0.5, 0, width * 0.3, height * 0.5, width);
+        grad.addColorStop(0, '#161b2e');
+        grad.addColorStop(1, '#020203');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, width, height);
+
+        // Star Dust
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        for (let i = 0; i < 50; i++) {
+            const x = Math.random() * width;
+            const y = Math.random() * height;
+            ctx.beginPath(); ctx.arc(x, y, 1, 0, Math.PI * 2); ctx.fill();
+        }
+
+        // Composite 3D Planet
+        const glPixels = new Uint8Array(width * height * 4);
+        glContext.readPixels(0, 0, width, height, glContext.RGBA, glContext.UNSIGNED_BYTE, glPixels);
+
+        const imgData = ctx.createImageData(width, height);
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const srcIdx = ((height - y - 1) * width + x) * 4;
+                const dstIdx = (y * width + x) * 4;
+                imgData.data[dstIdx] = glPixels[srcIdx];
+                imgData.data[dstIdx + 1] = glPixels[srcIdx + 1];
+                imgData.data[dstIdx + 2] = glPixels[srcIdx + 2];
+                imgData.data[dstIdx + 3] = glPixels[srcIdx + 3];
+            }
+        }
+
+        const tempCanvas = createCanvas(width, height);
+        tempCanvas.getContext('2d').putImageData(imgData, 0, 0);
+        ctx.drawImage(tempCanvas, 0, 0);
+
+        // UI Text
+        const rightX = 750;
+        const centerY = height / 2;
+        const fontFamily = 'sans-serif';
+
+        // ID
+        ctx.textAlign = 'right';
+        ctx.font = `600 14px "${fontFamily}"`;
+        ctx.fillStyle = '#00f3ff';
+        ctx.globalAlpha = 0.8;
+        ctx.fillText(`ID: ${username}`, rightX, centerY - 100);
+        ctx.globalAlpha = 1.0;
+
+        // User Name
+        ctx.font = `bold 56px "${fontFamily}"`;
+        const textGrad = ctx.createLinearGradient(0, centerY - 90, 0, centerY - 40);
+        textGrad.addColorStop(0, '#ffffff');
+        textGrad.addColorStop(1, '#a5b4fc');
+        ctx.fillStyle = textGrad;
+        ctx.shadowColor = 'rgba(165, 180, 252, 0.4)';
+        ctx.shadowBlur = 15;
+        ctx.fillText(data.username, rightX, centerY - 40);
+        ctx.shadowBlur = 0;
+
+        // Divider
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.fillRect(rightX - 170, centerY - 10, 1, 40);
+
+        // Planet Name
+        ctx.textAlign = 'right';
+        ctx.font = `600 12px "${fontFamily}"`;
+        ctx.fillStyle = '#6e7a8e';
+        ctx.fillText('PLANET NAME', rightX - 190, centerY + 5);
+        ctx.font = `bold 24px "${fontFamily}"`;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(data.planetName.toUpperCase(), rightX - 190, centerY + 35);
+
+        // Commits
+        ctx.font = `600 12px "${fontFamily}"`;
+        ctx.fillStyle = '#6e7a8e';
+        ctx.fillText('COMMITS', rightX, centerY + 5);
+        ctx.font = `bold 35px "${fontFamily}"`;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(data.totalCommits.toString(), rightX, centerY + 35);
+
+        // Language Bar
+        const barY = centerY + 100;
+        ctx.font = `600 13px "${fontFamily}"`;
+        ctx.fillStyle = '#6e7a8e';
+        ctx.textAlign = 'left';
+        ctx.fillText('MAIN SYSTEM', rightX - 440, barY - 10);
+
+        ctx.textAlign = 'right';
+        ctx.fillStyle = data.planetColor;
+        ctx.fillText(data.mainLanguage.toUpperCase(), rightX, barY - 10);
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.fillRect(rightX - 440, barY, 440, 2);
+
+        ctx.fillStyle = data.planetColor;
+        ctx.shadowColor = data.planetColor;
+        ctx.shadowBlur = 10;
+        ctx.fillRect(rightX - 440, barY, 440, 2);
 
         res.set('Content-Type', 'image/png');
         res.set('Cache-Control', 'public, max-age=86400');
-        res.send(imageBuffer);
+        canvas2d.createPNGStream().pipe(res);
 
+        // 安全なdispose
+        try {
+            renderer.dispose();
+        } catch (e) {
+            console.warn('Renderer dispose warning:', e.message);
+        }
     } catch (e) {
-        console.error('[Card Error]', e);
-        if (browser) await browser.close();
-        res.status(500).send('Error generating planet card');
+        console.error('[Card Error Details]', e);
+        res.status(500).send('Error generating card');
     }
 });
 // ▲▲▲ 追加終了 ▲▲▲

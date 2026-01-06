@@ -1,18 +1,21 @@
 {
   "dependencies": {
     "axios": "^1.13.2",
+    "canvas": "^2.11.2",
     "connect-pg-simple": "^10.0.0",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "express-session": "^1.18.2",
+    "gl": "^6.0.2",
     "pg": "^8.16.3",
-    "puppeteer": "^24.34.0",
+    "pngjs": "^7.0.0",
     "socket.io": "^4.7.2",
-    "three": "^0.181.0"
+    "three": "^0.160.0"
   },
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node --watch server.js"
   },
   "license": "MIT",
   "devDependencies": {
