@@ -1,14 +1,12 @@
 FROM node:18-slim
 
-# 1. 必要なパッケージのインストール
-# Chrome(Puppeteer)を動かすために必要なライブラリを全て記述
+# 必要なパッケージのインストール (Chrome/Puppeteer用)
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
     build-essential \
     xvfb \
-    # ▼▼▼ Puppeteer 必須依存ライブラリ (ここが重要) ▼▼▼
     wget \
     ca-certificates \
     fonts-liberation \
@@ -46,8 +44,6 @@ RUN apt-get update && apt-get install -y \
     libxtst6 \
     lsb-release \
     xdg-utils \
-    # ▲▲▲ 必須依存ライブラリ終了 ▲▲▲
-    # 日本語フォント
     fonts-noto-cjk \
     fonts-noto-color-emoji \
     && rm -rf /var/lib/apt/lists/*
@@ -60,7 +56,8 @@ RUN npm install
 COPY . .
 
 ENV LIBGL_ALWAYS_SOFTWARE=1
+# Renderが設定するPORT環境変数に従うため、EXPOSEは参考情報
 EXPOSE 3000
 
-# Puppeteerを使う場合でも、既存構成に合わせてxvfb-run経由で起動
-CMD ["xvfb-run", "-s", "-ac -screen 0 1280x1024x24", "node", "server.js"]
+# ★修正: -a オプションを追加し、ポート衝突を防ぐ
+CMD ["sh", "-c", "xvfb-run -a -s '-ac -screen 0 1280x1024x24' node server.js"]
