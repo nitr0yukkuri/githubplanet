@@ -1,5 +1,19 @@
 // server.js
 import 'dotenv/config';
+
+// ▼▼▼ Windows/Local環境でもThree.jsを動かすためのポリフィル ▼▼▼
+global.window = global;
+global.self = global;
+global.document = {
+    createElement: (tag) => {
+        return { style: {}, getContext: () => { }, addEventListener: () => { }, removeEventListener: () => { } };
+    },
+    createElementNS: (ns, tag) => { return { style: {} }; }
+};
+global.requestAnimationFrame = (callback) => setTimeout(callback, 1000 / 60);
+global.cancelAnimationFrame = (id) => clearTimeout(id);
+// ▲▲▲ ポリフィル終了 ▲▲▲
+
 import express from 'express';
 import session from 'express-session';
 import crypto from 'crypto';
@@ -653,7 +667,7 @@ app.get('/api/planets/random', async (req, res) => {
 // ▼▼▼ 画像生成 API (Puppeteer 安定版 - Debug & Wait 強化) ▼▼▼
 app.get('/api/card/:username', async (req, res) => {
     const { username } = req.params;
-    console.log(`[Card] Generating image for ${username}...`);
+    console.log(`[Card] Generating image (Native) for ${username}...`);
 
     let browser;
     try {
@@ -720,6 +734,12 @@ app.get('/api/card/:username', async (req, res) => {
 
         console.log(`[Card] Generated successfully for ${username}`);
 
+        // 安全なdispose
+        try {
+            renderer.dispose();
+        } catch (e) {
+            console.warn('Renderer dispose warning:', e.message);
+        }
     } catch (e) {
         console.error('[Card Error]', e);
         res.status(500).send(`Error generating card: ${e.message}`);
