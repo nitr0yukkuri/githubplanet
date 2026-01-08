@@ -5,15 +5,15 @@ import session from 'express-session';
 import crypto from 'crypto';
 import axios from 'axios';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import pg from 'pg';
 import connectPgSimple from 'connect-pg-simple';
 import { Server } from 'socket.io';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer'; // Puppeteerをインポート
 
 const app = express();
-// ★ ポート3000が埋まりがちなので3001をデフォルトに変更
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3001; // 3001がデフォルトですがdocker-composeで3000になることが多いです
 
 app.use(express.json());
 
@@ -114,7 +114,8 @@ let pool;
 if (connectionString) {
     const isLocalDatabase = connectionString.includes('@localhost') ||
         connectionString.includes('@127.0.0.1') ||
-        connectionString.includes('@db');
+        connectionString.includes('@db') ||
+        connectionString.includes('localhost');
 
     pool = new pg.Pool({
         connectionString: connectionString,
@@ -141,7 +142,7 @@ if (connectionString) {
             `);
         })
         .then(() => console.log('[DB] achievementsカラムの準備ができました'))
-        .catch(err => console.error('[DB] テーブル作成/接続に失敗しました:', err));
+        .catch(err => console.error('[DB] テーブル作成/接続に失敗しました (ローカルDBが起動していない可能性があります):', err.message));
 } else {
     console.warn('[DB] データベース接続文字列(DATABASE_URL)が設定されていません。DB機能は無効になります。');
 }
@@ -156,7 +157,7 @@ app.use(session({
         pool: pool,
         createTableIfMissing: true
     }) : undefined,
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || 'dev_secret',
     resave: false,
     saveUninitialized: true,
     cookie: { secure: isProduction, httpOnly: true, sameSite: 'lax' }
@@ -649,61 +650,86 @@ app.get('/api/planets/random', async (req, res) => {
     }
 });
 
-// ▼▼▼ 追加: 画像生成 API (Puppeteer) ▼▼▼
+// ▼▼▼ 画像生成 API (Puppeteer 安定版 - Debug & Wait 強化) ▼▼▼
 app.get('/api/card/:username', async (req, res) => {
     const { username } = req.params;
     console.log(`[Card] Generating image for ${username}...`);
 
-    let browser = null;
+    let browser;
     try {
-        // ★修正: Windows環境(ローカル)でクラッシュしない設定
-        // Render(Linux)でも動作する安全な構成
+        const port = process.env.PORT || 3000;
+        const targetUrl = `http://127.0.0.1:${port}/card.html?username=${username}`;
+
+        console.log(`[Card] Opening: ${targetUrl}`);
+
         browser = await puppeteer.launch({
-            headless: 'new', // または true
+            headless: 'new',
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                // '--no-zygote',       <-- Windowsでクラッシュの原因になるので削除
-                // '--single-process'   <-- Windowsでクラッシュの原因になるので削除
+                '--disable-gpu',
+                '--no-zygote',
+                '--single-process',
             ]
         });
 
         const page = await browser.newPage();
-        await page.setViewport({ width: 800, height: 400, deviceScaleFactor: 2 });
 
-        const baseUrl = isProduction ? 'https://githubplanet.onrender.com' : `http://localhost:${port}`;
-        const targetUrl = `${baseUrl}/card.html?username=${username}`;
+        // ▼▼▼ ブラウザ内のログをDockerのターミナルに表示する仕掛け ▼▼▼
+        page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+        page.on('pageerror', err => console.log('PAGE ERROR:', err.toString()));
+        page.on('requestfailed', request => {
+            console.log(`PAGE REQUEST FAILED: ${request.url()} ${request.failure().errorText}`);
+        });
+        // ▲▲▲▲▲▲
 
-        console.log(`[Card] Opening: ${targetUrl}`);
+        await page.setViewport({ width: 800, height: 400 });
 
-        await page.goto(targetUrl, { waitUntil: 'networkidle0', timeout: 15000 });
-
-        try {
-            await page.waitForSelector('#ready-signal', { timeout: 10000 });
-        } catch (e) {
-            console.warn('[Card] Warning: Ready signal timed out, taking screenshot anyway.');
-        }
-
-        const imageBuffer = await page.screenshot({
-            clip: { x: 0, y: 0, width: 800, height: 400 },
-            type: 'png'
+        // 1. ページ読み込み完了を待つ
+        await page.goto(targetUrl, {
+            waitUntil: 'domcontentloaded',
+            timeout: 60000
         });
 
-        await browser.close();
-        browser = null;
+        // 2. ユーザー名が更新されるのを待つ
+        try {
+            await page.waitForFunction(
+                () => {
+                    const el = document.getElementById('username-display');
+                    return el && el.textContent.trim() !== 'USERNAME';
+                },
+                { timeout: 30000 }
+            );
+        } catch (waitError) {
+            console.warn('[Card Warning] Timeout waiting for username update.');
+        }
+
+        // 3. ★修正: 描画待ち時間を 5秒 に延長 (3Dモデル読み込み対策)
+        console.log('[Card] Waiting for 3D rendering...');
+        await new Promise(r => setTimeout(r, 5000));
+
+        const screenshotBuffer = await page.screenshot({
+            type: 'png',
+            omitBackground: true
+        });
 
         res.set('Content-Type', 'image/png');
         res.set('Cache-Control', 'public, max-age=86400');
-        res.send(imageBuffer);
+        res.send(screenshotBuffer);
+
+        console.log(`[Card] Generated successfully for ${username}`);
 
     } catch (e) {
         console.error('[Card Error]', e);
-        if (browser) await browser.close();
-        res.status(500).send('Error generating planet card');
+        res.status(500).send(`Error generating card: ${e.message}`);
+    } finally {
+        if (browser) {
+            await browser.close().catch(e => console.error('Browser close error:', e));
+        }
     }
 });
-// ▲▲▲ 追加終了 ▲▲▲
+// ▲▲▲ 修正終了 ▲▲▲
 
 const server = app.listen(port, () => {
     console.log(`Server running on port ${port}`);
