@@ -27,7 +27,8 @@ import { Server } from 'socket.io';
 import puppeteer from 'puppeteer'; // Puppeteerをインポート
 
 const app = express();
-const port = process.env.PORT || 3001; // 3001がデフォルトですがdocker-composeで3000になることが多いです
+// ★修正: ポートをRender標準の環境変数または3000に統一
+const port = parseInt(process.env.PORT) || 3000;
 
 app.use(express.json());
 
@@ -664,49 +665,52 @@ app.get('/api/planets/random', async (req, res) => {
     }
 });
 
-// ▼▼▼ 画像生成 API (Puppeteer 安定版 - Debug & Wait 強化) ▼▼▼
+// ▼▼▼ 画像生成 API (Puppeteer 安定版 - ファイル経由送信) ▼▼▼
 app.get('/api/card/:username', async (req, res) => {
     const { username } = req.params;
-    console.log(`[Card] Generating image (Native) for ${username}...`);
+    console.log(`[Card] Generating image (File Mode) for ${username}...`);
 
     let browser;
+    let tempFilePath = null; // 一時ファイルのパス
+
     try {
-        const port = process.env.PORT || 3000;
-        const targetUrl = `http://127.0.0.1:${port}/card.html?username=${username}`;
+        // ポートは環境変数か3000
+        const localPort = process.env.PORT || 3000;
+        const targetUrl = `http://127.0.0.1:${localPort}/card.html?username=${username}`;
 
         console.log(`[Card] Opening: ${targetUrl}`);
 
         browser = await puppeteer.launch({
-            headless: 'new',
+            headless: false, // Docker環境用
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--no-zygote',
-                '--single-process',
+                '--enable-unsafe-swiftshader',
+                '--ignore-gpu-blocklist',
+                '--allow-insecure-localhost',
             ]
         });
 
         const page = await browser.newPage();
 
-        // ▼▼▼ ブラウザ内のログをDockerのターミナルに表示する仕掛け ▼▼▼
+        // ログ転送
         page.on('console', msg => console.log('PAGE LOG:', msg.text()));
         page.on('pageerror', err => console.log('PAGE ERROR:', err.toString()));
         page.on('requestfailed', request => {
+            if (request.url().endsWith('.ico') || request.url().includes('favicon')) return;
             console.log(`PAGE REQUEST FAILED: ${request.url()} ${request.failure().errorText}`);
         });
-        // ▲▲▲▲▲▲
 
         await page.setViewport({ width: 800, height: 400 });
 
-        // 1. ページ読み込み完了を待つ
+        // 1. ページ読み込み
         await page.goto(targetUrl, {
             waitUntil: 'domcontentloaded',
             timeout: 60000
         });
 
-        // 2. ユーザー名が更新されるのを待つ
+        // 2. ユーザー名更新待ち
         try {
             await page.waitForFunction(
                 () => {
@@ -719,29 +723,60 @@ app.get('/api/card/:username', async (req, res) => {
             console.warn('[Card Warning] Timeout waiting for username update.');
         }
 
-        // 3. ★修正: 描画待ち時間を 5秒 に延長 (3Dモデル読み込み対策)
+        // 3. 描画待ち
         console.log('[Card] Waiting for 3D rendering...');
         await new Promise(r => setTimeout(r, 5000));
 
-        const screenshotBuffer = await page.screenshot({
+        // ★変更点: 一時ファイル名を生成
+        const fileName = `card_${username}_${Date.now()}.png`;
+        tempFilePath = path.join(__dirname, fileName);
+
+        // ★変更点: ファイルとして保存
+        await page.screenshot({
+            path: tempFilePath,
             type: 'png',
-            omitBackground: true
+            omitBackground: false
         });
 
-        res.set('Content-Type', 'image/png');
-        res.set('Cache-Control', 'public, max-age=86400');
-        res.send(screenshotBuffer);
+        // ファイルサイズ確認
+        if (fs.existsSync(tempFilePath)) {
+            const stats = fs.statSync(tempFilePath);
+            console.log(`[Card] Saved to file: ${tempFilePath} (${stats.size} bytes)`);
 
-        console.log(`[Card] Generated successfully for ${username}`);
-
-        // 安全なdispose
-        try {
-            renderer.dispose();
-        } catch (e) {
-            console.warn('Renderer dispose warning:', e.message);
+            if (stats.size === 0) {
+                throw new Error('Generated image file is empty (0 bytes)');
+            }
+        } else {
+            throw new Error('Image file was not created');
         }
+
+        // ★変更点: res.sendFile でファイルを送信（最も確実な方法）
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+
+        res.sendFile(tempFilePath, (err) => {
+            if (err) {
+                console.error('[Card] Error sending file:', err);
+                if (!res.headersSent) {
+                    res.status(500).send('Error sending image');
+                }
+            } else {
+                console.log(`[Card] Sent successfully: ${fileName}`);
+            }
+            // 送信完了後にファイルを削除（掃除）
+            if (tempFilePath && fs.existsSync(tempFilePath)) {
+                fs.unlink(tempFilePath, (unlinkErr) => {
+                    if (unlinkErr) console.error('[Card] Failed to delete temp file:', unlinkErr);
+                });
+            }
+        });
+
     } catch (e) {
         console.error('[Card Error]', e);
+        if (tempFilePath && fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+        }
         res.status(500).send(`Error generating card: ${e.message}`);
     } finally {
         if (browser) {
@@ -751,7 +786,8 @@ app.get('/api/card/:username', async (req, res) => {
 });
 // ▲▲▲ 修正終了 ▲▲▲
 
-const server = app.listen(port, () => {
+// ★修正: '0.0.0.0' にバインドして外部アクセスを許可
+const server = app.listen(port, '0.0.0.0', () => {
     console.log(`Server running on port ${port}`);
     console.log(`http://localhost:${port}`);
     console.log(`Test Gemini API: http://localhost:${port}/api/test-gemini`);
