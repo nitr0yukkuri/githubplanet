@@ -786,7 +786,7 @@ app.get('/api/card/:username', async (req, res) => {
 });
 // ▲▲▲ 修正終了 ▲▲▲
 
-// ★修正: '0.0.0.0' にバインドして外部アクセスを許可
+// ★修正: '0.0.0.0' にバインドして外部アクセスを許可ka
 const server = app.listen(port, '0.0.0.0', () => {
     console.log(`Server running on port ${port}`);
     console.log(`http://localhost:${port}`);
