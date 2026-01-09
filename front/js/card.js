@@ -4,6 +4,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 const params = new URLSearchParams(window.location.search);
 const username = params.get('username') || 'NITROYUKKURI';
 
+// ★追加修正: URLに'fix'パラメータがある場合(README撮影用)だけ高さ固定モードにする
+const isScreenshotMode = params.has('fix');
+
 const containerElement = document.getElementById('card-container');
 const canvasContainer = document.getElementById('planet-canvas');
 const usernameDisplay = document.getElementById('username-display');
@@ -12,7 +15,12 @@ const mainLangStat = document.getElementById('main-lang-stat');
 const commitsVal = document.getElementById('commits-val');
 const langBar = document.getElementById('lang-bar');
 
-// ★重要修正: windowではなく、400pxに固定されたコンテナのサイズを取得
+// ★撮影モードなら強制的に400pxにする
+if (isScreenshotMode) {
+    containerElement.style.height = '400px';
+}
+
+// コンテナのサイズを取得（通常は全画面、撮影時は400pxになる）
 const width = containerElement.clientWidth;
 const height = containerElement.clientHeight;
 
@@ -38,8 +46,10 @@ controls.enabled = false;
 // ターゲットを右にずらして惑星を左に配置
 controls.target.set(3.5, 0, 0);
 
-// ★修正: リサイズ時もコンテナサイズに追従
+// ウィンドウリサイズ時の対応
 window.addEventListener('resize', () => {
+    // リサイズ時も撮影モードなら高さを維持する処理を入れるか、
+    // 単純にコンテナサイズに追従させる（コンテナがCSSで制御されているため追従でOK）
     const w = containerElement.clientWidth;
     const h = containerElement.clientHeight;
     renderer.setSize(w, h);
@@ -49,7 +59,7 @@ window.addEventListener('resize', () => {
 
 // テクスチャ
 const textureLoader = new THREE.TextureLoader();
-const planetTexture = textureLoader.load('/front/img/2k_mars.jpg');
+const planetTexture = textureLoader.load('front/img/2k_mars.jpg');
 
 // ライト設定
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
@@ -121,6 +131,7 @@ function animateValue(obj, start, end, duration) {
     window.requestAnimationFrame(step);
 }
 
+// 星の数を計算する関数
 function calculateStarCount(totalCommits) {
     let starCount = 0;
     let commitsUsed = 0;
