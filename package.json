@@ -1,17 +1,13 @@
 {
   "dependencies": {
     "axios": "^1.13.2",
-    "canvas": "^2.11.2",
     "connect-pg-simple": "^10.0.0",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "express-session": "^1.18.2",
-    "gl": "^6.0.2",
     "pg": "^8.16.3",
     "pngjs": "^7.0.0",
-    "socket.io": "^4.7.2",
-    "three": "^0.160.0",
-    "puppeteer": "^23.0.0"
+    "socket.io": "^4.7.2"
   },
   "type": "module",
   "scripts": {
