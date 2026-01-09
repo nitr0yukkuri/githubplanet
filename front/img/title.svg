@@ -1,0 +1,34 @@
+<svg width="800" height="120" viewBox="0 0 800 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="neonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="40%" style="stop-color:#00f3ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#a5b4fc;stop-opacity:1" />
+    </linearGradient>
+
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="4" result="blur1" />
+      <feGaussianBlur in="SourceAlpha" stdDeviation="10" result="blur2" />
+      <feFlood flood-color="#00f3ff" result="color" />
+      <feComposite in="color" in2="blur1" operator="in" result="glow1" />
+      <feComposite in="color" in2="blur2" operator="in" result="glow2" />
+      <feMerge>
+        <feMergeNode in="glow2" />
+        <feMergeNode in="glow1" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <text x="50%" y="80" 
+        text-anchor="middle" 
+        font-family="sans-serif" 
+        font-weight="900" 
+        font-size="80" 
+        letter-spacing="4"
+        fill="url(#neonGrad)" 
+        filter="url(#glow)"
+        style="text-transform: uppercase;">
+    GITHUB PLANET
+  </text>
+</svg>
