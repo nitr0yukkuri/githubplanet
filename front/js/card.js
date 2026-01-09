@@ -12,9 +12,9 @@ const mainLangStat = document.getElementById('main-lang-stat');
 const commitsVal = document.getElementById('commits-val');
 const langBar = document.getElementById('lang-bar');
 
-// ★修正: ウィンドウサイズいっぱいに設定
-const width = window.innerWidth;
-const height = window.innerHeight;
+// 変更点: 画面サイズではなく、コンテナのサイズを取得
+const width = containerElement.clientWidth;
+const height = containerElement.clientHeight;
 
 // シーン
 const scene = new THREE.Scene();
@@ -24,6 +24,7 @@ const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
 camera.position.set(5.5, 0, 8);
 
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+// 変更点: レンダラーサイズをコンテナのサイズに設定
 renderer.setSize(width, height);
 renderer.setPixelRatio(window.devicePixelRatio);
 canvasContainer.appendChild(renderer.domElement);
@@ -38,19 +39,12 @@ controls.enabled = false;
 // ターゲットを右にずらして惑星を左に配置
 controls.target.set(3.5, 0, 0);
 
-// ★修正: リサイズ時に全画面追従
-window.addEventListener('resize', () => {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    renderer.setSize(w, h);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-});
+// 変更点: ウィンドウリサイズ時の追従処理を削除（固定サイズなので不要）
+// window.addEventListener('resize', ... を削除
 
 // テクスチャ
 const textureLoader = new THREE.TextureLoader();
-// ★修正: パスを相対パスへ
-const planetTexture = textureLoader.load('front/img/2k_mars.jpg');
+const planetTexture = textureLoader.load('/front/img/2k_mars.jpg');
 
 // ライト設定
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
@@ -153,12 +147,9 @@ function createPlanet(data) {
     const geometry = new THREE.SphereGeometry(baseSize, 64, 64);
     geometry.setAttribute('uv2', new THREE.BufferAttribute(geometry.attributes.uv.array, 2));
 
-    // ★レベル計算
     const level = Math.floor((data.totalCommits || 0) / 30) + 1;
-    // オーラ強度計算
     const auraIntensity = Math.min(3.0, (level / 5.0) * 0.5);
 
-    // ★マテリアル設定
     const material = new THREE.MeshStandardMaterial({
         color: data.planetColor || 0xffffff,
         aoMap: planetTexture,
@@ -170,7 +161,6 @@ function createPlanet(data) {
     planetMesh = new THREE.Mesh(geometry, material);
     planetGroup.add(planetMesh);
 
-    // ★星の生成
     const starCount = calculateStarCount(data.totalCommits || 0);
 
     if (starCount > 0) {
@@ -196,7 +186,6 @@ function createPlanet(data) {
             void main() {
                 vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
                 gl_Position = projectionMatrix * mvPosition;
-                // サイズ調整
                 gl_PointSize = (200.0 * pixelRatio) / -mvPosition.z;
             }
         `;
@@ -238,7 +227,6 @@ function createPlanet(data) {
         planetGroup.add(stars);
     }
 
-    // ★オーラシェーダー
     if (auraIntensity > 0) {
         const auraGeo = new THREE.SphereGeometry(baseSize * 1.02, 64, 64);
 
