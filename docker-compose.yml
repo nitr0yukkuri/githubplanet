@@ -3,20 +3,18 @@ services:
     build: .
     ports:
       - "3000:3000"
-      - "9229:9229"
     environment:
       - PORT=3000
       - DATABASE_URL=postgres://githubplanet:password@db:5432/githubplanet
       - NODE_ENV=development
       - CALLBACK_URL=http://localhost:3000/callback
-      - LIBGL_ALWAYS_SOFTWARE=1
     env_file:
       - .env
     depends_on:
       db:
         condition: service_healthy
-    # ★修正: -a オプションを追加し、sh -c で確実に実行させる記述に変更
-    command: sh -c "xvfb-run -a -s '-ac -screen 0 1280x1024x24' node --inspect=0.0.0.0:9229 server.js"
+    # シンプルな起動コマンドに変更
+    command: node server.js
 
   db:
     image: postgres:15-alpine
