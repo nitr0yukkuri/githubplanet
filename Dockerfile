@@ -1,6 +1,8 @@
 FROM node:18-slim
 
-# 必要なパッケージのインストール (Chrome/Puppeteer用)
+# 必要なパッケージのインストール (Chrome/Puppeteer/headless-gl用)
+# ★修正: Debian 12(Bookworm)で廃止された libappindicator3-1 を削除し、
+#        gl (headless-gl) や Puppeteer に不可欠なライブラリを追加・整理しました。
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
@@ -10,7 +12,6 @@ RUN apt-get update && apt-get install -y \
     wget \
     ca-certificates \
     fonts-liberation \
-    libappindicator3-1 \
     libasound2 \
     libatk-bridge2.0-0 \
     libatk1.0-0 \
@@ -46,6 +47,8 @@ RUN apt-get update && apt-get install -y \
     xdg-utils \
     fonts-noto-cjk \
     fonts-noto-color-emoji \
+    libgl1-mesa-dev \
+    libxi-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -59,5 +62,5 @@ ENV LIBGL_ALWAYS_SOFTWARE=1
 # Renderが設定するPORT環境変数に従うため、EXPOSEは参考情報
 EXPOSE 3000
 
-# ★修正: -a オプションを追加し、ポート衝突を防ぐ
+# ★修正: ポート衝突防止のため -a オプションを追加
 CMD ["sh", "-c", "xvfb-run -a -s '-ac -screen 0 1280x1024x24' node server.js"]
