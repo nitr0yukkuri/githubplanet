@@ -55,8 +55,9 @@ const ACHIEVEMENTS = {
     COMMIT_1000: { id: 'COMMIT_1000', name: 'コミット1000', description: '累計コミット数が1000を超えた。' },
 };
 
+// ★修正: authorIdを受け取り、history(author: {id: $authorId}) でユーザー自身のコミットのみをカウントするように変更
 const USER_DATA_QUERY = `
-  query($login: String!) {
+  query($login: String!, $authorId: ID!) {
     user(login: $login) {
       repositories(first: 100, ownerAffiliations: OWNER, isFork: false, orderBy: {field: PUSHED_AT, direction: DESC}) {
         nodes {
@@ -73,7 +74,7 @@ const USER_DATA_QUERY = `
           defaultBranchRef {
             target {
               ... on Commit {
-                history {
+                history(author: {id: $authorId}) {
                   totalCount
                 }
               }
@@ -96,7 +97,7 @@ const USER_DATA_QUERY = `
           defaultBranchRef {
             target {
               ... on Commit {
-                history {
+                history(author: {id: $authorId}) {
                   totalCount
                 }
               }
@@ -292,7 +293,8 @@ async function updateAndSavePlanetData(user, accessToken) {
             'https://api.github.com/graphql',
             {
                 query: USER_DATA_QUERY,
-                variables: { login: user.login }
+                // ★修正: authorId (user.node_id) を渡して自身のコミットだけをフィルタリング
+                variables: { login: user.login, authorId: user.node_id }
             },
             {
                 headers: {
