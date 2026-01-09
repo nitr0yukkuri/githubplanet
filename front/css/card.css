@@ -176,3 +176,65 @@ canvas {
 }
 
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+/* ========================================= */
+/* 以下レスポンシブ・スクリーンショット用調整 */
+/* ========================================= */
+
+/* 画面の高さが小さい場合（スクリーンショットモードなど）や幅が狭い場合の調整 */
+@media (max-height: 500px), (max-width: 800px) {
+    .card-content {
+        width: 65%; /* コンテンツ幅を少し広げる */
+        padding: 20px 30px 20px 0; /* 余白を縮める */
+    }
+
+    .user-name {
+        font-size: 2.5rem; /* 名前を少し小さくする */
+        margin-bottom: 5px;
+    }
+
+    .header-section {
+        margin-bottom: 15px; /* 各セクションの間隔を詰める */
+    }
+
+    .stats-row {
+        margin-bottom: 20px;
+        gap: 15px;
+    }
+
+    .stat-value {
+        font-size: 1.5rem; /* 数字を小さくする */
+    }
+
+    .stat-divider {
+        height: 30px;
+    }
+
+    .id-label, .stat-label, .lang-label-row {
+        font-size: 0.7rem;
+    }
+    
+    /* 惑星の位置調整（必要であれば） */
+    #planet-canvas {
+        /* 惑星が左に寄りすぎている場合は調整 */
+    }
+}
+
+/* さらに小さい画面（スマホ縦など）向け */
+@media (max-width: 480px) {
+    .card-content {
+        width: 100%;
+        padding: 20px;
+        text-align: center; /* 中央揃えにする */
+        align-items: center;
+        background: rgba(0,0,0,0.4); /* 文字が見やすいように背景を少し暗くする */
+    }
+    
+    .stats-row {
+        justify-content: center;
+    }
+    
+    .stat-group {
+        align-items: center;
+    }
+}
