@@ -662,7 +662,7 @@ app.get('/api/card/:username', (req, res) => {
 
     // thum.io (無料スクリーンショットサービス) を使用してリダイレクト
     // 将来的には ScreenshotAPI.net などAPIキーが必要な高品質サービスへの変更を推奨
-    const screenshotServiceUrl = `https://image.thum.io/get/width/800/crop/600/noanimate/${targetUrl}`;
+    const screenshotServiceUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/${targetUrl}`;
 
     // クライアント(ブラウザやBot)を画像URLへリダイレクト
     res.redirect(screenshotServiceUrl);
