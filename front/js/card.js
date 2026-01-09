@@ -12,8 +12,9 @@ const mainLangStat = document.getElementById('main-lang-stat');
 const commitsVal = document.getElementById('commits-val');
 const langBar = document.getElementById('lang-bar');
 
-const width = 800;
-const height = 400;
+// ★修正: 固定値(800/400)をやめ、ウィンドウサイズに合わせる
+const width = window.innerWidth;
+const height = window.innerHeight;
 
 // シーン
 const scene = new THREE.Scene();
@@ -37,6 +38,15 @@ controls.enabled = false;
 
 // ターゲットを右にずらして惑星を左に配置
 controls.target.set(3.5, 0, 0);
+
+// ★修正: リサイズ対応（ウィンドウサイズが変わったら追従する）
+window.addEventListener('resize', () => {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+});
 
 // テクスチャ
 const textureLoader = new THREE.TextureLoader();
