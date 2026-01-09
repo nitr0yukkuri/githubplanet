@@ -100,7 +100,7 @@ function renderPage(data) {
                 // スクリーンショット (83/100) を再現
                 statusText = `Locked: ${masterData.progress.current}/${masterData.progress.max}`;
             }
-            // ▲▲▲ 変更点 ▲▲▲
+            // ▲▲▲ 変更点 ▲▲
 
             card.innerHTML = `
                 <h3 class="card-header"><span class="icon">🔒</span> ${masterData.name}</h3>

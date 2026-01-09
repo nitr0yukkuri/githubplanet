@@ -12,18 +12,22 @@
 body, html {
     margin: 0;
     padding: 0;
-    /* 幅高さの100%指定を削除し、中央寄せの設定を追加 */
-    width: auto;
-    height: auto;
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: #000; /* 背景色 */
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--card-bg-inner);
     font-family: var(--font-tech);
 }
 
-/* キャンバスはコンテナに合わせる */
+#card-container {
+    position: relative;
+    width: 100%;
+    height: 100%; /* 基本は全画面 */
+    background-color: var(--card-bg-inner);
+    overflow: hidden;
+}
+
+/* キャンバスの隙間対策 */
 canvas {
     display: block;
     width: 100%;
@@ -31,19 +35,7 @@ canvas {
     outline: none;
 }
 
-#card-container {
-    position: relative;
-    /* ここを固定サイズに変更（余白削除の肝） */
-    width: 800px;
-    height: 450px;
-    background-color: var(--card-bg-inner);
-    /* 少し見栄えを整える設定（任意） */
-    border-radius: 12px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-    overflow: hidden;
-}
-
-/* 以下変更なし */
+/* 背景グラデーション */
 .bg-gradient {
     position: absolute;
     width: 100%; height: 100%;
@@ -51,6 +43,7 @@ canvas {
     z-index: 0;
 }
 
+/* 星屑エフェクト */
 .stars {
     position: absolute;
     width: 100%; height: 100%;
@@ -67,6 +60,7 @@ canvas {
     z-index: 1;
 }
 
+/* コンテンツレイアウト */
 .card-content {
     position: absolute;
     top: 0; right: 0;
@@ -81,6 +75,7 @@ canvas {
     text-align: right;
 }
 
+/* ヘッダー */
 .header-section { margin-bottom: 30px; }
 
 .id-label {
@@ -106,6 +101,7 @@ canvas {
     filter: drop-shadow(0 0 15px rgba(165, 180, 252, 0.4));
 }
 
+/* ステータス行 */
 .stats-row {
     display: flex;
     justify-content: flex-end;
@@ -141,6 +137,7 @@ canvas {
     background: rgba(255,255,255,0.1);
 }
 
+/* フッター */
 .footer-section { margin-top: auto; }
 
 .lang-label-row {
