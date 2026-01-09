@@ -654,16 +654,26 @@ app.get('/api/card/:username', (req, res) => {
     const { username } = req.params;
 
     // 現在のホスト名から画像生成元のURLを作成
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    let protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    // ★修正: Render上(onrender.com)ではHTTPSを強制してリダイレクトのロスを防ぐ
+    if (req.get('host') && req.get('host').includes('onrender.com')) {
+        protocol = 'https';
+    }
+
     const host = req.headers['x-forwarded-host'] || req.get('host');
-    const targetUrl = `${protocol}://${host}/card.html?username=${username}`;
+
+    // ★修正: キャッシュ回避のためのタイムスタンプを追加
+    // thum.ioが古い「真っ暗な画像」をキャッシュし続けないように、URLを毎回ユニークにする
+    const timestamp = Date.now();
+    const targetUrl = `${protocol}://${host}/card.html?username=${username}&ts=${timestamp}`;
 
     console.log(`[Card] Redirecting generation for: ${targetUrl}`);
 
     // thum.io (無料スクリーンショットサービス) を使用してリダイレクト
-    // 将来的には ScreenshotAPI.net などAPIキーが必要な高品質サービスへの変更を推奨
-    // 変更後 (wait/5 を追加)
-    const screenshotServiceUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/5/${targetUrl}`;
+    // ★修正: サーバーの起動待ち(Cold Start)を考慮して wait を 5 -> 8秒 に延長
+    // ユーザー検証では5秒で成功したが、自動アクセス時の遅延を考慮して余裕を持たせる
+    const screenshotServiceUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
+
     // クライアント(ブラウザやBot)を画像URLへリダイレクト
     res.redirect(screenshotServiceUrl);
 });
