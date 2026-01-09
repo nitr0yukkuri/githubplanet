@@ -12,7 +12,7 @@ const mainLangStat = document.getElementById('main-lang-stat');
 const commitsVal = document.getElementById('commits-val');
 const langBar = document.getElementById('lang-bar');
 
-// ★修正: 固定値(800/400)をやめ、ウィンドウサイズに合わせる
+// ★修正: ウィンドウサイズいっぱいに設定
 const width = window.innerWidth;
 const height = window.innerHeight;
 
@@ -26,7 +26,6 @@ camera.position.set(5.5, 0, 8);
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setSize(width, height);
 renderer.setPixelRatio(window.devicePixelRatio);
-// ToneMappingはデフォルト(Linear)でhome.jsと一致させる
 canvasContainer.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -39,7 +38,7 @@ controls.enabled = false;
 // ターゲットを右にずらして惑星を左に配置
 controls.target.set(3.5, 0, 0);
 
-// ★修正: リサイズ対応（ウィンドウサイズが変わったら追従する）
+// ★修正: リサイズ時に全画面追従
 window.addEventListener('resize', () => {
     const w = window.innerWidth;
     const h = window.innerHeight;
@@ -50,7 +49,8 @@ window.addEventListener('resize', () => {
 
 // テクスチャ
 const textureLoader = new THREE.TextureLoader();
-const planetTexture = textureLoader.load('/front/img/2k_mars.jpg');
+// ★修正: パスを相対パスへ
+const planetTexture = textureLoader.load('front/img/2k_mars.jpg');
 
 // ライト設定
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
@@ -196,7 +196,7 @@ function createPlanet(data) {
             void main() {
                 vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
                 gl_Position = projectionMatrix * mvPosition;
-                // ★修正: サイズをさらに縮小 300.0 -> 80.0 (サポート程度の控えめな大きさに)
+                // サイズ調整
                 gl_PointSize = (200.0 * pixelRatio) / -mvPosition.z;
             }
         `;
@@ -219,7 +219,6 @@ function createPlanet(data) {
                 float alpha = core * 2.0 + rays + glow * 1.0;
                 alpha = clamp(alpha, 0.0, 1.0); 
 
-                // ★修正: アルファを 0.4倍 にして輝度を下げ、地味にする
                 gl_FragColor = vec4(1.0, 1.0, 1.0, alpha * 0.7);
             }
         `;
@@ -314,8 +313,6 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
 
-    // ★修正: planetMeshではなくplanetGroup全体を回すことで、
-    // 惑星と星が一緒に同期して回転するように変更
     planetGroup.rotation.y += 0.003;
 
     renderer.render(scene, camera);
