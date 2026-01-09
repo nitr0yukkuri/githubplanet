@@ -1,4 +1,4 @@
-![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/5/https://githubplanet.onrender.com/card.html?username=nitr0yukkuri)
+![GitHub Planet](https://githubplanet.onrender.com/api/card/nitr0yukkuri?v=final)
 ##  作業する前にすること
 
 ###  クローン（コードのコピー）
