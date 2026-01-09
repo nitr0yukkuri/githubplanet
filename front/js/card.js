@@ -12,7 +12,7 @@ const mainLangStat = document.getElementById('main-lang-stat');
 const commitsVal = document.getElementById('commits-val');
 const langBar = document.getElementById('lang-bar');
 
-// 変更点: 画面サイズではなく、コンテナのサイズを取得
+// ★重要修正: windowではなく、400pxに固定されたコンテナのサイズを取得
 const width = containerElement.clientWidth;
 const height = containerElement.clientHeight;
 
@@ -24,7 +24,6 @@ const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
 camera.position.set(5.5, 0, 8);
 
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-// 変更点: レンダラーサイズをコンテナのサイズに設定
 renderer.setSize(width, height);
 renderer.setPixelRatio(window.devicePixelRatio);
 canvasContainer.appendChild(renderer.domElement);
@@ -39,8 +38,14 @@ controls.enabled = false;
 // ターゲットを右にずらして惑星を左に配置
 controls.target.set(3.5, 0, 0);
 
-// 変更点: ウィンドウリサイズ時の追従処理を削除（固定サイズなので不要）
-// window.addEventListener('resize', ... を削除
+// ★修正: リサイズ時もコンテナサイズに追従
+window.addEventListener('resize', () => {
+    const w = containerElement.clientWidth;
+    const h = containerElement.clientHeight;
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+});
 
 // テクスチャ
 const textureLoader = new THREE.TextureLoader();
@@ -116,7 +121,6 @@ function animateValue(obj, start, end, duration) {
     window.requestAnimationFrame(step);
 }
 
-// 星の数を計算する関数
 function calculateStarCount(totalCommits) {
     let starCount = 0;
     let commitsUsed = 0;
@@ -141,9 +145,7 @@ function createPlanet(data) {
         planetGroup.remove(planetGroup.children[0]);
     }
 
-    // サイズ倍率 1.3
     const baseSize = 1.3 * (data.planetSizeFactor || 1);
-
     const geometry = new THREE.SphereGeometry(baseSize, 64, 64);
     geometry.setAttribute('uv2', new THREE.BufferAttribute(geometry.attributes.uv.array, 2));
 
@@ -207,7 +209,6 @@ function createPlanet(data) {
                 glow = pow(glow, 4.0); 
                 float alpha = core * 2.0 + rays + glow * 1.0;
                 alpha = clamp(alpha, 0.0, 1.0); 
-
                 gl_FragColor = vec4(1.0, 1.0, 1.0, alpha * 0.7);
             }
         `;
@@ -250,10 +251,8 @@ function createPlanet(data) {
                 float fresnel = dot(normalize(vViewPosition), vNormal);
                 fresnel = 1.0 - fresnel; 
                 fresnel = pow(fresnel, 5.0); 
-
                 float alpha = fresnel * intensity;
                 alpha = clamp(alpha, 0.0, 1.0); 
-
                 gl_FragColor = vec4(glowColor, alpha);
             }
         `;
@@ -300,9 +299,7 @@ function addParticles(color) {
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
-
     planetGroup.rotation.y += 0.003;
-
     renderer.render(scene, camera);
 }
 
