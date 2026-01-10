@@ -1,4 +1,4 @@
-<div align="center">
+
   <img src="front/img/GitHubPlanet_logo.png" width="80%" alt="GitHub Planet Logo">
   
   <br>
