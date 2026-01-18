@@ -4,14 +4,14 @@
   
   
  
-## 🛸 Project Developers
+## 🛸 作品
 このプロジェクトを開発しているコア・メンバーの惑星です。
 
-#### 🪐 Backend & System
+#### 🪐 バックエンド ＆ デプロイ
 **@nitr0yukkuri**
 ![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/https://githubplanet.onrender.com/card.html?username=nitr0yukkuri&fix=responsive9)
 
-#### 🪐 Frontend & Design
+#### 🪐 フロントエンド & デザイン
 **@lenagig**
 ![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/https://githubplanet.onrender.com/card.html?username=lenagig&fix=responsive9=v0)
 
