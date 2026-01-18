@@ -61,6 +61,12 @@
 
 プロジェクトのルートディレクトリで以下のコマンドを実行し、必要なパッケージをインストールします。
 ```bash
+### 🌌 あなたのGitHubプロフィールに惑星を飾ろう！
+github planetに訪れて、以下のコードを自分の `README.md` に貼るだけで、あなたの惑星カードが表示されます。
+
+\`\`\`markdown
+![GitHub Planet](https://githubplanet.onrender.com/api/card/あなたのユーザー名)
+\`\`\`
 npm install
 
 
