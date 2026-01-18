@@ -50,7 +50,7 @@
 | **Real-time** | Socket.IO | Webhookと連携したリアルタイムな流星エフェクトの配信 |
 | **Database** | PostgreSQL | ユーザーの惑星データ、実績、セッション情報の永続化 |
 | **Authentication** | GitHub OAuth 2.0 | GitHubアカウントを用いたセキュアな認証およびユーザーデータ取得 |
-| **Infrastructure** | Render / GitHub Actions | アプリケーションのホスティングおよびCI/CDの自動化 |
+| **deployment** | Render  | アプリケーションのホスティング |
 
 
 ## 🚀 セットアップと実行方法
