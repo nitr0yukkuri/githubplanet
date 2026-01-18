@@ -39,9 +39,12 @@
 
 ### 5. シェア用3Dカード生成
 - **OGP画像生成:** あなたの惑星の現在のステータス（言語、コミット数、惑星の姿）を収めた専用のカードページ (`card.html`) を生成します。
-- **SNSシェア:** これを外部サービス（Thum.io）経由で画像化し、X（旧Twitter）などのSNSでリッチなシェア画像として利用できます。
+### 🌌 あなたのGitHubプロフィールに惑星を飾ろう！
+github planetに訪れて、以下のコードを自分の `README.md` に貼るだけで、あなたの惑星カードが表示されます。
 
-
+\`\`\`markdown
+![GitHub Planet](https://githubplanet.onrender.com/api/card/あなたのユーザー名)
+\`\`\`
 ## 🛠️ 技術構成（Tech Stack）
 
 このプロジェクトは、フロントエンドからインフラまで一貫して設計された、モダンなWeb技術スタックで構築されています。
@@ -65,12 +68,7 @@
 
 プロジェクトのルートディレクトリで以下のコマンドを実行し、必要なパッケージをインストールします。
 ```bash
-### 🌌 あなたのGitHubプロフィールに惑星を飾ろう！
-github planetに訪れて、以下のコードを自分の `README.md` に貼るだけで、あなたの惑星カードが表示されます。
 
-\`\`\`markdown
-![GitHub Planet](https://githubplanet.onrender.com/api/card/あなたのユーザー名)
-\`\`\`
 npm install
 
 
