@@ -43,14 +43,16 @@
 ```markdown
 ![GitHub Planet](https://githubplanet.onrender.com/api/card/あなたのユーザー名)
 
-分野,技術,役割
-Frontend,Three.js / Anime.js,惑星・スター・エフェクトのリアルタイム3D描画とアニメーション
-Backend,Node.js / Express,APIエンドポイントの提供、データ処理ロジックの実装
-AI,Google Gemini API,言語に応じた色生成、惑星のユニークな二つ名の命名
-Real-time,Socket.IO,Webhookと連携したリアルタイムな流星エフェクトの配信
-Database,PostgreSQL,ユーザーの惑星データ、実績、セッション情報の永続化
-Auth,GitHub OAuth 2.0,GitHubアカウントを用いたセキュアな認証とデータ取得
-Infrastructure,Render / GitHub Actions,アプリケーションのホスティングとCI/CDの自動化
+| 分野 | 技術 | 役割 |
+|---|---|---|
+| Frontend | Three.js / Anime.js | 惑星・スター・エフェクトのリアルタイム3D描画とアニメーション |
+| Backend | Node.js / Express | APIエンドポイントの提供、データ処理ロジックの実装 |
+| AI | Google Gemini API | 言語に応じた色生成、惑星のユニークな二つ名の命名 |
+| Real-time | Socket.IO | Webhookと連携したリアルタイムな流星エフェクトの配信 |
+| Database | PostgreSQL | ユーザーの惑星データ、実績、セッション情報の永続化 |
+| Auth | GitHub OAuth 2.0 | GitHubアカウントを用いたセキュアな認証とデータ取得 |
+| Infrastructure | Render / GitHub Actions | アプリケーションのホスティングとCI/CDの自動化 |
+
 
 ## 🚀 セットアップと実行方法
 
