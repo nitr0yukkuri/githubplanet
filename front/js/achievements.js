@@ -32,7 +32,7 @@ function renderPage(data) {
     if (userAchievements['FIRST_PLANET']) unlockedCount++;
     if (userAchievements['DUMMY_4']) unlockedCount++;
 
-    const displayRate = 54; // スクリーンショット再現用
+    const displayRate = 54;
     document.getElementById('achievement-rate').textContent = `${displayRate}%`;
     const chartBar = document.getElementById('rate-chart-bar');
     chartBar.style.strokeDasharray = `${displayRate}, 100`;
@@ -86,12 +86,5 @@ async function initAchievementsPage() {
         renderPage(null);
     }
 }
-
-// パララックス効果の追加
-document.addEventListener('mousemove', (e) => {
-    const moveX = (e.clientX - window.innerWidth / 2) * 0.005;
-    const moveY = (e.clientY - window.innerHeight / 2) * 0.005;
-    document.body.style.backgroundPosition = `calc(50% + ${moveX}px) calc(50% + ${moveY}px)`;
-});
 
 document.addEventListener('DOMContentLoaded', initAchievementsPage);

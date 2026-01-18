@@ -82,10 +82,10 @@ body {
     margin-bottom: 5px; 
 }
 .rate-value {
-    font-size: 2.5rem; /* 少し大きく */
+    font-size: 2.5rem;
     font-weight: bold;
     margin-bottom: 10px; 
-    text-shadow: 0 0 15px rgba(106, 13, 173, 0.6); /* 紫の発光 */
+    text-shadow: 0 0 15px rgba(106, 13, 173, 0.6); 
 }
 .rate-chart {
     width: 70px; 
@@ -93,7 +93,7 @@ body {
 }
 .chart-bg {
     fill: none;
-    stroke: #333; /* 少し暗く */
+    stroke: #333; 
     stroke-width: 3.8;
 }
 .chart-bar {
@@ -140,29 +140,26 @@ body {
 }
 .achievement-list {
     display: grid;
-    /* 2列固定からレスポンシブに変更 */
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); 
     gap: 25px;
 }
 
-/* スクロールバー */
 .achievement-list-wrapper::-webkit-scrollbar { width: 8px; }
 .achievement-list-wrapper::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 4px; }
 .achievement-list-wrapper::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
 
 /* 実績カード */
 .achievement-card {
-    position: relative; /* 擬似要素用 */
+    position: relative; 
     background: linear-gradient(135deg, rgba(40, 30, 60, 0.6), rgba(20, 10, 40, 0.6));
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.15); 
     border-radius: 16px;
     padding: 24px;
-    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
     overflow: hidden;
 }
 
-/* 光の筋のエフェクト */
 .achievement-card::after {
     content: "";
     position: absolute;
@@ -176,15 +173,12 @@ body {
 }
 
 .achievement-card:hover {
-    transform: translateY(-8px);
     background: linear-gradient(135deg, rgba(50, 40, 80, 0.7), rgba(30, 20, 50, 0.7));
     border-color: rgba(255, 255, 255, 0.4);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
 }
 
-#DUMMY_2 { border-color: rgba(255, 215, 0, 0.4); }
-#FIRST_PLANET { border-color: rgba(210, 105, 30, 0.4); }
-#DUMMY_4 { border-color: rgba(255, 255, 255, 0.3); }
+/* IDごとの個別色指定を削除して統一 */
 
 .card-header {
     font-size: 1.4rem;
