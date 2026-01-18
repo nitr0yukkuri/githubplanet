@@ -8,6 +8,10 @@
 
 ![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/https://githubplanet.onrender.com/card.html?username=nitr0yukkuri&fix=responsive9)
 
+![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/https://githubplanet.onrender.com/card.html?username=lenagig&fix=responsive9)
+
+
+
 
 # 🪐 GitHub Planet
 **GitHubの活動データを基に、ユーザーごとにパーソナライズされた3Dのオリジナル惑星を生成・表示するWebアプリケーションです。**  
