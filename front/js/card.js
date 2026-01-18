@@ -15,12 +15,16 @@ const mainLangStat = document.getElementById('main-lang-stat');
 const commitsVal = document.getElementById('commits-val');
 const langBar = document.getElementById('lang-bar');
 
+// ステータスとラベルの要素を取得
+const sysStatus = document.querySelector('.sys-status');
+const idLabel = document.querySelector('.id-label');
+
 // ★撮影モードなら強制的に400pxにする
 if (isScreenshotMode) {
     containerElement.style.height = '400px';
 }
 
-// コンテナのサイズを取得（通常は全画面、撮影時は400pxになる）
+// コンテナのサイズを取得
 const width = containerElement.clientWidth;
 const height = containerElement.clientHeight;
 
@@ -48,8 +52,6 @@ controls.target.set(3.5, 0, 0);
 
 // ウィンドウリサイズ時の対応
 window.addEventListener('resize', () => {
-    // リサイズ時も撮影モードなら高さを維持する処理を入れるか、
-    // 単純にコンテナサイズに追従させる（コンテナがCSSで制御されているため追従でOK）
     const w = containerElement.clientWidth;
     const h = containerElement.clientHeight;
     renderer.setSize(w, h);
@@ -65,12 +67,10 @@ const planetTexture = textureLoader.load('front/img/2k_mars.jpg');
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
 scene.add(ambientLight);
 
-// 主光源（白）
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
 dirLight.position.set(5, 3, 5);
 scene.add(dirLight);
 
-// リムライト（背後光）
 const backLight = new THREE.PointLight(0xffffff, 0.5, 50);
 backLight.position.set(-5, 2, -10);
 scene.add(backLight);
@@ -114,6 +114,10 @@ function updateUI(data) {
     if (data.planetColor) {
         langBar.style.background = data.planetColor;
         langBar.style.boxShadow = `0 0 10px ${data.planetColor}`;
+
+        // 追加修正: ステータス表示とIDラベルの色を言語の色に変更
+        if (sysStatus) sysStatus.style.color = data.planetColor;
+        if (idLabel) idLabel.style.color = data.planetColor;
     }
     setTimeout(() => { langBar.style.width = '100%'; }, 100);
 }
@@ -131,7 +135,6 @@ function animateValue(obj, start, end, duration) {
     window.requestAnimationFrame(step);
 }
 
-// 星の数を計算する関数
 function calculateStarCount(totalCommits) {
     let starCount = 0;
     let commitsUsed = 0;
@@ -184,7 +187,6 @@ function createPlanet(data) {
             const phi = Math.random() * Math.PI * 2;
             const theta = Math.random() * Math.PI;
             const radius = starBaseRadius + (Math.random() * (baseSize * 0.5));
-
             const x = radius * Math.sin(theta) * Math.cos(phi);
             const y = radius * Math.sin(theta) * Math.sin(phi);
             const z = radius * Math.cos(theta);
@@ -208,7 +210,6 @@ function createPlanet(data) {
                 vec2 p = gl_PointCoord * 2.0 - 1.0; 
                 float r = length(p); 
                 if (r > 1.0) discard; 
-
                 float core = 1.0 - smoothstep(0.0, 0.05, r);
                 float a = atan(p.y, p.x); 
                 float numRays = 4.0; 
@@ -225,9 +226,7 @@ function createPlanet(data) {
         `;
 
         const starMaterial = new THREE.ShaderMaterial({
-            uniforms: {
-                pixelRatio: { value: window.devicePixelRatio }
-            },
+            uniforms: { pixelRatio: { value: window.devicePixelRatio } },
             vertexShader: vertexShader,
             fragmentShader: fragmentShader,
             blending: THREE.AdditiveBlending,
@@ -241,7 +240,6 @@ function createPlanet(data) {
 
     if (auraIntensity > 0) {
         const auraGeo = new THREE.SphereGeometry(baseSize * 1.02, 64, 64);
-
         const auraVertexShader = `
             varying vec3 vNormal;
             varying vec3 vViewPosition;
@@ -252,7 +250,6 @@ function createPlanet(data) {
                 gl_Position = projectionMatrix * mvPosition;
             }
         `;
-
         const auraFragmentShader = `
             uniform vec3 glowColor;
             uniform float intensity; 
@@ -267,7 +264,6 @@ function createPlanet(data) {
                 gl_FragColor = vec4(glowColor, alpha);
             }
         `;
-
         const auraMat = new THREE.ShaderMaterial({
             uniforms: {
                 glowColor: { value: new THREE.Color(data.planetColor || 0xffffff) },
@@ -280,11 +276,9 @@ function createPlanet(data) {
             side: THREE.FrontSide,
             depthWrite: false
         });
-
         const aura = new THREE.Mesh(auraGeo, auraMat);
         planetGroup.add(aura);
     }
-
     addParticles(data.planetColor);
 }
 
