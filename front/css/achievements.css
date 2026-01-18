@@ -148,7 +148,6 @@ body {
 .achievement-list-wrapper::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 4px; }
 .achievement-list-wrapper::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
 
-/* 実績カード */
 .achievement-card {
     position: relative; 
     background: linear-gradient(135deg, rgba(40, 30, 60, 0.6), rgba(20, 10, 40, 0.6));
@@ -178,8 +177,6 @@ body {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
 }
 
-/* IDごとの個別色指定を削除して統一 */
-
 .card-header {
     font-size: 1.4rem;
     font-weight: bold;
@@ -205,6 +202,7 @@ body {
     text-decoration: none;
     font-weight: bold;
     transition: color 0.2s;
+    cursor: pointer;
 }
 .card-details a:hover { color: #fff; }
 
@@ -213,6 +211,66 @@ body {
     filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
 }
 .achievement-card.locked { opacity: 0.6; }
+
+/* モーダルのスタイル */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+    justify-content: center;
+    align-items: center;
+}
+.modal-content {
+    background: linear-gradient(135deg, rgba(50, 40, 80, 0.9), rgba(30, 20, 50, 0.9));
+    padding: 40px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 24px;
+    max-width: 500px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(106, 13, 173, 0.3);
+}
+.modal-content h2 {
+    font-size: 2.2rem;
+    margin-bottom: 20px;
+    color: #ffd700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+.modal-content p {
+    font-size: 1.2rem;
+    line-height: 1.6;
+    margin-bottom: 30px;
+    color: #e0e0e0;
+}
+#modal-status {
+    font-weight: bold;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 12px;
+}
+.modal-close-btn {
+    margin-top: 30px;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: #fff;
+    padding: 12px 30px;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.modal-close-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
 
 .loading-text {
     font-size: 1.2rem;
