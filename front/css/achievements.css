@@ -4,37 +4,28 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Sans', 'Noto Sans CJK JP', sans-serif;
     color: #ffffff;
     background-color: #000;
-    
-    /* ▼▼▼ 変更点: 背景画像を Achievementsimage.jpg に変更 ▼▼▼ */
     background-image: url('/front/img/Achievementsimage.jpg');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    /* ▲▲▲ 変更点 ▲▲▲ */
-
     height: 100vh;
-    overflow: hidden; /* スクロールバーを隠す */
+    overflow: hidden; 
 }
 
 .achievement-container {
     width: 100%;
     height: 100vh;
-    max-width: 1200px; /* 最大幅を指定 */
-    margin: 0 auto; /* 中央揃え */
+    max-width: 1200px; 
+    margin: 0 auto; 
     padding: 30px 40px;
     box-sizing: border-box;
-    
-    /* ▼▼▼ 変更点: ガラス効果を薄くし、背景の黒を強める ▼▼▼ */
     background-color: rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
-    /* ▲▲▲ 変更点 ▲▲▲ */
-
     display: flex;
     flex-direction: column;
 }
 
-/* ▼▼▼ 変更点: 戻るボタンのスタイルを追加 ▼▼▼ */
 .back-button {
     color: #ccc;
     text-decoration: none;
@@ -43,117 +34,88 @@ body {
     background-color: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     transition: background-color 0.2s;
-    /* ボタンが横幅いっぱいにならないように */
     display: inline-block; 
-    margin-bottom: 10px; /* タイトルとの間隔 */
+    margin-bottom: 10px; 
 }
 .back-button:hover {
     background-color: rgba(255, 255, 255, 0.2);
 }
-/* ▲▲▲ 変更点 ▲▲▲ */
 
-
-/* ▼▼▼ 変更点: ヘッダーレイアウトを Grid に変更 ▼▼▼ */
 .achievement-header {
     display: grid;
-    /* ▼▼▼ 変更点: 左右の領域が均等になるよう 1fr auto 1fr に変更 ▼▼▼ */
     grid-template-columns: 1fr auto 1fr;
-    align-items: flex-start; /* 上揃え */
+    align-items: flex-start; 
     gap: 20px;
     padding-bottom: 20px;
     flex-shrink: 0;
-    /* border-bottom を削除 */
 }
 
-/* ヘッダー左側 (タイトル) */
 .header-left {
     display: flex;
-    flex-direction: column; /* 縦に並べる (ボタンとタイトル) */
-    align-items: flex-start; /* 左揃え */
+    flex-direction: column; 
+    align-items: flex-start; 
 }
 
-.header-info .title {
-    font-size: 3rem; /* "Achievement" のサイズ */
-    margin: 0; /* ▼▼▼ 変更点: margin-bottom を削除 ▼▼▼ */
+.title {
+    font-size: 3rem; 
+    margin: 0; 
     font-weight: 600;
     display: flex;
     align-items: center;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
 }
 
-/* ▼▼▼ 変更点: 以下のブロックを削除またはコメントアウト ▼▼▼ */
-/*
-.header-info .title::before {
-    content: '🏆';
-    font-size: 2.5rem;
-    margin-right: 15px;
-}
-*/
-/* ▲▲▲ 変更点 ▲▲▲ */
-
-
-/* ▼▼▼ 変更点: Sort コントロールのスタイルを削除 ▼▼▼ */
-/* .sort-control { ... } */
-/* .custom-select { ... } */
-/* .custom-select option { ... } */
-/* ▲▲▲ 変更点 ▲▲▲ */
-
-
-/* ヘッダー中央 (達成率) */
 .header-center {
     display: flex;
     justify-content: center;
-    padding-top: 10px; /* 位置調整 */
+    padding-top: 10px; 
 }
-/* レート (Achievement Rate) */
+
 .rate-control {
     display: flex;
-    flex-direction: column; /* 縦積み */
-    align-items: center; /* 中央揃え */
+    flex-direction: column; 
+    align-items: center; 
     font-size: 1.25rem;
 }
 .rate-label {
     color: #ccc;
-    margin-bottom: 5px; /* 値との間隔 */
+    margin-bottom: 5px; 
 }
 .rate-value {
-    font-size: 2rem;
+    font-size: 2.5rem; /* 少し大きく */
     font-weight: bold;
-    margin-right: 0; /* マージン削除 */
-    margin-bottom: 10px; /* チャートとの間隔 */
+    margin-bottom: 10px; 
+    text-shadow: 0 0 15px rgba(106, 13, 173, 0.6); /* 紫の発光 */
 }
 .rate-chart {
-    width: 70px; /* スクショに合わせて大きく */
+    width: 70px; 
     height: 70px;
 }
 .chart-bg {
     fill: none;
-    stroke: #555;
+    stroke: #333; /* 少し暗く */
     stroke-width: 3.8;
 }
 .chart-bar {
     fill: none;
-    stroke: #6a0dad; /* 惑星アイコンと同じ紫 */
+    stroke: #6a0dad; 
     stroke-width: 4;
     stroke-linecap: round;
     transition: stroke-dasharray 0.5s ease;
 }
 
-
-/* ヘッダー右側 (ユーザー情報、惑星) */
 .header-right {
     display: flex;
-    /* ▼▼▼ 変更点: 右端に寄せる ▼▼▼ */
     justify-content: flex-end; 
-    align-items: flex-start; /* 上揃え */
-    /* ▲▲▲ 変更点 ▲▲▲ */
+    align-items: flex-start; 
     gap: 15px;
-    padding-top: 10px; /* 位置調整 */
+    padding-top: 10px; 
 }
 
 .user-info {
-    font-size: 1.25rem; /* スクショに合わせて少し小さく */
+    font-size: 1.1rem; 
     color: #e0e0e0;
-    text-align: right; /* 右揃え */
+    text-align: right; 
 }
 .user-info p {
     margin: 5px 0;
@@ -163,137 +125,104 @@ body {
     color: #fff;
 }
 
-/* メイン (リスト) */
 .achievement-main {
-    flex-grow: 1; /* 残りの高さをすべて使う */
+    flex-grow: 1; 
     display: flex;
     flex-direction: column;
-    /* padding-top: 20px; を削除 */
-    overflow: hidden; /* メインエリアがはみ出ないように */
+    overflow: hidden; 
 }
 
-/* 実績リスト */
 .achievement-list-wrapper {
-    flex-grow: 1; /* 残りのスペースを埋める */
-    overflow-y: auto; /* スクロール可能に */
-    padding-right: 10px; /* スクロールバーのための余白 */
-    margin-top: 20px; /* ヘッダーとの間隔 */
+    flex-grow: 1; 
+    overflow-y: auto; 
+    padding-right: 10px; 
+    margin-top: 20px; 
 }
 .achievement-list {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* 2列グリッド */
-    gap: 20px;
+    /* 2列固定からレスポンシブに変更 */
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); 
+    gap: 25px;
 }
 
 /* スクロールバー */
-.achievement-list-wrapper::-webkit-scrollbar {
-    width: 8px;
-}
-.achievement-list-wrapper::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-}
-.achievement-list-wrapper::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.4);
-    border-radius: 4px;
-}
-.achievement-list-wrapper::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.6);
-}
+.achievement-list-wrapper::-webkit-scrollbar { width: 8px; }
+.achievement-list-wrapper::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 4px; }
+.achievement-list-wrapper::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
 
 /* 実績カード */
 .achievement-card {
-    /* ▼▼▼ 変更点: 透明度を 0.9 -> 0.7 に変更 ▼▼▼ */
-    background-image: linear-gradient(to bottom, rgba(40, 30, 60, 0.7), rgba(30, 20, 50, 0.7));
-    border: 1px solid rgba(255, 255, 255, 0.4); /* デフォルト枠 (流れ星にネギを) */
-    /* ▲▲▲ 変更点 ▲▲▲ */
-    
-    border-radius: 12px;
-    padding: 20px;
-    transition: background-color 0.2s, border-color 0.2s;
+    position: relative; /* 擬似要素用 */
+    background: linear-gradient(135deg, rgba(40, 30, 60, 0.6), rgba(20, 10, 40, 0.6));
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.15); 
+    border-radius: 16px;
+    padding: 24px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    overflow: hidden;
 }
+
+/* 光の筋のエフェクト */
+.achievement-card::after {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255,255,255,0.03), transparent);
+    transform: rotate(45deg);
+    pointer-events: none;
+}
+
 .achievement-card:hover {
-    /* ▼▼▼ 変更点: 透明度を 0.95 -> 0.8 に変更 ▼▼▼ */
-    background-image: linear-gradient(to bottom, rgba(50, 40, 70, 0.8), rgba(40, 30, 60, 0.8));
-    /* ▲▲▲ 変更点 ▲▲▲ */
+    transform: translateY(-8px);
+    background: linear-gradient(135deg, rgba(50, 40, 80, 0.7), rgba(30, 20, 50, 0.7));
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
 }
 
-/* ▼▼▼ 変更点: IDセレクタで枠線の色を変更 ▼▼▼ */
-#DUMMY_2 { /* 蒼穹の遊巡 */
-    border-color: #FFD700;
-}
-#FIRST_PLANET { /* First Contact */
-    border-color: #D2691E;
-}
-#DUMMY_4 { /* 惑星の開拓者 */
-    border-color: #FFFFFF;
-}
-/* ▲▲▲ 変更点 ▲▲▲ */
-
+#DUMMY_2 { border-color: rgba(255, 215, 0, 0.4); }
+#FIRST_PLANET { border-color: rgba(210, 105, 30, 0.4); }
+#DUMMY_4 { border-color: rgba(255, 255, 255, 0.3); }
 
 .card-header {
-    font-size: 1.3rem;
+    font-size: 1.4rem;
     font-weight: bold;
-    margin: 0 0 8px 0;
+    margin: 0 0 10px 0;
     display: flex;
     align-items: center;
-    /* ▼▼▼ 変更点: アイコンを右端に寄せる ▼▼▼ */
     justify-content: space-between;
-    /* ▲▲▲ 変更点 ▲▲▲ */
 }
 .card-status {
     font-size: 0.9rem;
-    color: #aaa;
-    margin: 0 0 15px 0; /* 詳細リンクとの間隔 */
+    color: #bbb;
+    margin: 0 0 15px 0;
 }
 
 .card-details {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: #ccc;
     font-size: 0.9rem;
 }
-/* ▼▼▼ 変更点: 詳細リンクのスタイル ▼▼▼ */
 .card-details a {
-    color: #ccc;
+    color: #aaa;
     text-decoration: none;
-    font-size: 1rem;
     font-weight: bold;
+    transition: color 0.2s;
 }
-.card-details a:hover {
-    color: #fff;
-}
-/* ▲▲▲ 変更点 ▲▲▲ */
+.card-details a:hover { color: #fff; }
 
-/* ▼▼▼ 変更点: アイコンスタイルを整理・更新 ▼▼▼ */
-/* 共通スタイル */
-.card-header .icon {
-    margin-left: 10px; /* 左側に余白 (右端配置のため) */
-}
-
-/* ロック中 */
-.achievement-card.locked {
-    opacity: 0.7;
-}
-.achievement-card.locked .card-header .icon {
-    opacity: 0.5; /* アイコンを暗く */
-}
-.achievement-card.locked .card-status {
-    color: #888;
-}
-
-/* アンロック時 */
 .achievement-card.unlocked .card-header .icon {
-    color: #ffd700; /* 金色 */
-    opacity: 1;
+    color: #ffd700;
+    filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
 }
-/* ▲▲▲ 変更点 ▲▲▲ */
+.achievement-card.locked { opacity: 0.6; }
 
-/* ローディング表示 */
 .loading-text {
     font-size: 1.2rem;
     color: #ccc;
     text-align: center;
-    grid-column: 1 / -1; /* グリッドの全幅を使う */
+    grid-column: 1 / -1;
 }
