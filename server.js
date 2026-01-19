@@ -131,7 +131,8 @@ if (connectionString) {
             main_language TEXT,
             language_stats JSONB,
             total_commits INTEGER,
-            last_updated TIMESTAMP DEFAULT NOW()
+            last_updated TIMESTAMP DEFAULT NOW(),
+            planet_name TEXT
         );
     `)
         .then(() => {
@@ -141,7 +142,14 @@ if (connectionString) {
                 ADD COLUMN IF NOT EXISTS achievements JSONB DEFAULT '{}'::jsonb;
             `);
         })
-        .then(() => console.log('[DB] achievementsカラムの準備ができました'))
+        .then(() => {
+            // ★追加: 既存テーブルにも planet_name カラムを追加する安全策
+            return pool.query(`
+                ALTER TABLE planets 
+                ADD COLUMN IF NOT EXISTS planet_name TEXT;
+            `);
+        })
+        .then(() => console.log('[DB] カラムの準備ができました'))
         .catch(err => console.error('[DB] テーブル作成/接続に失敗しました (ローカルDBが起動していない可能性があります):', err.message));
 } else {
     console.warn('[DB] データベース接続文字列(DATABASE_URL)が設定されていません。DB機能は無効になります。');
@@ -381,12 +389,12 @@ async function updateAndSavePlanetData(user, accessToken) {
         achievements = checkAchievements(existingAchievements, totalCommits);
 
         await pool.query(`
-            INSERT INTO planets (github_id, username, planet_color, planet_size_factor, main_language, language_stats, total_commits, last_updated, achievements)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)
+            INSERT INTO planets (github_id, username, planet_color, planet_size_factor, main_language, language_stats, total_commits, last_updated, achievements, planet_name)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9)
             ON CONFLICT (github_id) DO UPDATE SET
                 username = $2, planet_color = $3, planet_size_factor = $4, main_language = $5,
-                language_stats = $6, total_commits = $7, last_updated = NOW(), achievements = $8
-        `, [user.id, user.login, planetColor, planetSizeFactor, mainLanguage, languageStats, totalCommits, achievements]);
+                language_stats = $6, total_commits = $7, last_updated = NOW(), achievements = $8, planet_name = $9
+        `, [user.id, user.login, planetColor, planetSizeFactor, mainLanguage, languageStats, totalCommits, achievements, planetName]);
     }
 
     return { mainLanguage, planetColor, languageStats, totalCommits, planetSizeFactor, planetName, achievements };
@@ -556,7 +564,8 @@ app.get('/api/planets/user/:username', async (req, res) => {
             planetColor = '#808080';
         }
 
-        const planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
+        // ★修正: DBに保存された名前があればそれを使い、なければ生成
+        const planetName = row.planet_name || generatePlanetName(mainLanguage, planetColor, totalCommits);
 
         const responseData = {
             username: row.username,
@@ -631,7 +640,8 @@ app.get('/api/planets/random', async (req, res) => {
             planetColor = '#808080';
         }
 
-        const planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
+        // ★修正: DBに保存された名前があればそれを使い、なければ生成
+        const planetName = row.planet_name || generatePlanetName(mainLanguage, planetColor, totalCommits);
 
         const responseData = {
             username: row.username,
