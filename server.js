@@ -55,17 +55,10 @@ const ACHIEVEMENTS = {
     COMMIT_1000: { id: 'COMMIT_1000', name: 'コミット1000', description: '累計コミット数が1000を超えた。' },
 };
 
-// ★修正: IssuesとPullRequestsも取得するように追加
-// authorIdを受け取り、history(author: {id: $authorId}) でユーザー自身のコミットのみをカウント
+// ★修正: $since引数を追加し、weeklyHistoryとして週間コミット数も取得する
 const USER_DATA_QUERY = `
-  query($login: String!, $authorId: ID!) {
+  query($login: String!, $authorId: ID!, $since: GitTimestamp!) {
     user(login: $login) {
-      issues(first: 1, filterBy: {createdBy: $login}) {
-        totalCount
-      }
-      pullRequests(first: 1) {
-        totalCount
-      }
       repositories(first: 100, ownerAffiliations: OWNER, isFork: false, orderBy: {field: PUSHED_AT, direction: DESC}) {
         nodes {
           name
@@ -82,6 +75,9 @@ const USER_DATA_QUERY = `
             target {
               ... on Commit {
                 history(author: {id: $authorId}) {
+                  totalCount
+                }
+                weeklyHistory: history(since: $since, author: {id: $authorId}) {
                   totalCount
                 }
               }
@@ -105,6 +101,9 @@ const USER_DATA_QUERY = `
             target {
               ... on Commit {
                 history(author: {id: $authorId}) {
+                  totalCount
+                }
+                weeklyHistory: history(since: $since, author: {id: $authorId}) {
                   totalCount
                 }
               }
@@ -154,6 +153,13 @@ if (connectionString) {
             return pool.query(`
                 ALTER TABLE planets 
                 ADD COLUMN IF NOT EXISTS planet_name TEXT;
+            `);
+        })
+        .then(() => {
+            // ★追加: 週間コミット数保存用のカラムを追加
+            return pool.query(`
+                ALTER TABLE planets 
+                ADD COLUMN IF NOT EXISTS weekly_commits INTEGER DEFAULT 0;
             `);
         })
         .then(() => console.log('[DB] カラムの準備ができました'))
@@ -302,17 +308,19 @@ function generatePlanetName(mainLanguage, planetColor, totalCommits) {
 async function updateAndSavePlanetData(user, accessToken) {
     console.log(`[GraphQL] Fetching data for user: ${user.login}`);
 
-    let repositories = [];
-    let issuesCount = 0;
-    let prsCount = 0;
+    // ★追加: 1週間前の日時を計算
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const since = oneWeekAgo.toISOString();
 
+    let repositories = [];
     try {
         const response = await axios.post(
             'https://api.github.com/graphql',
             {
                 query: USER_DATA_QUERY,
-                // ★修正: authorId (user.node_id) を渡して自身のコミットだけをフィルタリング
-                variables: { login: user.login, authorId: user.node_id }
+                // ★修正: since変数を追加
+                variables: { login: user.login, authorId: user.node_id, since: since }
             },
             {
                 headers: {
@@ -327,15 +335,8 @@ async function updateAndSavePlanetData(user, accessToken) {
             throw new Error('GraphQL query failed');
         }
 
-        const userData = response.data.data.user;
-
-        // ★追加: IssueとPRの数を取得
-        issuesCount = userData.issues?.totalCount || 0;
-        prsCount = userData.pullRequests?.totalCount || 0;
-        console.log(`[GraphQL] Issues: ${issuesCount}, PRs: ${prsCount}`);
-
-        const ownedRepos = userData.repositories.nodes || [];
-        const contributedRepos = userData.repositoriesContributedTo.nodes || [];
+        const ownedRepos = response.data.data.user.repositories.nodes || [];
+        const contributedRepos = response.data.data.user.repositoriesContributedTo.nodes || [];
         repositories = [...ownedRepos, ...contributedRepos];
 
     } catch (e) {
@@ -345,6 +346,7 @@ async function updateAndSavePlanetData(user, accessToken) {
 
     const languageStats = {};
     let totalCommits = 0;
+    let weeklyCommits = 0; // ★追加: 週間コミット数
 
     for (const repo of repositories) {
         if (repo.languages && repo.languages.edges) {
@@ -355,13 +357,17 @@ async function updateAndSavePlanetData(user, accessToken) {
             }
         }
 
-        if (repo.defaultBranchRef && repo.defaultBranchRef.target && repo.defaultBranchRef.target.history) {
-            totalCommits += repo.defaultBranchRef.target.history.totalCount;
+        if (repo.defaultBranchRef && repo.defaultBranchRef.target) {
+            // 通算コミット
+            if (repo.defaultBranchRef.target.history) {
+                totalCommits += repo.defaultBranchRef.target.history.totalCount;
+            }
+            // ★追加: 週間コミット数の集計
+            if (repo.defaultBranchRef.target.weeklyHistory) {
+                weeklyCommits += repo.defaultBranchRef.target.weeklyHistory.totalCount;
+            }
         }
     }
-
-    // ★追加: 総アクティビティとして Issue と PR をコミット数に加算
-    totalCommits += issuesCount + prsCount;
 
     let mainLanguage = 'Unknown';
     let maxBytes = 0;
@@ -408,16 +414,17 @@ async function updateAndSavePlanetData(user, accessToken) {
 
         achievements = checkAchievements(existingAchievements, totalCommits);
 
+        // ★修正: weekly_commits を保存するようにSQLを変更 ($10に追加)
         await pool.query(`
-            INSERT INTO planets (github_id, username, planet_color, planet_size_factor, main_language, language_stats, total_commits, last_updated, achievements, planet_name)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9)
+            INSERT INTO planets (github_id, username, planet_color, planet_size_factor, main_language, language_stats, total_commits, last_updated, achievements, planet_name, weekly_commits)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9, $10)
             ON CONFLICT (github_id) DO UPDATE SET
                 username = $2, planet_color = $3, planet_size_factor = $4, main_language = $5,
-                language_stats = $6, total_commits = $7, last_updated = NOW(), achievements = $8, planet_name = $9
-        `, [user.id, user.login, planetColor, planetSizeFactor, mainLanguage, languageStats, totalCommits, achievements, planetName]);
+                language_stats = $6, total_commits = $7, last_updated = NOW(), achievements = $8, planet_name = $9, weekly_commits = $10
+        `, [user.id, user.login, planetColor, planetSizeFactor, mainLanguage, languageStats, totalCommits, achievements, planetName, weeklyCommits]);
     }
 
-    return { mainLanguage, planetColor, languageStats, totalCommits, planetSizeFactor, planetName, achievements };
+    return { mainLanguage, planetColor, languageStats, totalCommits, weeklyCommits, planetSizeFactor, planetName, achievements };
 }
 
 app.get('/', (req, res) => {
@@ -564,6 +571,22 @@ app.get('/api/planets/user/:username', async (req, res) => {
     try {
         const { username } = req.params;
 
+        // ★追加: 閲覧者がログイン済みなら、対象ユーザーのデータを最新化する
+        if (req.session.github_token) {
+            try {
+                // 対象ユーザーの情報を取得
+                const targetUserRes = await axios.get(`https://api.github.com/users/${username}`, {
+                    headers: { 'Authorization': `Bearer ${req.session.github_token}` }
+                });
+                const targetUser = targetUserRes.data;
+                // データ更新 & 保存 (ここでweekly_commitsも更新される)
+                await updateAndSavePlanetData(targetUser, req.session.github_token);
+            } catch (e) {
+                console.warn(`[Visit Update] Failed to update ${username}: ${e.message}`);
+                // エラーが出てもDBの古いデータを返せばよいので、処理は続行
+            }
+        }
+
         const result = await pool.query('SELECT * FROM planets WHERE username = $1', [username]);
 
         if (result.rows.length === 0) {
@@ -594,6 +617,7 @@ app.get('/api/planets/user/:username', async (req, res) => {
             mainLanguage: mainLanguage,
             languageStats: languageStats,
             totalCommits: totalCommits,
+            weeklyCommits: row.weekly_commits || 0, // ★追加: 週間コミット数を返す
             planetName: planetName,
             achievements: row.achievements || {}
         };
@@ -645,8 +669,33 @@ app.get('/api/planets/random', async (req, res) => {
             result = fallbackResult;
         }
 
-        const row = result.rows[0];
+        // letに変更して更新可能にする
+        let row = result.rows[0];
         req.session.lastRandomVisitedId = row.github_id;
+
+        // ★追加: 閲覧者がログイン済みなら、ランダムに選ばれたユーザーのデータを最新化する
+        if (req.session.github_token) {
+            try {
+                const targetUserRes = await axios.get(`https://api.github.com/users/${row.username}`, {
+                    headers: { 'Authorization': `Bearer ${req.session.github_token}` }
+                });
+                const targetUser = targetUserRes.data;
+                // データ更新
+                const updatedData = await updateAndSavePlanetData(targetUser, req.session.github_token);
+                
+                // rowを更新データで上書き（レスポンス生成用）
+                row.weekly_commits = updatedData.weeklyCommits;
+                row.total_commits = updatedData.totalCommits;
+                row.planet_color = updatedData.planetColor;
+                row.planet_size_factor = updatedData.planetSizeFactor;
+                row.main_language = updatedData.mainLanguage;
+                row.language_stats = updatedData.languageStats;
+                row.planet_name = updatedData.planetName;
+                row.achievements = updatedData.achievements;
+            } catch (e) {
+                console.warn(`[Random Visit Update] Failed to update ${row.username}: ${e.message}`);
+            }
+        }
 
         const totalCommits = parseInt(row.total_commits) || 0;
         const languageStats = row.language_stats || {};
@@ -670,6 +719,7 @@ app.get('/api/planets/random', async (req, res) => {
             mainLanguage: mainLanguage,
             languageStats: languageStats,
             totalCommits: totalCommits,
+            weeklyCommits: row.weekly_commits || 0, // ★追加: 週間コミット数を返す
             planetName: planetName,
             achievements: row.achievements || {}
         };
