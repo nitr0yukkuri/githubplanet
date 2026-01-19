@@ -10,6 +10,7 @@ let scene, camera, renderer, controls, planetGroup;
 
 let welcomeModal, okButton, mainUiWrapper;
 let isFetchingRandomPlanet = false;
+let planetRotationSpeed = 0.001; // ★追加: 回転速度の変数を追加
 
 // ▼▼▼ 追加: Socket.IO インスタンス ▼▼▼
 const socket = io();
@@ -102,6 +103,12 @@ function loadPlanet(data) {
     if (!data) return;
 
     console.log('loadPlanet called with data:', data);
+
+    // ★追加: 週間コミット数に応じて回転速度を調整
+    // 基本速度 0.001 + (週間コミット数 * 0.0001)
+    const weeklyCommits = data.weeklyCommits || 0;
+    planetRotationSpeed = 0.001 + (weeklyCommits * 0.0001);
+    console.log(`Weekly Commits: ${weeklyCommits}, Rotation Speed: ${planetRotationSpeed}`);
 
     if (ownerDisplay && data.username) {
         ownerDisplay.textContent = `${data.username} の星`;
@@ -472,12 +479,9 @@ async function init() {
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.z = 25;
     renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight); renderer.setPixelRatio(window.devicePixelRatio);
     document.getElementById('canvas-container').appendChild(renderer.domElement);
+    controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.autoRotate = false;
 
-    controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.autoRotate = false;
-
-    // ズームの制限
+    // ▼▼▼ズームの制限 ▼▼▼
     controls.minDistance = 10;  // これ以上近づけない距離 (デフォルトは0)
     controls.maxDistance = 70; // これ以上離れられない距離 (デフォルトは無限大)
 
@@ -535,7 +539,13 @@ async function loadMainContent() {
     setupUI();
 }
 
-function animate() { requestAnimationFrame(animate); if (planetGroup) planetGroup.rotation.z += 0.001; controls.update(); renderer.render(scene, camera); }
+function animate() { 
+    requestAnimationFrame(animate); 
+    // ★修正: 固定値 0.001 ではなく、計算された rotationSpeed を使用
+    if (planetGroup) planetGroup.rotation.z += planetRotationSpeed; 
+    controls.update(); 
+    renderer.render(scene, camera); 
+}
 
 function setupUI() {
     const modal = document.getElementById('select-modal');
