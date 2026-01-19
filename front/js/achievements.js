@@ -12,6 +12,47 @@ const MASTER_ACHIEVEMENTS = {
 
 const TROPHY_SVG = `<svg stroke="currentColor" fill="none" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" height="1.2em" width="1.2em" xmlns="http://www.w3.org/2000/svg" style="margin-right: 8px;"><path d="M8 21h8"></path><path d="M12 17v4"></path><path d="M7 4h10v8a5 5 0 0 1-10 0V4z"></path><path d="M17 8h1a2 2 0 0 1 0 4h-1"></path><path d="M7 8H6a2 2 0 0 0 0 4h1"></path></svg>`;
 
+// ビュー切り替え用の要素
+const listView = document.getElementById('achievement-list-view');
+const detailView = document.getElementById('achievement-detail-view');
+
+// 詳細表示用の要素
+const detailIcon = document.getElementById('detail-icon-large');
+const detailTitle = document.getElementById('detail-title');
+const detailDesc = document.getElementById('detail-description');
+const detailStatus = document.getElementById('detail-status-text');
+const backBtn = document.getElementById('back-to-list-btn');
+
+function showDetail(masterData, userData) {
+    const isUnlocked = !!userData;
+    const unlockedDate = (userData?.unlockedAt || '').split('T')[0].replace(/-/g, '/');
+    const statusText = isUnlocked ? `Unlocked (${unlockedDate})` : 'Locked';
+
+    // アイコン設定
+    detailIcon.innerHTML = isUnlocked ? TROPHY_SVG.replace('height="1.2em" width="1.2em"', 'height="4em" width="4em"') : '<span style="font-size: 4em;">🔒</span>';
+    detailIcon.className = isUnlocked ? 'detail-icon-large unlocked' : 'detail-icon-large locked';
+
+    // テキスト設定
+    detailTitle.textContent = masterData.name;
+    detailDesc.textContent = masterData.description;
+    detailStatus.textContent = statusText;
+
+    if (isUnlocked) {
+        detailStatus.style.color = '#ffd700';
+    } else {
+        detailStatus.style.color = '#ccc';
+    }
+
+    // 画面切り替え
+    listView.style.display = 'none';
+    detailView.style.display = 'flex';
+}
+
+function hideDetail() {
+    detailView.style.display = 'none';
+    listView.style.display = 'block';
+}
+
 function renderPage(data) {
     if (!data || !data.user || !data.planetData) {
         document.getElementById('achievement-list').innerHTML = '<p class="loading-text">ログインしていません。<a href="/">ホーム</a>に戻ってログインしてください。</p>';
@@ -61,11 +102,16 @@ function renderPage(data) {
 
         // 「詳細を確認」クリック時の動作
         card.querySelector('.detail-link').addEventListener('click', () => {
-            alert(`【${masterData.name}】\n${masterData.description}\n\nステータス: ${statusText}`);
+            showDetail(masterData, userData);
         });
 
         listContainer.appendChild(card);
     });
+}
+
+// 戻るボタンのイベントリスナー
+if (backBtn) {
+    backBtn.addEventListener('click', hideDetail);
 }
 
 async function initAchievementsPage() {
