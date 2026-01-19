@@ -55,10 +55,17 @@ const ACHIEVEMENTS = {
     COMMIT_1000: { id: 'COMMIT_1000', name: 'コミット1000', description: '累計コミット数が1000を超えた。' },
 };
 
-// ★修正: authorIdを受け取り、history(author: {id: $authorId}) でユーザー自身のコミットのみをカウントするように変更
+// ★修正: IssuesとPullRequestsも取得するように追加
+// authorIdを受け取り、history(author: {id: $authorId}) でユーザー自身のコミットのみをカウント
 const USER_DATA_QUERY = `
   query($login: String!, $authorId: ID!) {
     user(login: $login) {
+      issues(first: 1, filterBy: {createdBy: $login}) {
+        totalCount
+      }
+      pullRequests(first: 1) {
+        totalCount
+      }
       repositories(first: 100, ownerAffiliations: OWNER, isFork: false, orderBy: {field: PUSHED_AT, direction: DESC}) {
         nodes {
           name
@@ -296,6 +303,9 @@ async function updateAndSavePlanetData(user, accessToken) {
     console.log(`[GraphQL] Fetching data for user: ${user.login}`);
 
     let repositories = [];
+    let issuesCount = 0;
+    let prsCount = 0;
+
     try {
         const response = await axios.post(
             'https://api.github.com/graphql',
@@ -317,8 +327,15 @@ async function updateAndSavePlanetData(user, accessToken) {
             throw new Error('GraphQL query failed');
         }
 
-        const ownedRepos = response.data.data.user.repositories.nodes || [];
-        const contributedRepos = response.data.data.user.repositoriesContributedTo.nodes || [];
+        const userData = response.data.data.user;
+
+        // ★追加: IssueとPRの数を取得
+        issuesCount = userData.issues?.totalCount || 0;
+        prsCount = userData.pullRequests?.totalCount || 0;
+        console.log(`[GraphQL] Issues: ${issuesCount}, PRs: ${prsCount}`);
+
+        const ownedRepos = userData.repositories.nodes || [];
+        const contributedRepos = userData.repositoriesContributedTo.nodes || [];
         repositories = [...ownedRepos, ...contributedRepos];
 
     } catch (e) {
@@ -342,6 +359,9 @@ async function updateAndSavePlanetData(user, accessToken) {
             totalCommits += repo.defaultBranchRef.target.history.totalCount;
         }
     }
+
+    // ★追加: 総アクティビティとして Issue と PR をコミット数に加算
+    totalCommits += issuesCount + prsCount;
 
     let mainLanguage = 'Unknown';
     let maxBytes = 0;
