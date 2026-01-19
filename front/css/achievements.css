@@ -36,6 +36,8 @@ body {
     transition: background-color 0.2s;
     display: inline-block; 
     margin-bottom: 10px; 
+    cursor: pointer;
+    border: none; /* buttonタグの場合の対策 */
 }
 .back-button:hover {
     background-color: rgba(255, 255, 255, 0.2);
@@ -57,7 +59,7 @@ body {
 }
 
 .title {
-    font-size: 3rem; 
+    font-size: 1.8rem;
     margin: 0; 
     font-weight: 600;
     display: flex;
@@ -130,13 +132,16 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden; 
+    position: relative; /* 子要素の配置基準 */
 }
 
+/* 一覧表示ビュー */
 .achievement-list-wrapper {
     flex-grow: 1; 
     overflow-y: auto; 
     padding-right: 10px; 
     margin-top: 20px; 
+    animation: fadeIn 0.3s ease;
 }
 .achievement-list {
     display: grid;
@@ -208,68 +213,16 @@ body {
 
 .achievement-card.unlocked .card-header .icon {
     color: #ffd700;
-    filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
 }
-.achievement-card.locked { opacity: 0.6; }
 
-/* モーダルのスタイル */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(10px);
-    justify-content: center;
-    align-items: center;
+.achievement-card.locked {
+    background: linear-gradient(135deg, rgba(30, 20, 50, 0.6), rgba(10, 5, 30, 0.6));
 }
-.modal-content {
-    background: linear-gradient(135deg, rgba(50, 40, 80, 0.9), rgba(30, 20, 50, 0.9));
-    padding: 40px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 24px;
-    max-width: 500px;
-    width: 90%;
-    text-align: center;
-    box-shadow: 0 0 30px rgba(106, 13, 173, 0.3);
-}
-.modal-content h2 {
-    font-size: 2.2rem;
-    margin-bottom: 20px;
-    color: #ffd700;
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
-}
-.modal-content p {
-    font-size: 1.2rem;
-    line-height: 1.6;
-    margin-bottom: 30px;
-    color: #e0e0e0;
-}
-#modal-status {
-    font-weight: bold;
-    color: #fff;
-    background: rgba(255, 255, 255, 0.1);
-    display: inline-block;
-    padding: 10px 20px;
-    border-radius: 12px;
-}
-.modal-close-btn {
-    margin-top: 30px;
-    background: rgba(255, 255, 255, 0.15);
-    border: none;
-    color: #fff;
-    padding: 12px 30px;
-    border-radius: 10px;
-    font-size: 1rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-.modal-close-btn:hover {
-    background: rgba(255, 255, 255, 0.25);
+
+.achievement-card.locked .card-header,
+.achievement-card.locked .card-status,
+.achievement-card.locked .card-details {
+    opacity: 0.6;
 }
 
 .loading-text {
@@ -277,4 +230,97 @@ body {
     color: #ccc;
     text-align: center;
     grid-column: 1 / -1;
+}
+
+/* --- 詳細表示ビューのスタイル --- */
+.achievement-detail-view {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    margin-top: 10px;
+    animation: fadeIn 0.3s ease;
+}
+
+.detail-nav {
+    margin-bottom: 20px;
+}
+
+.detail-content-container {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 40px;
+    background: linear-gradient(135deg, rgba(40, 30, 60, 0.6), rgba(20, 10, 40, 0.6));
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+}
+
+.detail-icon-large {
+    margin-bottom: 20px;
+}
+.detail-icon-large.unlocked {
+    color: #ffd700;
+    filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.3)); /* 詳細画面では少し豪華に */
+}
+.detail-icon-large.locked {
+    opacity: 0.5;
+}
+
+.detail-title {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin: 0 0 30px 0;
+    text-shadow: 0 0 10px rgba(255,255,255,0.2);
+}
+
+.detail-info-section {
+    width: 100%;
+    max-width: 700px;
+    text-align: left;
+}
+
+.detail-box {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 25px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.detail-box h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    color: #ccc;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 8px;
+}
+
+.detail-box p {
+    font-size: 1.4rem;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.detail-status-row {
+    font-size: 1.2rem;
+    text-align: right;
+    margin-top: 10px;
+}
+
+.status-label {
+    color: #bbb;
+    margin-right: 10px;
+}
+
+.status-value {
+    font-weight: bold;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }

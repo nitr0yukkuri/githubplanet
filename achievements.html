@@ -56,24 +56,35 @@
 
 
         <main class="achievement-main">
-            <div class="achievement-list-wrapper">
+            <div class="achievement-list-wrapper" id="achievement-list-view">
                 <div class="achievement-list" id="achievement-list">
                     <p class="loading-text">実績データを読み込み中...</p>
                 </div>
             </div>
 
-        </main>
-    </div>
+            <div class="achievement-detail-view" id="achievement-detail-view" style="display: none;">
+                <div class="detail-nav">
+                    <button id="back-to-list-btn" class="back-button">＜ 実績一覧に戻る</button>
+                </div>
+                <div class="detail-content-container">
+                    <div class="detail-icon-large" id="detail-icon-large"></div>
+                    <h2 class="detail-title" id="detail-title">タイトル</h2>
 
-    <div id="achievement-modal" class="modal">
-        <div class="modal-content">
-            <h2 id="modal-title">実績名</h2>
-            <p id="modal-desc">説明文がここに入ります。</p>
-            <div id="modal-status-box">
-                <p id="modal-status">ステータス: Locked</p>
+                    <div class="detail-info-section">
+                        <div class="detail-box">
+                            <h3>実績解除条件</h3>
+                            <p id="detail-description">ここに解除条件の説明が入ります。</p>
+                        </div>
+
+                        <div class="detail-status-row">
+                            <span class="status-label">ステータス:</span>
+                            <span class="status-value" id="detail-status-text">Locked</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <button id="close-modal" class="modal-close-btn">閉じる</button>
-        </div>
+
+        </main>
     </div>
 
     <script type="module" src="./front/js/achievements.js"></script>
