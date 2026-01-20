@@ -43,7 +43,7 @@
 github planetに訪れて、以下のコードを自分の `README.md` に貼るだけで、あなたの惑星カードが表示されます。
 
 \`\`\`markdown
-![GitHub Planet](https://githubplanet.onrender.com/api/card/あなたのユーザー名)
+[![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/https://githubplanet.onrender.com/card.html?username=NITROYUKKURI&fix=responsive9=v0)]
 \`\`\`
 ## 🛠️ 技術構成（Tech Stack）
 
