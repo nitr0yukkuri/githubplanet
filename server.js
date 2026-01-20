@@ -14,6 +14,9 @@ import { Server } from 'socket.io';
 const app = express();
 const port = parseInt(process.env.PORT) || 3000;
 
+// ★パフォーマンス: データのキャッシュ有効期限 (15分)
+const DATA_CACHE_DURATION = 15 * 60 * 1000;
+
 app.use(express.json());
 
 const PgSession = connectPgSimple(session);
@@ -55,7 +58,6 @@ const ACHIEVEMENTS = {
     COMMIT_1000: { id: 'COMMIT_1000', name: 'コミット1000', description: '累計コミット数が1000を超えた。' },
 };
 
-// ★修正: $since引数を追加し、weeklyHistoryとして週間コミット数も取得する
 const USER_DATA_QUERY = `
   query($login: String!, $authorId: ID!, $since: GitTimestamp!) {
     user(login: $login) {
@@ -149,14 +151,12 @@ if (connectionString) {
             `);
         })
         .then(() => {
-            // ★追加: 既存テーブルにも planet_name カラムを追加する安全策
             return pool.query(`
                 ALTER TABLE planets 
                 ADD COLUMN IF NOT EXISTS planet_name TEXT;
             `);
         })
         .then(() => {
-            // ★追加: 週間コミット数保存用のカラムを追加
             return pool.query(`
                 ALTER TABLE planets 
                 ADD COLUMN IF NOT EXISTS weekly_commits INTEGER DEFAULT 0;
@@ -308,7 +308,6 @@ function generatePlanetName(mainLanguage, planetColor, totalCommits) {
 async function updateAndSavePlanetData(user, accessToken) {
     console.log(`[GraphQL] Fetching data for user: ${user.login}`);
 
-    // ★追加: 1週間前の日時を計算
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     const since = oneWeekAgo.toISOString();
@@ -319,7 +318,6 @@ async function updateAndSavePlanetData(user, accessToken) {
             'https://api.github.com/graphql',
             {
                 query: USER_DATA_QUERY,
-                // ★修正: since変数を追加
                 variables: { login: user.login, authorId: user.node_id, since: since }
             },
             {
@@ -346,7 +344,7 @@ async function updateAndSavePlanetData(user, accessToken) {
 
     const languageStats = {};
     let totalCommits = 0;
-    let weeklyCommits = 0; // ★追加: 週間コミット数
+    let weeklyCommits = 0;
 
     for (const repo of repositories) {
         if (repo.languages && repo.languages.edges) {
@@ -358,11 +356,9 @@ async function updateAndSavePlanetData(user, accessToken) {
         }
 
         if (repo.defaultBranchRef && repo.defaultBranchRef.target) {
-            // 通算コミット
             if (repo.defaultBranchRef.target.history) {
                 totalCommits += repo.defaultBranchRef.target.history.totalCount;
             }
-            // ★追加: 週間コミット数の集計
             if (repo.defaultBranchRef.target.weeklyHistory) {
                 weeklyCommits += repo.defaultBranchRef.target.weeklyHistory.totalCount;
             }
@@ -414,7 +410,6 @@ async function updateAndSavePlanetData(user, accessToken) {
 
         achievements = checkAchievements(existingAchievements, totalCommits);
 
-        // ★修正: weekly_commits を保存するようにSQLを変更 ($10に追加)
         await pool.query(`
             INSERT INTO planets (github_id, username, planet_color, planet_size_factor, main_language, language_stats, total_commits, last_updated, achievements, planet_name, weekly_commits)
             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9, $10)
@@ -431,7 +426,6 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// card.htmlのルート
 app.get('/card.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'card.html'));
 });
@@ -547,8 +541,12 @@ app.get('/api/me', async (req, res) => {
         return res.status(401).json({ error: 'Not logged in' });
     }
 
-    if (req.session.github_token) {
-        console.log('[Auto Update] データを更新中...');
+    // ★修正: キャッシュの鮮度をチェック (15分以内なら更新しない)
+    const lastUpdated = req.session.last_updated;
+    const isStale = !lastUpdated || (Date.now() - lastUpdated > DATA_CACHE_DURATION);
+
+    if (req.session.github_token && isStale) {
+        console.log('[Auto Update] データを更新中... (キャッシュ切れ)');
         try {
             const user = req.session.planetData.user;
             const newPlanetData = await updateAndSavePlanetData(user, req.session.github_token);
@@ -560,7 +558,7 @@ app.get('/api/me', async (req, res) => {
             console.error('[Auto Update] 更新失敗 (キャッシュを返します):', e.message);
         }
     } else {
-        console.log('[Auto Update] トークンがないためスキップ');
+        console.log('[Auto Update] キャッシュ有効のためスキップ');
     }
 
     res.json(req.session.planetData);
@@ -571,29 +569,47 @@ app.get('/api/planets/user/:username', async (req, res) => {
     try {
         const { username } = req.params;
 
-        // ★追加: 閲覧者がログイン済みなら、対象ユーザーのデータを最新化する
+        // ★修正: DBを先に確認する
+        let row;
+        const result = await pool.query('SELECT * FROM planets WHERE username = $1', [username]);
+        if (result.rows.length > 0) {
+            row = result.rows[0];
+        }
+
+        // ★修正: データがない、または古い場合のみ更新を試みる
+        let shouldUpdate = false;
         if (req.session.github_token) {
+            if (!row) {
+                shouldUpdate = true; // データがないので更新必須
+            } else if (row.last_updated) {
+                const lastUpdatedTime = new Date(row.last_updated).getTime();
+                if (Date.now() - lastUpdatedTime > DATA_CACHE_DURATION) {
+                    shouldUpdate = true; // データが古いので更新
+                }
+            }
+        }
+
+        if (shouldUpdate) {
             try {
-                // 対象ユーザーの情報を取得
                 const targetUserRes = await axios.get(`https://api.github.com/users/${username}`, {
                     headers: { 'Authorization': `Bearer ${req.session.github_token}` }
                 });
                 const targetUser = targetUserRes.data;
-                // データ更新 & 保存 (ここでweekly_commitsも更新される)
+
                 await updateAndSavePlanetData(targetUser, req.session.github_token);
+
+                const newResult = await pool.query('SELECT * FROM planets WHERE username = $1', [username]);
+                if (newResult.rows.length > 0) {
+                    row = newResult.rows[0];
+                }
             } catch (e) {
                 console.warn(`[Visit Update] Failed to update ${username}: ${e.message}`);
-                // エラーが出てもDBの古いデータを返せばよいので、処理は続行
             }
         }
 
-        const result = await pool.query('SELECT * FROM planets WHERE username = $1', [username]);
-
-        if (result.rows.length === 0) {
+        if (!row) {
             return res.status(404).json({ error: 'Planet not found' });
         }
-
-        const row = result.rows[0];
 
         const totalCommits = parseInt(row.total_commits) || 0;
         const languageStats = row.language_stats || {};
@@ -607,7 +623,6 @@ app.get('/api/planets/user/:username', async (req, res) => {
             planetColor = '#808080';
         }
 
-        // ★修正: DBに保存された名前があればそれを使い、なければ生成
         const planetName = row.planet_name || generatePlanetName(mainLanguage, planetColor, totalCommits);
 
         const responseData = {
@@ -617,7 +632,7 @@ app.get('/api/planets/user/:username', async (req, res) => {
             mainLanguage: mainLanguage,
             languageStats: languageStats,
             totalCommits: totalCommits,
-            weeklyCommits: row.weekly_commits || 0, // ★追加: 週間コミット数を返す
+            weeklyCommits: row.weekly_commits || 0,
             planetName: planetName,
             achievements: row.achievements || {}
         };
@@ -669,31 +684,36 @@ app.get('/api/planets/random', async (req, res) => {
             result = fallbackResult;
         }
 
-        // letに変更して更新可能にする
         let row = result.rows[0];
         req.session.lastRandomVisitedId = row.github_id;
 
-        // ★追加: 閲覧者がログイン済みなら、ランダムに選ばれたユーザーのデータを最新化する
+        // ★修正: ランダムの場合は「裏で」更新する (awaitしない)
+        // これによりユーザーへのレスポンスはDBの値を即座に返すので爆速になる
         if (req.session.github_token) {
-            try {
-                const targetUserRes = await axios.get(`https://api.github.com/users/${row.username}`, {
-                    headers: { 'Authorization': `Bearer ${req.session.github_token}` }
-                });
-                const targetUser = targetUserRes.data;
-                // データ更新
-                const updatedData = await updateAndSavePlanetData(targetUser, req.session.github_token);
-                
-                // rowを更新データで上書き（レスポンス生成用）
-                row.weekly_commits = updatedData.weeklyCommits;
-                row.total_commits = updatedData.totalCommits;
-                row.planet_color = updatedData.planetColor;
-                row.planet_size_factor = updatedData.planetSizeFactor;
-                row.main_language = updatedData.mainLanguage;
-                row.language_stats = updatedData.languageStats;
-                row.planet_name = updatedData.planetName;
-                row.achievements = updatedData.achievements;
-            } catch (e) {
-                console.warn(`[Random Visit Update] Failed to update ${row.username}: ${e.message}`);
+            let shouldUpdate = false;
+            if (row.last_updated) {
+                const lastUpdatedTime = new Date(row.last_updated).getTime();
+                if (Date.now() - lastUpdatedTime > DATA_CACHE_DURATION) {
+                    shouldUpdate = true;
+                }
+            } else {
+                shouldUpdate = true;
+            }
+
+            if (shouldUpdate) {
+                // Fire-and-Forget (待たない)
+                // ユーザーには少し古いデータが見えるかもしれないが、速度優先
+                (async () => {
+                    try {
+                        console.log(`[Random/Background] Updating stale data for: ${row.username}`);
+                        const targetUserRes = await axios.get(`https://api.github.com/users/${row.username}`, {
+                            headers: { 'Authorization': `Bearer ${req.session.github_token}` }
+                        });
+                        await updateAndSavePlanetData(targetUserRes.data, req.session.github_token);
+                    } catch (e) {
+                        console.warn(`[Random/Background] Update failed: ${e.message}`);
+                    }
+                })();
             }
         }
 
@@ -709,7 +729,6 @@ app.get('/api/planets/random', async (req, res) => {
             planetColor = '#808080';
         }
 
-        // ★修正: DBに保存された名前があればそれを使い、なければ生成
         const planetName = row.planet_name || generatePlanetName(mainLanguage, planetColor, totalCommits);
 
         const responseData = {
@@ -719,7 +738,7 @@ app.get('/api/planets/random', async (req, res) => {
             mainLanguage: mainLanguage,
             languageStats: languageStats,
             totalCommits: totalCommits,
-            weeklyCommits: row.weekly_commits || 0, // ★追加: 週間コミット数を返す
+            weeklyCommits: row.weekly_commits || 0,
             planetName: planetName,
             achievements: row.achievements || {}
         };
@@ -731,35 +750,24 @@ app.get('/api/planets/random', async (req, res) => {
     }
 });
 
-// ▼▼▼ 画像生成 API (外部サービスへリダイレクト) ▼▼▼
 app.get('/api/card/:username', (req, res) => {
     const { username } = req.params;
 
-    // 現在のホスト名から画像生成元のURLを作成
     let protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    // ★修正: Render上(onrender.com)ではHTTPSを強制してリダイレクトのロスを防ぐ
     if (req.get('host') && req.get('host').includes('onrender.com')) {
         protocol = 'https';
     }
 
     const host = req.headers['x-forwarded-host'] || req.get('host');
-
-    // ★修正: キャッシュ回避のためのタイムスタンプを追加
-    // thum.ioが古い「真っ暗な画像」をキャッシュし続けないように、URLを毎回ユニークにする
     const timestamp = Date.now();
     const targetUrl = `${protocol}://${host}/card.html?username=${username}&ts=${timestamp}`;
 
     console.log(`[Card] Redirecting generation for: ${targetUrl}`);
 
-    // thum.io (無料スクリーンショットサービス) を使用してリダイレクト
-    // ★修正: サーバーの起動待ち(Cold Start)を考慮して wait を 5 -> 8秒 に延長
-    // ユーザー検証では5秒で成功したが、自動アクセス時の遅延を考慮して余裕を持たせる
     const screenshotServiceUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
 
-    // クライアント(ブラウザやBot)を画像URLへリダイレクト
     res.redirect(screenshotServiceUrl);
 });
-// ▲▲▲ 修正終了 ▲▲▲
 
 const server = app.listen(port, '0.0.0.0', () => {
     console.log(`Server running on port ${port}`);
