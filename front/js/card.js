@@ -1,4 +1,4 @@
-/* front/js/card.js */
+// front/js/card.js
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
@@ -24,14 +24,30 @@ const copyBtn = document.getElementById('copy-btn');
 
 if (isScreenshotMode) {
     containerElement.style.height = '400px';
+    containerElement.style.margin = '0 auto';
+
     if (shareSection) shareSection.style.display = 'none';
+
+    const backBtn = document.querySelector('.back-button');
+    if (backBtn) {
+        backBtn.parentElement.style.display = 'none';
+    }
+
+    const wrapper = document.querySelector('.content-wrapper');
+    if (wrapper) {
+        wrapper.style.justifyContent = 'flex-start';
+        wrapper.style.paddingTop = '0';
+    }
+
 } else {
     if (shareSection) shareSection.style.display = 'block';
 
     const deployUrl = 'https://githubplanet.onrender.com';
     const targetUrl = `${deployUrl}/card.html?username=${username}&fix=responsive9=v0`;
     const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/${targetUrl}`;
-    const mdText = `[![GitHub Planet](${thumbUrl})](${deployUrl})`;
+
+    // ★修正: ユーザー指定の形式（画像埋め込みのみ）に変更
+    const mdText = `![GitHub Planet](${thumbUrl})`;
 
     if (markdownCode) markdownCode.textContent = mdText;
 
