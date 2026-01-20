@@ -8,6 +8,8 @@ let scene, camera, renderer, controls, planetGroup;
 
 let welcomeModal, okButton, mainUiWrapper;
 let isFetchingRandomPlanet = false;
+// ★追加: 最後にランダムボタンを押した時刻を記録
+let lastRandomVisitTime = 0;
 let planetRotationSpeed = 0.001;
 
 // テクスチャのキャッシュ
@@ -140,8 +142,6 @@ async function loadPlanet(data) {
 
     console.log('loadPlanet called with data:', data);
 
-    // ★修正: 他人のデータなどで週間コミットが0の場合、通算コミット数から推定した速度を適用する
-    // (例: 通算コミットの約2%程度を仮の週間コミットとして速度計算に使う)
     let wCommits = data.weeklyCommits;
     if ((!wCommits || wCommits === 0) && data.totalCommits > 0) {
         wCommits = Math.ceil(data.totalCommits * 0.02);
@@ -158,13 +158,10 @@ async function loadPlanet(data) {
         profileLink.style.display = 'flex';
     }
 
-    // ▼▼▼ カードリンクの更新処理を追加 ▼▼▼
     const cardLink = document.getElementById('card-link');
     if (cardLink && data.username) {
-        // APIのエンドポイントを設定 (API側で画像生成や処理を行う)
         cardLink.href = `/api/card/${data.username}`;
     }
-    // ▲▲▲ 追加ここまで ▲▲▲
 
     updatePlanetDetails(data);
 
@@ -613,6 +610,11 @@ function setupUI() {
     document.getElementById('random-visit-btn')?.addEventListener('click', async (e) => {
         e.preventDefault();
 
+        // ★追加: 1.5秒経過していない場合は処理をスキップ
+        const now = Date.now();
+        if (now - lastRandomVisitTime < 1500) return;
+        lastRandomVisitTime = now;
+
         if (isFetchingRandomPlanet) return;
         isFetchingRandomPlanet = true;
 
@@ -651,7 +653,6 @@ function setupUI() {
         if (arrow) { arrow.classList.toggle('right'); arrow.classList.toggle('left'); }
     });
 
-    // ▼▼▼ ハンバーガーメニューのロジック追加 ▼▼▼
     const menuBtn = document.getElementById('menu-btn');
     const menuDropdown = document.getElementById('menu-dropdown');
 
