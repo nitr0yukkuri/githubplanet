@@ -53,6 +53,14 @@ const DYNAMIC_COLOR_CACHE = {};
 
 const ACHIEVEMENTS = {
     FIRST_PLANET: { id: 'FIRST_PLANET', name: '最初の星', description: '初めての惑星を作成した。' },
+    FIRST_COMMIT: { id: 'FIRST_COMMIT', name: '星の産声', description: '初めてコミットを行った。' },
+    // ★以下、説明文から括弧を削除して文章化
+    VELOCITY_STAR: { id: 'VELOCITY_STAR', name: '光速の星', description: '爆発的な開発スピードで宇宙を駆け抜け、週間50コミット以上を記録した。' },
+    OS_CONTRIBUTOR: { id: 'OS_CONTRIBUTOR', name: '銀河の貢献者', description: '他の星系に文明をもたらし、他リポジトリへの貢献を果たした。' },
+    STARGAZER: { id: 'STARGAZER', name: '星を見上げる者', description: '多くの輝きを知り、または自身が輝き、Star数10以上を達成した。' },
+    POLYGLOT_PIONEER: { id: 'POLYGLOT_PIONEER', name: '多言語の開拓者', description: '多様な技術を操り、5種類以上の言語で彩り豊かな惑星を築き上げた。' },
+    OCTOCAT_FRIEND: { id: 'OCTOCAT_FRIEND', name: '星界の盟友', description: '長い間この宇宙を旅し、登録から1年以上が経過した。' },
+
     COMMIT_100: { id: 'COMMIT_100', name: 'コミット100', description: '累計コミット数が100を超えた。' },
     COMMIT_500: { id: 'COMMIT_500', name: 'コミット500', description: '累計コミット数が500を超えた。' },
     COMMIT_1000: { id: 'COMMIT_1000', name: 'コミット1000', description: '累計コミット数が1000を超えた。' },
@@ -61,9 +69,13 @@ const ACHIEVEMENTS = {
 const USER_DATA_QUERY = `
   query($login: String!, $authorId: ID!, $since: GitTimestamp!) {
     user(login: $login) {
+      starredRepositories {
+        totalCount
+      }
       repositories(first: 100, ownerAffiliations: OWNER, isFork: false, orderBy: {field: PUSHED_AT, direction: DESC}) {
         nodes {
           name
+          stargazerCount
           languages(first: 5, orderBy: {field: SIZE, direction: DESC}) {
             edges {
               size
@@ -191,13 +203,48 @@ function sha256(buffer) {
     return crypto.createHash('sha256').update(buffer).digest();
 }
 
-function checkAchievements(existingAchievements, totalCommits) {
+function checkAchievements(existingAchievements, stats) {
     const newAchievements = { ...existingAchievements };
     const now = new Date().toISOString();
+
+    const { totalCommits, weeklyCommits, languagesCount, hasContributedToOthers, totalStars, createdAt } = stats;
 
     if (!newAchievements[ACHIEVEMENTS.FIRST_PLANET.id]) {
         newAchievements[ACHIEVEMENTS.FIRST_PLANET.id] = { ...ACHIEVEMENTS.FIRST_PLANET, unlockedAt: now };
     }
+    if (totalCommits >= 1 && !newAchievements[ACHIEVEMENTS.FIRST_COMMIT.id]) {
+        newAchievements[ACHIEVEMENTS.FIRST_COMMIT.id] = { ...ACHIEVEMENTS.FIRST_COMMIT, unlockedAt: now };
+    }
+
+    // Velocity Star (週間50コミット)
+    if (weeklyCommits >= 50 && !newAchievements[ACHIEVEMENTS.VELOCITY_STAR.id]) {
+        newAchievements[ACHIEVEMENTS.VELOCITY_STAR.id] = { ...ACHIEVEMENTS.VELOCITY_STAR, unlockedAt: now };
+    }
+
+    // Open Source Contributor (他リポジトリへの貢献)
+    if (hasContributedToOthers && !newAchievements[ACHIEVEMENTS.OS_CONTRIBUTOR.id]) {
+        newAchievements[ACHIEVEMENTS.OS_CONTRIBUTOR.id] = { ...ACHIEVEMENTS.OS_CONTRIBUTOR, unlockedAt: now };
+    }
+
+    // Stargazer (Star数10以上)
+    if (totalStars >= 10 && !newAchievements[ACHIEVEMENTS.STARGAZER.id]) {
+        newAchievements[ACHIEVEMENTS.STARGAZER.id] = { ...ACHIEVEMENTS.STARGAZER, unlockedAt: now };
+    }
+
+    // Polyglot Pioneer (5言語以上)
+    if (languagesCount >= 5 && !newAchievements[ACHIEVEMENTS.POLYGLOT_PIONEER.id]) {
+        newAchievements[ACHIEVEMENTS.POLYGLOT_PIONEER.id] = { ...ACHIEVEMENTS.POLYGLOT_PIONEER, unlockedAt: now };
+    }
+
+    // 星界の盟友 (登録から1年以上)
+    if (createdAt) {
+        const diffTime = Math.abs(new Date() - new Date(createdAt));
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays >= 365 && !newAchievements[ACHIEVEMENTS.OCTOCAT_FRIEND.id]) {
+            newAchievements[ACHIEVEMENTS.OCTOCAT_FRIEND.id] = { ...ACHIEVEMENTS.OCTOCAT_FRIEND, unlockedAt: now };
+        }
+    }
+
     if (totalCommits >= 100 && !newAchievements[ACHIEVEMENTS.COMMIT_100.id]) {
         newAchievements[ACHIEVEMENTS.COMMIT_100.id] = { ...ACHIEVEMENTS.COMMIT_100, unlockedAt: now };
     }
@@ -313,6 +360,7 @@ async function updateAndSavePlanetData(user, accessToken) {
     const since = oneWeekAgo.toISOString();
 
     let repositories = [];
+    let starredCount = 0;
     try {
         const response = await axios.post(
             'https://api.github.com/graphql',
@@ -333,9 +381,13 @@ async function updateAndSavePlanetData(user, accessToken) {
             throw new Error('GraphQL query failed');
         }
 
-        const ownedRepos = response.data.data.user.repositories.nodes || [];
-        const contributedRepos = response.data.data.user.repositoriesContributedTo.nodes || [];
+        const userData = response.data.data.user;
+        const ownedRepos = userData.repositories.nodes || [];
+        const contributedRepos = userData.repositoriesContributedTo.nodes || [];
         repositories = [...ownedRepos, ...contributedRepos];
+
+        // Star数(与えた)取得
+        starredCount = userData.starredRepositories ? userData.starredRepositories.totalCount : 0;
 
     } catch (e) {
         console.error('[GraphQL] データ取得失敗:', e.message);
@@ -345,6 +397,7 @@ async function updateAndSavePlanetData(user, accessToken) {
     const languageStats = {};
     let totalCommits = 0;
     let weeklyCommits = 0;
+    let receivedStars = 0;
 
     for (const repo of repositories) {
         if (repo.languages && repo.languages.edges) {
@@ -364,6 +417,34 @@ async function updateAndSavePlanetData(user, accessToken) {
             }
         }
     }
+
+    // 正確にReceived Starsを計算
+    const ownedRepos = (await axios.post(
+        'https://api.github.com/graphql',
+        {
+            query: USER_DATA_QUERY,
+            variables: { login: user.login, authorId: user.node_id, since: since }
+        },
+        { headers: { 'Authorization': `Bearer ${accessToken}` } }
+    )).data.data.user.repositories.nodes || [];
+
+    for (const repo of ownedRepos) {
+        receivedStars += (repo.stargazerCount || 0);
+    }
+
+    // Contributed check
+    const contributedRepos = (await axios.post(
+        'https://api.github.com/graphql',
+        {
+            query: USER_DATA_QUERY,
+            variables: { login: user.login, authorId: user.node_id, since: since }
+        },
+        { headers: { 'Authorization': `Bearer ${accessToken}` } }
+    )).data.data.user.repositoriesContributedTo.nodes || [];
+
+    const hasContributedToOthers = contributedRepos.length > 0;
+    const languagesCount = Object.keys(languageStats).length;
+    const totalStars = starredCount + receivedStars;
 
     let mainLanguage = 'Unknown';
     let maxBytes = 0;
@@ -408,7 +489,16 @@ async function updateAndSavePlanetData(user, accessToken) {
             console.error('[DB] 既存実績取得エラー:', e);
         }
 
-        achievements = checkAchievements(existingAchievements, totalCommits);
+        const stats = {
+            totalCommits,
+            weeklyCommits,
+            languagesCount,
+            hasContributedToOthers,
+            totalStars,
+            createdAt: user.created_at
+        };
+
+        achievements = checkAchievements(existingAchievements, stats);
 
         await pool.query(`
             INSERT INTO planets (github_id, username, planet_color, planet_size_factor, main_language, language_stats, total_commits, last_updated, achievements, planet_name, weekly_commits)
