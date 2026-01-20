@@ -2,19 +2,18 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import anime from 'animejs';
-// ▼▼▼ 追加: Socket.IO Client ▼▼▼
 import { io } from 'socket.io-client';
-// ▲▲▲ 追加終了 ▲▲▲
 
 let scene, camera, renderer, controls, planetGroup;
 
 let welcomeModal, okButton, mainUiWrapper;
 let isFetchingRandomPlanet = false;
-let planetRotationSpeed = 0.001; // ★追加: 回転速度の変数を追加
+let planetRotationSpeed = 0.001;
 
-// ▼▼▼ 追加: Socket.IO インスタンス ▼▼▼
+// テクスチャのキャッシュ
+let cachedPlanetTexture = null;
+
 const socket = io();
-// ▲▲▲ 追加終了 ▲▲▲
 
 async function fetchMyPlanetData() {
     try {
@@ -66,12 +65,10 @@ function updatePlanetDetails(data) {
     if (commits) {
         const commitCount = (data.totalCommits !== null && data.totalCommits !== undefined) ? data.totalCommits : 0;
         commits.textContent = commitCount;
-        console.log('Commit count set to:', commitCount);
     }
 
     if (name) {
         name.textContent = data.planetName || '名もなき星';
-        console.log('Planet name set to:', data.planetName);
     }
 }
 
@@ -94,7 +91,46 @@ function calculateStarCount(totalCommits) {
     return starCount;
 }
 
-function loadPlanet(data) {
+function loadPlanetTexture() {
+    if (cachedPlanetTexture) return Promise.resolve(cachedPlanetTexture);
+    return new Promise((resolve) => {
+        new THREE.TextureLoader().load('front/img/2k_mars.jpg', (tex) => {
+            cachedPlanetTexture = tex;
+            resolve(tex);
+        });
+    });
+}
+
+function disposeObject(obj) {
+    if (!obj) return;
+
+    if (obj.children) {
+        for (let i = obj.children.length - 1; i >= 0; i--) {
+            disposeObject(obj.children[i]);
+            obj.remove(obj.children[i]);
+        }
+    }
+
+    if (obj.geometry) {
+        obj.geometry.dispose();
+    }
+
+    if (obj.material) {
+        if (Array.isArray(obj.material)) {
+            obj.material.forEach(m => {
+                if (m.map) m.map.dispose();
+                if (m.aoMap && m.aoMap !== cachedPlanetTexture) m.aoMap.dispose();
+                m.dispose();
+            });
+        } else {
+            if (obj.material.map) obj.material.map.dispose();
+            if (obj.material.aoMap && obj.material.aoMap !== cachedPlanetTexture) obj.material.aoMap.dispose();
+            obj.material.dispose();
+        }
+    }
+}
+
+async function loadPlanet(data) {
     const ownerDisplay = document.getElementById('planet-owner-display');
     const profileLink = document.getElementById('github-profile-link');
     if (ownerDisplay) ownerDisplay.style.display = 'none';
@@ -104,11 +140,14 @@ function loadPlanet(data) {
 
     console.log('loadPlanet called with data:', data);
 
-    // ★追加: 週間コミット数に応じて回転速度を調整
-    // 基本速度 0.001 + (週間コミット数 * 0.0001)
-    const weeklyCommits = data.weeklyCommits || 0;
-    planetRotationSpeed = 0.001 + (weeklyCommits * 0.0001);
-    console.log(`Weekly Commits: ${weeklyCommits}, Rotation Speed: ${planetRotationSpeed}`);
+    // ★修正: 他人のデータなどで週間コミットが0の場合、通算コミット数から推定した速度を適用する
+    // (例: 通算コミットの約2%程度を仮の週間コミットとして速度計算に使う)
+    let wCommits = data.weeklyCommits;
+    if ((!wCommits || wCommits === 0) && data.totalCommits > 0) {
+        wCommits = Math.ceil(data.totalCommits * 0.02);
+    }
+
+    planetRotationSpeed = 0.001 + ((wCommits || 0) * 0.0001);
 
     if (ownerDisplay && data.username) {
         ownerDisplay.textContent = `${data.username} の星`;
@@ -121,21 +160,29 @@ function loadPlanet(data) {
 
     updatePlanetDetails(data);
 
-    if (planetGroup) { scene.remove(planetGroup); planetGroup = undefined; }
+    if (planetGroup) {
+        disposeObject(planetGroup);
+        scene.remove(planetGroup);
+        planetGroup = undefined;
+    }
+
     planetGroup = new THREE.Group();
+
+    const tex = await loadPlanetTexture();
+
     const geo = new THREE.SphereGeometry(4, 32, 32);
     const mat = new THREE.MeshStandardMaterial({
         color: data.planetColor ? new THREE.Color(data.planetColor).getHex() : 0x808080,
-        metalness: 0.2, roughness: 0.8, aoMapIntensity: 1.5
+        metalness: 0.2, roughness: 0.8, aoMapIntensity: 1.5,
+        aoMap: tex
     });
-    new THREE.TextureLoader().load('front/img/2k_mars.jpg', (tex) => { mat.aoMap = tex; mat.needsUpdate = true; });
+
     const planet = new THREE.Mesh(geo, mat);
     planet.geometry.setAttribute('uv2', new THREE.BufferAttribute(geo.attributes.uv.array, 2));
     const s = data.planetSizeFactor || 1.0;
     planetGroup.add(planet);
 
     const starCount = calculateStarCount(data.totalCommits || 0);
-    console.log('Star count:', starCount);
 
     if (starCount > 0) {
         const vertices = [];
@@ -160,7 +207,6 @@ function loadPlanet(data) {
             void main() {
                 vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
                 gl_Position = projectionMatrix * mvPosition;
-                // pixelRatioを掛けて、スマホでも適切なサイズに見えるように補正
                 gl_PointSize = (800.0 * pixelRatio) / -mvPosition.z;
             }
         `;
@@ -189,7 +235,7 @@ function loadPlanet(data) {
 
         const starMaterial = new THREE.ShaderMaterial({
             uniforms: {
-                pixelRatio: { value: window.devicePixelRatio }
+                pixelRatio: { value: renderer.getPixelRatio() }
             },
             vertexShader: vertexShader,
             fragmentShader: fragmentShader,
@@ -268,12 +314,12 @@ function loadPlanet(data) {
         easing: 'easeOutExpo',
         complete: () => {
             scene.remove(shockwave);
-            shockwave.geometry.dispose();
-            shockwave.material.dispose();
+            shockwaveGeo.dispose();
+            shockwaveMat.dispose();
         }
     });
 
-    const initialDelay = 500;
+    const initialDelay = 100;
 
     tl.add({
         targets: shockwave.material,
@@ -311,7 +357,6 @@ function loadPlanet(data) {
     controls.enabled = true;
 }
 
-// ▼▼▼ 修正: サイズ縮小、距離感の確保、右から左への移動 ▼▼▼
 function spawnMeteor(data) {
     if (!scene || !camera) return;
 
@@ -319,10 +364,8 @@ function spawnMeteor(data) {
     const meteorGroup = new THREE.Group();
     meteorGroup.renderOrder = 9999;
 
-    // --- 1. Head: 星型（サイズを程よく調整） ---
     const starShape = new THREE.Shape();
     const points = 5;
-    // ★修正: でかすぎるのを解消 (1.8 -> 0.7)
     const outerRadius = 0.7;
     const innerRadius = 0.35;
 
@@ -337,7 +380,7 @@ function spawnMeteor(data) {
     starShape.closePath();
 
     const headGeo = new THREE.ExtrudeGeometry(starShape, {
-        depth: 0.15, // 厚みも調整
+        depth: 0.15,
         bevelEnabled: false
     });
     headGeo.center();
@@ -348,18 +391,13 @@ function spawnMeteor(data) {
         opacity: 0.0,
         blending: THREE.AdditiveBlending,
         depthTest: true,
-        depthWrite: true, // 修正維持
+        depthWrite: true,
         fog: false
     });
     const head = new THREE.Mesh(headGeo, headMat);
     meteorGroup.add(head);
 
-
-    // --- 2. Tail: Glow（太さと長さを調整） ---
-    // ★修正: 長さはある程度キープしつつ (60)
     const tailLength = 60;
-
-    // ★修正: 太すぎないように (2.5 -> 1.0)
     const glowGeo = new THREE.CylinderGeometry(1.0, 0.0, tailLength * 0.9, 16, 1, true);
     glowGeo.translate(0, -tailLength / 2 + 0.5, 0);
     glowGeo.rotateX(Math.PI / 2);
@@ -377,28 +415,12 @@ function spawnMeteor(data) {
     const glow = new THREE.Mesh(glowGeo, glowMat);
     meteorGroup.add(glow);
 
+    const startZ = -60 - Math.random() * 40;
+    const startY = 30 + Math.random() * 20;
 
-    // --- 3. 動きの制御: 「右から左へ」「距離感をとる」 ---
-    // Z座標を -60 〜 -100 程度（カメラより奥）に設定し、手前に近づかないようにする
-    // X座標を +120 から -120 へ移動させることで、画面を横切らせる
+    const localStart = new THREE.Vector3(120, startY, startZ);
+    const localEnd = new THREE.Vector3(-120, startY - 10, startZ);
 
-    // 出現位置のランダム性
-    const startZ = -60 - Math.random() * 40; // 奥行き (距離感)
-    const startY = 30 + Math.random() * 20;  // 高さ (惑星回避)
-
-    const localStart = new THREE.Vector3(
-        120,      // 右奥
-        startY,
-        startZ
-    );
-
-    const localEnd = new THREE.Vector3(
-        -120,     // 左奥
-        startY - 10, // 少し下がりながら流れる
-        startZ    // ★修正: 奥行きを変えないことで「近づいてくる感」をなくす
-    );
-
-    // カメラの回転だけ適用 (位置はずらさないことで背景的に扱う)
     const startPos = localStart.applyQuaternion(camera.quaternion).add(camera.position);
     const endPos = localEnd.applyQuaternion(camera.quaternion).add(camera.position);
 
@@ -408,12 +430,8 @@ function spawnMeteor(data) {
 
     scene.add(meteorGroup);
 
-    // 時間は早めのまま
     const duration = 1000 + Math.random() * 500;
 
-    // --- アニメーション ---
-
-    // 拡大
     anime({
         targets: meteorGroup.scale,
         x: 1, y: 1, z: 1,
@@ -421,7 +439,6 @@ function spawnMeteor(data) {
         duration: 400
     });
 
-    // フェードイン
     anime({
         targets: head.material,
         opacity: 1.0,
@@ -435,7 +452,6 @@ function spawnMeteor(data) {
         duration: 200
     });
 
-    // 移動
     anime({
         targets: meteorGroup.position,
         x: endPos.x,
@@ -458,7 +474,6 @@ function spawnMeteor(data) {
         }
     });
 
-    // 回転
     anime({
         targets: head.rotation,
         z: Math.PI * 10,
@@ -466,36 +481,34 @@ function spawnMeteor(data) {
         duration: duration
     });
 }
-// ▲▲▲ 修正終了 ▲▲▲
-
 
 async function init() {
-
     welcomeModal = document.getElementById('welcome-modal');
     okButton = document.getElementById('welcome-ok-btn');
     mainUiWrapper = document.getElementById('main-ui-wrapper');
 
     scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x000000, 10, 50);
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.z = 25;
-    renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight); renderer.setPixelRatio(window.devicePixelRatio);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
     document.getElementById('canvas-container').appendChild(renderer.domElement);
     controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.autoRotate = false;
 
-    // ▼▼▼ズームの制限 ▼▼▼
-    controls.minDistance = 10;  // これ以上近づけない距離 (デフォルトは0)
-    controls.maxDistance = 70; // これ以上離れられない距離 (デフォルトは無限大)
+    controls.minDistance = 10;
+    controls.maxDistance = 70;
 
     scene.add(new THREE.AmbientLight(0x888888, 2));
     const pl = new THREE.PointLight(0xffffff, 25, 1000); pl.position.set(20, 10, 5); scene.add(pl);
     const dl = new THREE.DirectionalLight(0xffffff, 0.4); dl.position.set(50, 15, 10); scene.add(dl);
     new THREE.CubeTextureLoader().setPath('front/img/skybox/').load(['right.png', 'left.png', 'top.png', 'bottom.png', 'front.png', 'back.png'], (tex) => scene.background = tex);
 
-    // ▼▼▼ 追加: Socketイベントリスナー ▼▼▼
     socket.on('meteor', (data) => {
         console.log('Meteor received:', data);
         spawnMeteor(data);
     });
-    // ▲▲▲ 追加終了 ▲▲▲
 
     window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
 
@@ -539,12 +552,11 @@ async function loadMainContent() {
     setupUI();
 }
 
-function animate() { 
-    requestAnimationFrame(animate); 
-    // ★修正: 固定値 0.001 ではなく、計算された rotationSpeed を使用
-    if (planetGroup) planetGroup.rotation.z += planetRotationSpeed; 
-    controls.update(); 
-    renderer.render(scene, camera); 
+function animate() {
+    requestAnimationFrame(animate);
+    if (planetGroup) planetGroup.rotation.z += planetRotationSpeed;
+    controls.update();
+    renderer.render(scene, camera);
 }
 
 function setupUI() {
