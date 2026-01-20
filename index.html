@@ -128,16 +128,21 @@
             </div>
 
             <div class="ui-top-right">
-                <a href="/achievements" class="ui-button" id="achievements-btn" title="実績">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M8 21h8"></path>
-                        <path d="M12 17v4"></path>
-                        <path d="M7 4h10v8a5 5 0 0 1-10 0V4z"></path>
-                        <path d="M17 8h1a2 2 0 0 1 0 4h-1"></path>
-                        <path d="M7 8H6a2 2 0 0 0 0 4h1"></path>
-                    </svg>
-                </a>
+                <div class="menu-container">
+                    <button id="menu-btn" class="ui-button menu-btn" title="メニュー">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
+                    <div id="menu-dropdown" class="menu-dropdown">
+                        <a href="/achievements" class="menu-item">実績</a>
+                        <a href="/settings" class="menu-item">設定</a>
+                        <a href="#" id="card-link" class="menu-item">カード</a>
+                    </div>
+                </div>
             </div>
 
             <div id="planet-owner-container">
