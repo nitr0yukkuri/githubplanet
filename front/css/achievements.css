@@ -37,7 +37,7 @@ body {
     display: inline-block; 
     margin-bottom: 10px; 
     cursor: pointer;
-    border: none; /* buttonタグの場合の対策 */
+    border: none;
 }
 .back-button:hover {
     background-color: rgba(255, 255, 255, 0.2);
@@ -323,4 +323,69 @@ body {
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* ▼▼▼ 追加・修正: レスポンシブ対応 (SP向け) ▼▼▼ */
+@media screen and (max-width: 768px) {
+    .achievement-container {
+        padding: 15px;
+    }
+
+    .achievement-header {
+        grid-template-columns: 1fr; /* 縦積み */
+        gap: 15px;
+        text-align: center;
+    }
+
+    .header-left {
+        /* ★変更: 左揃えに変更してボタンを左上へ */
+        align-items: flex-start;
+        width: 100%;
+    }
+    
+    .title {
+        font-size: 1.5rem; /* スマホではタイトルを少し小さく */
+        /* ★追加: タイトルを中央に配置するための調整 */
+        justify-content: center;
+        width: 100%; 
+    }
+
+    .header-center {
+        padding-top: 0;
+    }
+
+    .header-right {
+        justify-content: center;
+        width: 100%;
+    }
+
+    .user-info {
+        text-align: center;
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+        justify-content: center;
+    }
+
+    .achievement-list {
+        grid-template-columns: 1fr; /* 1カラム表示 */
+        gap: 15px;
+    }
+
+    /* 詳細画面の調整 */
+    .detail-content-container {
+        padding: 20px;
+    }
+
+    .detail-title {
+        font-size: 1.8rem;
+    }
+
+    .detail-box {
+        padding: 15px;
+    }
+    
+    .detail-box p {
+        font-size: 1.1rem;
+    }
 }
