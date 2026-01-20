@@ -19,9 +19,42 @@ const langBar = document.getElementById('lang-bar');
 const sysStatus = document.querySelector('.sys-status');
 const idLabel = document.querySelector('.id-label');
 
-// ★撮影モードなら強制的に400pxにする
+// コピー用要素
+const shareSection = document.getElementById('share-section');
+const markdownCode = document.getElementById('markdown-code');
+const copyBtn = document.getElementById('copy-btn');
+
+// ★撮影モードなら強制的に400pxにする（CSSですでに400pxだが念のため維持）
+// また、撮影モードの場合はシェアセクションを非表示にする
 if (isScreenshotMode) {
     containerElement.style.height = '400px';
+    if (shareSection) shareSection.style.display = 'none';
+} else {
+    // 通常モード
+    if (shareSection) shareSection.style.display = 'block';
+
+    // Markdown生成ロジック
+    // デプロイ先のURLを指定（localhostの場合はlocalhost、それ以外はデプロイURLを想定）
+    const deployUrl = 'https://githubplanet.onrender.com';
+    const targetUrl = `${deployUrl}/card.html?username=${username}&fix=responsive9=v0`;
+
+    // thum.ioのURLを構築
+    const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/${targetUrl}`;
+    const mdText = `[![GitHub Planet](${thumbUrl})](${deployUrl})`;
+
+    if (markdownCode) markdownCode.textContent = mdText;
+
+    if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(mdText).then(() => {
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = 'COPIED!';
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                }, 2000);
+            });
+        });
+    }
 }
 
 // コンテナのサイズを取得

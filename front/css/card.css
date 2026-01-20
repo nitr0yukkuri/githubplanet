@@ -13,18 +13,24 @@ body, html {
     margin: 0;
     padding: 0;
     width: 100%;
-    height: 100%;
-    overflow: hidden;
+    /* height: 100%; 削除: スクロール可能にするため */
+    /* overflow: hidden; 削除 */
+    overflow-y: auto; /* 追加 */
     background-color: var(--card-bg-inner);
     font-family: var(--font-tech);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 #card-container {
     position: relative;
     width: 100%;
-    height: 100%; /* 基本は全画面 */
+    /* height: 100%; 削除 */
+    height: 600px; /* ★修正: 高さを600pxで維持 */
     background-color: var(--card-bg-inner);
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 /* キャンバスの隙間対策 */
@@ -177,6 +183,72 @@ canvas {
 
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
+/* シェアセクション用スタイル */
+.share-container {
+    width: 100%;
+    max-width: 800px;
+    padding: 30px 20px;
+    text-align: center;
+    color: white;
+    box-sizing: border-box;
+}
+
+.share-container p {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+    color: var(--text-gray);
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.code-box {
+    /* ★修正: よりソリッドでダークな背景に変更 */
+    background: #0d1117; 
+    padding: 10px 15px;
+    border-radius: 4px;
+    /* ★修正: ボーダーを目立たないダークグレーに */
+    border: 1px solid #30363d; 
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+code {
+    font-family: 'Courier New', monospace; /* フォントを等幅に */
+    font-size: 0.8rem;
+    word-break: break-all;
+    text-align: left;
+    color: #c9d1d9; /* GitHubのテキスト色に近く */
+    flex-grow: 1;
+}
+
+button#copy-btn {
+    /* ★修正: アウトラインスタイルに変更して洗練させる */
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 8px 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 700;
+    font-family: var(--font-tech);
+    letter-spacing: 0.1em;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+}
+
+button#copy-btn:hover {
+    /* ★修正: ホバー時に発光するように */
+    background: var(--accent);
+    color: #050508;
+    box-shadow: 0 0 15px var(--accent);
+}
+
 /* ========================================= */
 /* 以下レスポンシブ・スクリーンショット用調整 */
 /* ========================================= */
@@ -213,9 +285,6 @@ canvas {
     .id-label, .stat-label, .lang-label-row {
         font-size: 0.7rem;
     }
-    
-  
-  
 }
 
 /* さらに小さい画面（スマホ縦など）向け */
