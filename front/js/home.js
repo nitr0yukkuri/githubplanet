@@ -158,6 +158,14 @@ async function loadPlanet(data) {
         profileLink.style.display = 'flex';
     }
 
+    // ▼▼▼ カードリンクの更新処理を追加 ▼▼▼
+    const cardLink = document.getElementById('card-link');
+    if (cardLink && data.username) {
+        // APIのエンドポイントを設定 (API側で画像生成や処理を行う)
+        cardLink.href = `/api/card/${data.username}`;
+    }
+    // ▲▲▲ 追加ここまで ▲▲▲
+
     updatePlanetDetails(data);
 
     if (planetGroup) {
@@ -642,6 +650,24 @@ function setupUI() {
         const arrow = btn.querySelector('.arrow-icon');
         if (arrow) { arrow.classList.toggle('right'); arrow.classList.toggle('left'); }
     });
+
+    // ▼▼▼ ハンバーガーメニューのロジック追加 ▼▼▼
+    const menuBtn = document.getElementById('menu-btn');
+    const menuDropdown = document.getElementById('menu-dropdown');
+
+    if (menuBtn && menuDropdown) {
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // イベントの伝播を止める
+            menuDropdown.classList.toggle('is-visible');
+        });
+
+        // メニュー外クリックで閉じる
+        document.addEventListener('click', (e) => {
+            if (!menuBtn.contains(e.target) && !menuDropdown.contains(e.target)) {
+                menuDropdown.classList.remove('is-visible');
+            }
+        });
+    }
 }
 
 init();
