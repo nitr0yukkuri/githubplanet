@@ -13,27 +13,64 @@ body, html {
     margin: 0;
     padding: 0;
     width: 100%;
-    /* height: 100%; 削除: スクロール可能にするため */
-    /* overflow: hidden; 削除 */
-    overflow-y: auto; /* 追加 */
-    background-color: var(--card-bg-inner);
+    min-height: 100vh;
+    overflow-y: auto;
+    /* 背景を実績ページと統一 */
+    background-color: #000;
+    background-image: url('/front/img/Achievementsimage.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     font-family: var(--font-tech);
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: flex-start; /* ボタン追加に伴い上揃えに変更 */
+}
+
+/* ぼかしオーバーレイ */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(5px);
+    z-index: -1;
+}
+
+/* 実績画面から移植した戻るボタンのスタイル */
+.back-button {
+    color: #ccc;
+    text-decoration: none;
+    font-size: 1rem;
+    padding: 8px 12px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    transition: background-color 0.2s;
+    display: inline-block;
+    cursor: pointer;
+    border: none;
+}
+.back-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
 }
 
 #card-container {
     position: relative;
-    width: 100%;
-    /* height: 100%; 削除 */
-    height: 600px; /* ★修正: 高さを600pxで維持 */
+    width: 90%;
+    max-width: 800px; 
+    height: 350px;
+    margin: 20px auto; 
     background-color: var(--card-bg-inner);
     overflow: hidden;
     flex-shrink: 0;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
 }
 
-/* キャンバスの隙間対策 */
 canvas {
     display: block;
     width: 100%;
@@ -41,7 +78,6 @@ canvas {
     outline: none;
 }
 
-/* 背景グラデーション */
 .bg-gradient {
     position: absolute;
     width: 100%; height: 100%;
@@ -49,7 +85,6 @@ canvas {
     z-index: 0;
 }
 
-/* 星屑エフェクト */
 .stars {
     position: absolute;
     width: 100%; height: 100%;
@@ -66,13 +101,12 @@ canvas {
     z-index: 1;
 }
 
-/* コンテンツレイアウト */
 .card-content {
     position: absolute;
     top: 0; right: 0;
     width: 55%;
     height: 100%;
-    padding: 40px 50px 40px 0;
+    padding: 30px 40px;
     box-sizing: border-box;
     z-index: 10;
     display: flex;
@@ -81,11 +115,10 @@ canvas {
     text-align: right;
 }
 
-/* ヘッダー */
-.header-section { margin-bottom: 30px; }
+.header-section { margin-bottom: 20px; }
 
 .id-label {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: var(--accent);
     letter-spacing: 0.2em;
     font-weight: 600;
@@ -94,7 +127,7 @@ canvas {
 }
 
 .user-name {
-    font-size: 3.5rem;
+    font-size: 2.8rem;
     font-weight: 700;
     margin: 0;
     line-height: 0.9;
@@ -104,16 +137,15 @@ canvas {
     background: linear-gradient(180deg, #fff 0%, #a5b4fc 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 15px rgba(165, 180, 252, 0.4));
+    filter: drop-shadow(0 0 10px rgba(165, 180, 252, 0.4));
 }
 
-/* ステータス行 */
 .stats-row {
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    gap: 30px;
-    margin-bottom: 40px;
+    gap: 25px;
+    margin-bottom: 25px;
 }
 
 .stat-group {
@@ -123,14 +155,14 @@ canvas {
 }
 
 .stat-label {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--text-gray);
     letter-spacing: 0.1em;
     font-weight: 600;
 }
 
 .stat-value {
-    font-size: 2.2rem;
+    font-size: 1.8rem;
     font-weight: 700;
     line-height: 1;
     color: #fff;
@@ -139,24 +171,21 @@ canvas {
 
 .stat-divider {
     width: 1px;
-    height: 40px;
+    height: 30px;
     background: rgba(255,255,255,0.1);
 }
 
-/* フッター */
 .footer-section { margin-top: auto; }
 
 .lang-label-row {
     display: flex;
     justify-content: space-between;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--text-gray);
     letter-spacing: 0.1em;
     margin-bottom: 8px;
     font-weight: 600;
 }
-
-.highlight { color: var(--accent); }
 
 .sys-status {
     color: var(--accent);
@@ -183,11 +212,10 @@ canvas {
 
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-/* シェアセクション用スタイル */
 .share-container {
     width: 100%;
     max-width: 800px;
-    padding: 30px 20px;
+    padding: 20px;
     text-align: center;
     color: white;
     box-sizing: border-box;
@@ -195,113 +223,46 @@ canvas {
 
 .share-container p {
     margin-top: 0;
-    margin-bottom: 15px;
-    font-size: 0.9rem;
-    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
     color: var(--text-gray);
-    text-transform: uppercase;
     font-weight: 600;
 }
 
 .code-box {
-    /* ★修正: よりソリッドでダークな背景に変更 */
     background: #0d1117; 
-    padding: 10px 15px;
+    padding: 12px 18px;
     border-radius: 4px;
-    /* ★修正: ボーダーを目立たないダークグレーに */
     border: 1px solid #30363d; 
     display: flex;
     gap: 15px;
     align-items: center;
     justify-content: space-between;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
 code {
-    font-family: 'Courier New', monospace; /* フォントを等幅に */
+    font-family: 'Courier New', monospace;
     font-size: 0.8rem;
     word-break: break-all;
     text-align: left;
-    color: #c9d1d9; /* GitHubのテキスト色に近く */
+    color: #c9d1d9;
     flex-grow: 1;
 }
 
 button#copy-btn {
-    /* ★修正: アウトラインスタイルに変更して洗練させる */
     background: transparent;
     border: 1px solid var(--accent);
     color: var(--accent);
-    padding: 8px 24px;
+    padding: 8px 20px;
     border-radius: 4px;
     cursor: pointer;
     font-weight: 700;
     font-family: var(--font-tech);
-    letter-spacing: 0.1em;
-    flex-shrink: 0;
     transition: all 0.2s ease;
-    text-transform: uppercase;
 }
 
 button#copy-btn:hover {
-    /* ★修正: ホバー時に発光するように */
     background: var(--accent);
     color: #050508;
-    box-shadow: 0 0 15px var(--accent);
-}
-
-/* ========================================= */
-/* 以下レスポンシブ・スクリーンショット用調整 */
-/* ========================================= */
-
-/* 画面の高さが小さい場合（スクリーンショットモードなど）や幅が狭い場合の調整 */
-@media (max-height: 500px), (max-width: 800px) {
-    .card-content {
-        width: 65%; /* コンテンツ幅を少し広げる */
-        padding: 20px 30px 20px 0; /* 余白を縮める */
-    }
-
-    .user-name {
-        font-size: 2.5rem; /* 名前を少し小さくする */
-        margin-bottom: 5px;
-    }
-
-    .header-section {
-        margin-bottom: 15px; /* 各セクションの間隔を詰める */
-    }
-
-    .stats-row {
-        margin-bottom: 20px;
-        gap: 15px;
-    }
-
-    .stat-value {
-        font-size: 1.5rem; /* 数字を小さくする */
-    }
-
-    .stat-divider {
-        height: 30px;
-    }
-
-    .id-label, .stat-label, .lang-label-row {
-        font-size: 0.7rem;
-    }
-}
-
-/* さらに小さい画面（スマホ縦など）向け */
-@media (max-width: 480px) {
-    .card-content {
-        width: 100%;
-        padding: 20px;
-        text-align: center; /* 中央揃えにする */
-        align-items: center;
-        background: rgba(0,0,0,0.4); /* 文字が見やすいように背景を少し暗くする */
-    }
-    
-    .stats-row {
-        justify-content: center;
-    }
-    
-    .stat-group {
-        align-items: center;
-    }
+    box-shadow: 0 0 10px var(--accent);
 }
