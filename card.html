@@ -14,51 +14,59 @@
 </head>
 
 <body>
-    <div style="width: 90%; max-width: 800px; margin-top: 20px;">
+    <div style="width: 90%; max-width: 800px; margin-top: 20px; flex-shrink: 0;">
         <a href="/" class="back-button">＜ 惑星に戻る</a>
     </div>
 
-    <div id="card-container">
-        <div class="bg-gradient"></div>
-        <div class="stars"></div>
+    <div class="content-wrapper">
+        <div id="card-container">
+            <div class="bg-gradient"></div>
+            <div class="stars"></div>
 
-        <div id="planet-canvas"></div>
+            <div id="planet-canvas"></div>
 
-        <div class="card-content">
-            <div class="header-section">
-                <div class="id-label">GITHUB PLANET // <span id="planet-name-sub">UNKNOWN PLANET</span></div>
-                <h1 id="username-display" class="user-name">USERNAME</h1>
-            </div>
-
-            <div class="stats-row">
-                <div class="stat-group">
-                    <span class="stat-label">LANGUAGE</span>
-                    <span class="stat-value" id="main-lang-stat">LOADING</span>
+            <div class="card-content">
+                <div class="header-section">
+                    <div class="id-label">GITHUB PLANET // <span id="planet-name-sub">UNKNOWN PLANET</span></div>
+                    <h1 id="username-display" class="user-name">USERNAME</h1>
                 </div>
-                <div class="stat-divider"></div>
-                <div class="stat-group">
-                    <span class="stat-label">TOTAL COMMITS</span>
-                    <span class="stat-value" id="commits-val">0000</span>
-                </div>
-            </div>
 
-            <div class="footer-section">
-                <div class="lang-label-row">
-                    <span>SYSTEM STATUS</span>
-                    <span class="sys-status">● ONLINE</span>
+                <div class="stats-row">
+                    <div class="stat-group">
+                        <span class="stat-label">LANGUAGE</span>
+                        <span class="stat-value" id="main-lang-stat">LOADING</span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-group">
+                        <span class="stat-label">TOTAL COMMITS</span>
+                        <span class="stat-value" id="commits-val">0000</span>
+                    </div>
                 </div>
-                <div class="bar-track">
-                    <div id="lang-bar" class="bar-fill"></div>
+
+                <div class="footer-section">
+                    <div class="lang-label-row">
+                        <span>SYSTEM STATUS</span>
+                        <span class="sys-status">● ONLINE</span>
+                    </div>
+                    <div class="bar-track">
+                        <div id="lang-bar" class="bar-fill"></div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="share-container" id="share-section">
-        <p>👇 下にURLをコピーしてgithubのプロフィールに貼ろう！</p>
-        <div class="code-box">
-            <code id="markdown-code">LOADING...</code>
-            <button id="copy-btn">コピー！</button>
+        <div class="share-container" id="share-section">
+            <p>👇 下にURLをコピーしてgithubのプロフィールに貼ろう！</p>
+            <div class="code-box">
+                <code id="markdown-code">LOADING...</code>
+                <button id="copy-btn" title="コピー">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
 

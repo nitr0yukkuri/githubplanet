@@ -1,10 +1,10 @@
+/* front/js/card.js */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 const params = new URLSearchParams(window.location.search);
 const username = params.get('username') || 'NITROYUKKURI';
 
-// ★追加修正: URLに'fix'パラメータがある場合(README撮影用)だけ高さ固定モードにする
 const isScreenshotMode = params.has('fix');
 
 const containerElement = document.getElementById('card-container');
@@ -15,30 +15,21 @@ const mainLangStat = document.getElementById('main-lang-stat');
 const commitsVal = document.getElementById('commits-val');
 const langBar = document.getElementById('lang-bar');
 
-// ステータスとラベルの要素を取得
 const sysStatus = document.querySelector('.sys-status');
 const idLabel = document.querySelector('.id-label');
 
-// コピー用要素
 const shareSection = document.getElementById('share-section');
 const markdownCode = document.getElementById('markdown-code');
 const copyBtn = document.getElementById('copy-btn');
 
-// ★撮影モードなら強制的に400pxにする（CSSですでに400pxだが念のため維持）
-// また、撮影モードの場合はシェアセクションを非表示にする
 if (isScreenshotMode) {
     containerElement.style.height = '400px';
     if (shareSection) shareSection.style.display = 'none';
 } else {
-    // 通常モード
     if (shareSection) shareSection.style.display = 'block';
 
-    // Markdown生成ロジック
-    // デプロイ先のURLを指定（localhostの場合はlocalhost、それ以外はデプロイURLを想定）
     const deployUrl = 'https://githubplanet.onrender.com';
     const targetUrl = `${deployUrl}/card.html?username=${username}&fix=responsive9=v0`;
-
-    // thum.ioのURLを構築
     const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/${targetUrl}`;
     const mdText = `[![GitHub Planet](${thumbUrl})](${deployUrl})`;
 
@@ -46,25 +37,15 @@ if (isScreenshotMode) {
 
     if (copyBtn) {
         copyBtn.addEventListener('click', () => {
-            navigator.clipboard.writeText(mdText).then(() => {
-                const originalText = copyBtn.textContent;
-                copyBtn.textContent = 'COPIED!';
-                setTimeout(() => {
-                    copyBtn.textContent = originalText;
-                }, 2000);
-            });
+            navigator.clipboard.writeText(mdText);
         });
     }
 }
 
-// コンテナのサイズを取得
 const width = containerElement.clientWidth;
 const height = containerElement.clientHeight;
 
-// シーン
 const scene = new THREE.Scene();
-
-// カメラ設定
 const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
 camera.position.set(5.5, 0, 8);
 
@@ -79,11 +60,8 @@ controls.dampingFactor = 0.05;
 controls.enableZoom = false;
 controls.autoRotate = false;
 controls.enabled = false;
-
-// ターゲットを右にずらして惑星を左に配置
 controls.target.set(3.5, 0, 0);
 
-// ウィンドウリサイズ時の対応
 window.addEventListener('resize', () => {
     const w = containerElement.clientWidth;
     const h = containerElement.clientHeight;
@@ -92,11 +70,9 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
 });
 
-// テクスチャ
 const textureLoader = new THREE.TextureLoader();
 const planetTexture = textureLoader.load('front/img/2k_mars.jpg');
 
-// ライト設定
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
 scene.add(ambientLight);
 
@@ -108,7 +84,6 @@ const backLight = new THREE.PointLight(0xffffff, 0.5, 50);
 backLight.position.set(-5, 2, -10);
 scene.add(backLight);
 
-// 惑星グループ
 const planetGroup = new THREE.Group();
 scene.add(planetGroup);
 
@@ -139,16 +114,12 @@ async function init() {
 function updateUI(data) {
     usernameDisplay.textContent = data.username || username;
     planetNameSub.textContent = (data.planetName || 'UNKNOWN').toUpperCase();
-
     animateValue(commitsVal, 0, data.totalCommits || 0, 1500);
-
     mainLangStat.textContent = (data.mainLanguage || 'UNKNOWN').toUpperCase();
 
     if (data.planetColor) {
         langBar.style.background = data.planetColor;
         langBar.style.boxShadow = `0 0 10px ${data.planetColor}`;
-
-        // 追加修正: ステータス表示とIDラベルの色を言語の色に変更
         if (sysStatus) sysStatus.style.color = data.planetColor;
         if (idLabel) idLabel.style.color = data.planetColor;
     }
@@ -215,7 +186,6 @@ function createPlanet(data) {
     if (starCount > 0) {
         const vertices = [];
         const starBaseRadius = baseSize * 1.75;
-
         for (let i = 0; i < starCount; i++) {
             const phi = Math.random() * Math.PI * 2;
             const theta = Math.random() * Math.PI;
@@ -237,7 +207,6 @@ function createPlanet(data) {
                 gl_PointSize = (200.0 * pixelRatio) / -mvPosition.z;
             }
         `;
-
         const fragmentShader = `
             void main() {
                 vec2 p = gl_PointCoord * 2.0 - 1.0; 
@@ -257,7 +226,6 @@ function createPlanet(data) {
                 gl_FragColor = vec4(1.0, 1.0, 1.0, alpha * 0.7);
             }
         `;
-
         const starMaterial = new THREE.ShaderMaterial({
             uniforms: { pixelRatio: { value: window.devicePixelRatio } },
             vertexShader: vertexShader,
@@ -266,7 +234,6 @@ function createPlanet(data) {
             transparent: true,
             depthWrite: false
         });
-
         const stars = new THREE.Points(starGeometry, starMaterial);
         planetGroup.add(stars);
     }

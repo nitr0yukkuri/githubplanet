@@ -7,6 +7,7 @@
     --text-gray: #6e7a8e;
     --accent: #00f3ff;
     --font-tech: 'Rajdhani', sans-serif;
+    --font-jp: 'Rajdhani', 'Hiragino Sans', 'Noto Sans CJK JP', sans-serif;
 }
 
 body, html {
@@ -15,7 +16,6 @@ body, html {
     width: 100%;
     min-height: 100vh;
     overflow-y: auto;
-    /* 背景を実績ページと統一 */
     background-color: #000;
     background-image: url('/front/img/Achievementsimage.jpg');
     background-size: cover;
@@ -26,10 +26,9 @@ body, html {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start; /* ボタン追加に伴い上揃えに変更 */
+    justify-content: flex-start;
 }
 
-/* ぼかしオーバーレイ */
 body::before {
     content: "";
     position: fixed;
@@ -39,7 +38,18 @@ body::before {
     z-index: -1;
 }
 
-/* 実績画面から移植した戻るボタンのスタイル */
+/* コンテンツ全体を中央寄せするためのラッパー */
+.content-wrapper {
+    flex-grow: 1; /* 余ったスペースを埋める */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* 垂直方向中央 */
+    align-items: center;     /* 水平方向中央 */
+    width: 100%;
+    padding-bottom: 40px; /* 下部に少し余裕を持たせる */
+    box-sizing: border-box;
+}
+
 .back-button {
     color: #ccc;
     text-decoration: none;
@@ -51,6 +61,7 @@ body::before {
     display: inline-block;
     cursor: pointer;
     border: none;
+    font-family: var(--font-jp);
 }
 .back-button:hover {
     background-color: rgba(255, 255, 255, 0.2);
@@ -224,9 +235,10 @@ canvas {
 .share-container p {
     margin-top: 0;
     margin-bottom: 12px;
-    font-size: 0.85rem;
-    color: var(--text-gray);
+    font-size: 1.1rem;
+    color: #ffffff;
     font-weight: 600;
+    font-family: var(--font-jp);
 }
 
 .code-box {
@@ -242,10 +254,11 @@ canvas {
 
 code {
     font-family: 'Courier New', monospace;
-    font-size: 0.8rem;
+    font-size: 1.0rem;
+    font-weight: 700;
     word-break: break-all;
     text-align: left;
-    color: #c9d1d9;
+    color: #ffffff;
     flex-grow: 1;
 }
 
@@ -253,16 +266,23 @@ button#copy-btn {
     background: transparent;
     border: 1px solid var(--accent);
     color: var(--accent);
-    padding: 8px 20px;
+    padding: 8px;
+    width: 40px; 
+    height: 40px;
     border-radius: 4px;
     cursor: pointer;
-    font-weight: 700;
-    font-family: var(--font-tech);
     transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+button#copy-btn svg {
+    display: block;
 }
 
 button#copy-btn:hover {
     background: var(--accent);
     color: #050508;
-    box-shadow: 0 0 10px var(--accent);
+    /* ★変更: box-shadowを削除して光らないようにしました */
 }
