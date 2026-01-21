@@ -43,7 +43,7 @@ if (isScreenshotMode) {
     if (shareSection) shareSection.style.display = 'block';
 
     const deployUrl = 'https://githubplanet.onrender.com';
-    const targetUrl = `${deployUrl}/card.html?username=${username}&fix=responsive9=v0`;
+    const targetUrl = `${deployUrl}/card.html?username=${username}&fix=true`;
     const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/${targetUrl}`;
 
     // ★修正: ユーザー指定の形式（画像埋め込みのみ）に変更
