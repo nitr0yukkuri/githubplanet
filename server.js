@@ -53,24 +53,34 @@ const DYNAMIC_COLOR_CACHE = {};
 
 const ACHIEVEMENTS = {
     FIRST_PLANET: { id: 'FIRST_PLANET', name: '最初の星', description: '初めての惑星を作成した。' },
-    FIRST_COMMIT: { id: 'FIRST_COMMIT', name: '星の産声', description: '初めてコミットを行った。' },
-    // ★以下、説明文から括弧を削除して文章化
-    VELOCITY_STAR: { id: 'VELOCITY_STAR', name: '光速の星', description: '爆発的な開発スピードで宇宙を駆け抜け、週間50コミット以上を記録した。' },
+    FIRST_COMMIT: { id: 'FIRST_COMMIT', name: '星の産声', description: '初めて活動を行った。' },
+    VELOCITY_STAR: { id: 'VELOCITY_STAR', name: '光速の星', description: '爆発的な開発スピードで宇宙を駆け抜け、週間50コントリビューション以上を記録した。' },
     OS_CONTRIBUTOR: { id: 'OS_CONTRIBUTOR', name: '銀河の貢献者', description: '他の星系に文明をもたらし、他リポジトリへの貢献を果たした。' },
     STARGAZER: { id: 'STARGAZER', name: '星を見上げる者', description: '多くの輝きを知り、または自身が輝き、Star数10以上を達成した。' },
     POLYGLOT_PIONEER: { id: 'POLYGLOT_PIONEER', name: '多言語の開拓者', description: '多様な技術を操り、5種類以上の言語で彩り豊かな惑星を築き上げた。' },
     OCTOCAT_FRIEND: { id: 'OCTOCAT_FRIEND', name: '星界の盟友', description: '長い間この宇宙を旅し、登録から1年以上が経過した。' },
 
-    COMMIT_100: { id: 'COMMIT_100', name: 'コミット100', description: '累計コミット数が100を超えた。' },
-    COMMIT_500: { id: 'COMMIT_500', name: 'コミット500', description: '累計コミット数が500を超えた。' },
-    COMMIT_1000: { id: 'COMMIT_1000', name: 'コミット1000', description: '累計コミット数が1000を超えた。' },
+    COMMIT_100: { id: 'COMMIT_100', name: 'コントリビューション100', description: '累計活動数が100を超えた。' },
+    COMMIT_500: { id: 'COMMIT_500', name: 'コントリビューション500', description: '累計活動数が500を超えた。' },
+    COMMIT_1000: { id: 'COMMIT_1000', name: 'コントリビューション1000', description: '累計活動数が1000を超えた。' },
 };
 
 const USER_DATA_QUERY = `
-  query($login: String!, $authorId: ID!, $since: GitTimestamp!) {
+  query($login: String!) {
     user(login: $login) {
       starredRepositories {
         totalCount
+      }
+      contributionsCollection {
+        contributionCalendar {
+          totalContributions
+          weeks {
+            contributionDays {
+              contributionCount
+              date
+            }
+          }
+        }
       }
       repositories(first: 100, ownerAffiliations: OWNER, isFork: false, orderBy: {field: PUSHED_AT, direction: DESC}) {
         nodes {
@@ -85,18 +95,6 @@ const USER_DATA_QUERY = `
               }
             }
           }
-          defaultBranchRef {
-            target {
-              ... on Commit {
-                history(author: {id: $authorId}) {
-                  totalCount
-                }
-                weeklyHistory: history(since: $since, author: {id: $authorId}) {
-                  totalCount
-                }
-              }
-            }
-          }
         }
       }
       repositoriesContributedTo(first: 20, includeUserRepositories: false, contributionTypes: [COMMIT, PULL_REQUEST, PULL_REQUEST_REVIEW], orderBy: {field: PUSHED_AT, direction: DESC}) {
@@ -108,18 +106,6 @@ const USER_DATA_QUERY = `
               node {
                 name
                 color
-              }
-            }
-          }
-          defaultBranchRef {
-            target {
-              ... on Commit {
-                history(author: {id: $authorId}) {
-                  totalCount
-                }
-                weeklyHistory: history(since: $since, author: {id: $authorId}) {
-                  totalCount
-                }
               }
             }
           }
@@ -174,7 +160,13 @@ if (connectionString) {
                 ADD COLUMN IF NOT EXISTS weekly_commits INTEGER DEFAULT 0;
             `);
         })
-        .then(() => console.log('[DB] カラムの準備ができました'))
+        // ★パフォーマンス: インデックスを追加して検索を高速化
+        .then(() => {
+            return pool.query(`
+                CREATE INDEX IF NOT EXISTS idx_planets_username ON planets(username);
+            `);
+        })
+        .then(() => console.log('[DB] カラムとインデックスの準備ができました'))
         .catch(err => console.error('[DB] テーブル作成/接続に失敗しました (ローカルDBが起動していない可能性があります):', err.message));
 } else {
     console.warn('[DB] データベース接続文字列(DATABASE_URL)が設定されていません。DB機能は無効になります。');
@@ -182,7 +174,17 @@ if (connectionString) {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use('/front', express.static(path.join(__dirname, 'front')));
+
+// ★パフォーマンス: 画像は長期キャッシュ (30日)
+app.use('/front/img', express.static(path.join(__dirname, 'front/img'), {
+    maxAge: '30d'
+}));
+
+// ★パフォーマンス: その他は標準キャッシュ (1日)
+app.use('/front', express.static(path.join(__dirname, 'front'), {
+    maxAge: '1d'
+}));
+
 if (isProduction) app.set('trust proxy', 1);
 
 app.use(session({
@@ -215,28 +217,18 @@ function checkAchievements(existingAchievements, stats) {
     if (totalCommits >= 1 && !newAchievements[ACHIEVEMENTS.FIRST_COMMIT.id]) {
         newAchievements[ACHIEVEMENTS.FIRST_COMMIT.id] = { ...ACHIEVEMENTS.FIRST_COMMIT, unlockedAt: now };
     }
-
-    // Velocity Star (週間50コミット)
     if (weeklyCommits >= 50 && !newAchievements[ACHIEVEMENTS.VELOCITY_STAR.id]) {
         newAchievements[ACHIEVEMENTS.VELOCITY_STAR.id] = { ...ACHIEVEMENTS.VELOCITY_STAR, unlockedAt: now };
     }
-
-    // Open Source Contributor (他リポジトリへの貢献)
     if (hasContributedToOthers && !newAchievements[ACHIEVEMENTS.OS_CONTRIBUTOR.id]) {
         newAchievements[ACHIEVEMENTS.OS_CONTRIBUTOR.id] = { ...ACHIEVEMENTS.OS_CONTRIBUTOR, unlockedAt: now };
     }
-
-    // Stargazer (Star数10以上)
     if (totalStars >= 10 && !newAchievements[ACHIEVEMENTS.STARGAZER.id]) {
         newAchievements[ACHIEVEMENTS.STARGAZER.id] = { ...ACHIEVEMENTS.STARGAZER, unlockedAt: now };
     }
-
-    // Polyglot Pioneer (5言語以上)
     if (languagesCount >= 5 && !newAchievements[ACHIEVEMENTS.POLYGLOT_PIONEER.id]) {
         newAchievements[ACHIEVEMENTS.POLYGLOT_PIONEER.id] = { ...ACHIEVEMENTS.POLYGLOT_PIONEER, unlockedAt: now };
     }
-
-    // 星界の盟友 (登録から1年以上)
     if (createdAt) {
         const diffTime = Math.abs(new Date() - new Date(createdAt));
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -244,7 +236,6 @@ function checkAchievements(existingAchievements, stats) {
             newAchievements[ACHIEVEMENTS.OCTOCAT_FRIEND.id] = { ...ACHIEVEMENTS.OCTOCAT_FRIEND, unlockedAt: now };
         }
     }
-
     if (totalCommits >= 100 && !newAchievements[ACHIEVEMENTS.COMMIT_100.id]) {
         newAchievements[ACHIEVEMENTS.COMMIT_100.id] = { ...ACHIEVEMENTS.COMMIT_100, unlockedAt: now };
     }
@@ -355,18 +346,20 @@ function generatePlanetName(mainLanguage, planetColor, totalCommits) {
 async function updateAndSavePlanetData(user, accessToken) {
     console.log(`[GraphQL] Fetching data for user: ${user.login}`);
 
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    const since = oneWeekAgo.toISOString();
-
     let repositories = [];
     let starredCount = 0;
+
+    // ★修正: 変数のスコープエラー対策
+    let contributedRepos = [];
+    let totalCommits = 0;
+    let weeklyCommits = 0;
+
     try {
         const response = await axios.post(
             'https://api.github.com/graphql',
             {
                 query: USER_DATA_QUERY,
-                variables: { login: user.login, authorId: user.node_id, since: since }
+                variables: { login: user.login }
             },
             {
                 headers: {
@@ -383,11 +376,30 @@ async function updateAndSavePlanetData(user, accessToken) {
 
         const userData = response.data.data.user;
         const ownedRepos = userData.repositories.nodes || [];
-        const contributedRepos = userData.repositoriesContributedTo.nodes || [];
+        // ★修正: ここで代入
+        contributedRepos = userData.repositoriesContributedTo.nodes || [];
         repositories = [...ownedRepos, ...contributedRepos];
 
-        // Star数(与えた)取得
         starredCount = userData.starredRepositories ? userData.starredRepositories.totalCount : 0;
+
+        if (userData.contributionsCollection && userData.contributionsCollection.contributionCalendar) {
+            const calendar = userData.contributionsCollection.contributionCalendar;
+            totalCommits = calendar.totalContributions || 0;
+
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+            if (calendar.weeks) {
+                for (const week of calendar.weeks) {
+                    for (const day of week.contributionDays) {
+                        const date = new Date(day.date);
+                        if (date >= oneWeekAgo) {
+                            weeklyCommits += day.contributionCount;
+                        }
+                    }
+                }
+            }
+        }
 
     } catch (e) {
         console.error('[GraphQL] データ取得失敗:', e.message);
@@ -395,8 +407,6 @@ async function updateAndSavePlanetData(user, accessToken) {
     }
 
     const languageStats = {};
-    let totalCommits = 0;
-    let weeklyCommits = 0;
     let receivedStars = 0;
 
     for (const repo of repositories) {
@@ -408,41 +418,14 @@ async function updateAndSavePlanetData(user, accessToken) {
             }
         }
 
-        if (repo.defaultBranchRef && repo.defaultBranchRef.target) {
-            if (repo.defaultBranchRef.target.history) {
-                totalCommits += repo.defaultBranchRef.target.history.totalCount;
-            }
-            if (repo.defaultBranchRef.target.weeklyHistory) {
-                weeklyCommits += repo.defaultBranchRef.target.weeklyHistory.totalCount;
-            }
+        if (repo.stargazerCount) {
+            receivedStars += repo.stargazerCount;
         }
     }
 
-    // 正確にReceived Starsを計算
-    const ownedRepos = (await axios.post(
-        'https://api.github.com/graphql',
-        {
-            query: USER_DATA_QUERY,
-            variables: { login: user.login, authorId: user.node_id, since: since }
-        },
-        { headers: { 'Authorization': `Bearer ${accessToken}` } }
-    )).data.data.user.repositories.nodes || [];
-
-    for (const repo of ownedRepos) {
-        receivedStars += (repo.stargazerCount || 0);
-    }
-
-    // Contributed check
-    const contributedRepos = (await axios.post(
-        'https://api.github.com/graphql',
-        {
-            query: USER_DATA_QUERY,
-            variables: { login: user.login, authorId: user.node_id, since: since }
-        },
-        { headers: { 'Authorization': `Bearer ${accessToken}` } }
-    )).data.data.user.repositoriesContributedTo.nodes || [];
-
+    // ★修正: エラー回避
     const hasContributedToOthers = contributedRepos.length > 0;
+
     const languagesCount = Object.keys(languageStats).length;
     const totalStars = starredCount + receivedStars;
 
@@ -588,7 +571,8 @@ app.get('/login', (req, res) => {
     const authUrl = new URL('https://github.com/login/oauth/authorize');
     authUrl.searchParams.set('client_id', GITHUB_CLIENT_ID);
     authUrl.searchParams.set('redirect_uri', CALLBACK_URL);
-    authUrl.searchParams.set('scope', 'user:email public_repo');
+    // ★重要: プライベートリポジトリも取得するため repo を指定
+    authUrl.searchParams.set('scope', 'user:email repo');
     authUrl.searchParams.set('state', crypto.randomBytes(16).toString('hex'));
     authUrl.searchParams.set('code_challenge', code_challenge);
     authUrl.searchParams.set('code_challenge_method', 'S256');
@@ -631,7 +615,6 @@ app.get('/api/me', async (req, res) => {
         return res.status(401).json({ error: 'Not logged in' });
     }
 
-    // ★修正: キャッシュの鮮度をチェック (15分以内なら更新しない)
     const lastUpdated = req.session.last_updated;
     const isStale = !lastUpdated || (Date.now() - lastUpdated > DATA_CACHE_DURATION);
 
@@ -659,22 +642,20 @@ app.get('/api/planets/user/:username', async (req, res) => {
     try {
         const { username } = req.params;
 
-        // ★修正: DBを先に確認する
         let row;
         const result = await pool.query('SELECT * FROM planets WHERE username = $1', [username]);
         if (result.rows.length > 0) {
             row = result.rows[0];
         }
 
-        // ★修正: データがない、または古い場合のみ更新を試みる
         let shouldUpdate = false;
         if (req.session.github_token) {
             if (!row) {
-                shouldUpdate = true; // データがないので更新必須
+                shouldUpdate = true;
             } else if (row.last_updated) {
                 const lastUpdatedTime = new Date(row.last_updated).getTime();
                 if (Date.now() - lastUpdatedTime > DATA_CACHE_DURATION) {
-                    shouldUpdate = true; // データが古いので更新
+                    shouldUpdate = true;
                 }
             }
         }
@@ -777,8 +758,6 @@ app.get('/api/planets/random', async (req, res) => {
         let row = result.rows[0];
         req.session.lastRandomVisitedId = row.github_id;
 
-        // ★修正: ランダムの場合は「裏で」更新する (awaitしない)
-        // これによりユーザーへのレスポンスはDBの値を即座に返すので爆速になる
         if (req.session.github_token) {
             let shouldUpdate = false;
             if (row.last_updated) {
@@ -791,8 +770,6 @@ app.get('/api/planets/random', async (req, res) => {
             }
 
             if (shouldUpdate) {
-                // Fire-and-Forget (待たない)
-                // ユーザーには少し古いデータが見えるかもしれないが、速度優先
                 (async () => {
                     try {
                         console.log(`[Random/Background] Updating stale data for: ${row.username}`);

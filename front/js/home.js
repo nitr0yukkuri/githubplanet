@@ -18,7 +18,13 @@ let loadingOverlay;
 // テクスチャのキャッシュ
 let cachedPlanetTexture = null;
 
-const socket = io();
+// ★パフォーマンス: ローダーを再利用する
+const textureLoader = new THREE.TextureLoader();
+
+// ★パフォーマンス: WebSocket転送を強制してポーリング遅延を回避
+const socket = io({
+    transports: ['websocket']
+});
 
 // ★追加: ローディング表示切り替え関数
 function toggleLoading(show) {
@@ -111,7 +117,8 @@ function calculateStarCount(totalCommits) {
 function loadPlanetTexture() {
     if (cachedPlanetTexture) return Promise.resolve(cachedPlanetTexture);
     return new Promise((resolve) => {
-        new THREE.TextureLoader().load('front/img/2k_mars.jpg', (tex) => {
+        // ★修正: 再利用したローダーを使う
+        textureLoader.load('front/img/2k_mars.jpg', (tex) => {
             cachedPlanetTexture = tex;
             resolve(tex);
         });
