@@ -831,7 +831,8 @@ app.get('/api/card/:username', (req, res) => {
 
     console.log(`[Card] Redirecting generation for: ${targetUrl}`);
 
-    const screenshotServiceUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
+    // ★修正: /png を追加して透明背景に対応させる
+    const screenshotServiceUrl = `https://image.thum.io/get/png/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
 
     res.redirect(screenshotServiceUrl);
 });

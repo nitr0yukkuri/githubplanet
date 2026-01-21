@@ -28,6 +28,10 @@ if (isScreenshotMode) {
     document.body.style.margin = '0';
     document.body.style.overflow = 'hidden';
 
+    // ★追加: 背景を透明にする
+    document.body.style.background = 'transparent';
+    document.documentElement.style.background = 'transparent';
+
     containerElement.style.height = '400px';
     containerElement.style.margin = '0 auto';
 
