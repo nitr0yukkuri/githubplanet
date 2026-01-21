@@ -15,7 +15,11 @@ body, html {
     padding: 0;
     width: 100%;
     min-height: 100vh;
-    overflow-y: auto;
+    /* スクロールバーによる横幅ズレと余白を防止 */
+    overflow-y: scroll;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+    
     background-color: #000;
     background-image: url('/front/img/Achievementsimage.jpg');
     background-size: cover;
@@ -27,6 +31,11 @@ body, html {
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
+}
+
+/* Chrome, Safari, Edge用スクロールバー非表示 */
+body::-webkit-scrollbar {
+    display: none;
 }
 
 body::before {
@@ -43,7 +52,8 @@ body::before {
     flex-grow: 1; /* 余ったスペースを埋める */
     display: flex;
     flex-direction: column;
-    justify-content: center; /* 垂直方向中央 */
+    /* ★変更: 上下中央(center)から上詰め(flex-start)に変更し、上部の余白を完全削除 */
+    justify-content: flex-start; 
     align-items: center;     /* 水平方向中央 */
     width: 100%;
     padding-bottom: 0; /* マージン調整のため削除 */
