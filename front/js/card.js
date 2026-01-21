@@ -1,4 +1,4 @@
-// front/js/card.jsa
+// front/js/card.js
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
@@ -24,13 +24,13 @@ const copyBtn = document.getElementById('copy-btn');
 
 if (isScreenshotMode) {
     // スクリーンショット撮影モード（thum.io用）
-    // UIを消してカードだけを画面いっぱいに表示
+    // 余白を消し、カードを画面幅いっぱいに表示する設定
 
-    // 画面とbodyのサイズを800x400に強制固定
-    document.documentElement.style.width = '800px';
-    document.documentElement.style.height = '400px';
-    document.body.style.width = '800px';
-    document.body.style.height = '400px';
+    // ベースのHTML/Bodyは画面全体を使う設定にする
+    document.documentElement.style.width = '100%';
+    document.documentElement.style.height = '100%';
+    document.body.style.width = '100%';
+    document.body.style.height = '100%';
 
     // 余白とスクロールの完全除去
     document.body.style.margin = '0';
@@ -40,12 +40,12 @@ if (isScreenshotMode) {
     // CSSのFlexbox中央寄せを解除してブロック配置にする
     document.body.style.display = 'block';
 
-    // 背景を完全に透明化（CSSの背景画像も消去）
+    // 背景を完全に透明化
     document.body.style.background = 'transparent';
     document.documentElement.style.background = 'transparent';
 
-    // カードコンテナを絶対配置で左上(0,0)に固定
-    containerElement.style.width = '800px';
+    // ★重要変更: 幅は画面一杯(100%)にしつつ、高さは400pxに固定してフッター切れを防ぐ
+    containerElement.style.width = '100%';
     containerElement.style.height = '400px';
     containerElement.style.margin = '0';
     containerElement.style.position = 'absolute';
@@ -72,17 +72,16 @@ if (isScreenshotMode) {
 
 } else {
     // 通常モード（人間が見ているとき）
-    // シェアボタンなどを表示
     if (shareSection) shareSection.style.display = 'block';
 
     const deployUrl = 'https://githubplanet.onrender.com';
 
     // 画像生成用のURL（fix=true付き）
     const targetUrl = `${deployUrl}/card.html?username=${username}&fix=true`;
-    // width=800, crop=400 で余白なしのカード画像を生成
+    // width=800, crop=400 でカード画像を生成
     const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/${targetUrl}`;
 
-    // クリックしたときの飛び先URL（fix=true無し）
+    // クリックしたときの飛び先URL
     const pageUrl = `${deployUrl}/card.html?username=${username}`;
 
     // Markdownコード生成
