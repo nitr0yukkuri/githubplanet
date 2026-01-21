@@ -25,23 +25,49 @@ const copyBtn = document.getElementById('copy-btn');
 if (isScreenshotMode) {
     // スクリーンショット撮影モード（thum.io用）
     // UIを消してカードだけを画面いっぱいに表示
+
+    // 画面とbodyのサイズを800x400に強制固定
+    document.documentElement.style.width = '800px';
+    document.documentElement.style.height = '400px';
+    document.body.style.width = '800px';
+    document.body.style.height = '400px';
+
+    // 余白とスクロールの完全除去
     document.body.style.margin = '0';
+    document.body.style.padding = '0';
     document.body.style.overflow = 'hidden';
 
-    containerElement.style.height = '400px';
-    containerElement.style.margin = '0 auto';
+    // CSSのFlexbox中央寄せを解除してブロック配置にする
+    document.body.style.display = 'block';
 
+    // 背景を完全に透明化（CSSの背景画像も消去）
+    document.body.style.background = 'transparent';
+    document.documentElement.style.background = 'transparent';
+
+    // カードコンテナを絶対配置で左上(0,0)に固定
+    containerElement.style.width = '800px';
+    containerElement.style.height = '400px';
+    containerElement.style.margin = '0';
+    containerElement.style.position = 'absolute';
+    containerElement.style.top = '0';
+    containerElement.style.left = '0';
+
+    // 不要なUI要素を非表示
     if (shareSection) shareSection.style.display = 'none';
 
     const backBtn = document.querySelector('.back-button');
-    if (backBtn) {
+    if (backBtn && backBtn.parentElement) {
         backBtn.parentElement.style.display = 'none';
     }
 
+    // ラッパーdivの影響を排除
     const wrapper = document.querySelector('.content-wrapper');
     if (wrapper) {
-        wrapper.style.justifyContent = 'flex-start';
-        wrapper.style.paddingTop = '0';
+        wrapper.style.display = 'block';
+        wrapper.style.width = '100%';
+        wrapper.style.height = '100%';
+        wrapper.style.padding = '0';
+        wrapper.style.margin = '0';
     }
 
 } else {
@@ -53,13 +79,13 @@ if (isScreenshotMode) {
 
     // 画像生成用のURL（fix=true付き）
     const targetUrl = `${deployUrl}/card.html?username=${username}&fix=true`;
+    // width=800, crop=400 で余白なしのカード画像を生成
     const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/${targetUrl}`;
 
-    // クリックしたときの飛び先URL（fix=true無し、通常の操作画面）
+    // クリックしたときの飛び先URL（fix=true無し）
     const pageUrl = `${deployUrl}/card.html?username=${username}`;
 
-    // ★修正: Markdownを「リンク付き画像」に変更
-    // [![代替テキスト](画像URL)](リンク先URL) の形式
+    // Markdownコード生成
     const mdText = `[![GitHub Planet](${thumbUrl})](${pageUrl})`;
 
     if (markdownCode) markdownCode.textContent = mdText;
@@ -71,7 +97,7 @@ if (isScreenshotMode) {
     }
 }
 
-// --- 以下、描画ロジックは変更なし ---
+// --- 以下、描画ロジック（変更なし） ---
 const width = containerElement.clientWidth;
 const height = containerElement.clientHeight;
 
