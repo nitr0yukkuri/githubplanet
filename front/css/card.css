@@ -50,6 +50,17 @@ body::before {
     box-sizing: border-box;
 }
 
+/* ★追加: 戻るボタンのコンテナを絶対配置にしてレイアウト干渉を防ぐ */
+.nav-container {
+    position: absolute;
+    top: 20px;
+    width: 90%;
+    max-width: 800px;
+    flex-shrink: 0;
+    z-index: 100; /* カードより前面に */
+    pointer-events: none; /* コンテナ自体はクリックを邪魔しない */
+}
+
 .back-button {
     color: #ccc;
     text-decoration: none;
@@ -62,6 +73,7 @@ body::before {
     cursor: pointer;
     border: none;
     font-family: var(--font-jp);
+    pointer-events: auto; /* ボタンのクリックは有効化 */
 }
 .back-button:hover {
     background-color: rgba(255, 255, 255, 0.2);
