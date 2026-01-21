@@ -23,7 +23,8 @@ const markdownCode = document.getElementById('markdown-code');
 const copyBtn = document.getElementById('copy-btn');
 
 if (isScreenshotMode) {
-    // ★追加: スクリーンショット時の余白リセット
+    // スクリーンショット撮影モード（thum.io用）
+    // UIを消してカードだけを画面いっぱいに表示
     document.body.style.margin = '0';
     document.body.style.overflow = 'hidden';
 
@@ -44,14 +45,22 @@ if (isScreenshotMode) {
     }
 
 } else {
+    // 通常モード（人間が見ているとき）
+    // シェアボタンなどを表示
     if (shareSection) shareSection.style.display = 'block';
 
     const deployUrl = 'https://githubplanet.onrender.com';
+
+    // 画像生成用のURL（fix=true付き）
     const targetUrl = `${deployUrl}/card.html?username=${username}&fix=true`;
     const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/${targetUrl}`;
 
-    // ★修正: ユーザー指定の形式（画像埋め込みのみ）に変更
-    const mdText = `![GitHub Planet](${thumbUrl})`;
+    // クリックしたときの飛び先URL（fix=true無し、通常の操作画面）
+    const pageUrl = `${deployUrl}/card.html?username=${username}`;
+
+    // ★修正: Markdownを「リンク付き画像」に変更
+    // [![代替テキスト](画像URL)](リンク先URL) の形式
+    const mdText = `[![GitHub Planet](${thumbUrl})](${pageUrl})`;
 
     if (markdownCode) markdownCode.textContent = mdText;
 
@@ -62,6 +71,7 @@ if (isScreenshotMode) {
     }
 }
 
+// --- 以下、描画ロジックは変更なし ---
 const width = containerElement.clientWidth;
 const height = containerElement.clientHeight;
 
