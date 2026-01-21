@@ -46,7 +46,7 @@ body::before {
     justify-content: center; /* 垂直方向中央 */
     align-items: center;     /* 水平方向中央 */
     width: 100%;
-    padding-bottom: 40px; /* 下部に少し余裕を持たせる */
+    padding-bottom: 0; /* マージン調整のため削除 */
     box-sizing: border-box;
 }
 
@@ -70,10 +70,13 @@ body::before {
 
 #card-container {
     position: relative;
-    width: 90%;
-    max-width: 800px; 
-    height: 350px;
-    margin: 20px auto; 
+    /* ★変更: URLの width/800 に合わせて固定 */
+    width: 800px;
+    max-width: 100%; 
+    /* ★変更: URLの crop/400 に合わせて高さを400pxに変更 */
+    height: 400px;
+    /* ★変更: crop時に切れないようマージンを0に設定 */
+    margin: 0 auto; 
     background-color: var(--card-bg-inner);
     overflow: hidden;
     flex-shrink: 0;
