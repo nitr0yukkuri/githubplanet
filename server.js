@@ -159,7 +159,13 @@ if (connectionString) {
                 ADD COLUMN IF NOT EXISTS weekly_commits INTEGER DEFAULT 0;
             `);
         })
-        .then(() => console.log('[DB] カラムの準備ができました'))
+        // ★パフォーマンス: インデックスを追加して検索を高速化
+        .then(() => {
+            return pool.query(`
+                CREATE INDEX IF NOT EXISTS idx_planets_username ON planets(username);
+            `);
+        })
+        .then(() => console.log('[DB] カラムとインデックスの準備ができました'))
         .catch(err => console.error('[DB] テーブル作成/接続に失敗しました (ローカルDBが起動していない可能性があります):', err.message));
 } else {
     console.warn('[DB] データベース接続文字列(DATABASE_URL)が設定されていません。DB機能は無効になります。');
@@ -167,7 +173,17 @@ if (connectionString) {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use('/front', express.static(path.join(__dirname, 'front')));
+
+// ★パフォーマンス: 画像は長期キャッシュ (30日)
+app.use('/front/img', express.static(path.join(__dirname, 'front/img'), {
+    maxAge: '30d'
+}));
+
+// ★パフォーマンス: その他は標準キャッシュ (1日)
+app.use('/front', express.static(path.join(__dirname, 'front'), {
+    maxAge: '1d'
+}));
+
 if (isProduction) app.set('trust proxy', 1);
 
 app.use(session({
@@ -332,7 +348,7 @@ async function updateAndSavePlanetData(user, accessToken) {
     let repositories = [];
     let starredCount = 0;
 
-    // ★修正: スコープエラー対策。ここで変数を定義しておく。
+    // ★修正: 変数のスコープエラー対策
     let contributedRepos = [];
     let totalCommits = 0;
     let weeklyCommits = 0;
@@ -359,7 +375,7 @@ async function updateAndSavePlanetData(user, accessToken) {
 
         const userData = response.data.data.user;
         const ownedRepos = userData.repositories.nodes || [];
-        // ★修正: ここで代入のみを行う（constはつけない）
+        // ★修正: ここで代入
         contributedRepos = userData.repositoriesContributedTo.nodes || [];
         repositories = [...ownedRepos, ...contributedRepos];
 
@@ -406,7 +422,7 @@ async function updateAndSavePlanetData(user, accessToken) {
         }
     }
 
-    // ★修正: これでcontributedReposがundefinedにならず参照できる
+    // ★修正: エラー回避
     const hasContributedToOthers = contributedRepos.length > 0;
 
     const languagesCount = Object.keys(languageStats).length;
@@ -554,7 +570,7 @@ app.get('/login', (req, res) => {
     const authUrl = new URL('https://github.com/login/oauth/authorize');
     authUrl.searchParams.set('client_id', GITHUB_CLIENT_ID);
     authUrl.searchParams.set('redirect_uri', CALLBACK_URL);
-    // ★重要: ここに repo を含めてプライベートリポジトリの草も取得する
+    // ★重要: プライベートリポジトリも取得するため repo を指定
     authUrl.searchParams.set('scope', 'user:email repo');
     authUrl.searchParams.set('state', crypto.randomBytes(16).toString('hex'));
     authUrl.searchParams.set('code_challenge', code_challenge);

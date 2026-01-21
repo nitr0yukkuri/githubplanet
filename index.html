@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="GitHubの活動履歴からあなただけの惑星を生成しよう。">
     <title>GitHub Planet</title>
 
     <meta property="og:title" content="GitHub Planet">
@@ -18,6 +19,8 @@
     <link rel="icon" href="/front/img/favicon.png" type="image/png">
     <link rel="stylesheet" href="./front/css/home.css">
     <link rel="stylesheet" href="./front/css/responsive.css">
+
+    <link rel="preload" href="front/img/2k_mars.jpg" as="image">
 
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-6X54Y51TTZ"></script>
     <script>
@@ -102,7 +105,8 @@
     <div class="achievement-container">
 
         <div id="welcome-modal" class="welcome-modal">
-            <img src="front/img/GitHubPlanet_logo.png" alt="GitHub Planet Logo" class="welcome-logo">
+            <img src="front/img/GitHubPlanet_logo.png" alt="GitHub Planet Logo" class="welcome-logo" width="350"
+                height="auto">
             <h2>GitHub Planetへようこそ</h2>
             <p style="margin-bottom: 15px;">
                 これはあなたのGitHubでの活動に応じて育つ惑星を楽しめる<br>サイトです。使用言語とコントリビューション数によって惑星の色や輝きなどが変わり、自分だけの星を育てられます。
@@ -125,14 +129,14 @@
             </div>
 
             <div class="ui-top-left">
-                <button id="open-select-modal-btn" class="ui-button" title="惑星を探す">
-                    <img src="front/img/staricon.png" alt="Search Planet">
+                <button id="open-select-modal-btn" class="ui-button" title="惑星を探す" aria-label="惑星を探す">
+                    <img src="front/img/staricon.png" alt="Search Planet" width="60" height="60">
                 </button>
             </div>
 
             <div class="ui-top-right">
                 <div class="menu-container">
-                    <button id="menu-btn" class="ui-button menu-btn" title="メニュー">
+                    <button id="menu-btn" class="ui-button menu-btn" title="メニュー" aria-label="メニュー">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                             stroke-linecap="round" stroke-linejoin="round">
                             <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -151,7 +155,8 @@
             <div id="planet-owner-container">
                 <div id="planet-owner-display" class="ui-text"></div>
                 <a href="#" id="github-profile-link" class="ui-button github-link" target="_blank"
-                    rel="noopener noreferrer" style="display: none;" title="GitHubプロフィールを見る">
+                    rel="noopener noreferrer" style="display: none;" title="GitHubプロフィールを見る"
+                    aria-label="GitHubプロフィールを見る">
                     <svg viewBox="0 0 24 24" fill="currentColor" width="20px" height="20px">
                         <path fill-rule="evenodd"
                             d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.165 6.839 9.489.5.09.682-.218.682-.483 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.34-3.369-1.34-.454-1.157-1.11-1.465-1.11-1.465-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.031-2.682-.103-.253-.447-1.27.098-2.646 0 0 .84-.269 2.75 1.026A9.564 9.564 0 0112 6.82c.85.004 1.705.114 2.504.336 1.909-1.295 2.747-1.026 2.747-1.026.546 1.375.202 2.393.1 2.646.64.698 1.03 1.59 1.03 2.682 0 3.842-2.337 4.687-4.566 4.935.36.308.678.92.678 1.85l-.01 2.748c0 .267.18.577.688.48C19.137 20.162 22 16.417 22 12c0-5.523-4.477-10-10-10z"
@@ -171,7 +176,7 @@
                 </div>
             </div>
 
-            <div id="toggle-details-btn" class="ui-button">
+            <div id="toggle-details-btn" class="ui-button" aria-label="詳細パネルの切り替え">
                 <svg class="arrow-icon right" viewBox="0 0 24 24" fill="white">
                     <path d="M8.59 16.34l4.58-4.59-4.58-4.59L10 5.75l6 6-6 6z" />
                 </svg>
