@@ -23,6 +23,10 @@ const markdownCode = document.getElementById('markdown-code');
 const copyBtn = document.getElementById('copy-btn');
 
 if (isScreenshotMode) {
+    // ★追加: スクリーンショット時の余白リセット
+    document.body.style.margin = '0';
+    document.body.style.overflow = 'hidden';
+
     containerElement.style.height = '400px';
     containerElement.style.margin = '0 auto';
 

@@ -826,7 +826,8 @@ app.get('/api/card/:username', (req, res) => {
 
     const host = req.headers['x-forwarded-host'] || req.get('host');
     const timestamp = Date.now();
-    const targetUrl = `${protocol}://${host}/card.html?username=${username}&ts=${timestamp}`;
+    // ★修正: fix=trueを追加してカードモードで描画させる
+    const targetUrl = `${protocol}://${host}/card.html?username=${username}&fix=true&ts=${timestamp}`;
 
     console.log(`[Card] Redirecting generation for: ${targetUrl}`);
 
