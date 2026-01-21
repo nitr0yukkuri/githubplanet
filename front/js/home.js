@@ -566,11 +566,20 @@ function animate() {
 
 function setupUI() {
     const modal = document.getElementById('select-modal');
-    document.getElementById('open-select-modal-btn')?.addEventListener('click', () => modal.classList.add('is-visible'));
+    // ★追加: 右上のUI要素を取得
+    const topRightUI = document.querySelector('.ui-top-right');
+
+    document.getElementById('open-select-modal-btn')?.addEventListener('click', () => {
+        modal.classList.add('is-visible');
+        // ★追加: モーダルが開くときに右上のUIを隠す
+        if (topRightUI) topRightUI.style.display = 'none';
+    });
 
     modal?.addEventListener('click', (e) => {
         if (e.target === modal || e.target.classList.contains('select-container')) {
             modal.classList.remove('is-visible');
+            // ★追加: 背景クリックで閉じるときに右上のUIを表示
+            if (topRightUI) topRightUI.style.display = '';
         }
     });
 
@@ -596,6 +605,8 @@ function setupUI() {
                 }
 
                 modal.classList.remove('is-visible');
+                // ★追加: 遷移成功時に右上のUIを表示
+                if (topRightUI) topRightUI.style.display = '';
             } else if (res.status === 404) {
                 alert('そのユーザーの惑星は見つかりませんでした。\n(GitHub Planetにログインしたことがあるユーザーのみ表示できます)');
             } else {
@@ -635,6 +646,8 @@ function setupUI() {
                 }
 
                 modal.classList.remove('is-visible');
+                // ★追加: 遷移成功時に右上のUIを表示
+                if (topRightUI) topRightUI.style.display = '';
             }
             else alert('他の惑星が見つかりませんでした');
         } catch (e) {
