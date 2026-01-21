@@ -1,4 +1,4 @@
-// front/js/card.js
+// front/js/card.jsa
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
