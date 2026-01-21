@@ -12,10 +12,25 @@ let isFetchingRandomPlanet = false;
 let lastRandomVisitTime = 0;
 let planetRotationSpeed = 0.001;
 
+// ★追加: ローディングオーバーレイ
+let loadingOverlay;
+
 // テクスチャのキャッシュ
 let cachedPlanetTexture = null;
 
 const socket = io();
+
+// ★追加: ローディング表示切り替え関数
+function toggleLoading(show) {
+    if (!loadingOverlay) return;
+    if (show) {
+        loadingOverlay.style.opacity = '1';
+        loadingOverlay.style.pointerEvents = 'auto';
+    } else {
+        loadingOverlay.style.opacity = '0';
+        loadingOverlay.style.pointerEvents = 'none';
+    }
+}
 
 async function fetchMyPlanetData() {
     try {
@@ -324,7 +339,7 @@ async function loadPlanet(data) {
         }
     });
 
-    const initialDelay = 100;
+    const initialDelay = 500;
 
     tl.add({
         targets: shockwave.material,
@@ -492,6 +507,33 @@ async function init() {
     okButton = document.getElementById('welcome-ok-btn');
     mainUiWrapper = document.getElementById('main-ui-wrapper');
 
+    // ★変更: ドットアニメーション用のCSSを追加
+    const loadingStyle = document.createElement('style');
+    loadingStyle.innerHTML = `
+        .loading-text::after {
+            content: '';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+    `;
+    document.head.appendChild(loadingStyle);
+
+    // ★変更: ローディングオーバーレイの作成 (テキスト+アニメーション)
+    loadingOverlay = document.createElement('div');
+    loadingOverlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;justify-content:center;align-items:center;color:white;font-size:24px;font-weight:bold;opacity:0;transition:opacity 0.3s;pointer-events:none;backdrop-filter:blur(4px);';
+
+    const loadingText = document.createElement('div');
+    loadingText.className = 'loading-text';
+    loadingText.textContent = 'Loading';
+    loadingOverlay.appendChild(loadingText);
+
+    document.body.appendChild(loadingOverlay);
+
     scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x000000, 10, 50);
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.z = 25;
     renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -566,11 +608,17 @@ function animate() {
 
 function setupUI() {
     const modal = document.getElementById('select-modal');
-    document.getElementById('open-select-modal-btn')?.addEventListener('click', () => modal.classList.add('is-visible'));
+    const topRightUI = document.querySelector('.ui-top-right');
+
+    document.getElementById('open-select-modal-btn')?.addEventListener('click', () => {
+        modal.classList.add('is-visible');
+        if (topRightUI) topRightUI.style.display = 'none';
+    });
 
     modal?.addEventListener('click', (e) => {
         if (e.target === modal || e.target.classList.contains('select-container')) {
             modal.classList.remove('is-visible');
+            if (topRightUI) topRightUI.style.display = '';
         }
     });
 
@@ -579,12 +627,15 @@ function setupUI() {
         const username = prompt('見に行きたいGitHubユーザー名を入力してください:');
         if (!username || username.trim() === '') return;
 
+        // ★追加: ローディング開始
+        toggleLoading(true);
+
         try {
             const res = await fetch(`/api/planets/user/${username.trim()}?t=${Date.now()}`, { cache: 'no-store' });
             if (res.ok) {
                 const planetData = await res.json();
                 console.log('取得したユーザーデータ:', planetData);
-                loadPlanet(planetData);
+                await loadPlanet(planetData);
 
                 if (typeof gtag === 'function' && planetData.username) {
                     const path = `/planet/${planetData.username}`;
@@ -596,6 +647,7 @@ function setupUI() {
                 }
 
                 modal.classList.remove('is-visible');
+                if (topRightUI) topRightUI.style.display = '';
             } else if (res.status === 404) {
                 alert('そのユーザーの惑星は見つかりませんでした。\n(GitHub Planetにログインしたことがあるユーザーのみ表示できます)');
             } else {
@@ -604,13 +656,15 @@ function setupUI() {
         } catch (e) {
             console.error('Error fetching user planet:', e);
             alert('通信エラーが発生しました');
+        } finally {
+            // ★追加: ローディング終了
+            toggleLoading(false);
         }
     });
 
     document.getElementById('random-visit-btn')?.addEventListener('click', async (e) => {
         e.preventDefault();
 
-        // ★追加: 1.5秒経過していない場合は処理をスキップ
         const now = Date.now();
         if (now - lastRandomVisitTime < 1500) return;
         lastRandomVisitTime = now;
@@ -618,12 +672,15 @@ function setupUI() {
         if (isFetchingRandomPlanet) return;
         isFetchingRandomPlanet = true;
 
+        // ★追加: ローディング開始
+        toggleLoading(true);
+
         try {
             const res = await fetch(`/api/planets/random?t=${Date.now()}`, { cache: 'no-store' });
             if (res.ok) {
                 const planetData = await res.json();
                 console.log('取得したランダムデータ:', planetData);
-                loadPlanet(planetData);
+                await loadPlanet(planetData);
 
                 if (typeof gtag === 'function' && planetData.username) {
                     const path = `/planet/${planetData.username}`;
@@ -635,6 +692,7 @@ function setupUI() {
                 }
 
                 modal.classList.remove('is-visible');
+                if (topRightUI) topRightUI.style.display = '';
             }
             else alert('他の惑星が見つかりませんでした');
         } catch (e) {
@@ -642,6 +700,8 @@ function setupUI() {
             alert('通信エラーが発生しました');
         } finally {
             isFetchingRandomPlanet = false;
+            // ★追加: ローディング終了
+            toggleLoading(false);
         }
     });
 
