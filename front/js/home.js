@@ -8,25 +8,21 @@ let scene, camera, renderer, controls, planetGroup;
 
 let welcomeModal, okButton, mainUiWrapper;
 let isFetchingRandomPlanet = false;
-// ★追加: 最後にランダムボタンを押した時刻を記録
 let lastRandomVisitTime = 0;
 let planetRotationSpeed = 0.001;
 
-// ★追加: ローディングオーバーレイ
+// ローディングオーバーレイ
 let loadingOverlay;
 
 // テクスチャのキャッシュ
 let cachedPlanetTexture = null;
 
-// ★パフォーマンス: ローダーを再利用する
 const textureLoader = new THREE.TextureLoader();
 
-// ★パフォーマンス: WebSocket転送を強制してポーリング遅延を回避
 const socket = io({
     transports: ['websocket']
 });
 
-// ★追加: ローディング表示切り替え関数
 function toggleLoading(show) {
     if (!loadingOverlay) return;
     if (show) {
@@ -117,7 +113,6 @@ function calculateStarCount(totalCommits) {
 function loadPlanetTexture() {
     if (cachedPlanetTexture) return Promise.resolve(cachedPlanetTexture);
     return new Promise((resolve) => {
-        // ★修正: 再利用したローダーを使う
         textureLoader.load('front/img/2k_mars.jpg', (tex) => {
             cachedPlanetTexture = tex;
             resolve(tex);
@@ -180,9 +175,10 @@ async function loadPlanet(data) {
         profileLink.style.display = 'flex';
     }
 
+    // ★修正: メニューの「カード」リンク先をページURLに変更
     const cardLink = document.getElementById('card-link');
     if (cardLink && data.username) {
-        cardLink.href = `/api/card/${data.username}`;
+        cardLink.href = `/card.html?username=${data.username}`;
     }
 
     updatePlanetDetails(data);
@@ -514,7 +510,6 @@ async function init() {
     okButton = document.getElementById('welcome-ok-btn');
     mainUiWrapper = document.getElementById('main-ui-wrapper');
 
-    // ★変更: ドットアニメーション用のCSSを追加
     const loadingStyle = document.createElement('style');
     loadingStyle.innerHTML = `
         .loading-text::after {
@@ -530,7 +525,6 @@ async function init() {
     `;
     document.head.appendChild(loadingStyle);
 
-    // ★変更: ローディングオーバーレイの作成 (テキスト+アニメーション)
     loadingOverlay = document.createElement('div');
     loadingOverlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;justify-content:center;align-items:center;color:white;font-size:24px;font-weight:bold;opacity:0;transition:opacity 0.3s;pointer-events:none;backdrop-filter:blur(4px);';
 
@@ -634,7 +628,6 @@ function setupUI() {
         const username = prompt('見に行きたいGitHubユーザー名を入力してください:');
         if (!username || username.trim() === '') return;
 
-        // ★追加: ローディング開始
         toggleLoading(true);
 
         try {
@@ -664,7 +657,6 @@ function setupUI() {
             console.error('Error fetching user planet:', e);
             alert('通信エラーが発生しました');
         } finally {
-            // ★追加: ローディング終了
             toggleLoading(false);
         }
     });
@@ -679,7 +671,6 @@ function setupUI() {
         if (isFetchingRandomPlanet) return;
         isFetchingRandomPlanet = true;
 
-        // ★追加: ローディング開始
         toggleLoading(true);
 
         try {
@@ -707,7 +698,6 @@ function setupUI() {
             alert('通信エラーが発生しました');
         } finally {
             isFetchingRandomPlanet = false;
-            // ★追加: ローディング終了
             toggleLoading(false);
         }
     });
