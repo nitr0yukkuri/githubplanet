@@ -537,6 +537,41 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// ★修正: カード生成APIのロジック変更
+app.get('/api/card/:username', (req, res) => {
+    // ログイン中のユーザー情報を取得
+    const loggedInUser = req.session.planetData?.user?.login;
+
+    // 未ログインの場合はエラー
+    if (!loggedInUser) {
+        return res.status(403).send('Forbidden: Please login first.');
+    }
+
+    // ★修正: リクエストされたURLのusername (req.params.username) は無視し、
+    // 常に「ログイン中のユーザー本人 (loggedInUser)」のカードを作成する対象とする
+    const targetUsername = loggedInUser;
+
+    let protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    if (req.get('host') && req.get('host').includes('onrender.com')) {
+        protocol = 'https';
+    }
+
+    const host = req.headers['x-forwarded-host'] || req.get('host');
+    const timestamp = Date.now();
+
+    // ★追加: 署名をURLに付与して、撮影ボットだけがアクセスできるようにする
+    const sig = generateSignature(targetUsername);
+
+    // URLに署名(sig)を追加
+    const targetUrl = `${protocol}://${host}/card.html?username=${targetUsername}&fix=true&ts=${timestamp}&sig=${sig}`;
+
+    console.log(`[Card] Redirecting generation for: ${targetUrl}`);
+
+    const screenshotServiceUrl = `https://image.thum.io/get/png/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
+
+    res.redirect(screenshotServiceUrl);
+});
+
 // ★修正: カード閲覧画面の制限追加
 app.get('/card.html', (req, res) => {
     const { username, fix, sig } = req.query;
@@ -914,15 +949,19 @@ app.get('/api/planets/random', async (req, res) => {
     }
 });
 
-// ★修正: カード生成APIの制限追加
+// ★修正: カード生成APIのロジック変更
 app.get('/api/card/:username', (req, res) => {
-    const { username } = req.params;
-
-    // ★セキュリティ: ログイン中のユーザーしか自分のカードを作れないようにする
+    // ログイン中のユーザー情報を取得
     const loggedInUser = req.session.planetData?.user?.login;
-    if (!loggedInUser || loggedInUser !== username) {
-        return res.status(403).send('Forbidden: You can only generate your own card.');
+
+    // 未ログインの場合はエラー
+    if (!loggedInUser) {
+        return res.status(403).send('Forbidden: Please login first.');
     }
+
+    // ★修正: リクエストされたURLのusername (req.params.username) は無視し、
+    // 常に「ログイン中のユーザー本人 (loggedInUser)」のカードを作成する対象とする
+    const targetUsername = loggedInUser;
 
     let protocol = req.headers['x-forwarded-proto'] || req.protocol;
     if (req.get('host') && req.get('host').includes('onrender.com')) {
@@ -933,10 +972,10 @@ app.get('/api/card/:username', (req, res) => {
     const timestamp = Date.now();
 
     // ★追加: 署名をURLに付与して、撮影ボットだけがアクセスできるようにする
-    const sig = generateSignature(username);
+    const sig = generateSignature(targetUsername);
 
     // URLに署名(sig)を追加
-    const targetUrl = `${protocol}://${host}/card.html?username=${username}&fix=true&ts=${timestamp}&sig=${sig}`;
+    const targetUrl = `${protocol}://${host}/card.html?username=${targetUsername}&fix=true&ts=${timestamp}&sig=${sig}`;
 
     console.log(`[Card] Redirecting generation for: ${targetUrl}`);
 
