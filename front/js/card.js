@@ -26,31 +26,37 @@ if (isScreenshotMode) {
     // スクリーンショット撮影モード（thum.io用）
     // 余白を消し、カードを画面幅いっぱいに表示する設定
 
-    // ベースのHTML/Bodyは画面全体を使う設定にする
-    document.documentElement.style.width = '100%';
-    document.documentElement.style.height = '100%';
-    document.body.style.width = '100%';
-    document.body.style.height = '100%';
+    // ベースのHTML/Bodyの設定
+    document.documentElement.style.margin = '0';
+    document.documentElement.style.padding = '0';
+    document.documentElement.style.width = '800px'; // ★修正: 強制的に800px
+    document.documentElement.style.height = '420px';
+    document.documentElement.style.overflow = 'hidden';
 
-    // 余白とスクロールの完全除去
     document.body.style.margin = '0';
     document.body.style.padding = '0';
+    document.body.style.width = '800px'; // ★修正: 強制的に800px
+    document.body.style.height = '420px';
     document.body.style.overflow = 'hidden';
-
-    // CSSのFlexbox中央寄せを解除してブロック配置にする
     document.body.style.display = 'block';
 
     // 背景を完全に透明化
     document.body.style.background = 'transparent';
     document.documentElement.style.background = 'transparent';
 
-    // ★重要変更: 幅は画面一杯(100%)にしつつ、高さは400pxに固定してフッター切れを防ぐ
-    containerElement.style.width = '100%';
-    containerElement.style.height = '400px';
+    // コンテナの設定
+    containerElement.style.width = '800px'; // ★修正: 100%ではなく800px固定
+    containerElement.style.height = '420px'; // ★修正: 高さも固定
     containerElement.style.margin = '0';
     containerElement.style.position = 'absolute';
     containerElement.style.top = '0';
     containerElement.style.left = '0';
+    containerElement.style.boxSizing = 'border-box';
+
+    // ★追加: 余白の原因になる影と角丸を削除し、完全に四角くする
+    containerElement.style.boxShadow = 'none';
+    containerElement.style.borderRadius = '0';
+    containerElement.style.border = 'none'; // 枠線もなくして完全に埋める
 
     // 不要なUI要素を非表示
     if (shareSection) shareSection.style.display = 'none';
@@ -64,8 +70,8 @@ if (isScreenshotMode) {
     const wrapper = document.querySelector('.content-wrapper');
     if (wrapper) {
         wrapper.style.display = 'block';
-        wrapper.style.width = '100%';
-        wrapper.style.height = '100%';
+        wrapper.style.width = '800px';
+        wrapper.style.height = '420px';
         wrapper.style.padding = '0';
         wrapper.style.margin = '0';
     }
@@ -74,13 +80,12 @@ if (isScreenshotMode) {
     // 通常モード（人間が見ているとき）
     if (shareSection) shareSection.style.display = 'block';
 
-    // ★修正: ハードコードではなく現在のオリジンを使用する (localhost対応)
     const deployUrl = window.location.origin;
 
     // 画像生成用のURL（fix=true付き）
     const targetUrl = `${deployUrl}/card.html?username=${username}&fix=true`;
-    // width=800, crop=400 でカード画像を生成
-    const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/${targetUrl}`;
+    // width=800, crop=420 でカード画像を生成
+    const thumbUrl = `https://image.thum.io/get/width/800/crop/420/noanimate/wait/6/${targetUrl}`;
 
     // クリックしたときの飛び先URL
     const pageUrl = `${deployUrl}/card.html?username=${username}`;

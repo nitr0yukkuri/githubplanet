@@ -381,7 +381,6 @@ async function updateAndSavePlanetData(user, accessToken) {
     let repositories = [];
     let starredCount = 0;
 
-    // ★修正: 変数のスコープエラー対策
     let contributedRepos = [];
     let totalCommits = 0;
     let weeklyCommits = 0;
@@ -408,7 +407,6 @@ async function updateAndSavePlanetData(user, accessToken) {
 
         const userData = response.data.data.user;
         const ownedRepos = userData.repositories.nodes || [];
-        // ★修正: ここで代入
         contributedRepos = userData.repositoriesContributedTo.nodes || [];
         repositories = [...ownedRepos, ...contributedRepos];
 
@@ -455,7 +453,6 @@ async function updateAndSavePlanetData(user, accessToken) {
         }
     }
 
-    // ★修正: エラー回避
     const hasContributedToOthers = contributedRepos.length > 0;
 
     const languagesCount = Object.keys(languageStats).length;
@@ -527,7 +524,6 @@ async function updateAndSavePlanetData(user, accessToken) {
     return { mainLanguage, planetColor, languageStats, totalCommits, weeklyCommits, planetSizeFactor, planetName, achievements };
 }
 
-// ★追加: 署名生成用のヘルパー関数
 function generateSignature(username) {
     const secret = process.env.SESSION_SECRET || 'dev_secret';
     return crypto.createHmac('sha256', secret).update(username).digest('hex');
@@ -575,7 +571,8 @@ app.get('/api/card/:username', (req, res) => {
 
     console.log(`[Card] Redirecting generation for: ${targetUrl}`);
 
-    const screenshotServiceUrl = `https://image.thum.io/get/png/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
+    // ★修正: JSで設定した高さに合わせてクロップサイズを420に変更
+    const screenshotServiceUrl = `https://image.thum.io/get/png/width/800/crop/420/noanimate/wait/8/${targetUrl}`;
 
     res.redirect(screenshotServiceUrl);
 });
