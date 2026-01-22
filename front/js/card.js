@@ -5,6 +5,7 @@ import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/exampl
 const params = new URLSearchParams(window.location.search);
 const username = params.get('username') || 'NITROYUKKURI';
 
+// fixパラメータがある場合は撮影モードとみなす
 const isScreenshotMode = params.has('fix');
 
 const containerElement = document.getElementById('card-container');
@@ -22,48 +23,18 @@ const shareSection = document.getElementById('share-section');
 const markdownCode = document.getElementById('markdown-code');
 const copyBtn = document.getElementById('copy-btn');
 
+// ★徹底修正: 撮影モード時の強制スタイル適用
 if (isScreenshotMode) {
-    // --- 【修正箇所】スクリーンショット撮影モード（thum.io用） ---
-    // CSSのFlexbox中央寄せや余白を完全に無効化し、左上に固定配置する
+    // 1. html, body のスタイルを最強の権限でリセット
+    // Flexboxを解除し、スクロールを消し、背景を黒にし、サイズを800x400に固定
+    const enforceStyle = (element, styleStr) => {
+        element.style.cssText = styleStr;
+    };
 
-    // 1. html, body のスタイルをリセット（min-heightやdisplay:flexを打ち消す）
-    const resetStyle = `
-        margin: 0 !important;
-        padding: 0 !important;
-        width: 800px !important;
-        height: 400px !important;
-        min-height: 0 !important;
-        overflow: hidden !important;
-        background: #000 !important;
-        display: block !important;
-    `;
-    document.documentElement.style.cssText = resetStyle;
-    document.body.style.cssText = resetStyle;
+    enforceStyle(document.documentElement, 'margin: 0 !important; padding: 0 !important; width: 800px !important; height: 400px !important; min-height: 0 !important; overflow: hidden !important; background: #030305 !important;');
+    enforceStyle(document.body, 'margin: 0 !important; padding: 0 !important; width: 800px !important; height: 400px !important; min-height: 0 !important; overflow: hidden !important; background: #030305 !important; display: block !important;');
 
-    // 2. コンテナがbody直下にない場合は移動（念のため）
-    if (containerElement.parentNode !== document.body) {
-        document.body.appendChild(containerElement);
-    }
-
-    // 3. カードコンテナを強制的に左上(0,0)に固定し、装飾を削除してフラットにする
-    containerElement.style.cssText = `
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 800px !important;
-        height: 400px !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        border: none !important;
-        border-radius: 0 !important;
-        box-shadow: none !important;
-        box-sizing: border-box !important;
-        z-index: 9999 !important;
-        background-color: var(--card-bg-inner) !important;
-        transform: none !important;
-    `;
-
-    // 4. 不要なUI要素を非表示
+    // 2. 不要なラッパーやナビゲーションを非表示
     const wrapper = document.querySelector('.content-wrapper');
     if (wrapper) wrapper.style.display = 'none';
 
@@ -72,24 +43,41 @@ if (isScreenshotMode) {
 
     if (shareSection) shareSection.style.display = 'none';
 
+    // 3. カードコンテナを body 直下に移動し、左上固定配置
+    if (containerElement) {
+        if (containerElement.parentNode !== document.body) {
+            document.body.appendChild(containerElement);
+        }
+        containerElement.style.cssText = `
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 800px !important;
+            height: 400px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            background-color: var(--card-bg-inner) !important;
+            z-index: 99999 !important;
+            transform: none !important;
+            box-sizing: border-box !important;
+        `;
+    }
 } else {
-    // --- 通常モード ---
+    // 通常モード時のシェアボタン処理
     if (shareSection) shareSection.style.display = 'block';
 
     const deployUrl = window.location.origin;
-
-    // fix=true をパラメータの先頭に配置
+    // fix=true を付与したURLを作成
     const targetUrl = `${deployUrl}/card.html?fix=true&username=${username}`;
-
-    // thum.io用URL: width800で描画し、上から400pxを切り取る
-    const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/${targetUrl}`;
-
+    // thum.io用URL: width800で描画し、上400pxを切り取る
+    const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
     const pageUrl = `${deployUrl}/card.html?username=${username}`;
-
     const mdText = `[![GitHub Planet](${thumbUrl})](${pageUrl})`;
 
     if (markdownCode) markdownCode.textContent = mdText;
-
     if (copyBtn) {
         copyBtn.addEventListener('click', () => {
             navigator.clipboard.writeText(mdText);
@@ -97,20 +85,18 @@ if (isScreenshotMode) {
     }
 }
 
-// --- 以下、Three.js描画ロジック（変更なし） ---
-const width = 800; // 固定サイズで初期化
-const height = 400; // 固定サイズで初期化
+// --- Three.js 初期化ロジック ---
 
-// コンテナサイズが取得できない場合のフォールバック
-const containerWidth = containerElement ? containerElement.clientWidth : 800;
-const containerHeight = containerElement ? containerElement.clientHeight : 400;
+// ★修正: 撮影モードなら固定サイズ(800x400)、通常ならコンテナサイズを使用
+const width = isScreenshotMode ? 800 : (containerElement ? containerElement.clientWidth : 800);
+const height = isScreenshotMode ? 400 : (containerElement ? containerElement.clientHeight : 400);
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, (containerWidth || 800) / (containerHeight || 400), 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
 camera.position.set(5.5, 0, 8);
 
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-renderer.setSize(containerWidth || 800, containerHeight || 400);
+renderer.setSize(width, height); // ★ここで確定したサイズをセット
 renderer.setPixelRatio(window.devicePixelRatio);
 canvasContainer.appendChild(renderer.domElement);
 
@@ -122,9 +108,10 @@ controls.autoRotate = false;
 controls.enabled = false;
 controls.target.set(3.5, 0, 0);
 
+// リサイズイベント
 window.addEventListener('resize', () => {
-    // 撮影モード時はリサイズ処理を無視して固定サイズを維持する
-    if (!isScreenshotMode) {
+    // ★修正: 撮影モードの場合はリサイズを無視してサイズを固定し続ける
+    if (!isScreenshotMode && containerElement) {
         const w = containerElement.clientWidth;
         const h = containerElement.clientHeight;
         renderer.setSize(w, h);
@@ -177,7 +164,11 @@ async function init() {
 function updateUI(data) {
     usernameDisplay.textContent = data.username || username;
     planetNameSub.textContent = (data.planetName || 'UNKNOWN').toUpperCase();
-    animateValue(commitsVal, 0, data.totalCommits || 0, 1500);
+
+    // アニメーション時間を短縮（撮影待ち対策）
+    const duration = isScreenshotMode ? 100 : 1500;
+    animateValue(commitsVal, 0, data.totalCommits || 0, duration);
+
     mainLangStat.textContent = (data.mainLanguage || 'UNKNOWN').toUpperCase();
 
     if (data.planetColor) {
