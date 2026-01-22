@@ -4,16 +4,6 @@
   
   
  
-## 🛸 開発者
-このプロジェクトを開発しているコア・メンバーの惑星です。
-
-#### 🪐 バックエンド ＆ デプロイ
-**@nitr0yukkuri**
-![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/https://githubplanet.onrender.com/card.html?username=nitr0yukkuri&fix=responsive9)
-
-#### 🪐 フロントエンド & デザイン
-**@lenagig**
-![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/https://githubplanet.onrender.com/card.html?username=lenagig&fix=responsive9=v0)
 
 
 
@@ -59,6 +49,18 @@ github planetに訪れて、以下のコードを自分の `README.md` に貼る
 | **Database** | PostgreSQL | ユーザーの惑星データ、実績、情報の永続化 |
 | **Authentication** | GitHub OAuth 2.0 | GitHubアカウントを用いた認証およびユーザーデータ取得 |
 | **deployment** | Render  | アプリケーションのホスティング |
+
+
+## 🛸 開発者
+このプロジェクトを開発しているコア・メンバーの惑星です。
+
+#### 🪐 バックエンド ＆ デプロイ
+**@nitr0yukkuri**
+![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/https://githubplanet.onrender.com/card.html?username=nitr0yukkuri&fix=responsive9)
+
+#### 🪐 フロントエンド & デザイン
+**@lenagig**
+![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/https://githubplanet.onrender.com/card.html?username=lenagig&fix=responsive9=v0)
 
 
 ## 🚀 セットアップと実行方法
