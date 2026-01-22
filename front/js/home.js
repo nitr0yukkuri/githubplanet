@@ -554,6 +554,9 @@ async function init() {
     new THREE.CubeTextureLoader().setPath('front/img/skybox/').load(['right.png', 'left.png', 'top.png', 'bottom.png', 'front.png', 'back.png'], (tex) => scene.background = tex);
 
     socket.on('meteor', (data) => {
+        // ★修正: タブが裏にある時(hidden)は処理を中断して「ためない」ようにする
+        if (document.hidden) return;
+
         console.log('Meteor received:', data);
         spawnMeteor(data);
     });

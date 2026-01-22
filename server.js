@@ -13,8 +13,8 @@ import { Server } from 'socket.io';
 const app = express();
 const port = parseInt(process.env.PORT) || 3000;
 
-// ★パフォーマンス: データのキャッシュ有効期限 (15分)
-const DATA_CACHE_DURATION = 15 * 60 * 1000;
+// ★変更: 常に最新のデータを取得するためキャッシュを0（無効）にする
+const DATA_CACHE_DURATION = 0;
 
 app.use(express.json());
 
@@ -179,9 +179,9 @@ app.use('/front/img', express.static(path.join(__dirname, 'front/img'), {
     maxAge: '30d'
 }));
 
-// ★パフォーマンス: その他は標準キャッシュ (1日)
+// ★変更: フロントエンドファイルもキャッシュを残さず「生」にする (maxAge: 0)
 app.use('/front', express.static(path.join(__dirname, 'front'), {
-    maxAge: '1d'
+    maxAge: 0
 }));
 
 if (isProduction) app.set('trust proxy', 1);
