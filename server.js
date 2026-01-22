@@ -1,5 +1,3 @@
-
-
 import 'dotenv/config';
 import express from 'express';
 import session from 'express-session';
@@ -183,7 +181,7 @@ app.use('/front/img', express.static(path.join(__dirname, 'front/img'), {
 
 // ★パフォーマンス: その他は標準キャッシュ (1日)
 app.use('/front', express.static(path.join(__dirname, 'front'), {
-    maxAge: '1h'
+    maxAge: '1d'
 }));
 
 if (isProduction) app.set('trust proxy', 1);
@@ -502,6 +500,25 @@ app.get('/', (req, res) => {
 
 app.get('/card.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'card.html'));
+});
+
+// ★追加: 展示用コントローラー画面
+app.get('/sender', (req, res) => {
+    res.sendFile(path.join(__dirname, 'sender.html'));
+});
+
+// ★追加: 展示用コメット発射API
+app.post('/api/meteor', async (req, res) => {
+    try {
+        const { language } = req.body;
+        const finalColor = await resolveLanguageColor(language || 'Unknown');
+        console.log(`[Manual Meteor] Language: ${language}, Color: ${finalColor}`);
+        io.emit('meteor', { color: finalColor, language: language || 'Manual' });
+        res.json({ success: true, color: finalColor });
+    } catch (e) {
+        console.error('[Manual Meteor Error]', e);
+        res.status(500).json({ error: 'Failed' });
+    }
 });
 
 app.post('/webhook', async (req, res) => {
