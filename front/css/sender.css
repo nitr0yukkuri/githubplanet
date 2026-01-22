@@ -1,0 +1,93 @@
+:root {
+    --bg-color: #050508;
+    --text-color: #ffffff;
+    --accent: #00f3ff;
+    --font-main: 'Rajdhani', sans-serif;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-main);
+    overflow: hidden; /* スクロール防止 */
+    touch-action: manipulation; /* タップの反応を良くする */
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+    align-items: center;
+}
+
+h1 {
+    font-size: 1.5rem;
+    margin: 10px 0 5px 0;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+}
+
+.status {
+    font-size: 0.9rem;
+    color: #6e7a8e;
+    margin-bottom: 20px;
+    height: 1.2em;
+    font-weight: bold;
+}
+
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2列 */
+    gap: 15px;
+    width: 100%;
+    flex-grow: 1;
+    overflow-y: auto; /* ボタンが多い場合はスクロール */
+    padding-bottom: 20px;
+}
+
+.meteor-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: white;
+    font-family: var(--font-main);
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.1s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 80px; /* ボタンの高さ */
+    position: relative;
+    overflow: hidden;
+}
+
+.meteor-btn:active {
+    transform: scale(0.95);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* ボタンの左端に色帯をつける */
+.color-indicator {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+}
+
+.footer {
+    text-align: center;
+    font-size: 0.7rem;
+    color: #444;
+    margin-top: auto;
+}
