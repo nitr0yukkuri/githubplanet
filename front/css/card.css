@@ -30,7 +30,7 @@ body, html {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
 }
 
 /* Chrome, Safari, Edge用スクロールバー非表示 */
@@ -52,8 +52,8 @@ body::before {
     flex-grow: 1; /* 余ったスペースを埋める */
     display: flex;
     flex-direction: column;
-    /* ★変更: 上下中央(center)から上詰め(flex-start)に変更し、上部の余白を完全削除 */
-    justify-content: flex-start; 
+    /* ★変更: 画面中央配置にするため center に変更 */
+    justify-content: center; 
     align-items: center;     /* 水平方向中央 */
     width: 100%;
     padding-bottom: 0; /* マージン調整のため削除 */
@@ -63,9 +63,8 @@ body::before {
 /* ★追加: 戻るボタンのコンテナを絶対配置にしてレイアウト干渉を防ぐ */
 .nav-container {
     position: absolute;
-    top: 20px;
-    width: 90%;
-    max-width: 800px;
+    top: 10px;
+    left: 10px;
     flex-shrink: 0;
     z-index: 100; /* カードより前面に */
     pointer-events: none; /* コンテナ自体はクリックを邪魔しない */
@@ -309,5 +308,48 @@ button#copy-btn svg {
 button#copy-btn:hover {
     background: var(--accent);
     color: #050508;
-    /* ★変更: box-shadowを削除して光らないようにしました */
+}
+
+/* =========================================
+   レスポンシブ対応 (スマホ向け)
+   ========================================= */
+@media screen and (max-width: 850px) {
+    #card-container {
+        width: 90vw;           /* 画面幅の90% */
+        height: auto;          /* 高さは自動計算 */
+        aspect-ratio: 2 / 1;   /* 比率 800:400 = 2:1 を維持 */
+    }
+
+    .card-content {
+        padding: 4% 5%;       /* パディングを相対値に */
+    }
+
+    /* 各テキストサイズを画面幅(vw)に合わせて縮小 */
+    .user-name {
+        font-size: 5.5vw;     /* 2.8rem相当を調整 */
+    }
+    .stat-value {
+        font-size: 3.5vw;     /* 1.8rem相当を調整 */
+    }
+    .id-label, .stat-label, .lang-label-row {
+        font-size: 1.6vw;     /* 小さい文字も縮小 */
+    }
+
+    /* 余白や間隔の微調整 */
+    .header-section { margin-bottom: 2%; }
+    .stats-row { gap: 3%; margin-bottom: 3%; }
+    .stat-divider { height: 4vw; }
+    
+    .code-box {
+        flex-direction: column; /* コードボックスを縦積みに */
+        align-items: stretch;
+        gap: 10px;
+    }
+    code {
+        font-size: 0.8rem;
+        text-align: center;
+    }
+    button#copy-btn {
+        width: 100%;
+    }
 }
