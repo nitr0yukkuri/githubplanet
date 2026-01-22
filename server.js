@@ -1,3 +1,5 @@
+
+
 import 'dotenv/config';
 import express from 'express';
 import session from 'express-session';
@@ -81,7 +83,7 @@ const USER_DATA_QUERY = `
           }
         }
       }
-      repositories(first: 100, ownerAffiliations: OWNER, isFork: false, orderBy: {field: PUSHED_AT, direction: DESC}) {
+      repositories(first: 100, ownerAffiliations: OWNER, isFork: false, privacy: PUBLIC, orderBy: {field: PUSHED_AT, direction: DESC}) {
         nodes {
           name
           stargazerCount
@@ -96,7 +98,7 @@ const USER_DATA_QUERY = `
           }
         }
       }
-      repositoriesContributedTo(first: 20, includeUserRepositories: false, contributionTypes: [COMMIT, PULL_REQUEST, PULL_REQUEST_REVIEW], orderBy: {field: PUSHED_AT, direction: DESC}) {
+      repositoriesContributedTo(first: 20, includeUserRepositories: false, contributionTypes: [COMMIT, PULL_REQUEST, PULL_REQUEST_REVIEW], privacy: PUBLIC, orderBy: {field: PUSHED_AT, direction: DESC}) {
         nodes {
           name
           languages(first: 5, orderBy: {field: SIZE, direction: DESC}) {
@@ -181,7 +183,7 @@ app.use('/front/img', express.static(path.join(__dirname, 'front/img'), {
 
 // ★パフォーマンス: その他は標準キャッシュ (1日)
 app.use('/front', express.static(path.join(__dirname, 'front'), {
-    maxAge: '1d'
+    maxAge: '1h'
 }));
 
 if (isProduction) app.set('trust proxy', 1);
