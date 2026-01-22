@@ -584,12 +584,10 @@ app.get('/api/card/:username', (req, res) => {
 app.get('/card.html', (req, res) => {
     const { username, fix, sig } = req.query;
 
-    // パターン1: 撮影ボットからのアクセス（fix=true かつ 正しい署名がある）
-    if (fix === 'true' && sig) {
-        const expectedSig = generateSignature(username);
-        if (sig === expectedSig) {
-            return res.sendFile(path.join(__dirname, 'card.html'));
-        }
+    // パターン1: 撮影ボット(thum.io)などからのアクセス (fixパラメータがある場合)
+    // 修正: シェア機能（Markdownリンク）は署名を付与できないため、fixがある場合は署名なしでも許可する
+    if (fix) {
+        return res.sendFile(path.join(__dirname, 'card.html'));
     }
 
     // パターン2: ログインユーザー本人が自分のカードを見る場合
