@@ -542,14 +542,22 @@ app.get('/api/card/:username', (req, res) => {
     // ログイン中のユーザー情報を取得
     const loggedInUser = req.session.planetData?.user?.login;
 
-    // 未ログインの場合はエラー
-    if (!loggedInUser) {
+    // ★修正1: 環境変数に設定したキーと一致するかチェック
+    const { username } = req.params;
+    const apiKey = req.headers['x-api-key'] || req.query.api_key;
+    const SYSTEM_API_KEY = process.env.SYSTEM_API_KEY;
+
+    // ★修正2: 「本人」または「正しいAPIキーを持つボット」なら許可
+    const isAuthorized = (loggedInUser && loggedInUser === username)
+        || (SYSTEM_API_KEY && apiKey === SYSTEM_API_KEY);
+
+    if (!isAuthorized) {
         return res.status(403).send('Forbidden: Please login first.');
     }
 
-    // ★修正: リクエストされたURLのusername (req.params.username) は無視し、
-    // 常に「ログイン中のユーザー本人 (loggedInUser)」のカードを作成する対象とする
-    const targetUsername = loggedInUser;
+    // ★修正3: ボットアクセスの場合は URLの username を信頼する
+    // 本人アクセスなら loggedInUser を使う（本来同じ値だが、安全策）
+    const targetUsername = (SYSTEM_API_KEY && apiKey === SYSTEM_API_KEY) ? username : loggedInUser;
 
     let protocol = req.headers['x-forwarded-proto'] || req.protocol;
     if (req.get('host') && req.get('host').includes('onrender.com')) {
@@ -947,41 +955,6 @@ app.get('/api/planets/random', async (req, res) => {
         console.error('[API /random Error]', e);
         res.status(500).json({ error: 'Internal Server Error' });
     }
-});
-
-// ★修正: カード生成APIのロジック変更
-app.get('/api/card/:username', (req, res) => {
-    // ログイン中のユーザー情報を取得
-    const loggedInUser = req.session.planetData?.user?.login;
-
-    // 未ログインの場合はエラー
-    if (!loggedInUser) {
-        return res.status(403).send('Forbidden: Please login first.');
-    }
-
-    // ★修正: リクエストされたURLのusername (req.params.username) は無視し、
-    // 常に「ログイン中のユーザー本人 (loggedInUser)」のカードを作成する対象とする
-    const targetUsername = loggedInUser;
-
-    let protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    if (req.get('host') && req.get('host').includes('onrender.com')) {
-        protocol = 'https';
-    }
-
-    const host = req.headers['x-forwarded-host'] || req.get('host');
-    const timestamp = Date.now();
-
-    // ★追加: 署名をURLに付与して、撮影ボットだけがアクセスできるようにする
-    const sig = generateSignature(targetUsername);
-
-    // URLに署名(sig)を追加
-    const targetUrl = `${protocol}://${host}/card.html?username=${targetUsername}&fix=true&ts=${timestamp}&sig=${sig}`;
-
-    console.log(`[Card] Redirecting generation for: ${targetUrl}`);
-
-    const screenshotServiceUrl = `https://image.thum.io/get/png/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
-
-    res.redirect(screenshotServiceUrl);
 });
 
 const server = app.listen(port, '0.0.0.0', () => {

@@ -17,10 +17,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Fetch and Save Image
+        env:
+          SYSTEM_API_KEY: ${{ secrets.SYSTEM_API_KEY }}
         run: |
           # RenderのURLから画像をダウンロードして保存
           # サーバーが寝ている場合、応答に時間がかかるので max-time を長めに設定
-          curl -L --max-time 120 --retry 3 --output profile_card.png "https://githubplanet.onrender.com/api/card/nitr0yukkuri"
+          curl -L --max-time 120 --retry 3 --output profile_card.png "https://githubplanet.onrender.com/api/card/nitr0yukkuri?api_key=${SYSTEM_API_KEY}"
 
       - name: Commit and Push
         run: |
