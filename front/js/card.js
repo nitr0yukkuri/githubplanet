@@ -24,28 +24,24 @@ const copyBtn = document.getElementById('copy-btn');
 
 if (isScreenshotMode) {
     // スクリーンショット撮影モード（thum.io用）
-    // 余白を完全に排除し、カードを800x420の画面いっぱいに表示する設定
 
-    // 1. ベースHTML/Bodyの強制リセット
-    // マージン・パディングを排除し、オーバーフローを隠して背景を透明化
-    const rootStyle = 'margin: 0; padding: 0; width: 800px; height: 420px; overflow: hidden; background: transparent;';
+    // 【修正1】高さを400pxに統一し、背景を黒に固定（透明だと不具合の原因になるため）
+    const rootStyle = 'margin: 0; padding: 0; width: 800px; height: 400px; overflow: hidden; background: #030305;';
     document.documentElement.style.cssText = rootStyle;
     document.body.style.cssText = rootStyle + ' display: block;';
 
     // 2. コンテナの配置修正
-    // ラッパーの影響を受けないよう、コンテナをbody直下に移動
     if (containerElement.parentNode !== document.body) {
         document.body.appendChild(containerElement);
     }
 
-    // 3. コンテナスタイルの強制適用 (CSSを上書き)
-    // 絶対配置で左上に固定し、装飾（角丸・影・枠線）を削除
+    // 【修正2】高さを400pxにし、余白・ボーダー・影を完全に削除してフラットにする
     containerElement.style.cssText = `
         position: absolute;
         top: 0;
         left: 0;
         width: 800px;
-        height: 420px;
+        height: 400px;
         margin: 0;
         padding: 0;
         border: none;
@@ -63,24 +59,23 @@ if (isScreenshotMode) {
     const nav = document.querySelector('.nav-container');
     if (nav) nav.style.display = 'none';
 
-    // shareSectionはwrapper内にあるが、念のため個別に非表示
     if (shareSection) shareSection.style.display = 'none';
 
 } else {
-    // 通常モード（人間が見ているとき）
+    // 通常モード
     if (shareSection) shareSection.style.display = 'block';
 
     const deployUrl = window.location.origin;
 
-    // 画像生成用のURL（fix=true付き）
-    const targetUrl = `${deployUrl}/card.html?username=${username}&fix=true`;
-    // width=800, crop=420 でカード画像を生成
-    const thumbUrl = `https://image.thum.io/get/width/800/crop/420/noanimate/wait/6/${targetUrl}`;
+    // 【修正3】fix=true をパラメータの先頭に移動
+    // thum.io がパラメータを途中で切り捨てても、少なくとも「撮影モード」には入るようにする対策
+    const targetUrl = `${deployUrl}/card.html?fix=true&username=${username}`;
 
-    // クリックしたときの飛び先URL
+    // 【修正4】cropを420pxから400pxに変更（余白除去）
+    const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/${targetUrl}`;
+
     const pageUrl = `${deployUrl}/card.html?username=${username}`;
 
-    // Markdownコード生成
     const mdText = `[![GitHub Planet](${thumbUrl})](${pageUrl})`;
 
     if (markdownCode) markdownCode.textContent = mdText;

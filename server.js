@@ -571,8 +571,8 @@ app.get('/api/card/:username', (req, res) => {
 
     console.log(`[Card] Redirecting generation for: ${targetUrl}`);
 
-    // ★修正: JSで設定した高さに合わせてクロップサイズを420に変更
-    const screenshotServiceUrl = `https://image.thum.io/get/png/width/800/crop/420/noanimate/wait/8/${targetUrl}`;
+    // ★修正: JSで設定した高さ(400)に合わせてクロップサイズを400に変更
+    const screenshotServiceUrl = `https://image.thum.io/get/png/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
 
     res.redirect(screenshotServiceUrl);
 });
@@ -587,9 +587,9 @@ app.get('/card.html', (req, res) => {
         return res.sendFile(path.join(__dirname, 'card.html'));
     }
 
-    // パターン2: ログインユーザー本人が自分のカードを見る場合
+    // パターン2: ログインユーザー本人 または ローカル環境(開発中) の場合
     const loggedInUser = req.session.planetData?.user?.login;
-    if (loggedInUser && loggedInUser === username) {
+    if (!isProduction || (loggedInUser && loggedInUser === username)) {
         return res.sendFile(path.join(__dirname, 'card.html'));
     }
 
