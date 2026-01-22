@@ -24,57 +24,47 @@ const copyBtn = document.getElementById('copy-btn');
 
 if (isScreenshotMode) {
     // スクリーンショット撮影モード（thum.io用）
-    // 余白を消し、カードを画面幅いっぱいに表示する設定
+    // 余白を完全に排除し、カードを800x420の画面いっぱいに表示する設定
 
-    // ベースのHTML/Bodyの設定
-    document.documentElement.style.margin = '0';
-    document.documentElement.style.padding = '0';
-    document.documentElement.style.width = '800px'; // ★修正: 強制的に800px
-    document.documentElement.style.height = '420px';
-    document.documentElement.style.overflow = 'hidden';
+    // 1. ベースHTML/Bodyの強制リセット
+    // マージン・パディングを排除し、オーバーフローを隠して背景を透明化
+    const rootStyle = 'margin: 0; padding: 0; width: 800px; height: 420px; overflow: hidden; background: transparent;';
+    document.documentElement.style.cssText = rootStyle;
+    document.body.style.cssText = rootStyle + ' display: block;';
 
-    document.body.style.margin = '0';
-    document.body.style.padding = '0';
-    document.body.style.width = '800px'; // ★修正: 強制的に800px
-    document.body.style.height = '420px';
-    document.body.style.overflow = 'hidden';
-    document.body.style.display = 'block';
-
-    // 背景を完全に透明化
-    document.body.style.background = 'transparent';
-    document.documentElement.style.background = 'transparent';
-
-    // コンテナの設定
-    containerElement.style.width = '800px'; // ★修正: 100%ではなく800px固定
-    containerElement.style.height = '420px'; // ★修正: 高さも固定
-    containerElement.style.margin = '0';
-    containerElement.style.position = 'absolute';
-    containerElement.style.top = '0';
-    containerElement.style.left = '0';
-    containerElement.style.boxSizing = 'border-box';
-
-    // ★追加: 余白の原因になる影と角丸を削除し、完全に四角くする
-    containerElement.style.boxShadow = 'none';
-    containerElement.style.borderRadius = '0';
-    containerElement.style.border = 'none'; // 枠線もなくして完全に埋める
-
-    // 不要なUI要素を非表示
-    if (shareSection) shareSection.style.display = 'none';
-
-    const backBtn = document.querySelector('.back-button');
-    if (backBtn && backBtn.parentElement) {
-        backBtn.parentElement.style.display = 'none';
+    // 2. コンテナの配置修正
+    // ラッパーの影響を受けないよう、コンテナをbody直下に移動
+    if (containerElement.parentNode !== document.body) {
+        document.body.appendChild(containerElement);
     }
 
-    // ラッパーdivの影響を排除
+    // 3. コンテナスタイルの強制適用 (CSSを上書き)
+    // 絶対配置で左上に固定し、装飾（角丸・影・枠線）を削除
+    containerElement.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 800px;
+        height: 420px;
+        margin: 0;
+        padding: 0;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        box-sizing: border-box;
+        z-index: 1000;
+        background-color: var(--card-bg-inner);
+    `;
+
+    // 4. 不要な要素の完全非表示
     const wrapper = document.querySelector('.content-wrapper');
-    if (wrapper) {
-        wrapper.style.display = 'block';
-        wrapper.style.width = '800px';
-        wrapper.style.height = '420px';
-        wrapper.style.padding = '0';
-        wrapper.style.margin = '0';
-    }
+    if (wrapper) wrapper.style.display = 'none';
+
+    const nav = document.querySelector('.nav-container');
+    if (nav) nav.style.display = 'none';
+
+    // shareSectionはwrapper内にあるが、念のため個別に非表示
+    if (shareSection) shareSection.style.display = 'none';
 
 } else {
     // 通常モード（人間が見ているとき）
