@@ -1,0 +1,89 @@
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Sans', 'Noto Sans CJK JP', sans-serif;
+    color: #ffffff;
+    background-color: #000;
+    /* 実績画面と同じ背景画像を使用 */
+    background-image: url('/front/img/Achievementsimage.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.settings-container {
+    width: 100%;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.2); /* 背景を少し暗くして文字を読みやすく */
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    display: flex;
+    flex-direction: column;
+    padding: 30px 40px;
+    box-sizing: border-box;
+}
+
+.back-button {
+    color: #ccc;
+    text-decoration: none;
+    font-size: 1rem;
+    padding: 8px 12px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    transition: background-color 0.2s;
+    align-self: flex-start; /* 左上に配置 */
+    display: inline-block;
+    border: none;
+    cursor: pointer;
+}
+
+.back-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.coming-soon-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    animation: fadeIn 0.8s ease;
+}
+
+.coming-soon-content h1 {
+    font-size: 4rem;
+    margin: 0 0 20px 0;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
+    letter-spacing: 5px;
+    font-weight: 700;
+}
+
+.coming-soon-content p {
+    font-size: 1.5rem;
+    color: #ddd;
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* スマホ対応 */
+@media screen and (max-width: 768px) {
+    .settings-container {
+        padding: 20px;
+    }
+    
+    .coming-soon-content h1 {
+        font-size: 2.5rem;
+        letter-spacing: 2px;
+    }
+
+    .coming-soon-content p {
+        font-size: 1.1rem;
+    }
+}

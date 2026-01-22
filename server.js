@@ -507,6 +507,11 @@ app.get('/sender', (req, res) => {
     res.sendFile(path.join(__dirname, 'sender.html'));
 });
 
+// ★追加: 設定画面（Coming Soon）
+app.get('/settings', (req, res) => {
+    res.sendFile(path.join(__dirname, 'settings.html'));
+});
+
 // ★追加: 展示用コメット発射API
 app.post('/api/meteor', async (req, res) => {
     try {
