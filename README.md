@@ -18,7 +18,7 @@
 
 
 # 🪐 GitHub Planet
-**GitHubの活動データを基に、ユーザーごとにパーソナライズされた3Dのオリジナル惑星を生成・表示するWebアプリケーションです。** あなたの開発履歴が、宇宙に浮かぶ一つの星として表現されます。✨
+**GitHubの活動データを基に、ユーザーごとに3Dの固有の惑星を生成・表示するWebアプリケーションです。** あなたの開発履歴が、宇宙に浮かぶ一つの星として表現されます。✨
 
 ---
 
@@ -43,7 +43,8 @@
 github planetに訪れて、以下のコードを自分の `README.md` に貼るだけで、あなたの惑星カードが表示されます。
 
 \`\`\`markdown
-[![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/https://githubplanet.onrender.com/card.html?username=nitr0yukkuri&fix=true&refresh=97)](https://githubplanet.onrender.com/card.html?username=nitr0yukkuri)
+  `[![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/https://githubplanet.onrender.com/card.html?username=nitr0yukkuri&fix=true&refresh=97)](https://githubplanet.onrender.com/card.html?username=ユーザー名)`
+
 \`\`\`
 ## 🛠️ 技術構成（Tech Stack）
 
@@ -55,8 +56,8 @@ github planetに訪れて、以下のコードを自分の `README.md` に貼る
 | **Backend** | Node.js / Express | APIエンドポイントの提供、データ処理ロジックの実装 |
 | **AI** | Google Gemini API | 言語に応じた色生成、惑星に付与するユニークな二つ名の生成 |
 | **Real-time** | Socket.IO | Webhookと連携したリアルタイムな流星エフェクトの配信 |
-| **Database** | PostgreSQL | ユーザーの惑星データ、実績、セッション情報の永続化 |
-| **Authentication** | GitHub OAuth 2.0 | GitHubアカウントを用いたセキュアな認証およびユーザーデータ取得 |
+| **Database** | PostgreSQL | ユーザーの惑星データ、実績、情報の永続化 |
+| **Authentication** | GitHub OAuth 2.0 | GitHubアカウントを用いた認証およびユーザーデータ取得 |
 | **deployment** | Render  | アプリケーションのホスティング |
 
 
