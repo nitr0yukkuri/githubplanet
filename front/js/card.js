@@ -74,7 +74,8 @@ if (isScreenshotMode) {
     // 通常モード（人間が見ているとき）
     if (shareSection) shareSection.style.display = 'block';
 
-    const deployUrl = 'https://githubplanet.onrender.com';
+    // ★修正: ハードコードではなく現在のオリジンを使用する (localhost対応)
+    const deployUrl = window.location.origin;
 
     // 画像生成用のURL（fix=true付き）
     const targetUrl = `${deployUrl}/card.html?username=${username}&fix=true`;
