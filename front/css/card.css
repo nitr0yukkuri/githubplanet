@@ -52,22 +52,20 @@ body::before {
     flex-grow: 1; /* 余ったスペースを埋める */
     display: flex;
     flex-direction: column;
-    /* ★変更: 画面中央配置にするため center に変更 */
     justify-content: center; 
     align-items: center;     /* 水平方向中央 */
     width: 100%;
-    padding-bottom: 0; /* マージン調整のため削除 */
+    padding-bottom: 0;
     box-sizing: border-box;
 }
 
-/* ★追加: 戻るボタンのコンテナを絶対配置にしてレイアウト干渉を防ぐ */
 .nav-container {
     position: absolute;
     top: 10px;
     left: 10px;
     flex-shrink: 0;
-    z-index: 100; /* カードより前面に */
-    pointer-events: none; /* コンテナ自体はクリックを邪魔しない */
+    z-index: 100;
+    pointer-events: none;
 }
 
 .back-button {
@@ -82,7 +80,7 @@ body::before {
     cursor: pointer;
     border: none;
     font-family: var(--font-jp);
-    pointer-events: auto; /* ボタンのクリックは有効化 */
+    pointer-events: auto;
 }
 .back-button:hover {
     background-color: rgba(255, 255, 255, 0.2);
@@ -91,12 +89,9 @@ body::before {
 
 #card-container {
     position: relative;
-    /* ★変更: URLの width/800 に合わせて固定 */
     width: 800px;
     max-width: 100%; 
-    /* ★変更: URLの crop/400 に合わせて高さを400pxに変更 */
     height: 400px;
-    /* ★変更: crop時に切れないようマージンを0に設定 */
     margin: 0 auto; 
     background-color: var(--card-bg-inner);
     overflow: hidden;
@@ -104,6 +99,7 @@ body::before {
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.15);
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+    box-sizing: border-box; /* ★必須: borderを含めたサイズ計算 */
 }
 
 canvas {
