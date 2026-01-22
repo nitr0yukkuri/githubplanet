@@ -572,6 +572,7 @@ app.get('/api/card/:username', (req, res) => {
     console.log(`[Card] Redirecting generation for: ${targetUrl}`);
 
     // ★修正: JSで設定した高さ(400)に合わせてクロップサイズを400に変更
+    // width=800のビューポートで描画し、上部400pxを切り取る
     const screenshotServiceUrl = `https://image.thum.io/get/png/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
 
     res.redirect(screenshotServiceUrl);

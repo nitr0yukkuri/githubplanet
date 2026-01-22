@@ -23,36 +23,47 @@ const markdownCode = document.getElementById('markdown-code');
 const copyBtn = document.getElementById('copy-btn');
 
 if (isScreenshotMode) {
-    // スクリーンショット撮影モード（thum.io用）
+    // --- 【修正箇所】スクリーンショット撮影モード（thum.io用） ---
+    // CSSのFlexbox中央寄せや余白を完全に無効化し、左上に固定配置する
 
-    // 【修正1】高さを400pxに統一し、背景を黒に固定（透明だと不具合の原因になるため）
-    const rootStyle = 'margin: 0; padding: 0; width: 800px; height: 400px; overflow: hidden; background: #030305;';
-    document.documentElement.style.cssText = rootStyle;
-    document.body.style.cssText = rootStyle + ' display: block;';
+    // 1. html, body のスタイルをリセット（min-heightやdisplay:flexを打ち消す）
+    const resetStyle = `
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 800px !important;
+        height: 400px !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        background: #000 !important;
+        display: block !important;
+    `;
+    document.documentElement.style.cssText = resetStyle;
+    document.body.style.cssText = resetStyle;
 
-    // 2. コンテナの配置修正
+    // 2. コンテナがbody直下にない場合は移動（念のため）
     if (containerElement.parentNode !== document.body) {
         document.body.appendChild(containerElement);
     }
 
-    // 【修正2】高さを400pxにし、余白・ボーダー・影を完全に削除してフラットにする
+    // 3. カードコンテナを強制的に左上(0,0)に固定し、装飾を削除してフラットにする
     containerElement.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 800px;
-        height: 400px;
-        margin: 0;
-        padding: 0;
-        border: none;
-        border-radius: 0;
-        box-shadow: none;
-        box-sizing: border-box;
-        z-index: 1000;
-        background-color: var(--card-bg-inner);
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 800px !important;
+        height: 400px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        box-sizing: border-box !important;
+        z-index: 9999 !important;
+        background-color: var(--card-bg-inner) !important;
+        transform: none !important;
     `;
 
-    // 4. 不要な要素の完全非表示
+    // 4. 不要なUI要素を非表示
     const wrapper = document.querySelector('.content-wrapper');
     if (wrapper) wrapper.style.display = 'none';
 
@@ -62,16 +73,15 @@ if (isScreenshotMode) {
     if (shareSection) shareSection.style.display = 'none';
 
 } else {
-    // 通常モード
+    // --- 通常モード ---
     if (shareSection) shareSection.style.display = 'block';
 
     const deployUrl = window.location.origin;
 
-    // 【修正3】fix=true をパラメータの先頭に移動
-    // thum.io がパラメータを途中で切り捨てても、少なくとも「撮影モード」には入るようにする対策
+    // fix=true をパラメータの先頭に配置
     const targetUrl = `${deployUrl}/card.html?fix=true&username=${username}`;
 
-    // 【修正4】cropを420pxから400pxに変更（余白除去）
+    // thum.io用URL: width800で描画し、上から400pxを切り取る
     const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/${targetUrl}`;
 
     const pageUrl = `${deployUrl}/card.html?username=${username}`;
@@ -87,16 +97,20 @@ if (isScreenshotMode) {
     }
 }
 
-// --- 以下、描画ロジック（変更なし） ---
-const width = containerElement.clientWidth;
-const height = containerElement.clientHeight;
+// --- 以下、Three.js描画ロジック（変更なし） ---
+const width = 800; // 固定サイズで初期化
+const height = 400; // 固定サイズで初期化
+
+// コンテナサイズが取得できない場合のフォールバック
+const containerWidth = containerElement ? containerElement.clientWidth : 800;
+const containerHeight = containerElement ? containerElement.clientHeight : 400;
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(45, (containerWidth || 800) / (containerHeight || 400), 0.1, 1000);
 camera.position.set(5.5, 0, 8);
 
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-renderer.setSize(width, height);
+renderer.setSize(containerWidth || 800, containerHeight || 400);
 renderer.setPixelRatio(window.devicePixelRatio);
 canvasContainer.appendChild(renderer.domElement);
 
@@ -109,11 +123,14 @@ controls.enabled = false;
 controls.target.set(3.5, 0, 0);
 
 window.addEventListener('resize', () => {
-    const w = containerElement.clientWidth;
-    const h = containerElement.clientHeight;
-    renderer.setSize(w, h);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
+    // 撮影モード時はリサイズ処理を無視して固定サイズを維持する
+    if (!isScreenshotMode) {
+        const w = containerElement.clientWidth;
+        const h = containerElement.clientHeight;
+        renderer.setSize(w, h);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+    }
 });
 
 const textureLoader = new THREE.TextureLoader();
