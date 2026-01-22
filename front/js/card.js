@@ -24,63 +24,58 @@ const copyBtn = document.getElementById('copy-btn');
 
 if (isScreenshotMode) {
     // スクリーンショット撮影モード（thum.io用）
-    // 余白を消し、カードを画面幅いっぱいに表示する設定
+    // 余白を完全に排除し、カードを800x420の画面いっぱいに表示する設定
 
-    // ベースのHTML/Bodyは画面全体を使う設定にする
-    document.documentElement.style.width = '100%';
-    document.documentElement.style.height = '100%';
-    document.body.style.width = '100%';
-    document.body.style.height = '100%';
+    // 1. ベースHTML/Bodyの強制リセット
+    // マージン・パディングを排除し、オーバーフローを隠して背景を透明化
+    const rootStyle = 'margin: 0; padding: 0; width: 800px; height: 420px; overflow: hidden; background: transparent;';
+    document.documentElement.style.cssText = rootStyle;
+    document.body.style.cssText = rootStyle + ' display: block;';
 
-    // 余白とスクロールの完全除去
-    document.body.style.margin = '0';
-    document.body.style.padding = '0';
-    document.body.style.overflow = 'hidden';
-
-    // CSSのFlexbox中央寄せを解除してブロック配置にする
-    document.body.style.display = 'block';
-
-    // 背景を完全に透明化
-    document.body.style.background = 'transparent';
-    document.documentElement.style.background = 'transparent';
-
-    // ★重要変更: 幅は画面一杯(100%)にしつつ、高さは400pxに固定してフッター切れを防ぐ
-    containerElement.style.width = '100%';
-    containerElement.style.height = '400px';
-    containerElement.style.margin = '0';
-    containerElement.style.position = 'absolute';
-    containerElement.style.top = '0';
-    containerElement.style.left = '0';
-
-    // 不要なUI要素を非表示
-    if (shareSection) shareSection.style.display = 'none';
-
-    const backBtn = document.querySelector('.back-button');
-    if (backBtn && backBtn.parentElement) {
-        backBtn.parentElement.style.display = 'none';
+    // 2. コンテナの配置修正
+    // ラッパーの影響を受けないよう、コンテナをbody直下に移動
+    if (containerElement.parentNode !== document.body) {
+        document.body.appendChild(containerElement);
     }
 
-    // ラッパーdivの影響を排除
+    // 3. コンテナスタイルの強制適用 (CSSを上書き)
+    // 絶対配置で左上に固定し、装飾（角丸・影・枠線）を削除
+    containerElement.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 800px;
+        height: 420px;
+        margin: 0;
+        padding: 0;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        box-sizing: border-box;
+        z-index: 1000;
+        background-color: var(--card-bg-inner);
+    `;
+
+    // 4. 不要な要素の完全非表示
     const wrapper = document.querySelector('.content-wrapper');
-    if (wrapper) {
-        wrapper.style.display = 'block';
-        wrapper.style.width = '100%';
-        wrapper.style.height = '100%';
-        wrapper.style.padding = '0';
-        wrapper.style.margin = '0';
-    }
+    if (wrapper) wrapper.style.display = 'none';
+
+    const nav = document.querySelector('.nav-container');
+    if (nav) nav.style.display = 'none';
+
+    // shareSectionはwrapper内にあるが、念のため個別に非表示
+    if (shareSection) shareSection.style.display = 'none';
 
 } else {
     // 通常モード（人間が見ているとき）
     if (shareSection) shareSection.style.display = 'block';
 
-    // ★修正: ハードコードではなく現在のオリジンを使用する (localhost対応)
     const deployUrl = window.location.origin;
 
     // 画像生成用のURL（fix=true付き）
     const targetUrl = `${deployUrl}/card.html?username=${username}&fix=true`;
-    // width=800, crop=400 でカード画像を生成
-    const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/${targetUrl}`;
+    // width=800, crop=420 でカード画像を生成
+    const thumbUrl = `https://image.thum.io/get/width/800/crop/420/noanimate/wait/6/${targetUrl}`;
 
     // クリックしたときの飛び先URL
     const pageUrl = `${deployUrl}/card.html?username=${username}`;
