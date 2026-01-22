@@ -13,7 +13,7 @@ import { Server } from 'socket.io';
 const app = express();
 const port = parseInt(process.env.PORT) || 3000;
 
-// ★変更: 常に最新のデータを取得するためキャッシュを0（無効）にする
+// ★パフォーマンス: 常に最新のデータを取得するためキャッシュを0（無効）にする
 const DATA_CACHE_DURATION = 0;
 
 app.use(express.json());
@@ -48,6 +48,39 @@ const LANGUAGE_COLORS = {
     R: '#198CE7', Julia: '#a270ba', Vue: '#41b883', Dockerfile: '#384d54',
     Svelte: '#ff3e00', Elixir: '#6e4a7e', 'Objective-C': '#438eff', VimScript: '#199f4b'
 };
+
+// ★追加: 拡張子から言語名を判定するためのマップ
+const EXTENSION_MAP = {
+    'js': 'JavaScript', 'jsx': 'JavaScript', 'mjs': 'JavaScript',
+    'ts': 'TypeScript', 'tsx': 'TypeScript',
+    'py': 'Python', 'ipynb': 'Python',
+    'html': 'HTML', 'htm': 'HTML',
+    'css': 'CSS', 'scss': 'CSS', 'sass': 'CSS',
+    'java': 'Java', 'jar': 'Java',
+    'rb': 'Ruby', 'erb': 'Ruby',
+    'c': 'C', 'h': 'C',
+    'cpp': 'C++', 'hpp': 'C++', 'cc': 'C++',
+    'cs': 'C#', 'csx': 'C#',
+    'go': 'Go',
+    'rs': 'Rust',
+    'php': 'PHP',
+    'swift': 'Swift',
+    'kt': 'Kotlin', 'kts': 'Kotlin',
+    'sh': 'Shell', 'bash': 'Shell', 'zsh': 'Shell',
+    'dart': 'Dart',
+    'scala': 'Scala',
+    'pl': 'Perl', 'pm': 'Perl',
+    'lua': 'Lua',
+    'hs': 'Haskell',
+    'r': 'R',
+    'jl': 'Julia',
+    'vue': 'Vue',
+    'svelte': 'Svelte',
+    'ex': 'Elixir', 'exs': 'Elixir',
+    'm': 'Objective-C', 'mm': 'Objective-C',
+    'vim': 'VimScript'
+};
+
 const DYNAMIC_COLOR_CACHE = {};
 
 const ACHIEVEMENTS = {
@@ -179,7 +212,7 @@ app.use('/front/img', express.static(path.join(__dirname, 'front/img'), {
     maxAge: '30d'
 }));
 
-// ★変更: フロントエンドファイルもキャッシュを残さず「生」にする (maxAge: 0)
+// ★パフォーマンス: フロントエンドファイルもキャッシュを残さず「生」にする (maxAge: 0)
 app.use('/front', express.static(path.join(__dirname, 'front'), {
     maxAge: 0
 }));
@@ -494,22 +527,41 @@ async function updateAndSavePlanetData(user, accessToken) {
     return { mainLanguage, planetColor, languageStats, totalCommits, weeklyCommits, planetSizeFactor, planetName, achievements };
 }
 
+// ★追加: 署名生成用のヘルパー関数
+function generateSignature(username) {
+    const secret = process.env.SESSION_SECRET || 'dev_secret';
+    return crypto.createHmac('sha256', secret).update(username).digest('hex');
+}
+
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// ★修正: カード閲覧画面の制限追加
 app.get('/card.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'card.html'));
+    const { username, fix, sig } = req.query;
+
+    // パターン1: 撮影ボットからのアクセス（fix=true かつ 正しい署名がある）
+    if (fix === 'true' && sig) {
+        const expectedSig = generateSignature(username);
+        if (sig === expectedSig) {
+            return res.sendFile(path.join(__dirname, 'card.html'));
+        }
+    }
+
+    // パターン2: ログインユーザー本人が自分のカードを見る場合
+    const loggedInUser = req.session.planetData?.user?.login;
+    if (loggedInUser && loggedInUser === username) {
+        return res.sendFile(path.join(__dirname, 'card.html'));
+    }
+
+    // それ以外はアクセス拒否
+    res.status(403).send('Forbidden: This card is private.');
 });
 
 // ★追加: 展示用コントローラー画面
 app.get('/sender', (req, res) => {
     res.sendFile(path.join(__dirname, 'sender.html'));
-});
-
-// ★追加: 設定画面（Coming Soon）
-app.get('/settings', (req, res) => {
-    res.sendFile(path.join(__dirname, 'settings.html'));
 });
 
 // ★追加: 展示用コメット発射API
@@ -526,14 +578,36 @@ app.post('/api/meteor', async (req, res) => {
     }
 });
 
+// ★修正: 1コミット1コメット
 app.post('/webhook', async (req, res) => {
     try {
         const payload = req.body;
-        if (payload && payload.repository) {
-            const lang = payload.repository.language || 'Unknown';
-            const color = await resolveLanguageColor(lang);
-            console.log(`[Webhook] Commit detected! Language: ${lang}, Color: ${color}`);
-            io.emit('meteor', { color: color, language: lang });
+        // payload.commits は Pushイベントの際にコミット配列として送られてくる
+        if (payload && payload.repository && payload.commits && Array.isArray(payload.commits)) {
+            const repoLang = payload.repository.language || 'Unknown';
+
+            // ★修正: コミットごとに1つのコメットを送る
+            for (const commit of payload.commits) {
+                let targetLang = repoLang; // デフォルトはリポジトリの言語
+
+                // コミット内の変更ファイル(added + modified)から言語を探す
+                const files = [
+                    ...(commit.added || []),
+                    ...(commit.modified || [])
+                ];
+
+                for (const file of files) {
+                    const ext = file.split('.').pop().toLowerCase();
+                    if (EXTENSION_MAP[ext]) {
+                        targetLang = EXTENSION_MAP[ext];
+                        break; // 1つ見つかったらその言語を採用（1コミット1コメットのため）
+                    }
+                }
+
+                const color = await resolveLanguageColor(targetLang);
+                console.log(`[Webhook] Commit: ${commit.id.substring(0, 7)} -> Language: ${targetLang}, Color: ${color}`);
+                io.emit('meteor', { color: color, language: targetLang });
+            }
         }
         res.status(200).send('OK');
     } catch (e) {
@@ -840,8 +914,15 @@ app.get('/api/planets/random', async (req, res) => {
     }
 });
 
+// ★修正: カード生成APIの制限追加
 app.get('/api/card/:username', (req, res) => {
     const { username } = req.params;
+
+    // ★セキュリティ: ログイン中のユーザーしか自分のカードを作れないようにする
+    const loggedInUser = req.session.planetData?.user?.login;
+    if (!loggedInUser || loggedInUser !== username) {
+        return res.status(403).send('Forbidden: You can only generate your own card.');
+    }
 
     let protocol = req.headers['x-forwarded-proto'] || req.protocol;
     if (req.get('host') && req.get('host').includes('onrender.com')) {
@@ -850,12 +931,15 @@ app.get('/api/card/:username', (req, res) => {
 
     const host = req.headers['x-forwarded-host'] || req.get('host');
     const timestamp = Date.now();
-    // ★修正: fix=trueを追加してカードモードで描画させる
-    const targetUrl = `${protocol}://${host}/card.html?username=${username}&fix=true&ts=${timestamp}`;
+
+    // ★追加: 署名をURLに付与して、撮影ボットだけがアクセスできるようにする
+    const sig = generateSignature(username);
+
+    // URLに署名(sig)を追加
+    const targetUrl = `${protocol}://${host}/card.html?username=${username}&fix=true&ts=${timestamp}&sig=${sig}`;
 
     console.log(`[Card] Redirecting generation for: ${targetUrl}`);
 
-    // ★修正: /png を追加して透明背景に対応させる
     const screenshotServiceUrl = `https://image.thum.io/get/png/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
 
     res.redirect(screenshotServiceUrl);
