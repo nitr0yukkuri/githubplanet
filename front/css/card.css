@@ -10,14 +10,17 @@
     --font-jp: 'Rajdhani', 'Hiragino Sans', 'Noto Sans CJK JP', sans-serif;
 }
 
+/* 基本設定 */
 body, html {
     margin: 0;
     padding: 0;
     width: 100%;
     min-height: 100vh;
-    overflow-y: scroll;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
+    /* 通常時はスクロール許可 */
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: none; 
+    -ms-overflow-style: none;
     
     background-color: #000;
     background-image: url('/front/img/Achievementsimage.jpg');
@@ -32,7 +35,6 @@ body, html {
     justify-content: center;
 }
 
-/* Chrome, Safari, Edge用スクロールバー非表示 */
 body::-webkit-scrollbar {
     display: none;
 }
@@ -135,7 +137,6 @@ canvas {
     top: 0; right: 0;
     width: 55%;
     height: 100%;
-    /* パディングを少し詰めて文字切れを防ぎつつ大きく見せる */
     padding: 20px 30px; 
     box-sizing: border-box;
     z-index: 10;
@@ -356,9 +357,10 @@ html.is-screenshot body,
 body.is-screenshot {
     margin: 0 !important;
     padding: 0 !important;
-    width: 800px !important;
-    height: 400px !important;
-    min-height: 0 !important;
+    /* 幅指定を「800px」ではなく「画面いっぱい」にする */
+    width: 100vw !important;
+    height: 100vh !important;
+    /* スクロールバーを強制的に消す */
     overflow: hidden !important;
     background-color: var(--card-bg-inner) !important;
     background-image: none !important;
@@ -386,8 +388,12 @@ body.is-screenshot #card-container {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
-    width: 800px !important;
-    height: 400px !important;
+    /* 上下左右0 + autoサイズで、親要素(body=100vw)に合わせて伸び縮みさせる */
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    
     margin: 0 !important;
     padding: 0 !important;
     border-radius: 0 !important;
@@ -395,7 +401,7 @@ body.is-screenshot #card-container {
     box-shadow: none !important;
     transform: none !important;
     z-index: 9999 !important;
-    /* レスポンシブ解除のダメ押し */
+    
     max-width: none !important;
     aspect-ratio: auto !important;
 }
