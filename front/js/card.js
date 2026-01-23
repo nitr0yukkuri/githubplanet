@@ -84,8 +84,8 @@ const height = isScreenshotMode ? window.innerHeight : (containerElement ? conta
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
 
-// ★修正: カメラ位置調整。Zを12.0に引いて惑星を小さく表示。X=4.0で左寄せ配置。
-camera.position.set(4.0, 0, 12.0);
+// ★修正: カメラをさらに引く(Z=16.0)ことで惑星を小さくし、X位置はそのまま
+camera.position.set(4.0, 0, 16.0);
 
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setSize(width, height);
@@ -123,8 +123,8 @@ backLight.position.set(-5, 2, -10);
 scene.add(backLight);
 
 const planetGroup = new THREE.Group();
-// ★修正: 惑星グループ全体を少し上(Y=1.2)に持ち上げて、全体が見えるようにする
-planetGroup.position.y = 1.2;
+// ★修正: 惑星位置をさらに上(Y=2.0)に持ち上げ、画面中央付近に来るように調整
+planetGroup.position.y = 2.0;
 scene.add(planetGroup);
 
 let planetMesh;
