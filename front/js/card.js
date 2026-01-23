@@ -84,8 +84,14 @@ const height = isScreenshotMode ? window.innerHeight : (containerElement ? conta
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
 
-// ★修正: カメラ位置をZ=10.0に近づけ(大きくする)、X=6.0は維持
-camera.position.set(6.0, 0, 10.0);
+// ★修正: カメラ位置設定
+if (isScreenshotMode) {
+    // スクショ時: Zを17.0にして惑星を小さく見せる
+    camera.position.set(6.0, 0, 17.0);
+} else {
+    // 通常時: Z=10.0
+    camera.position.set(6.0, 0, 10.0);
+}
 
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setSize(width, height);
@@ -98,8 +104,16 @@ controls.dampingFactor = 0.05;
 controls.enableZoom = false;
 controls.autoRotate = false;
 controls.enabled = false;
-// ★修正: ターゲットのXを3.5にずらすことで、相対的に惑星(X=0)をより左側に表示させる
-controls.target.set(3.5, 0, 0);
+
+// ★修正: コントロールターゲット設定
+if (isScreenshotMode) {
+    // スクショ時: ターゲットを0(中央)にして惑星を画面中央(右寄り)に移動させる
+    // (通常は3.5で惑星が左端にあるが、0にすることで中央に来る)
+    controls.target.set(0, 0, 0);
+} else {
+    // 通常時: 惑星を左側に寄せるためのオフセット
+    controls.target.set(3.5, 0, 0);
+}
 
 window.addEventListener('resize', () => {
     const w = isScreenshotMode ? window.innerWidth : (containerElement ? containerElement.clientWidth : 800);
