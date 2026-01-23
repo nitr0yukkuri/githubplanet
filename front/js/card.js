@@ -30,8 +30,9 @@ if (isScreenshotMode) {
     };
 
     // 余白を消すためにHTML/Bodyを固定サイズにし、Flex配置を解除
-    enforceStyle(document.documentElement, 'margin: 0 !important; padding: 0 !important; width: 800px !important; height: 400px !important; overflow: hidden !important; background: #030305 !important;');
-    enforceStyle(document.body, 'margin: 0 !important; padding: 0 !important; width: 800px !important; height: 400px !important; overflow: hidden !important; background: #030305 !important; display: block !important;');
+    // 修正: 背景色をカード内部(#050508)と完全に一致させ、黒い余白を目立たなくする
+    enforceStyle(document.documentElement, 'margin: 0 !important; padding: 0 !important; width: 800px !important; height: 400px !important; overflow: hidden !important; background: #050508 !important;');
+    enforceStyle(document.body, 'margin: 0 !important; padding: 0 !important; width: 800px !important; height: 400px !important; overflow: hidden !important; background: #050508 !important; display: block !important;');
 
     const wrapper = document.querySelector('.content-wrapper');
     if (wrapper) wrapper.style.display = 'none';
