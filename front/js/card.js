@@ -29,8 +29,9 @@ if (isScreenshotMode) {
         element.style.cssText = styleStr;
     };
 
-    enforceStyle(document.documentElement, 'margin: 0 !important; padding: 0 !important; width: 100% !important; height: 100% !important; overflow: hidden !important; background: #030305 !important;');
-    enforceStyle(document.body, 'margin: 0 !important; padding: 0 !important; width: 100% !important; height: 100% !important; overflow: hidden !important; background: #030305 !important; display: block !important;');
+    // ★修正: HTML/Bodyも800x400に固定し、予期せぬ余白やスクロールを排除
+    enforceStyle(document.documentElement, 'margin: 0 !important; padding: 0 !important; width: 800px !important; height: 400px !important; overflow: hidden !important; background: #030305 !important;');
+    enforceStyle(document.body, 'margin: 0 !important; padding: 0 !important; width: 800px !important; height: 400px !important; overflow: hidden !important; background: #030305 !important; display: block !important;');
 
     const wrapper = document.querySelector('.content-wrapper');
     if (wrapper) wrapper.style.display = 'none';
@@ -44,12 +45,13 @@ if (isScreenshotMode) {
         if (containerElement.parentNode !== document.body) {
             document.body.appendChild(containerElement);
         }
+        // ★修正: コンテナサイズを800x400に完全固定 (以前の100%指定だと親要素の影響で伸びることがあるため)
         containerElement.style.cssText = `
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
+            width: 800px !important;
+            height: 400px !important;
             margin: 0 !important;
             padding: 0 !important;
             border: none !important;
@@ -78,8 +80,9 @@ if (isScreenshotMode) {
     }
 }
 
-const width = isScreenshotMode ? window.innerWidth : (containerElement ? containerElement.clientWidth : 800);
-const height = isScreenshotMode ? window.innerHeight : (containerElement ? containerElement.clientHeight : 400);
+// ★修正: スクショモード時はウィンドウサイズではなく固定値800x400を採用
+const width = isScreenshotMode ? 800 : (containerElement ? containerElement.clientWidth : 800);
+const height = isScreenshotMode ? 400 : (containerElement ? containerElement.clientHeight : 400);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
@@ -111,8 +114,9 @@ if (isScreenshotMode) {
 }
 
 window.addEventListener('resize', () => {
-    const w = isScreenshotMode ? window.innerWidth : (containerElement ? containerElement.clientWidth : 800);
-    const h = isScreenshotMode ? window.innerHeight : (containerElement ? containerElement.clientHeight : 400);
+    // ★修正: リサイズ時もスクショモードなら固定値を維持
+    const w = isScreenshotMode ? 800 : (containerElement ? containerElement.clientWidth : 800);
+    const h = isScreenshotMode ? 400 : (containerElement ? containerElement.clientHeight : 400);
     renderer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
