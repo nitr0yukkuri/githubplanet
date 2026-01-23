@@ -246,7 +246,7 @@ function createPlanet(data) {
             void main() {
                 vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
                 gl_Position = projectionMatrix * mvPosition;
-                gl_PointSize = (200.0 * pixelRatio) / -mvPosition.z;
+                gl_PointSize = (350.0 * pixelRatio) / -mvPosition.z;
             }
         `;
         const fragmentShader = `
@@ -333,7 +333,7 @@ function addParticles(color) {
     }
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
     const material = new THREE.PointsMaterial({
-        size: 0.02,
+        size: 0.04,
         color: color || 0xffffff,
         transparent: true,
         opacity: 0.4,
