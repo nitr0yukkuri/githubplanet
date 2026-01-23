@@ -336,16 +336,20 @@ button#copy-btn:hover {
     .stats-row { gap: 3%; margin-bottom: 3%; }
     .stat-divider { height: 4vw; }
     
+    /* ★修正: コピーボタンのレスポンシブデザイン最適化 */
     .code-box {
-        flex-direction: column; /* コードボックスを縦積みに */
-        align-items: stretch;
-        gap: 10px;
+        flex-direction: row;  /* 横並びを維持 */
+        padding: 10px 14px;
+        gap: 12px;
+        align-items: center;  /* 垂直中央寄せ */
     }
     code {
         font-size: 0.8rem;
-        text-align: center;
+        text-align: left;     /* 左寄せに戻す */
     }
     button#copy-btn {
-        width: 100%;
+        width: 38px;          /* 固定サイズを維持して「シュッ」とさせる */
+        height: 38px;
+        flex-shrink: 0;       /* ボタンが潰れないように固定 */
     }
 }
