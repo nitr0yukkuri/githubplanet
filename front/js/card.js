@@ -69,8 +69,8 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
 
 if (isScreenshotMode) {
-    // 撮影モード: 惑星を大きく、配置を調整
-    camera.position.set(6.0, 0, 11.5);
+    // 撮影モード: 惑星をさらに大きく、迫力を出すためにZ軸を近づける (11.5 -> 10.5)
+    camera.position.set(6.0, 0, 10.5);
 } else {
     camera.position.set(6.0, 0, 10.0);
 }

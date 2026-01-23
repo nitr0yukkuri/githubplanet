@@ -135,7 +135,8 @@ canvas {
     top: 0; right: 0;
     width: 55%;
     height: 100%;
-    padding: 30px 40px;
+    /* 余白を詰めて表示領域を確保 */
+    padding: 20px 30px; 
     box-sizing: border-box;
     z-index: 10;
     display: flex;
@@ -388,4 +389,8 @@ body.is-screenshot #card-container {
     box-shadow: none !important;
     transform: none !important;
     z-index: 9999 !important;
+    
+    /* 重要: レスポンシブ設定をここで強制リセットし、余白発生を防ぐ */
+    max-width: none !important;
+    aspect-ratio: auto !important;
 }
