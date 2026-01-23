@@ -79,7 +79,7 @@ body {
     transition: background-color 0.2s;
     backdrop-filter: none; /* ガラス効果は解除 */
     color: white;
-    border: none;
+    border: 2px solid white; /* 白い枠線を追加 */
 }
 
 #menu-btn:hover {

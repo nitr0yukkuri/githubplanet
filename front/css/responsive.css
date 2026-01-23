@@ -1,3 +1,5 @@
+/* front/css/responsive.css */
+
 /* タブレット・スマホ向け (画面幅 768px 以下) */
 @media (max-width: 768px) {
     /* モーダルのボタンを縦並びにする */
@@ -49,5 +51,39 @@
     #login-button {
         font-size: 1.2rem;
         padding: 10px 30px;
+    }
+
+    /* ▼▼▼ 追加: 左上と右上のボタンを小さく ▼▼▼ */
+    #open-select-modal-btn,
+    #menu-btn {
+        width: 50px;
+        height: 50px;
+        border-radius: 8px; /* サイズに合わせて角丸も少し調整 */
+    }
+
+    /* メニューボタン内のアイコンサイズも調整 */
+    #menu-btn svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* ▼▼▼ 追加: 中央上のGitHubボタンとテキストも左右に合わせる ▼▼▼ */
+    .github-link {
+        width: 38px;
+        height: 38px;
+        border-radius: 13px; /* 左右のボタンに合わせて8pxに */
+    }
+
+    .github-link svg {
+        width: 28px; /* アイコンサイズも微調整 */
+        height: 28px;
+    }
+
+    #planet-owner-display {
+        font-size: 0.85rem; /* テキストサイズをボタンに合わせて少し小さく */
+    }
+
+    #planet-owner-container {
+        gap: 8px; /* ボタンとテキストの間隔を調整 */
     }
 }
