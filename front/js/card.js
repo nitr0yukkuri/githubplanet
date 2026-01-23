@@ -6,7 +6,6 @@ const params = new URLSearchParams(window.location.search);
 const username = params.get('username') || 'NITROYUKKURI';
 const isScreenshotMode = params.has('fix');
 
-// バックアップとしてJSでもクラス追加を行うが、HTML側が主役
 if (isScreenshotMode) {
     document.documentElement.classList.add('is-screenshot');
     document.body.classList.add('is-screenshot');
@@ -35,8 +34,8 @@ if (!isScreenshotMode) {
     if (shareSection) shareSection.style.display = 'block';
 
     const deployUrl = window.location.origin;
-    // キャッシュバスターのためのタイムスタンプ
     const timestamp = Date.now();
+    // 共有URLは今まで通り
     const targetUrl = `${deployUrl}/card.html?username=${username}&fix=true&time=${timestamp}`;
     const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
 
@@ -53,14 +52,15 @@ if (!isScreenshotMode) {
     if (shareSection) shareSection.style.display = 'none';
 }
 
-const width = isScreenshotMode ? 800 : (containerElement ? containerElement.clientWidth : 800);
-const height = isScreenshotMode ? 400 : (containerElement ? containerElement.clientHeight : 400);
+// ★修正: 撮影モードの時は固定値800ではなく、画面サイズそのものを使う
+// これにより、thum.ioが800pxより広く開いても黒帯が出ない
+const width = isScreenshotMode ? window.innerWidth : (containerElement ? containerElement.clientWidth : 800);
+const height = isScreenshotMode ? window.innerHeight : (containerElement ? containerElement.clientHeight : 400);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
 
 if (isScreenshotMode) {
-    // 撮影モード: 惑星をさらに大きく
     camera.position.set(6.0, 0, 10.5);
 } else {
     camera.position.set(6.0, 0, 10.0);
@@ -70,6 +70,17 @@ const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setSize(width, height);
 renderer.setPixelRatio(window.devicePixelRatio);
 canvasContainer.appendChild(renderer.domElement);
+
+// ★追加: 念のためリサイズイベントでも追従させる
+if (isScreenshotMode) {
+    window.addEventListener('resize', () => {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        renderer.setSize(w, h);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+    });
+}
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -84,14 +95,16 @@ if (isScreenshotMode) {
     controls.target.set(3.5, 0, 0);
 }
 
-window.addEventListener('resize', () => {
-    if (isScreenshotMode) return;
-    const w = containerElement ? containerElement.clientWidth : 800;
-    const h = containerElement ? containerElement.clientHeight : 400;
-    renderer.setSize(w, h);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-});
+// 通常モードのリサイズ処理
+if (!isScreenshotMode) {
+    window.addEventListener('resize', () => {
+        const w = containerElement ? containerElement.clientWidth : 800;
+        const h = containerElement ? containerElement.clientHeight : 400;
+        renderer.setSize(w, h);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+    });
+}
 
 const textureLoader = new THREE.TextureLoader();
 const planetTexture = textureLoader.load('front/img/2k_mars.jpg');
