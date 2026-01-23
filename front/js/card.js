@@ -29,7 +29,6 @@ if (isScreenshotMode) {
         element.style.cssText = styleStr;
     };
 
-    // 余白除去: 100%指定に変更し、ウィンドウサイズに追従させる
     enforceStyle(document.documentElement, 'margin: 0 !important; padding: 0 !important; width: 100% !important; height: 100% !important; overflow: hidden !important; background: #030305 !important;');
     enforceStyle(document.body, 'margin: 0 !important; padding: 0 !important; width: 100% !important; height: 100% !important; overflow: hidden !important; background: #030305 !important; display: block !important;');
 
@@ -45,7 +44,6 @@ if (isScreenshotMode) {
         if (containerElement.parentNode !== document.body) {
             document.body.appendChild(containerElement);
         }
-        // コンテナも100%に設定してビューポート全体を埋める
         containerElement.style.cssText = `
             position: fixed !important;
             top: 0 !important;
@@ -67,7 +65,6 @@ if (isScreenshotMode) {
     if (shareSection) shareSection.style.display = 'block';
 
     const deployUrl = window.location.origin;
-    // URL生成ロジック: width/800 でビューポートを指定し、wait/8 で描画待ちをする
     const targetUrl = `${deployUrl}/card.html?fix=true&username=${username}`;
     const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
     const pageUrl = `${deployUrl}/card.html?username=${username}`;
@@ -81,15 +78,14 @@ if (isScreenshotMode) {
     }
 }
 
-// 撮影モード時はウィンドウサイズ（thum.ioのwidth指定）を正として使用する
 const width = isScreenshotMode ? window.innerWidth : (containerElement ? containerElement.clientWidth : 800);
 const height = isScreenshotMode ? window.innerHeight : (containerElement ? containerElement.clientHeight : 400);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
 
-// ★修正: カメラ位置を調整（Xを左に寄せて見切れ防止、Zを引いて全体表示）
-camera.position.set(4.0, 0, 10.0);
+// ★修正: カメラ位置調整。Zを12.0に引いて惑星を小さく表示。X=4.0で左寄せ配置。
+camera.position.set(4.0, 0, 12.0);
 
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setSize(width, height);
@@ -102,15 +98,11 @@ controls.dampingFactor = 0.05;
 controls.enableZoom = false;
 controls.autoRotate = false;
 controls.enabled = false;
-
-// ★修正: カメラの注視点も左にずらす
 controls.target.set(2.0, 0, 0);
 
 window.addEventListener('resize', () => {
-    // 撮影モードでもリサイズに対応させておく（念のため）
     const w = isScreenshotMode ? window.innerWidth : (containerElement ? containerElement.clientWidth : 800);
     const h = isScreenshotMode ? window.innerHeight : (containerElement ? containerElement.clientHeight : 400);
-
     renderer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
@@ -131,6 +123,8 @@ backLight.position.set(-5, 2, -10);
 scene.add(backLight);
 
 const planetGroup = new THREE.Group();
+// ★修正: 惑星グループ全体を少し上(Y=1.2)に持ち上げて、全体が見えるようにする
+planetGroup.position.y = 1.2;
 scene.add(planetGroup);
 
 let planetMesh;
@@ -161,7 +155,6 @@ function updateUI(data) {
     usernameDisplay.textContent = data.username || username;
     planetNameSub.textContent = (data.planetName || 'UNKNOWN').toUpperCase();
 
-    // 撮影モード時はアニメーションを高速化
     const duration = isScreenshotMode ? 100 : 1500;
     animateValue(commitsVal, 0, data.totalCommits || 0, duration);
 
