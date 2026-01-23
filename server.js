@@ -700,6 +700,11 @@ app.get('/achievements', (req, res) => {
     res.sendFile(path.join(__dirname, 'achievements.html'));
 });
 
+// ★修正: 設定ページへのルーティングを追加
+app.get('/settings', (req, res) => {
+    res.sendFile(path.join(__dirname, 'settings.html'));
+});
+
 app.get('/login', (req, res) => {
     const code_verifier = base64URLEncode(crypto.randomBytes(32));
     req.session.code_verifier = code_verifier;

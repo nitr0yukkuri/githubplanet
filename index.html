@@ -40,7 +40,7 @@
             transform: translate(-50%, -50%);
             width: 90%;
             max-width: 450px;
-            /* 画像を参考にしたガラス効果 */
+            /* ガラス効果 */
             background-color: rgba(25, 25, 30, 0.75);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -52,13 +52,10 @@
             text-align: center;
             color: #e0e0e0;
             display: none;
-            /* JSで制御するため初期は非表示 */
         }
 
-        /* ロゴ画像のスタイル修正 */
         .welcome-logo {
             width: 350px;
-            /* 300pxから350pxに戻してサイズを大きく */
             max-width: 100%;
             height: auto;
             margin-bottom: 20px;
@@ -91,7 +88,6 @@
             cursor: pointer;
             transition: background-color 0.3s, transform 0.2s;
             border: none;
-            /* buttonタグ用にリセット */
         }
 
         .ok-button:hover {
@@ -207,11 +203,12 @@
                         <p class="planet-label">ランダムで星を見に行く</p>
                     </div>
                 </div>
-
-                </main>
             </div>
 
-            <script type="importmap">
+        </div>
+    </div>
+
+    <script type="importmap">
     {
         "imports": {
             "three": "https://cdn.jsdelivr.net/npm/three@latest/build/three.module.js",
@@ -222,7 +219,7 @@
     }
     </script>
 
-            <script type="module" src="./front/js/home.js"></script>
+    <script type="module" src="./front/js/home.js"></script>
 </body>
 
 </html>
