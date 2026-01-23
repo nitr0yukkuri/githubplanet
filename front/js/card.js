@@ -25,15 +25,26 @@ const copyBtn = document.getElementById('copy-btn');
 
 // ★徹底修正: 撮影モード時の強制スタイル適用
 if (isScreenshotMode) {
-    const enforceStyle = (element, styleStr) => {
-        element.style.cssText = styleStr;
+    // スタイルを強制的に上書きする関数（setAttributeで既存スタイルを完全に無視）
+    const forceStyle = (element, styleStr) => {
+        if (element) element.setAttribute('style', styleStr);
     };
 
-    // 余白を消すためにHTML/Bodyを固定サイズにし、Flex配置を解除
-    // 修正: 背景色をカード内部(#050508)と完全に一致させ、黒い余白を目立たなくする
-    enforceStyle(document.documentElement, 'margin: 0 !important; padding: 0 !important; width: 800px !important; height: 400px !important; overflow: hidden !important; background: #050508 !important;');
-    enforceStyle(document.body, 'margin: 0 !important; padding: 0 !important; width: 800px !important; height: 400px !important; overflow: hidden !important; background: #050508 !important; display: block !important;');
+    // 1. HTML/Bodyを800x400の固定サイズにし、余白・スクロールを完全排除
+    const bodyStyle = `
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 800px !important;
+        height: 400px !important;
+        overflow: hidden !important;
+        background: #050508 !important;
+        display: block !important;
+        position: relative !important;
+    `;
+    forceStyle(document.documentElement, bodyStyle);
+    forceStyle(document.body, bodyStyle);
 
+    // 2. 不要な要素を非表示
     const wrapper = document.querySelector('.content-wrapper');
     if (wrapper) wrapper.style.display = 'none';
 
@@ -42,13 +53,15 @@ if (isScreenshotMode) {
 
     if (shareSection) shareSection.style.display = 'none';
 
+    // 3. カードコンテナをBody直下に移動し、左上に絶対配置
     if (containerElement) {
         if (containerElement.parentNode !== document.body) {
             document.body.appendChild(containerElement);
         }
-        // コンテナを画面左上に絶対配置して余白を排除
-        containerElement.style.cssText = `
-            position: fixed !important;
+
+        // レスポンシブCSS（90vw等）に勝つために !important を多用
+        const containerStyle = `
+            position: absolute !important;
             top: 0 !important;
             left: 0 !important;
             width: 800px !important;
@@ -63,13 +76,24 @@ if (isScreenshotMode) {
             transform: none !important;
             box-sizing: border-box !important;
         `;
+        forceStyle(containerElement, containerStyle);
     }
 } else {
+    // 通常モード
     if (shareSection) shareSection.style.display = 'block';
 
     const deployUrl = window.location.origin;
-    const targetUrl = `${deployUrl}/card.html?fix=true&username=${username}`;
+    // キャッシュ回避のためにタイムスタンプっぽいものを付与しても良いが、URLが長くなるのでシンプルに
+    const targetUrl = `${deployUrl}/card.html?username=${username}&fix=true`;
+
+    // thum.ioのURL生成
+    // width/800: ビューポート幅800
+    // crop/400: 上から400px切り取り
+    // noanimate: アニメーション停止
+    // wait/8: 描画待ち8秒
     const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
+
+    // 生成されるMarkdown
     const pageUrl = `${deployUrl}/card.html?username=${username}`;
     const mdText = `[![GitHub Planet](${thumbUrl})](${pageUrl})`;
 
@@ -86,11 +110,11 @@ const width = isScreenshotMode ? 800 : (containerElement ? containerElement.clie
 const height = isScreenshotMode ? 400 : (containerElement ? containerElement.clientHeight : 400);
 
 const scene = new THREE.Scene();
+// 視野角等の調整
 const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
 
-// ★修正: 惑星のサイズ調整
 if (isScreenshotMode) {
-    // 以前の18.0は遠すぎたため、11.5まで近づけて大きく表示
+    // 撮影モード: 惑星を大きく、少し左寄りに見せる調整
     camera.position.set(6.0, 0, 11.5);
 } else {
     camera.position.set(6.0, 0, 10.0);
@@ -108,17 +132,18 @@ controls.enableZoom = false;
 controls.autoRotate = false;
 controls.enabled = false;
 
-// ★修正: 惑星の位置調整
+// カメラの注視点
 if (isScreenshotMode) {
-    // 0,0,0だと中央すぎるため、3.5（右側）をターゲットにして惑星を左側に寄せる
     controls.target.set(3.5, 0, 0);
 } else {
     controls.target.set(3.5, 0, 0);
 }
 
+// リサイズ対応（通常モードのみ有効に機能）
 window.addEventListener('resize', () => {
-    const w = isScreenshotMode ? 800 : (containerElement ? containerElement.clientWidth : 800);
-    const h = isScreenshotMode ? 400 : (containerElement ? containerElement.clientHeight : 400);
+    if (isScreenshotMode) return; // 撮影モード時はリサイズ無視
+    const w = containerElement ? containerElement.clientWidth : 800;
+    const h = containerElement ? containerElement.clientHeight : 400;
     renderer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
@@ -170,7 +195,8 @@ function updateUI(data) {
     usernameDisplay.textContent = data.username || username;
     planetNameSub.textContent = (data.planetName || 'UNKNOWN').toUpperCase();
 
-    const duration = isScreenshotMode ? 100 : 1500;
+    // 撮影モード時はアニメーション即終了
+    const duration = isScreenshotMode ? 0 : 1500;
     animateValue(commitsVal, 0, data.totalCommits || 0, duration);
 
     mainLangStat.textContent = (data.mainLanguage || 'UNKNOWN').toUpperCase();
@@ -181,10 +207,15 @@ function updateUI(data) {
         if (sysStatus) sysStatus.style.color = data.planetColor;
         if (idLabel) idLabel.style.color = data.planetColor;
     }
-    setTimeout(() => { langBar.style.width = '100%'; }, 100);
+    // バーのアニメーションも即時反映
+    setTimeout(() => { langBar.style.width = '100%'; }, isScreenshotMode ? 0 : 100);
 }
 
 function animateValue(obj, start, end, duration) {
+    if (duration === 0) {
+        obj.innerHTML = end;
+        return;
+    }
     let startTimestamp = null;
     const step = (timestamp) => {
         if (!startTimestamp) startTimestamp = timestamp;
@@ -221,7 +252,6 @@ function createPlanet(data) {
         planetGroup.remove(planetGroup.children[0]);
     }
 
-    // サイズ上限を6.0に設定
     const baseSize = Math.min(1.3 * (data.planetSizeFactor || 1), 6.0);
 
     const geometry = new THREE.SphereGeometry(baseSize, 64, 64);
