@@ -1,6 +1,7 @@
 // front/js/card.js
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+// ★修正: importmap を使用するように変更
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 const params = new URLSearchParams(window.location.search);
 const username = params.get('username') || 'NITROYUKKURI';
