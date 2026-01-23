@@ -61,7 +61,7 @@ github planetに訪れて、以下のコードを自分の `README.md` に貼る
 #### 🪐 フロントエンド & デザイン
 **@lenagig**
 ![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/https://githubplanet.onrender.com/card.html?username=lenagig&fix=responsive9=v0)
-![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/https://githubplanet.onrender.com/card.html?username=nitr0yukkuri&fix=responsive9=v9897652322232332___)
+![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/https://githubplanet.onrender.com/card.html?username=lenagig&fix=responsive9=v9897652322232332___)
 
 
 ## 🚀 セットアップと実行方法
