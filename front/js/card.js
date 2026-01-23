@@ -84,8 +84,8 @@ const height = isScreenshotMode ? window.innerHeight : (containerElement ? conta
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
 
-// ★修正: カメラをさらに引く(Z=16.0)ことで惑星を小さくし、X位置はそのまま
-camera.position.set(4.0, 0, 16.0);
+// ★修正: カメラ位置をZ=10.0に近づけ(大きくする)、X=6.0は維持
+camera.position.set(6.0, 0, 10.0);
 
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setSize(width, height);
@@ -98,7 +98,8 @@ controls.dampingFactor = 0.05;
 controls.enableZoom = false;
 controls.autoRotate = false;
 controls.enabled = false;
-controls.target.set(2.0, 0, 0);
+// ★修正: ターゲットのXを3.5にずらすことで、相対的に惑星(X=0)をより左側に表示させる
+controls.target.set(3.5, 0, 0);
 
 window.addEventListener('resize', () => {
     const w = isScreenshotMode ? window.innerWidth : (containerElement ? containerElement.clientWidth : 800);
@@ -123,8 +124,8 @@ backLight.position.set(-5, 2, -10);
 scene.add(backLight);
 
 const planetGroup = new THREE.Group();
-// ★修正: 惑星位置をさらに上(Y=2.0)に持ち上げ、画面中央付近に来るように調整
-planetGroup.position.y = 2.0;
+// ★修正: Y位置0で垂直方向の中央配置を維持
+planetGroup.position.set(0, 0, 0);
 scene.add(planetGroup);
 
 let planetMesh;
@@ -206,7 +207,9 @@ function createPlanet(data) {
         planetGroup.remove(planetGroup.children[0]);
     }
 
-    const baseSize = 1.3 * (data.planetSizeFactor || 1);
+    // ★修正: サイズ上限を6.0に緩和（小さくなりすぎ防止）
+    const baseSize = Math.min(1.3 * (data.planetSizeFactor || 1), 6.0);
+
     const geometry = new THREE.SphereGeometry(baseSize, 64, 64);
     geometry.setAttribute('uv2', new THREE.BufferAttribute(geometry.attributes.uv.array, 2));
 
