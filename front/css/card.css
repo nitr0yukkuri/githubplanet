@@ -357,9 +357,10 @@ html.is-screenshot body,
 body.is-screenshot {
     margin: 0 !important;
     padding: 0 !important;
-    /* 幅指定を「800px」ではなく「画面いっぱい」にする */
+    /* 幅は画面いっぱいにする */
     width: 100vw !important;
-    height: 100vh !important;
+    /* ★修正: 縦幅を100vhから400px固定に変更 */
+    height: 400px !important;
     /* スクロールバーを強制的に消す */
     overflow: hidden !important;
     background-color: var(--card-bg-inner) !important;
@@ -388,11 +389,12 @@ body.is-screenshot #card-container {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
-    /* 上下左右0 + autoサイズで、親要素(body=100vw)に合わせて伸び縮みさせる */
     right: 0 !important;
     bottom: 0 !important;
+    
+    /* コンテナも縦幅を400pxに固定して、下に余分な空白を作らせない */
     width: 100% !important;
-    height: 100% !important;
+    height: 400px !important;
     
     margin: 0 !important;
     padding: 0 !important;
