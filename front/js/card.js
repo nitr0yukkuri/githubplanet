@@ -84,13 +84,11 @@ const height = isScreenshotMode ? window.innerHeight : (containerElement ? conta
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
 
-// ★修正: カメラ位置設定
+// ★修正: スクショモード（fix=true）の時だけカメラを遠ざけて惑星を小さくする
 if (isScreenshotMode) {
-    // スクショ時: Zを17.0にして惑星を小さく見せる
-    camera.position.set(6.0, 0, 17.0);
+    camera.position.set(6.0, 0, 18.0); // 遠くへ (Z=18)
 } else {
-    // 通常時: Z=10.0
-    camera.position.set(6.0, 0, 10.0);
+    camera.position.set(6.0, 0, 10.0); // 通常 (Z=10)
 }
 
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
@@ -105,14 +103,11 @@ controls.enableZoom = false;
 controls.autoRotate = false;
 controls.enabled = false;
 
-// ★修正: コントロールターゲット設定
+// ★修正: スクショモードの時だけターゲットを中央(0,0,0)にして、惑星を真ん中に持ってくる
 if (isScreenshotMode) {
-    // スクショ時: ターゲットを0(中央)にして惑星を画面中央(右寄り)に移動させる
-    // (通常は3.5で惑星が左端にあるが、0にすることで中央に来る)
-    controls.target.set(0, 0, 0);
+    controls.target.set(0, 0, 0); // ど真ん中 (惑星位置)
 } else {
-    // 通常時: 惑星を左側に寄せるためのオフセット
-    controls.target.set(3.5, 0, 0);
+    controls.target.set(3.5, 0, 0); // 通常 (左寄せのためターゲットを右にずらす)
 }
 
 window.addEventListener('resize', () => {
@@ -138,7 +133,6 @@ backLight.position.set(-5, 2, -10);
 scene.add(backLight);
 
 const planetGroup = new THREE.Group();
-// ★修正: Y位置0で垂直方向の中央配置を維持
 planetGroup.position.set(0, 0, 0);
 scene.add(planetGroup);
 
@@ -221,7 +215,7 @@ function createPlanet(data) {
         planetGroup.remove(planetGroup.children[0]);
     }
 
-    // ★修正: サイズ上限を6.0に緩和（小さくなりすぎ防止）
+    // サイズ上限を6.0に設定
     const baseSize = Math.min(1.3 * (data.planetSizeFactor || 1), 6.0);
 
     const geometry = new THREE.SphereGeometry(baseSize, 64, 64);
