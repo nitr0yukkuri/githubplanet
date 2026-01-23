@@ -15,7 +15,6 @@ body, html {
     padding: 0;
     width: 100%;
     min-height: 100vh;
-    /* スクロールバーによる横幅ズレと余白を防止 */
     overflow-y: scroll;
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE/Edge */
@@ -47,13 +46,12 @@ body::before {
     z-index: -1;
 }
 
-/* コンテンツ全体を中央寄せするためのラッパー */
 .content-wrapper {
-    flex-grow: 1; /* 余ったスペースを埋める */
+    flex-grow: 1;
     display: flex;
     flex-direction: column;
     justify-content: center; 
-    align-items: center;     /* 水平方向中央 */
+    align-items: center;
     width: 100%;
     padding-bottom: 0;
     box-sizing: border-box;
@@ -99,7 +97,7 @@ body::before {
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.15);
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
-    box-sizing: border-box; /* ★必須: borderを含めたサイズ計算 */
+    box-sizing: border-box;
 }
 
 canvas {
@@ -306,50 +304,88 @@ button#copy-btn:hover {
     color: #050508;
 }
 
-/* =========================================
-   レスポンシブ対応 (スマホ向け)
-   ========================================= */
 @media screen and (max-width: 850px) {
     #card-container {
-        width: 90vw;           /* 画面幅の90% */
-        height: auto;          /* 高さは自動計算 */
-        aspect-ratio: 2 / 1;   /* 比率 800:400 = 2:1 を維持 */
+        width: 90vw;
+        height: auto;
+        aspect-ratio: 2 / 1;
     }
 
     .card-content {
-        padding: 4% 5%;       /* パディングを相対値に */
+        padding: 4% 5%;
     }
 
-    /* 各テキストサイズを画面幅(vw)に合わせて縮小 */
     .user-name {
-        font-size: 5.5vw;     /* 2.8rem相当を調整 */
+        font-size: 5.5vw;
     }
     .stat-value {
-        font-size: 3.5vw;     /* 1.8rem相当を調整 */
+        font-size: 3.5vw;
     }
     .id-label, .stat-label, .lang-label-row {
-        font-size: 1.6vw;     /* 小さい文字も縮小 */
+        font-size: 1.6vw;
     }
 
-    /* 余白や間隔の微調整 */
     .header-section { margin-bottom: 2%; }
     .stats-row { gap: 3%; margin-bottom: 3%; }
     .stat-divider { height: 4vw; }
     
-    /* ★修正: コピーボタンのレスポンシブデザイン最適化 */
     .code-box {
-        flex-direction: row;  /* 横並びを維持 */
+        flex-direction: row;
         padding: 10px 14px;
         gap: 12px;
-        align-items: center;  /* 垂直中央寄せ */
+        align-items: center;
     }
     code {
         font-size: 0.8rem;
-        text-align: left;     /* 左寄せに戻す */
+        text-align: left;
     }
     button#copy-btn {
-        width: 38px;          /* 固定サイズを維持して「シュッ」とさせる */
+        width: 38px;
         height: 38px;
-        flex-shrink: 0;       /* ボタンが潰れないように固定 */
+        flex-shrink: 0;
     }
+}
+
+/* =========================================
+   スクリーンショット撮影モード (fix=true)
+   ========================================= */
+/* .is-screenshot クラスが付与されたら強制的にスタイルを適用 */
+body.is-screenshot, 
+html.is-screenshot {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 800px !important;
+    height: 400px !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    /* 背景色をカード内部と同じ色にし、背景画像は削除 */
+    background-color: var(--card-bg-inner) !important;
+    background-image: none !important;
+    display: block !important;
+}
+
+/* 撮影時に不要な要素を完全に非表示 */
+body.is-screenshot .content-wrapper,
+body.is-screenshot .nav-container,
+body.is-screenshot .share-container,
+body.is-screenshot .bg-gradient,
+body.is-screenshot .stars,
+body.is-screenshot ::before {
+    display: none !important;
+}
+
+/* カード本体を左上に固定配置 */
+body.is-screenshot #card-container {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 800px !important;
+    height: 400px !important;
+    margin: 0 !important;
+    /* 角丸と影を削除し、隙間（余白）を埋める */
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    z-index: 9999 !important;
 }
