@@ -35,7 +35,6 @@ if (!isScreenshotMode) {
 
     const deployUrl = window.location.origin;
     const timestamp = Date.now();
-    // 共有URLは今まで通り
     const targetUrl = `${deployUrl}/card.html?username=${username}&fix=true&time=${timestamp}`;
     const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
 
@@ -52,10 +51,9 @@ if (!isScreenshotMode) {
     if (shareSection) shareSection.style.display = 'none';
 }
 
-// ★修正: 撮影モードの時は固定値800ではなく、画面サイズそのものを使う
-// これにより、thum.ioが800pxより広く開いても黒帯が出ない
+// ★修正: 撮影モードの時は、ブラウザのウィンドウサイズに関わらず縦幅を400にする
 const width = isScreenshotMode ? window.innerWidth : (containerElement ? containerElement.clientWidth : 800);
-const height = isScreenshotMode ? window.innerHeight : (containerElement ? containerElement.clientHeight : 400);
+const height = isScreenshotMode ? 400 : (containerElement ? containerElement.clientHeight : 400);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
@@ -71,11 +69,11 @@ renderer.setSize(width, height);
 renderer.setPixelRatio(window.devicePixelRatio);
 canvasContainer.appendChild(renderer.domElement);
 
-// ★追加: 念のためリサイズイベントでも追従させる
 if (isScreenshotMode) {
     window.addEventListener('resize', () => {
         const w = window.innerWidth;
-        const h = window.innerHeight;
+        // リサイズ時も縦幅は400を維持（CSSで固定されているため）
+        const h = 400;
         renderer.setSize(w, h);
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
@@ -95,7 +93,6 @@ if (isScreenshotMode) {
     controls.target.set(3.5, 0, 0);
 }
 
-// 通常モードのリサイズ処理
 if (!isScreenshotMode) {
     window.addEventListener('resize', () => {
         const w = containerElement ? containerElement.clientWidth : 800;
