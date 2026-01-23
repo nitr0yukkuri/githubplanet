@@ -5,7 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 const params = new URLSearchParams(window.location.search);
 const username = params.get('username') || 'NITROYUKKURI';
 
-// fixパラメータがある場合は撮影モードとみなす
+// fixパラメータがある場合は撮影モードとみなすyo
 const isScreenshotMode = params.has('fix');
 
 const containerElement = document.getElementById('card-container');
@@ -29,8 +29,9 @@ if (isScreenshotMode) {
         element.style.cssText = styleStr;
     };
 
-    enforceStyle(document.documentElement, 'margin: 0 !important; padding: 0 !important; width: 800px !important; height: 400px !important; min-height: 0 !important; overflow: hidden !important; background: #030305 !important;');
-    enforceStyle(document.body, 'margin: 0 !important; padding: 0 !important; width: 800px !important; height: 400px !important; min-height: 0 !important; overflow: hidden !important; background: #030305 !important; display: block !important;');
+    // 余白除去: 100%指定に変更し、ウィンドウサイズに追従させる
+    enforceStyle(document.documentElement, 'margin: 0 !important; padding: 0 !important; width: 100% !important; height: 100% !important; overflow: hidden !important; background: #030305 !important;');
+    enforceStyle(document.body, 'margin: 0 !important; padding: 0 !important; width: 100% !important; height: 100% !important; overflow: hidden !important; background: #030305 !important; display: block !important;');
 
     const wrapper = document.querySelector('.content-wrapper');
     if (wrapper) wrapper.style.display = 'none';
@@ -44,12 +45,13 @@ if (isScreenshotMode) {
         if (containerElement.parentNode !== document.body) {
             document.body.appendChild(containerElement);
         }
+        // コンテナも100%に設定してビューポート全体を埋める
         containerElement.style.cssText = `
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
-            width: 800px !important;
-            height: 400px !important;
+            width: 100% !important;
+            height: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
             border: none !important;
@@ -65,6 +67,7 @@ if (isScreenshotMode) {
     if (shareSection) shareSection.style.display = 'block';
 
     const deployUrl = window.location.origin;
+    // URL生成ロジック: width/800 でビューポートを指定し、wait/8 で描画待ちをする
     const targetUrl = `${deployUrl}/card.html?fix=true&username=${username}`;
     const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
     const pageUrl = `${deployUrl}/card.html?username=${username}`;
@@ -78,8 +81,9 @@ if (isScreenshotMode) {
     }
 }
 
-const width = isScreenshotMode ? 800 : (containerElement ? containerElement.clientWidth : 800);
-const height = isScreenshotMode ? 400 : (containerElement ? containerElement.clientHeight : 400);
+// 撮影モード時はウィンドウサイズ（thum.ioのwidth指定）を正として使用する
+const width = isScreenshotMode ? window.innerWidth : (containerElement ? containerElement.clientWidth : 800);
+const height = isScreenshotMode ? window.innerHeight : (containerElement ? containerElement.clientHeight : 400);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
@@ -99,13 +103,13 @@ controls.enabled = false;
 controls.target.set(3.5, 0, 0);
 
 window.addEventListener('resize', () => {
-    if (!isScreenshotMode && containerElement) {
-        const w = containerElement.clientWidth;
-        const h = containerElement.clientHeight;
-        renderer.setSize(w, h);
-        camera.aspect = w / h;
-        camera.updateProjectionMatrix();
-    }
+    // 撮影モードでもリサイズに対応させておく（念のため）
+    const w = isScreenshotMode ? window.innerWidth : (containerElement ? containerElement.clientWidth : 800);
+    const h = isScreenshotMode ? window.innerHeight : (containerElement ? containerElement.clientHeight : 400);
+
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
 });
 
 const textureLoader = new THREE.TextureLoader();
@@ -153,6 +157,7 @@ function updateUI(data) {
     usernameDisplay.textContent = data.username || username;
     planetNameSub.textContent = (data.planetName || 'UNKNOWN').toUpperCase();
 
+    // 撮影モード時はアニメーションを高速化
     const duration = isScreenshotMode ? 100 : 1500;
     animateValue(commitsVal, 0, data.totalCommits || 0, duration);
 
