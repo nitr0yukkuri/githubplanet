@@ -29,7 +29,7 @@ if (isScreenshotMode) {
         element.style.cssText = styleStr;
     };
 
-    // ★修正: HTML/Bodyも800x400に固定し、予期せぬ余白やスクロールを排除
+    // 余白を消すためにHTML/Bodyを固定サイズにし、Flex配置を解除
     enforceStyle(document.documentElement, 'margin: 0 !important; padding: 0 !important; width: 800px !important; height: 400px !important; overflow: hidden !important; background: #030305 !important;');
     enforceStyle(document.body, 'margin: 0 !important; padding: 0 !important; width: 800px !important; height: 400px !important; overflow: hidden !important; background: #030305 !important; display: block !important;');
 
@@ -45,7 +45,7 @@ if (isScreenshotMode) {
         if (containerElement.parentNode !== document.body) {
             document.body.appendChild(containerElement);
         }
-        // ★修正: コンテナサイズを800x400に完全固定 (以前の100%指定だと親要素の影響で伸びることがあるため)
+        // コンテナを画面左上に絶対配置して余白を排除
         containerElement.style.cssText = `
             position: fixed !important;
             top: 0 !important;
@@ -80,18 +80,19 @@ if (isScreenshotMode) {
     }
 }
 
-// ★修正: スクショモード時はウィンドウサイズではなく固定値800x400を採用
+// スクショモード時は固定値800x400を採用
 const width = isScreenshotMode ? 800 : (containerElement ? containerElement.clientWidth : 800);
 const height = isScreenshotMode ? 400 : (containerElement ? containerElement.clientHeight : 400);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
 
-// ★修正: スクショモード（fix=true）の時だけカメラを遠ざけて惑星を小さくする
+// ★修正: 惑星のサイズ調整
 if (isScreenshotMode) {
-    camera.position.set(6.0, 0, 18.0); // 遠くへ (Z=18)
+    // 以前の18.0は遠すぎたため、11.5まで近づけて大きく表示
+    camera.position.set(6.0, 0, 11.5);
 } else {
-    camera.position.set(6.0, 0, 10.0); // 通常 (Z=10)
+    camera.position.set(6.0, 0, 10.0);
 }
 
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
@@ -106,15 +107,15 @@ controls.enableZoom = false;
 controls.autoRotate = false;
 controls.enabled = false;
 
-// ★修正: スクショモードの時だけターゲットを中央(0,0,0)にして、惑星を真ん中に持ってくる
+// ★修正: 惑星の位置調整
 if (isScreenshotMode) {
-    controls.target.set(0, 0, 0); // ど真ん中 (惑星位置)
+    // 0,0,0だと中央すぎるため、3.5（右側）をターゲットにして惑星を左側に寄せる
+    controls.target.set(3.5, 0, 0);
 } else {
-    controls.target.set(3.5, 0, 0); // 通常 (左寄せのためターゲットを右にずらす)
+    controls.target.set(3.5, 0, 0);
 }
 
 window.addEventListener('resize', () => {
-    // ★修正: リサイズ時もスクショモードなら固定値を維持
     const w = isScreenshotMode ? 800 : (containerElement ? containerElement.clientWidth : 800);
     const h = isScreenshotMode ? 400 : (containerElement ? containerElement.clientHeight : 400);
     renderer.setSize(w, h);
