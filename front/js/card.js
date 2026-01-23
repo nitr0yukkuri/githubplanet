@@ -5,7 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 const params = new URLSearchParams(window.location.search);
 const username = params.get('username') || 'NITROYUKKURI';
 
-// fixパラメータがある場合は撮影モードとみなすyo
+// fixパラメータがある場合は撮影モードとみなす
 const isScreenshotMode = params.has('fix');
 
 const containerElement = document.getElementById('card-container');
@@ -87,7 +87,9 @@ const height = isScreenshotMode ? window.innerHeight : (containerElement ? conta
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-camera.position.set(5.5, 0, 8);
+
+// ★修正: カメラ位置を調整（Xを左に寄せて見切れ防止、Zを引いて全体表示）
+camera.position.set(4.0, 0, 10.0);
 
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setSize(width, height);
@@ -100,7 +102,9 @@ controls.dampingFactor = 0.05;
 controls.enableZoom = false;
 controls.autoRotate = false;
 controls.enabled = false;
-controls.target.set(3.5, 0, 0);
+
+// ★修正: カメラの注視点も左にずらす
+controls.target.set(2.0, 0, 0);
 
 window.addEventListener('resize', () => {
     // 撮影モードでもリサイズに対応させておく（念のため）
