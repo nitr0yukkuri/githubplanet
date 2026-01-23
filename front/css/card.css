@@ -135,7 +135,7 @@ canvas {
     top: 0; right: 0;
     width: 55%;
     height: 100%;
-    /* 余白を詰めて表示領域を確保 */
+    /* パディングを少し詰めて文字切れを防ぎつつ大きく見せる */
     padding: 20px 30px; 
     box-sizing: border-box;
     z-index: 10;
@@ -350,22 +350,27 @@ button#copy-btn:hover {
 /* =========================================
    スクリーンショット撮影モード (fix=true)
    ========================================= */
-/* .is-screenshot クラスが付与されたら強制的にスタイルを適用 */
-body.is-screenshot, 
-html.is-screenshot {
+/* HTMLタグにクラスがついた場合も適用されるように変更 */
+html.is-screenshot,
+html.is-screenshot body,
+body.is-screenshot {
     margin: 0 !important;
     padding: 0 !important;
     width: 800px !important;
     height: 400px !important;
     min-height: 0 !important;
     overflow: hidden !important;
-    /* 背景色をカード内部と同じ色にし、背景画像は削除 */
     background-color: var(--card-bg-inner) !important;
     background-image: none !important;
     display: block !important;
 }
 
-/* 撮影時に不要な要素を完全に非表示 */
+html.is-screenshot .content-wrapper,
+html.is-screenshot .nav-container,
+html.is-screenshot .share-container,
+html.is-screenshot .bg-gradient,
+html.is-screenshot .stars,
+html.is-screenshot ::before,
 body.is-screenshot .content-wrapper,
 body.is-screenshot .nav-container,
 body.is-screenshot .share-container,
@@ -375,7 +380,8 @@ body.is-screenshot ::before {
     display: none !important;
 }
 
-/* カード本体を左上に固定配置 */
+/* カード本体の強制スタイル */
+html.is-screenshot #card-container,
 body.is-screenshot #card-container {
     position: fixed !important;
     top: 0 !important;
@@ -383,14 +389,13 @@ body.is-screenshot #card-container {
     width: 800px !important;
     height: 400px !important;
     margin: 0 !important;
-    /* 角丸と影を削除し、隙間（余白）を埋める */
+    padding: 0 !important;
     border-radius: 0 !important;
     border: none !important;
     box-shadow: none !important;
     transform: none !important;
     z-index: 9999 !important;
-    
-    /* 重要: レスポンシブ設定をここで強制リセットし、余白発生を防ぐ */
+    /* レスポンシブ解除のダメ押し */
     max-width: none !important;
     aspect-ratio: auto !important;
 }

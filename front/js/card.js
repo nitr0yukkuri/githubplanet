@@ -4,14 +4,12 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 const params = new URLSearchParams(window.location.search);
 const username = params.get('username') || 'NITROYUKKURI';
-
-// fixパラメータがある場合は撮影モードとみなす
 const isScreenshotMode = params.has('fix');
 
-// ★重要: 撮影モードなら即座にクラスを付与 (CSSで制御するため)
+// バックアップとしてJSでもクラス追加を行うが、HTML側が主役
 if (isScreenshotMode) {
-    document.body.classList.add('is-screenshot');
     document.documentElement.classList.add('is-screenshot');
+    document.body.classList.add('is-screenshot');
 }
 
 const containerElement = document.getElementById('card-container');
@@ -29,22 +27,17 @@ const shareSection = document.getElementById('share-section');
 const markdownCode = document.getElementById('markdown-code');
 const copyBtn = document.getElementById('copy-btn');
 
-// 撮影モード時のコンテナ移動（念のため）
 if (isScreenshotMode && containerElement && containerElement.parentNode !== document.body) {
     document.body.appendChild(containerElement);
 }
 
-// 通常モード時の共有URL生成
 if (!isScreenshotMode) {
     if (shareSection) shareSection.style.display = 'block';
 
     const deployUrl = window.location.origin;
-    // ★重要: キャッシュ回避のためにタイムスタンプを追加
-    // これによりthum.ioは毎回新しいページとして認識し、最新のCSSでレンダリングします
+    // キャッシュバスターのためのタイムスタンプ
     const timestamp = Date.now();
     const targetUrl = `${deployUrl}/card.html?username=${username}&fix=true&time=${timestamp}`;
-
-    // thum.io URL生成
     const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
 
     const pageUrl = `${deployUrl}/card.html?username=${username}`;
@@ -57,11 +50,9 @@ if (!isScreenshotMode) {
         });
     }
 } else {
-    // 撮影モードなら共有セクションは消す（CSSでも消すが念のため）
     if (shareSection) shareSection.style.display = 'none';
 }
 
-// スクショモード時は固定値800x400
 const width = isScreenshotMode ? 800 : (containerElement ? containerElement.clientWidth : 800);
 const height = isScreenshotMode ? 400 : (containerElement ? containerElement.clientHeight : 400);
 
@@ -69,7 +60,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
 
 if (isScreenshotMode) {
-    // 撮影モード: 惑星をさらに大きく、迫力を出すためにZ軸を近づける (11.5 -> 10.5)
+    // 撮影モード: 惑星をさらに大きく
     camera.position.set(6.0, 0, 10.5);
 } else {
     camera.position.set(6.0, 0, 10.0);

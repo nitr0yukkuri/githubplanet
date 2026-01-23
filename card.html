@@ -10,6 +10,14 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;800&family=Rajdhani:wght@500;600;700&display=swap"
         rel="stylesheet">
+
+    <script>
+        // URLに 'fix' が含まれていたら、ページ表示前に強制的にクラスをつける
+        if (window.location.search.includes('fix')) {
+            document.documentElement.classList.add('is-screenshot');
+        }
+    </script>
+
     <link rel="stylesheet" href="front/css/card.css">
 
     <script type="importmap">
