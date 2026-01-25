@@ -268,8 +268,12 @@ function createPlanet(data) {
                 gl_FragColor = vec4(1.0, 1.0, 1.0, alpha * 0.7);
             }
         `;
+
+        // スマホ（850px以下）の場合、高解像度ディスプレイ（pixelRatio 2~3）での巨大化を防ぐため係数を下げる
+        const pixelRatioValue = window.innerWidth <= 850 ? window.devicePixelRatio * 0.5 : window.devicePixelRatio;
+
         const starMaterial = new THREE.ShaderMaterial({
-            uniforms: { pixelRatio: { value: window.devicePixelRatio } },
+            uniforms: { pixelRatio: { value: pixelRatioValue } },
             vertexShader: vertexShader,
             fragmentShader: fragmentShader,
             blending: THREE.AdditiveBlending,
@@ -332,8 +336,12 @@ function addParticles(color) {
         posArray[i] = (Math.random() - 0.5) * 8;
     }
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+    // スマホ（850px以下）の場合はサイズを0.025に（少し小さく）、それ以外は元の0.04にする
+    const particleSize = window.innerWidth <= 850 ? 0.025 : 0.04;
+
     const material = new THREE.PointsMaterial({
-        size: 0.04,
+        size: particleSize,
         color: color || 0xffffff,
         transparent: true,
         opacity: 0.4,
