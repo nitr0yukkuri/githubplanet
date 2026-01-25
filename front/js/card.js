@@ -38,7 +38,8 @@ if (!isScreenshotMode) {
     const targetUrl = `${deployUrl}/card.html?username=${username}&fix=true&time=${timestamp}`;
     const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
 
-    const pageUrl = `${deployUrl}/card.html?username=${username}`;
+    // リンク先をトップページに変更
+    const pageUrl = `${deployUrl}/`;
     const mdText = `[![GitHub Planet](${thumbUrl})](${pageUrl})`;
 
     if (markdownCode) markdownCode.textContent = mdText;
@@ -51,7 +52,7 @@ if (!isScreenshotMode) {
     if (shareSection) shareSection.style.display = 'none';
 }
 
-// ★修正: 撮影モードの時は、ブラウザのウィンドウサイズに関わらず縦幅を400にする
+// 撮影モードの時は、ブラウザのウィンドウサイズに関わらず縦幅を400にする
 const width = isScreenshotMode ? window.innerWidth : (containerElement ? containerElement.clientWidth : 800);
 const height = isScreenshotMode ? 400 : (containerElement ? containerElement.clientHeight : 400);
 
@@ -59,7 +60,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
 
 if (isScreenshotMode) {
-    // 撮影モード時に惑星が小さくならないよう、カメラ距離を10.5から9.7へ近づける
+    // 撮影モード時に惑星が小さくならないよう、カメラ距離を調整
     camera.position.set(6.0, 0, 9.7);
 } else {
     camera.position.set(6.0, 0, 10.0);
@@ -73,7 +74,6 @@ canvasContainer.appendChild(renderer.domElement);
 if (isScreenshotMode) {
     window.addEventListener('resize', () => {
         const w = window.innerWidth;
-        // リサイズ時も縦幅は400を維持（CSSで固定されているため）
         const h = 400;
         renderer.setSize(w, h);
         camera.aspect = w / h;
@@ -270,8 +270,8 @@ function createPlanet(data) {
             }
         `;
 
-        // ★修正: 撮影モードは1.3倍固定。それ以外は画面幅に応じて0.5(最小)~1.0(最大)になめらかに変化
-        const multiplier = isScreenshotMode ? 1.3 : Math.min(1.0, Math.max(0.5, window.innerWidth / 1000));
+        // 修正: 画面幅に応じてサイズをなめらかに変化（最小0.4、1200px以上で1.0）
+        const multiplier = isScreenshotMode ? 1.3 : Math.min(1.0, Math.max(0.4, window.innerWidth / 1200));
         const pixelRatioValue = window.devicePixelRatio * multiplier;
 
         const starMaterial = new THREE.ShaderMaterial({
@@ -339,8 +339,8 @@ function addParticles(color) {
     }
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
 
-    // ★修正: 撮影モードは0.04固定。それ以外は画面幅に応じて0.015~0.04へなめらかに変化
-    const particleSize = isScreenshotMode ? 0.04 : Math.min(0.04, Math.max(0.015, window.innerWidth * 0.00004));
+    // 修正: 画面幅に応じてサイズをなめらかに変化（最小0.01、1200px以上で0.04）
+    const particleSize = isScreenshotMode ? 0.04 : Math.min(0.04, Math.max(0.01, window.innerWidth / 30000));
 
     const material = new THREE.PointsMaterial({
         size: particleSize,
