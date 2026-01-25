@@ -340,7 +340,7 @@ function addParticles(color) {
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
 
     // ★修正: 撮影モード(isScreenshotMode)ならデフォルトサイズ(0.04)にする。
-    // スマホ判定時のみ 0.03 に縮小。
+    // スマホ判定時のみ 0.03 に縮小。。
     const particleSize = (isScreenshotMode) ? 0.04 : (window.innerWidth <= 850 ? 0.03 : 0.04);
 
     const material = new THREE.PointsMaterial({
