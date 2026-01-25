@@ -38,8 +38,7 @@ if (!isScreenshotMode) {
     const targetUrl = `${deployUrl}/card.html?username=${username}&fix=true&time=${timestamp}`;
     const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
 
-    // ★修正: リンク先をカード個別ページからトップページに変更
-    const pageUrl = `${deployUrl}/`;
+    const pageUrl = `${deployUrl}/card.html?username=${username}`;
     const mdText = `[![GitHub Planet](${thumbUrl})](${pageUrl})`;
 
     if (markdownCode) markdownCode.textContent = mdText;
@@ -271,8 +270,8 @@ function createPlanet(data) {
             }
         `;
 
-        // ★修正: スマホ判定時(850px以下)の係数を0.7から0.6に変更
-        const multiplier = isScreenshotMode ? 1.3 : (window.innerWidth <= 850 ? 0.6 : 1.0);
+        // ★修正: 撮影モードは1.3倍固定。それ以外は画面幅に応じて0.5(最小)~1.0(最大)になめらかに変化
+        const multiplier = isScreenshotMode ? 1.3 : Math.min(1.0, Math.max(0.5, window.innerWidth / 1000));
         const pixelRatioValue = window.devicePixelRatio * multiplier;
 
         const starMaterial = new THREE.ShaderMaterial({
@@ -340,8 +339,8 @@ function addParticles(color) {
     }
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
 
-    // ★修正: スマホ判定時(850px以下)のサイズを0.03から0.025に変更
-    const particleSize = (isScreenshotMode) ? 0.04 : (window.innerWidth <= 850 ? 0.025 : 0.04);
+    // ★修正: 撮影モードは0.04固定。それ以外は画面幅に応じて0.015~0.04へなめらかに変化
+    const particleSize = isScreenshotMode ? 0.04 : Math.min(0.04, Math.max(0.015, window.innerWidth * 0.00004));
 
     const material = new THREE.PointsMaterial({
         size: particleSize,
