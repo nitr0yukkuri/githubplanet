@@ -269,8 +269,10 @@ function createPlanet(data) {
             }
         `;
 
-        // スマホ（850px以下）の場合、高解像度ディスプレイ（pixelRatio 2~3）での巨大化を防ぐため係数を下げる
-        const pixelRatioValue = window.innerWidth <= 850 ? window.devicePixelRatio * 0.5 : window.devicePixelRatio;
+        // ★修正: 撮影モード(isScreenshotMode)ならデスクトップと同じ比率(1.0)にする。
+        // そうでなければスマホ判定(850px以下)を行ってサイズを調整する。
+        const multiplier = isScreenshotMode ? 1.0 : (window.innerWidth <= 850 ? 0.7 : 1.0);
+        const pixelRatioValue = window.devicePixelRatio * multiplier;
 
         const starMaterial = new THREE.ShaderMaterial({
             uniforms: { pixelRatio: { value: pixelRatioValue } },
@@ -337,8 +339,9 @@ function addParticles(color) {
     }
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
 
-    // スマホ（850px以下）の場合はサイズを0.025に（少し小さく）、それ以外は元の0.04にする
-    const particleSize = window.innerWidth <= 850 ? 0.025 : 0.04;
+    // ★修正: 撮影モード(isScreenshotMode)ならデフォルトサイズ(0.04)にする。
+    // スマホ判定時のみ 0.03 に縮小。
+    const particleSize = (isScreenshotMode) ? 0.04 : (window.innerWidth <= 850 ? 0.03 : 0.04);
 
     const material = new THREE.PointsMaterial({
         size: particleSize,
