@@ -270,8 +270,8 @@ function createPlanet(data) {
             }
         `;
 
-        // ★修正: 撮影モード(isScreenshotMode)では星を少し大きく(1.3倍)する
-        const multiplier = isScreenshotMode ? 1.3 : (window.innerWidth <= 850 ? 0.7 : 1.0);
+        // ★修正: スマホ判定時(850px以下)の係数を0.7から0.6に変更
+        const multiplier = isScreenshotMode ? 1.3 : (window.innerWidth <= 850 ? 0.6 : 1.0);
         const pixelRatioValue = window.devicePixelRatio * multiplier;
 
         const starMaterial = new THREE.ShaderMaterial({
@@ -339,9 +339,8 @@ function addParticles(color) {
     }
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
 
-    // ★修正: 撮影モード(isScreenshotMode)ならデフォルトサイズ(0.04)にする。
-    // スマホ判定時のみ 0.03 に縮小。。
-    const particleSize = (isScreenshotMode) ? 0.04 : (window.innerWidth <= 850 ? 0.03 : 0.04);
+    // ★修正: スマホ判定時(850px以下)のサイズを0.03から0.025に変更
+    const particleSize = (isScreenshotMode) ? 0.04 : (window.innerWidth <= 850 ? 0.025 : 0.04);
 
     const material = new THREE.PointsMaterial({
         size: particleSize,
