@@ -38,7 +38,8 @@ if (!isScreenshotMode) {
     const targetUrl = `${deployUrl}/card.html?username=${username}&fix=true&time=${timestamp}`;
     const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
 
-    const pageUrl = `${deployUrl}/card.html?username=${username}`;
+    // ★修正: リンク先をカード個別ページからトップページに変更
+    const pageUrl = `${deployUrl}/`;
     const mdText = `[![GitHub Planet](${thumbUrl})](${pageUrl})`;
 
     if (markdownCode) markdownCode.textContent = mdText;
