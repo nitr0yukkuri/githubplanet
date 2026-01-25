@@ -59,7 +59,8 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
 
 if (isScreenshotMode) {
-    camera.position.set(6.0, 0, 10.5);
+    // 撮影モード時に惑星が小さくならないよう、カメラ距離を10.5から9.7へ近づける
+    camera.position.set(6.0, 0, 9.7);
 } else {
     camera.position.set(6.0, 0, 10.0);
 }
@@ -269,9 +270,8 @@ function createPlanet(data) {
             }
         `;
 
-        // ★修正: 撮影モード(isScreenshotMode)ならデスクトップと同じ比率(1.0)にする。
-        // そうでなければスマホ判定(850px以下)を行ってサイズを調整する。
-        const multiplier = isScreenshotMode ? 1.0 : (window.innerWidth <= 850 ? 0.7 : 1.0);
+        // ★修正: スマホ判定時(850px以下)の係数を0.7から0.6に変更
+        const multiplier = isScreenshotMode ? 1.3 : (window.innerWidth <= 850 ? 0.6 : 1.0);
         const pixelRatioValue = window.devicePixelRatio * multiplier;
 
         const starMaterial = new THREE.ShaderMaterial({
@@ -339,9 +339,8 @@ function addParticles(color) {
     }
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
 
-    // ★修正: 撮影モード(isScreenshotMode)ならデフォルトサイズ(0.04)にする。
-    // スマホ判定時のみ 0.03 に縮小。
-    const particleSize = (isScreenshotMode) ? 0.04 : (window.innerWidth <= 850 ? 0.03 : 0.04);
+    // ★修正: スマホ判定時(850px以下)のサイズを0.03から0.025に変更
+    const particleSize = (isScreenshotMode) ? 0.04 : (window.innerWidth <= 850 ? 0.025 : 0.04);
 
     const material = new THREE.PointsMaterial({
         size: particleSize,
