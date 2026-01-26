@@ -486,53 +486,94 @@ async function updateAndSavePlanetData(user, accessToken) {
         if (bytes > maxBytes) { maxBytes = bytes; mainLanguage = lang; }
     }
 
-    let planetColor = await resolveLanguageColor(mainLanguage);
-
-    let planetSizeFactor = 1.0 + Math.min(1.0, Math.log10(Math.max(1, totalCommits)) / 2.5);
-    planetSizeFactor = parseFloat(planetSizeFactor.toFixed(2));
-
-    let planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
-
-    if (process.env.GEMINI_API_KEY && (planetName.includes('未知の') || planetName.includes('神秘'))) {
-        console.log(`[Gemini] 暫定名 "${planetName}" をかっこいい名前に修正します...`);
-        let suffix = '星';
-        if (totalCommits > 1000) suffix = '帝星';
-        else if (totalCommits > 500) suffix = '巨星';
-
-        const prompt = `Programming language: ${mainLanguage}. Color: ${planetColor}.
-        Generate a cool Japanese planet name in the format: "[Adjective][ColorName]の${suffix}".
-        The adjective should describe the nature of "${mainLanguage}". The color name should describe the color "${planetColor}".
-        Example: "JavaScript" -> "柔軟な黄金の${suffix}".
-        Return ONLY the name string.`;
-
-        const aiName = await askGemini(prompt);
-        if (aiName) {
-            planetName = aiName.replace(/(\r\n|\n|\r)/gm, "");
-        }
-    }
-
-    let achievements = {};
+    // ★修正: DBの既存データを先に取得して、変更がないか確認する
+    let existingData = null;
+    let existingAchievements = {};
     let unlockedTitles = { prefixes: ['名もなき'], suffixes: ['旅人'] };
     let activeTitle = { prefix: '名もなき', suffix: '旅人' };
 
     if (pool) {
-        let existingAchievements = {};
         try {
-            // ★修正: 既存の称号データも取得する
-            const existingData = await pool.query('SELECT achievements, unlocked_titles, active_title FROM planets WHERE github_id = $1', [user.id]);
-            if (existingData.rows.length > 0) {
-                existingAchievements = existingData.rows[0].achievements || {};
-                if (existingData.rows[0].unlocked_titles) {
-                    unlockedTitles = existingData.rows[0].unlocked_titles;
-                }
-                if (existingData.rows[0].active_title) {
-                    activeTitle = existingData.rows[0].active_title;
-                }
+            const result = await pool.query('SELECT * FROM planets WHERE github_id = $1', [user.id]);
+            if (result.rows.length > 0) {
+                existingData = result.rows[0];
+                existingAchievements = existingData.achievements || {};
+                unlockedTitles = existingData.unlocked_titles || unlockedTitles;
+                activeTitle = existingData.active_title || activeTitle;
             }
         } catch (e) {
-            console.error('[DB] 既存データ取得エラー:', e);
+            console.error('[DB] 既存データ取得エラー:', e.message);
+        }
+    }
+
+    let planetColor = '#808080';
+    let planetName = generatePlanetName(mainLanguage, '#808080', totalCommits);
+    let shouldAskGeminiColor = true;
+    let shouldAskGeminiName = true;
+
+    // ★最適化: 既存データと比較してAI呼び出しをスキップする
+    if (existingData) {
+        // メイン言語が変わっていなければ、色は既存のものを使う（またはキャッシュ）
+        if (existingData.main_language === mainLanguage && existingData.planet_color) {
+            planetColor = existingData.planet_color;
+            shouldAskGeminiColor = false;
         }
 
+        // 名前も、メイン言語が変わらず、かつ既にAI生成済みの名前（"未知の..."でない）なら再利用
+        if (existingData.main_language === mainLanguage && existingData.planet_name) {
+            const oldName = existingData.planet_name;
+            if (!oldName.includes('未知の') && !oldName.includes('神秘')) {
+                planetName = oldName;
+                shouldAskGeminiName = false;
+            }
+        }
+    }
+
+    if (shouldAskGeminiColor) {
+        planetColor = await resolveLanguageColor(mainLanguage);
+        // 色が変わったので名前も再生成させるために仮設定
+        if (!shouldAskGeminiName) {
+            // 色が変わった場合は名前も更新したほうが自然だが、言語が同じなら名前キープでOKとする方針
+            // もし厳密にするならここで shouldAskGeminiName = true に戻す
+        }
+    }
+
+    let planetSizeFactor = 1.0 + Math.min(1.0, Math.log10(Math.max(1, totalCommits)) / 2.5);
+    planetSizeFactor = parseFloat(planetSizeFactor.toFixed(2));
+
+    // もしGemini生成が必要なら（新規、または言語変更時）
+    if (process.env.GEMINI_API_KEY && shouldAskGeminiName) {
+        const tempName = generatePlanetName(mainLanguage, planetColor, totalCommits);
+
+        // デフォルト名生成ロジックでもう一度名前を作る（サフィックス計算などのため）
+        planetName = tempName;
+
+        if (planetName.includes('未知の') || planetName.includes('神秘')) {
+            console.log(`[Gemini] 暫定名 "${planetName}" をかっこいい名前に修正します...`);
+            let suffix = '星';
+            if (totalCommits > 1000) suffix = '帝星';
+            else if (totalCommits > 500) suffix = '巨星';
+
+            const prompt = `Programming language: ${mainLanguage}. Color: ${planetColor}.
+            Generate a cool Japanese planet name in the format: "[Adjective][ColorName]の${suffix}".
+            The adjective should describe the nature of "${mainLanguage}". The color name should describe the color "${planetColor}".
+            Example: "JavaScript" -> "柔軟な黄金の${suffix}".
+            Return ONLY the name string.`;
+
+            const aiName = await askGemini(prompt);
+            if (aiName) {
+                planetName = aiName.replace(/(\r\n|\n|\r)/gm, "");
+            }
+        } else {
+            console.log('[Gemini] 名前生成スキップ: キャッシュまたはデフォルト名を採用');
+        }
+    } else {
+        console.log('[Gemini] 名前生成スキップ: 既存のかっこいい名前を再利用');
+    }
+
+    let achievements = {};
+
+    if (pool) {
         const stats = {
             totalCommits,
             weeklyCommits,

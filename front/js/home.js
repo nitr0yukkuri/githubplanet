@@ -1,4 +1,3 @@
-// front/js/home.js
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import anime from 'animejs';
@@ -176,8 +175,6 @@ async function loadPlanet(data) {
     planetRotationSpeed = 0.001 + ((wCommits || 0) * 0.0001);
 
     if (ownerDisplay && data.username) {
-        // ★修正: 惑星オーナー表示の称号は削除し、名前だけにする（ステータス画面に移動したため）
-        // 以前のコードが残っている場合はここをシンプルに戻す
         ownerDisplay.textContent = `${data.username} の星`;
         ownerDisplay.style.display = 'inline-block';
     }
@@ -186,7 +183,6 @@ async function loadPlanet(data) {
         profileLink.style.display = 'flex';
     }
 
-    // ★修正: メニューの「カード」リンク先をページURLに変更
     const cardLink = document.getElementById('card-link');
     if (cardLink && data.username) {
         cardLink.href = `/card.html?username=${data.username}`;
@@ -565,7 +561,6 @@ async function init() {
     new THREE.CubeTextureLoader().setPath('front/img/skybox/').load(['right.png', 'left.png', 'top.png', 'bottom.png', 'front.png', 'back.png'], (tex) => scene.background = tex);
 
     socket.on('meteor', (data) => {
-        // ★修正: タブが裏にある時(hidden)は処理を中断して「ためない」ようにする
         if (document.hidden) return;
 
         console.log('Meteor received:', data);
@@ -599,19 +594,31 @@ async function init() {
 async function loadMainContent() {
     if (mainUiWrapper) mainUiWrapper.style.display = 'block';
 
-    const data = await fetchMyPlanetData();
-    const notLoggedInContainer = document.getElementById('not-logged-in-container');
+    // ★追加: データ取得開始前にローディングを表示
+    toggleLoading(true);
 
-    if (notLoggedInContainer) {
-        if (data) {
-            loadPlanet(data);
-        } else {
-            notLoggedInContainer.style.display = 'flex';
-            controls.enabled = false;
+    try {
+        const data = await fetchMyPlanetData();
+        const notLoggedInContainer = document.getElementById('not-logged-in-container');
+
+        if (notLoggedInContainer) {
+            if (data) {
+                // 既にログイン済みなら惑星を表示
+                await loadPlanet(data);
+            } else {
+                // 未ログインなら「星を誕生させる」画面を表示
+                notLoggedInContainer.style.display = 'flex';
+                controls.enabled = false;
+            }
         }
-    }
 
-    setupUI();
+        setupUI();
+    } catch (e) {
+        console.error('Initial load failed:', e);
+    } finally {
+        // ★追加: 処理が終わったら（成功・失敗にかかわらず）ローディングを消す
+        toggleLoading(false);
+    }
 }
 
 function animate() {
