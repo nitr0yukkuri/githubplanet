@@ -4,7 +4,7 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Sans', 'Noto Sans CJK JP', sans-serif;
     color: #ffffff;
     background-color: #000;
-    background-image: url('/front/img/Achievementsimage.jpg');
+    background-image: url('../img/Achievementsimage.jpg');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -305,6 +305,61 @@ body {
     margin: 0;
 }
 
+/* ★ 変更箇所: 称号(UNLOCK TITLE)のデザイン改善 */
+.reward-container {
+    margin: 30px 0;
+    text-align: center;
+    /* 背景をなくしてスタイリッシュに */
+    background: transparent;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+}
+
+.reward-label {
+    font-size: 0.85rem;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin: 0 0 20px 0;
+    font-weight: 700;
+    display: inline-block;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 5px;
+}
+
+.reward-tags {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.reward-tag {
+    /* プレート風デザイン */
+    background: rgba(13, 17, 23, 0.95);
+    color: #fff;
+    padding: 12px 30px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 1.3rem;
+    letter-spacing: 1px;
+    border: 1px solid #388bfd; /* GitHub Blue */
+    box-shadow: 0 0 15px rgba(56, 139, 253, 0.2);
+    text-shadow: 0 0 5px rgba(56, 139, 253, 0.5);
+    transition: all 0.3s ease;
+    min-width: 100px;
+    text-align: center;
+}
+
+.reward-tag:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 25px rgba(56, 139, 253, 0.4);
+    border-color: #58a6ff;
+    color: #58a6ff;
+}
+
 .detail-status-row {
     font-size: 1.2rem;
     text-align: right;
@@ -387,5 +442,10 @@ body {
     
     .detail-box p {
         font-size: 1.1rem;
+    }
+    
+    .reward-tag {
+        font-size: 1.1rem;
+        padding: 10px 20px;
     }
 }
