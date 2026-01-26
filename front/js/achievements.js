@@ -13,6 +13,20 @@ const MASTER_ACHIEVEMENTS = {
     COMMIT_1000: { id: 'COMMIT_1000', name: 'コミット1000', description: '累計コミット数が1000を超えた。' },
 };
 
+// ★追加: クライアント側で表示するための称号データ
+const TITLE_REWARDS = {
+    FIRST_PLANET: { prefix: '始まりの', suffix: '創造主' },
+    FIRST_COMMIT: { prefix: '記念すべき', suffix: '第一歩' },
+    VELOCITY_STAR: { prefix: '光速の', suffix: '彗星' },
+    OS_CONTRIBUTOR: { prefix: '銀河の', suffix: '貢献者' },
+    STARGAZER: { prefix: '輝く', suffix: '一番星' },
+    POLYGLOT_PIONEER: { prefix: '多才な', suffix: '翻訳家' },
+    OCTOCAT_FRIEND: { prefix: '古参の', suffix: '盟友' },
+    COMMIT_100: { prefix: '努力の', suffix: '職人' },
+    COMMIT_500: { prefix: '熟練の', suffix: '達人' },
+    COMMIT_1000: { prefix: '伝説の', suffix: '英雄' },
+};
+
 const TROPHY_SVG = `<svg stroke="currentColor" fill="none" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" height="1.2em" width="1.2em" xmlns="http://www.w3.org/2000/svg" style="margin-right: 8px;"><path d="M8 21h8"></path><path d="M12 17v4"></path><path d="M7 4h10v8a5 5 0 0 1-10 0V4z"></path><path d="M17 8h1a2 2 0 0 1 0 4h-1"></path><path d="M7 8H6a2 2 0 0 0 0 4h1"></path></svg>`;
 
 // ビュー切り替え用の要素
@@ -38,6 +52,14 @@ function showDetail(masterData, userData) {
     // テキスト設定
     detailTitle.textContent = masterData.name;
     detailDesc.textContent = masterData.description;
+
+    // ★追加: 報酬称号の表示
+    const reward = TITLE_REWARDS[masterData.id];
+    if (reward) {
+        const rewardText = `\n\n獲得称号: [${reward.prefix}] [${reward.suffix}]`;
+        detailDesc.textContent += rewardText;
+    }
+
     detailStatus.textContent = statusText;
 
     if (isUnlocked) {

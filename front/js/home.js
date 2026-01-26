@@ -167,7 +167,11 @@ async function loadPlanet(data) {
     planetRotationSpeed = 0.001 + ((wCommits || 0) * 0.0001);
 
     if (ownerDisplay && data.username) {
-        ownerDisplay.textContent = `${data.username} の星`;
+        // ★修正: 称号がある場合は称号も表示
+        const titleStr = data.activeTitle ?
+            `<span style="font-size:0.8em; color:#aaa; display:block; margin-bottom:4px;">${data.activeTitle.prefix} ${data.activeTitle.suffix}</span>` : '';
+
+        ownerDisplay.innerHTML = `${titleStr}${data.username} の星`;
         ownerDisplay.style.display = 'inline-block';
     }
     if (profileLink && data.username) {
