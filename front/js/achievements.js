@@ -40,6 +40,11 @@ const detailDesc = document.getElementById('detail-description');
 const detailStatus = document.getElementById('detail-status-text');
 const backBtn = document.getElementById('back-to-list-btn');
 
+// ★追加: 報酬表示用の要素
+const rewardContainer = document.getElementById('reward-container');
+const rewardPrefix = document.getElementById('reward-prefix');
+const rewardSuffix = document.getElementById('reward-suffix');
+
 function showDetail(masterData, userData) {
     const isUnlocked = !!userData;
     const unlockedDate = (userData?.unlockedAt || '').split('T')[0].replace(/-/g, '/');
@@ -53,11 +58,14 @@ function showDetail(masterData, userData) {
     detailTitle.textContent = masterData.name;
     detailDesc.textContent = masterData.description;
 
-    // ★追加: 報酬称号の表示
+    // ★変更: 報酬称号を専用エリアに表示
     const reward = TITLE_REWARDS[masterData.id];
     if (reward) {
-        const rewardText = `\n\n獲得称号: [${reward.prefix}] [${reward.suffix}]`;
-        detailDesc.textContent += rewardText;
+        rewardContainer.style.display = 'block';
+        rewardPrefix.textContent = reward.prefix;
+        rewardSuffix.textContent = reward.suffix;
+    } else {
+        rewardContainer.style.display = 'none';
     }
 
     detailStatus.textContent = statusText;
