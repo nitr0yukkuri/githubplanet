@@ -982,17 +982,22 @@ app.get('/api/planets/random', async (req, res) => {
             }
 
             if (shouldUpdate) {
-                (async () => {
-                    try {
-                        console.log(`[Random/Background] Updating stale data for: ${row.username}`);
-                        const targetUserRes = await axios.get(`https://api.github.com/users/${row.username}`, {
-                            headers: { 'Authorization': `Bearer ${req.session.github_token}` }
-                        });
-                        await updateAndSavePlanetData(targetUserRes.data, req.session.github_token);
-                    } catch (e) {
-                        console.warn(`[Random/Background] Update failed: ${e.message}`);
+                try {
+                    console.log(`[Random/Update] Updating stale data for: ${row.username}`);
+                    const targetUserRes = await axios.get(`https://api.github.com/users/${row.username}`, {
+                        headers: { 'Authorization': `Bearer ${req.session.github_token}` }
+                    });
+                    await updateAndSavePlanetData(targetUserRes.data, req.session.github_token);
+
+                    // 更新後のデータを再取得して反映
+                    const updatedResult = await pool.query('SELECT * FROM planets WHERE github_id = $1', [row.github_id]);
+                    if (updatedResult.rows.length > 0) {
+                        row = updatedResult.rows[0];
                     }
-                })();
+                } catch (e) {
+                    console.warn(`[Random/Update] Update failed: ${e.message}`);
+                    // 更新失敗時は古いデータのまま続行
+                }
             }
         }
 
