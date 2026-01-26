@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,13 +8,33 @@
     <link rel="icon" href="/front/img/favicon.png" type="image/png">
     <link rel="stylesheet" href="./front/css/settings.css">
 </head>
+
 <body>
     <div class="settings-container">
         <a href="/" class="back-button">＜ 惑星に戻る</a>
-        
-        <div class="coming-soon-content">
-            <h1>Coming soon...</h1>
+
+        <div class="settings-content">
+            <h1>Settings</h1>
+
+            <div class="title-editor">
+                <h2>称号の変更</h2>
+                <p>実績を解除すると新しい言葉が増えます。</p>
+
+                <div class="preview-box">
+                    <span id="preview-prefix"></span> <span id="preview-suffix"></span>
+                </div>
+
+                <div class="selectors">
+                    <select id="prefix-select"></select>
+                    <select id="suffix-select"></select>
+                </div>
+
+                <button id="save-btn" class="save-btn">設定を保存する</button>
+            </div>
         </div>
     </div>
+
+    <script type="module" src="./front/js/settings.js"></script>
 </body>
+
 </html>

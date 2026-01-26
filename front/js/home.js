@@ -54,6 +54,7 @@ function updatePlanetDetails(data) {
     const stats = document.getElementById('lang-stats-container');
     const commits = document.getElementById('commit-count-val');
     const name = document.getElementById('planet-name-val');
+    const title = document.getElementById('planet-title-val');
 
     console.log('updatePlanetDetails called with:', data);
 
@@ -84,6 +85,14 @@ function updatePlanetDetails(data) {
     if (commits) {
         const commitCount = (data.totalCommits !== null && data.totalCommits !== undefined) ? data.totalCommits : 0;
         commits.textContent = commitCount;
+    }
+
+    if (title) {
+        if (data.activeTitle) {
+            title.textContent = `${data.activeTitle.prefix} ${data.activeTitle.suffix}`;
+        } else {
+            title.textContent = '';
+        }
     }
 
     if (name) {
@@ -167,6 +176,8 @@ async function loadPlanet(data) {
     planetRotationSpeed = 0.001 + ((wCommits || 0) * 0.0001);
 
     if (ownerDisplay && data.username) {
+        // ★修正: 惑星オーナー表示の称号は削除し、名前だけにする（ステータス画面に移動したため）
+        // 以前のコードが残っている場合はここをシンプルに戻す
         ownerDisplay.textContent = `${data.username} の星`;
         ownerDisplay.style.display = 'inline-block';
     }

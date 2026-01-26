@@ -97,6 +97,20 @@ const ACHIEVEMENTS = {
     COMMIT_1000: { id: 'COMMIT_1000', name: 'コントリビューション1000', description: '累計活動数が1000を超えた。' },
 };
 
+// ★追加: 実績解除で獲得できる称号パーツ (Prefix, Suffix)
+const TITLE_REWARDS = {
+    FIRST_PLANET: { prefix: '始まりの', suffix: '創造主' },
+    FIRST_COMMIT: { prefix: '記念すべき', suffix: '第一歩' },
+    VELOCITY_STAR: { prefix: '光速の', suffix: '彗星' },
+    OS_CONTRIBUTOR: { prefix: '銀河の', suffix: '貢献者' },
+    STARGAZER: { prefix: '輝く', suffix: '一番星' },
+    POLYGLOT_PIONEER: { prefix: '多才な', suffix: '翻訳家' },
+    OCTOCAT_FRIEND: { prefix: '古参の', suffix: '盟友' },
+    COMMIT_100: { prefix: '努力の', suffix: '職人' },
+    COMMIT_500: { prefix: '熟練の', suffix: '達人' },
+    COMMIT_1000: { prefix: '伝説の', suffix: '英雄' },
+};
+
 const USER_DATA_QUERY = `
   query($login: String!) {
     user(login: $login) {
@@ -190,6 +204,14 @@ if (connectionString) {
             return pool.query(`
                 ALTER TABLE planets 
                 ADD COLUMN IF NOT EXISTS weekly_commits INTEGER DEFAULT 0;
+            `);
+        })
+        // ★追加: 称号システム用のカラムを追加
+        .then(() => {
+            return pool.query(`
+                ALTER TABLE planets 
+                ADD COLUMN IF NOT EXISTS unlocked_titles JSONB DEFAULT '{"prefixes": ["名もなき"], "suffixes": ["旅人"]}'::jsonb,
+                ADD COLUMN IF NOT EXISTS active_title JSONB DEFAULT '{"prefix": "名もなき", "suffix": "旅人"}'::jsonb;
             `);
         })
         // ★パフォーマンス: インデックスを追加して検索を高速化
@@ -490,15 +512,25 @@ async function updateAndSavePlanetData(user, accessToken) {
     }
 
     let achievements = {};
+    let unlockedTitles = { prefixes: ['名もなき'], suffixes: ['旅人'] };
+    let activeTitle = { prefix: '名もなき', suffix: '旅人' };
+
     if (pool) {
         let existingAchievements = {};
         try {
-            const existingData = await pool.query('SELECT achievements FROM planets WHERE github_id = $1', [user.id]);
+            // ★修正: 既存の称号データも取得する
+            const existingData = await pool.query('SELECT achievements, unlocked_titles, active_title FROM planets WHERE github_id = $1', [user.id]);
             if (existingData.rows.length > 0) {
                 existingAchievements = existingData.rows[0].achievements || {};
+                if (existingData.rows[0].unlocked_titles) {
+                    unlockedTitles = existingData.rows[0].unlocked_titles;
+                }
+                if (existingData.rows[0].active_title) {
+                    activeTitle = existingData.rows[0].active_title;
+                }
             }
         } catch (e) {
-            console.error('[DB] 既存実績取得エラー:', e);
+            console.error('[DB] 既存データ取得エラー:', e);
         }
 
         const stats = {
@@ -512,16 +544,29 @@ async function updateAndSavePlanetData(user, accessToken) {
 
         achievements = checkAchievements(existingAchievements, stats);
 
+        // ★追加: 実績に基づいて称号をアンロック
+        Object.keys(achievements).forEach(key => {
+            if (TITLE_REWARDS[key]) {
+                const { prefix, suffix } = TITLE_REWARDS[key];
+                if (!unlockedTitles.prefixes.includes(prefix)) {
+                    unlockedTitles.prefixes.push(prefix);
+                }
+                if (!unlockedTitles.suffixes.includes(suffix)) {
+                    unlockedTitles.suffixes.push(suffix);
+                }
+            }
+        });
+
         await pool.query(`
-            INSERT INTO planets (github_id, username, planet_color, planet_size_factor, main_language, language_stats, total_commits, last_updated, achievements, planet_name, weekly_commits)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9, $10)
+            INSERT INTO planets (github_id, username, planet_color, planet_size_factor, main_language, language_stats, total_commits, last_updated, achievements, planet_name, weekly_commits, unlocked_titles, active_title)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9, $10, $11, $12)
             ON CONFLICT (github_id) DO UPDATE SET
                 username = $2, planet_color = $3, planet_size_factor = $4, main_language = $5,
-                language_stats = $6, total_commits = $7, last_updated = NOW(), achievements = $8, planet_name = $9, weekly_commits = $10
-        `, [user.id, user.login, planetColor, planetSizeFactor, mainLanguage, languageStats, totalCommits, achievements, planetName, weeklyCommits]);
+                language_stats = $6, total_commits = $7, last_updated = NOW(), achievements = $8, planet_name = $9, weekly_commits = $10, unlocked_titles = $11
+        `, [user.id, user.login, planetColor, planetSizeFactor, mainLanguage, languageStats, totalCommits, achievements, planetName, weeklyCommits, unlockedTitles, activeTitle]);
     }
 
-    return { mainLanguage, planetColor, languageStats, totalCommits, weeklyCommits, planetSizeFactor, planetName, achievements };
+    return { mainLanguage, planetColor, languageStats, totalCommits, weeklyCommits, planetSizeFactor, planetName, achievements, unlockedTitles, activeTitle };
 }
 
 function generateSignature(username) {
@@ -778,6 +823,30 @@ app.get('/api/me', async (req, res) => {
     res.json(req.session.planetData);
 });
 
+// ★追加: 称号を保存するAPI
+app.post('/api/save-title', async (req, res) => {
+    if (!req.session.planetData || !pool) {
+        return res.status(401).json({ error: 'Not logged in' });
+    }
+    const { prefix, suffix } = req.body;
+    const userId = req.session.planetData.user.id;
+    const newTitle = { prefix, suffix };
+
+    try {
+        await pool.query('UPDATE planets SET active_title = $1 WHERE github_id = $2', [newTitle, userId]);
+
+        // セッションキャッシュも更新
+        if (req.session.planetData.planetData) {
+            req.session.planetData.planetData.activeTitle = newTitle;
+        }
+
+        res.json({ success: true, activeTitle: newTitle });
+    } catch (e) {
+        console.error('Save Title Error:', e);
+        res.status(500).json({ error: 'DB Error' });
+    }
+});
+
 app.get('/api/planets/user/:username', async (req, res) => {
     if (!pool) return res.status(503).json({ error: 'DB unavailable' });
     try {
@@ -836,6 +905,7 @@ app.get('/api/planets/user/:username', async (req, res) => {
         }
 
         const planetName = row.planet_name || generatePlanetName(mainLanguage, planetColor, totalCommits);
+        const activeTitle = row.active_title || { prefix: '名もなき', suffix: '旅人' };
 
         const responseData = {
             username: row.username,
@@ -846,7 +916,8 @@ app.get('/api/planets/user/:username', async (req, res) => {
             totalCommits: totalCommits,
             weeklyCommits: row.weekly_commits || 0,
             planetName: planetName,
-            achievements: row.achievements || {}
+            achievements: row.achievements || {},
+            activeTitle: activeTitle
         };
 
         res.json(responseData);
@@ -938,6 +1009,7 @@ app.get('/api/planets/random', async (req, res) => {
         }
 
         const planetName = row.planet_name || generatePlanetName(mainLanguage, planetColor, totalCommits);
+        const activeTitle = row.active_title || { prefix: '名もなき', suffix: '旅人' };
 
         const responseData = {
             username: row.username,
@@ -948,7 +1020,8 @@ app.get('/api/planets/random', async (req, res) => {
             totalCommits: totalCommits,
             weeklyCommits: row.weekly_commits || 0,
             planetName: planetName,
-            achievements: row.achievements || {}
+            achievements: row.achievements || {},
+            activeTitle: activeTitle
         };
 
         res.json(responseData);
