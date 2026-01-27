@@ -594,8 +594,8 @@ async function init() {
 async function loadMainContent() {
     if (mainUiWrapper) mainUiWrapper.style.display = 'block';
 
-    // ★追加: データ取得開始前にローディングを表示
-    toggleLoading(true);
+    // ★変更: 初期ロード時のローディング表示を停止
+    // toggleLoading(true);
 
     try {
         const data = await fetchMyPlanetData();
