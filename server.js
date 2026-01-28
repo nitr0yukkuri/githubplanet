@@ -16,7 +16,8 @@ const port = parseInt(process.env.PORT) || 3000;
 // ★パフォーマンス: 常に最新のデータを取得するためキャッシュを0（無効）にする
 const DATA_CACHE_DURATION = 0;
 
-app.use(express.json());
+// ★修正: 巨大なペイロードを受け取れるように制限を緩和 (50mb)
+app.use(express.json({ limit: '50mb' }));
 
 const PgSession = connectPgSimple(session);
 
@@ -49,7 +50,6 @@ const LANGUAGE_COLORS = {
     Svelte: '#ff3e00', Elixir: '#6e4a7e', 'Objective-C': '#438eff', VimScript: '#199f4b'
 };
 
-// ★追加: 拡張子から言語名を判定するためのマップ
 const EXTENSION_MAP = {
     'js': 'JavaScript', 'jsx': 'JavaScript', 'mjs': 'JavaScript',
     'ts': 'TypeScript', 'tsx': 'TypeScript',
@@ -97,7 +97,6 @@ const ACHIEVEMENTS = {
     COMMIT_1000: { id: 'COMMIT_1000', name: 'コントリビューション1000', description: '累計活動数が1000を超えた。' },
 };
 
-// ★追加: 実績解除で獲得できる称号パーツ (Prefix, Suffix)
 const TITLE_REWARDS = {
     FIRST_PLANET: { prefix: '始まりの', suffix: '創造主' },
     FIRST_COMMIT: { prefix: '記念すべき', suffix: '第一歩' },
@@ -206,7 +205,6 @@ if (connectionString) {
                 ADD COLUMN IF NOT EXISTS weekly_commits INTEGER DEFAULT 0;
             `);
         })
-        // ★追加: 称号システム用のカラムを追加
         .then(() => {
             return pool.query(`
                 ALTER TABLE planets 
@@ -214,7 +212,6 @@ if (connectionString) {
                 ADD COLUMN IF NOT EXISTS active_title JSONB DEFAULT '{"prefix": "名もなき", "suffix": "旅人"}'::jsonb;
             `);
         })
-        // ★パフォーマンス: インデックスを追加して検索を高速化
         .then(() => {
             return pool.query(`
                 CREATE INDEX IF NOT EXISTS idx_planets_username ON planets(username);
@@ -229,12 +226,10 @@ if (connectionString) {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ★パフォーマンス: 画像は長期キャッシュ (30日)
 app.use('/front/img', express.static(path.join(__dirname, 'front/img'), {
     maxAge: '30d'
 }));
 
-// ★パフォーマンス: フロントエンドファイルもキャッシュを残さず「生」にする (maxAge: 0)
 app.use('/front', express.static(path.join(__dirname, 'front'), {
     maxAge: 0
 }));
@@ -486,7 +481,6 @@ async function updateAndSavePlanetData(user, accessToken) {
         if (bytes > maxBytes) { maxBytes = bytes; mainLanguage = lang; }
     }
 
-    // ★修正: DBの既存データを先に取得して、変更がないか確認する
     let existingData = null;
     let existingAchievements = {};
     let unlockedTitles = { prefixes: ['名もなき'], suffixes: ['旅人'] };
@@ -511,15 +505,11 @@ async function updateAndSavePlanetData(user, accessToken) {
     let shouldAskGeminiColor = true;
     let shouldAskGeminiName = true;
 
-    // ★最適化: 既存データと比較してAI呼び出しをスキップする
     if (existingData) {
-        // メイン言語が変わっていなければ、色は既存のものを使う（またはキャッシュ）
         if (existingData.main_language === mainLanguage && existingData.planet_color) {
             planetColor = existingData.planet_color;
             shouldAskGeminiColor = false;
         }
-
-        // 名前も、メイン言語が変わらず、かつ既にAI生成済みの名前（"未知の..."でない）なら再利用
         if (existingData.main_language === mainLanguage && existingData.planet_name) {
             const oldName = existingData.planet_name;
             if (!oldName.includes('未知の') && !oldName.includes('神秘')) {
@@ -531,21 +521,15 @@ async function updateAndSavePlanetData(user, accessToken) {
 
     if (shouldAskGeminiColor) {
         planetColor = await resolveLanguageColor(mainLanguage);
-        // 色が変わったので名前も再生成させるために仮設定
         if (!shouldAskGeminiName) {
-            // 色が変わった場合は名前も更新したほうが自然だが、言語が同じなら名前キープでOKとする方針
-            // もし厳密にするならここで shouldAskGeminiName = true に戻す
         }
     }
 
     let planetSizeFactor = 1.0 + Math.min(1.0, Math.log10(Math.max(1, totalCommits)) / 2.5);
     planetSizeFactor = parseFloat(planetSizeFactor.toFixed(2));
 
-    // もしGemini生成が必要なら（新規、または言語変更時）
     if (process.env.GEMINI_API_KEY && shouldAskGeminiName) {
         const tempName = generatePlanetName(mainLanguage, planetColor, totalCommits);
-
-        // デフォルト名生成ロジックでもう一度名前を作る（サフィックス計算などのため）
         planetName = tempName;
 
         if (planetName.includes('未知の') || planetName.includes('神秘')) {
@@ -585,7 +569,6 @@ async function updateAndSavePlanetData(user, accessToken) {
 
         achievements = checkAchievements(existingAchievements, stats);
 
-        // ★追加: 実績に基づいて称号をアンロック
         Object.keys(achievements).forEach(key => {
             if (TITLE_REWARDS[key]) {
                 const { prefix, suffix } = TITLE_REWARDS[key];
@@ -619,17 +602,12 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ★修正: カード生成APIのロジック変更
 app.get('/api/card/:username', (req, res) => {
-    // ログイン中のユーザー情報を取得
     const loggedInUser = req.session.planetData?.user?.login;
-
-    // ★修正1: 環境変数に設定したキーと一致するかチェック
     const { username } = req.params;
     const apiKey = req.headers['x-api-key'] || req.query.api_key;
     const SYSTEM_API_KEY = process.env.SYSTEM_API_KEY;
 
-    // ★修正2: 「本人」または「正しいAPIキーを持つボット」なら許可
     const isAuthorized = (loggedInUser && loggedInUser === username)
         || (SYSTEM_API_KEY && apiKey === SYSTEM_API_KEY);
 
@@ -637,8 +615,6 @@ app.get('/api/card/:username', (req, res) => {
         return res.status(403).send('Forbidden: Please login first.');
     }
 
-    // ★修正3: ボットアクセスの場合は URLの username を信頼する
-    // 本人アクセスなら loggedInUser を使う（本来同じ値だが、安全策）
     const targetUsername = (SYSTEM_API_KEY && apiKey === SYSTEM_API_KEY) ? username : loggedInUser;
 
     let protocol = req.headers['x-forwarded-proto'] || req.protocol;
@@ -648,48 +624,34 @@ app.get('/api/card/:username', (req, res) => {
 
     const host = req.headers['x-forwarded-host'] || req.get('host');
     const timestamp = Date.now();
-
-    // ★追加: 署名をURLに付与して、撮影ボットだけがアクセスできるようにする
     const sig = generateSignature(targetUsername);
-
-    // URLに署名(sig)を追加
     const targetUrl = `${protocol}://${host}/card.html?username=${targetUsername}&fix=true&ts=${timestamp}&sig=${sig}`;
 
     console.log(`[Card] Redirecting generation for: ${targetUrl}`);
-
-    // ★修正: JSで設定した高さ(400)に合わせてクロップサイズを400に変更
-    // width=800のビューポートで描画し、上部400pxを切り取る
     const screenshotServiceUrl = `https://image.thum.io/get/png/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
 
     res.redirect(screenshotServiceUrl);
 });
 
-// ★修正: カード閲覧画面の制限追加
 app.get('/card.html', (req, res) => {
     const { username, fix, sig } = req.query;
 
-    // パターン1: 撮影ボット(thum.io)などからのアクセス (fixパラメータがある場合)
-    // 修正: シェア機能（Markdownリンク）は署名を付与できないため、fixがある場合は署名なしでも許可する
     if (fix) {
         return res.sendFile(path.join(__dirname, 'card.html'));
     }
 
-    // パターン2: ログインユーザー本人 または ローカル環境(開発中) の場合
     const loggedInUser = req.session.planetData?.user?.login;
     if (!isProduction || (loggedInUser && loggedInUser === username)) {
         return res.sendFile(path.join(__dirname, 'card.html'));
     }
 
-    // それ以外はアクセス拒否
     res.status(403).send('Forbidden: This card is private.');
 });
 
-// ★追加: 展示用コントローラー画面
 app.get('/sender', (req, res) => {
     res.sendFile(path.join(__dirname, 'sender.html'));
 });
 
-// ★追加: 展示用コメット発射API
 app.post('/api/meteor', async (req, res) => {
     try {
         const { language } = req.body;
@@ -707,31 +669,44 @@ app.post('/api/meteor', async (req, res) => {
 app.post('/webhook', async (req, res) => {
     try {
         const payload = req.body;
-        // payload.commits は Pushイベントの際にコミット配列として送られてくる
         if (payload && payload.repository && payload.commits && Array.isArray(payload.commits)) {
             const repoLang = payload.repository.language || 'Unknown';
 
-            // ★修正: コミットごとに1つのコメットを送る
             for (const commit of payload.commits) {
-                let targetLang = repoLang; // デフォルトはリポジトリの言語
+                let targetLang = repoLang;
 
-                // コミット内の変更ファイル(added + modified)から言語を探す
                 const files = [
                     ...(commit.added || []),
                     ...(commit.modified || [])
                 ];
 
+                const totalLines = commit.total_lines || 0;
+                const changeCount = files.length;
+                let meteorScale = 1.0;
+
+                // ★修正: 対数計算に変更して、巨大な数字でも穏やかに大きくする
+                if (totalLines > 0) {
+                    meteorScale = 1.0 + (Math.log10(totalLines + 1) * 0.5);
+                } else {
+                    // 通常Webhook用
+                    meteorScale = 1.0 + (changeCount / 10) * 0.5;
+                }
+
+                // ★修正: 上限を2.0に制限（確実にサイズダウン）
+                if (meteorScale > 2.0) meteorScale = 2.0;
+
                 for (const file of files) {
                     const ext = file.split('.').pop().toLowerCase();
                     if (EXTENSION_MAP[ext]) {
                         targetLang = EXTENSION_MAP[ext];
-                        break; // 1つ見つかったらその言語を採用（1コミット1コメットのため）
+                        break;
                     }
                 }
 
                 const color = await resolveLanguageColor(targetLang);
-                console.log(`[Webhook] Commit: ${commit.id.substring(0, 7)} -> Language: ${targetLang}, Color: ${color}`);
-                io.emit('meteor', { color: color, language: targetLang });
+                console.log(`[Webhook] Commit: ${commit.id.substring(0, 7)} -> Language: ${targetLang}, Color: ${color}, Scale: ${meteorScale}, Lines: ${totalLines}`);
+
+                io.emit('meteor', { color: color, language: targetLang, scale: meteorScale });
             }
         }
         res.status(200).send('OK');
@@ -786,7 +761,6 @@ app.get('/achievements', (req, res) => {
     res.sendFile(path.join(__dirname, 'achievements.html'));
 });
 
-// ★修正: 設定ページへのルーティングを追加
 app.get('/settings', (req, res) => {
     res.sendFile(path.join(__dirname, 'settings.html'));
 });
@@ -798,7 +772,6 @@ app.get('/login', (req, res) => {
     const authUrl = new URL('https://github.com/login/oauth/authorize');
     authUrl.searchParams.set('client_id', GITHUB_CLIENT_ID);
     authUrl.searchParams.set('redirect_uri', CALLBACK_URL);
-    // ★重要: プライベートリポジトリも取得するため repo を指定
     authUrl.searchParams.set('scope', 'user:email repo');
     authUrl.searchParams.set('state', crypto.randomBytes(16).toString('hex'));
     authUrl.searchParams.set('code_challenge', code_challenge);
@@ -864,7 +837,6 @@ app.get('/api/me', async (req, res) => {
     res.json(req.session.planetData);
 });
 
-// ★追加: 称号を保存するAPI
 app.post('/api/save-title', async (req, res) => {
     if (!req.session.planetData || !pool) {
         return res.status(401).json({ error: 'Not logged in' });
@@ -876,7 +848,6 @@ app.post('/api/save-title', async (req, res) => {
     try {
         await pool.query('UPDATE planets SET active_title = $1 WHERE github_id = $2', [newTitle, userId]);
 
-        // セッションキャッシュも更新
         if (req.session.planetData.planetData) {
             req.session.planetData.planetData.activeTitle = newTitle;
         }
@@ -1030,14 +1001,12 @@ app.get('/api/planets/random', async (req, res) => {
                     });
                     await updateAndSavePlanetData(targetUserRes.data, req.session.github_token);
 
-                    // 更新後のデータを再取得して反映
                     const updatedResult = await pool.query('SELECT * FROM planets WHERE github_id = $1', [row.github_id]);
                     if (updatedResult.rows.length > 0) {
                         row = updatedResult.rows[0];
                     }
                 } catch (e) {
                     console.warn(`[Random/Update] Update failed: ${e.message}`);
-                    // 更新失敗時は古いデータのまま続行
                 }
             }
         }

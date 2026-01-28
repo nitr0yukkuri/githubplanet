@@ -13,7 +13,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    # シンプルな起動コマンドに変更
     command: node server.js
 
   db:
@@ -30,6 +29,33 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # ★修正ポイント: meteor は services の下にインデント(スペース2つ)を入れて書く
+  meteor:
+    build: .
+    depends_on:
+      - app
+    environment:
+      # コンテナ内から app サービスにアクセスするためのURL
+      - TARGET_URL=http://app:3000/webhook
+    # 1万行のクソデカコミットを再現するコマンド
+    command: >
+      node -e "
+      const axios = require('axios');
+      console.log('☄️  Launching Meteor with 10,000 lines of code...');
+      axios.post(process.env.TARGET_URL, {
+        repository: { language: 'TypeScript' },
+        commits: [{
+          id: 'meteor-strike',
+          message: 'Huge Refactor!',
+          timestamp: new Date().toISOString(),
+          added: [], modified: [], removed: [],
+          total_lines: 10000 
+        }]
+      })
+      .then(res => console.log('✅ Impact Confirmed! Status:', res.status))
+      .catch(err => console.error('❌ Missed:', err.message));
+      "
 
 volumes:
   db_data:
