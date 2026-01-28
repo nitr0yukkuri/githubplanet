@@ -676,8 +676,8 @@ app.post('/api/meteor', async (req, res) => {
         // 指定がなければ通常サイズ
         let finalScale = scale || 1.0;
 
-        // ★修正: 大きすぎると困るので最大3.0に制限
-        if (finalScale > 3.0) finalScale = 3.0;
+        // ★修正: 大きすぎると困るので最大2.5に制限 (3.0 -> 2.5)
+        if (finalScale > 1.5) finalScale = 1.5;
 
         console.log(`[Manual Meteor] Language: ${language}, Color: ${finalColor}, Scale: ${finalScale}`);
         io.emit('meteor', { color: finalColor, language: language || 'Manual', scale: finalScale });
