@@ -663,12 +663,24 @@ app.get('/sender', (req, res) => {
     res.sendFile(path.join(__dirname, 'sender.html'));
 });
 
+// ★修正3: くそでかコメット用 (scale, color受け入れ)
 app.post('/api/meteor', async (req, res) => {
     try {
-        const { language } = req.body;
-        const finalColor = await resolveLanguageColor(language || 'Unknown');
-        console.log(`[Manual Meteor] Language: ${language}, Color: ${finalColor}`);
-        io.emit('meteor', { color: finalColor, language: language || 'Manual' });
+        const { language, color, scale } = req.body;
+
+        let finalColor = color;
+        if (!finalColor) {
+            finalColor = await resolveLanguageColor(language || 'Unknown');
+        }
+
+        // 指定がなければ通常サイズ
+        let finalScale = scale || 1.0;
+
+        // ★修正: 大きすぎると困るので最大3.0に制限
+        if (finalScale > 3.0) finalScale = 3.0;
+
+        console.log(`[Manual Meteor] Language: ${language}, Color: ${finalColor}, Scale: ${finalScale}`);
+        io.emit('meteor', { color: finalColor, language: language || 'Manual', scale: finalScale });
         res.json({ success: true, color: finalColor });
     } catch (e) {
         console.error('[Manual Meteor Error]', e);
@@ -676,7 +688,6 @@ app.post('/api/meteor', async (req, res) => {
     }
 });
 
-// ★修正3: Webhook処理を非同期化してタイムアウトを防ぐ + Scale計算の修正
 app.post('/webhook', (req, res) => {
     try {
         const payload = req.body;

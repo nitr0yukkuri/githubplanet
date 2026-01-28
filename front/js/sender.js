@@ -29,9 +29,25 @@ function createButtons() {
         btn.addEventListener('click', () => sendMeteor(lang.name));
         grid.appendChild(btn);
     });
+
+    // ★追加: くそでかコメットボタン
+    const hugeBtn = document.createElement('button');
+    hugeBtn.className = 'meteor-btn';
+    hugeBtn.innerHTML = `
+        <div class="color-indicator" style="background: linear-gradient(45deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);"></div>
+        GIGANTIC
+    `;
+    hugeBtn.addEventListener('click', () => {
+        // ランダム色生成
+        const randomColor = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+        // ★修正: 5.0は大きすぎたため3.0に変更
+        sendMeteor('GIGANTIC', { color: randomColor, scale: 3.0 });
+    });
+    grid.appendChild(hugeBtn);
 }
 
-async function sendMeteor(language) {
+// ★修正: data引数を追加して色やサイズを受け取れるように変更
+async function sendMeteor(language, data = {}) {
     statusText.innerText = `SENDING ${language.toUpperCase()}...`;
     statusText.style.color = '#fff';
 
@@ -41,11 +57,12 @@ async function sendMeteor(language) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ language: language })
+            // ★修正: dataを展開して送信
+            body: JSON.stringify({ language: language, ...data })
         });
 
         if (res.ok) {
-            const data = await res.json();
+            // const data = await res.json(); // 未使用のためコメントアウト
             statusText.innerText = 'SENT!';
             statusText.style.color = '#00f3ff';
             setTimeout(() => {
