@@ -686,7 +686,7 @@ app.post('/webhook', async (req, res) => {
 
                 // ★修正: 対数計算に変更して、巨大な数字でも穏やかに大きくする
                 if (totalLines > 0) {
-                    meteorScale = 1.0 + (Math.log10(totalLines + 1) * 0.5);
+                    meteorScale = 1.0 + (Math.log10(totalLines + 1) * 0.25);
                 } else {
                     // 通常Webhook用
                     meteorScale = 1.0 + (changeCount / 10) * 0.5;
