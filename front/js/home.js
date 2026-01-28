@@ -390,6 +390,9 @@ async function loadPlanet(data) {
 function spawnMeteor(data) {
     if (!scene || !camera) return;
 
+    // ★追加: サーバーから scale を受け取る（なければ 1.0）
+    const scale = data.scale || 1.0;
+
     const baseColor = new THREE.Color(data.color || '#ffffff');
     const meteorGroup = new THREE.Group();
     meteorGroup.renderOrder = 9999;
@@ -460,11 +463,19 @@ function spawnMeteor(data) {
 
     scene.add(meteorGroup);
 
-    const duration = 1000 + Math.random() * 500;
+    // ★修正: 重厚感の演出 (scale > 3.0 なら遅くする)
+    let baseDuration = 1000 + Math.random() * 500;
+    if (scale > 3.0) {
+        baseDuration = baseDuration * 2.5; // 巨大な場合は2.5倍の時間をかけてゆっくり飛ぶ
+    }
+    const duration = baseDuration;
 
+    // ★修正: scale を適用
     anime({
         targets: meteorGroup.scale,
-        x: 1, y: 1, z: 1,
+        x: scale,
+        y: scale,
+        z: scale,
         easing: 'easeOutElastic(1, .6)',
         duration: 400
     });
@@ -504,6 +515,7 @@ function spawnMeteor(data) {
         }
     });
 
+    // 回転アニメーションの時間も合わせる
     anime({
         targets: head.rotation,
         z: Math.PI * 10,
