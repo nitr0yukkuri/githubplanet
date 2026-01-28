@@ -13,7 +13,7 @@ import { Server } from 'socket.io';
 const app = express();
 const port = parseInt(process.env.PORT) || 3000;
 
-// ★修正1: API制限回避のため、キャッシュ期間を1時間(3600000ms)に設定
+// ★修正1: キャッシュを1時間に設定 (展示中のAPI死を防ぐ)
 const DATA_CACHE_DURATION = 60 * 60 * 1000;
 
 // 巨大なペイロードを受け取れるように制限を緩和 (50mb)
@@ -40,7 +40,7 @@ if (isProduction) {
     }
 }
 
-// ★修正3: AI呼び出し節約のため、設定ファイル等の色定義を追加
+// ★修正2: よく使う設定ファイル系言語を追加 (AI呼び出し節約・高速化)
 const LANGUAGE_COLORS = {
     JavaScript: '#f0db4f', TypeScript: '#007acc', Python: '#306998', HTML: '#e34c26', CSS: '#563d7c',
     Ruby: '#CC342D', Java: '#b07219', C: '#555555', 'C++': '#f34b7d', 'C#': '#178600',
@@ -676,12 +676,12 @@ app.post('/api/meteor', async (req, res) => {
     }
 });
 
-// ★修正2: Webhook処理を非同期化してタイムアウトを防ぐ
+// ★修正3: Webhook処理を非同期化してタイムアウトを防ぐ + Scale計算の修正
 app.post('/webhook', (req, res) => {
     try {
         const payload = req.body;
 
-        // ★重要: 重い処理の前にGitHubへ「OK」を返しておく
+        // ★重要: GitHubへは即座に「OK」を返しておく（タイムアウト回避）
         res.status(200).send('OK');
 
         // 非同期で処理を実行（Fire-and-Forget）
@@ -697,19 +697,20 @@ app.post('/webhook', (req, res) => {
                         ...(commit.modified || [])
                     ];
 
-                    const totalLines = commit.total_lines || 0;
+                    // 数値変換の安全策
+                    const totalLines = parseInt(commit.total_lines || 0, 10);
                     const changeCount = files.length;
                     let meteorScale = 1.0;
 
                     if (totalLines > 0) {
-                        // 1万行でちょうど +1.0倍（合計2.0倍）になる計算
+                        // ★修正4: 1万行でちょうど +1.0倍（合計2.0倍）になる計算 (係数 0.25)
                         meteorScale = 1.0 + (Math.log10(totalLines + 1) * 0.25);
                     } else {
                         // 通常Webhook用
                         meteorScale = 1.0 + (changeCount / 10) * 0.5;
                     }
 
-                    // 上限を2.0に制限（確実にサイズダウン）
+                    // ★修正5: 上限を2.0に制限（画面崩壊防止）
                     if (meteorScale > 2.0) meteorScale = 2.0;
 
                     for (const file of files) {
@@ -721,7 +722,7 @@ app.post('/webhook', (req, res) => {
                     }
 
                     const color = await resolveLanguageColor(targetLang);
-                    console.log(`[Webhook] Commit: ${commit.id.substring(0, 7)} -> Language: ${targetLang}, Color: ${color}, Scale: ${meteorScale}, Lines: ${totalLines}`);
+                    console.log(`[Webhook] Commit: ${commit.id.substring(0, 7)} -> Scale: ${meteorScale.toFixed(2)}, Lines: ${totalLines}`);
 
                     io.emit('meteor', { color: color, language: targetLang, scale: meteorScale });
                 }
@@ -730,7 +731,6 @@ app.post('/webhook', (req, res) => {
 
     } catch (e) {
         console.error('[Webhook Error]', e);
-        // 万が一ここまでレスポンスが送られていなければ送る
         if (!res.headersSent) res.status(500).send('Error');
     }
 });
