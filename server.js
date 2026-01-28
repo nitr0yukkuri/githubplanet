@@ -13,10 +13,10 @@ import { Server } from 'socket.io';
 const app = express();
 const port = parseInt(process.env.PORT) || 3000;
 
-// ★パフォーマンス: 常に最新のデータを取得するためキャッシュを0（無効）にする
-const DATA_CACHE_DURATION = 0;
+// ★修正1: API制限回避のため、キャッシュ期間を1時間(3600000ms)に設定
+const DATA_CACHE_DURATION = 60 * 60 * 1000;
 
-// ★修正: 巨大なペイロードを受け取れるように制限を緩和 (50mb)
+// 巨大なペイロードを受け取れるように制限を緩和 (50mb)
 app.use(express.json({ limit: '50mb' }));
 
 const PgSession = connectPgSimple(session);
@@ -40,6 +40,7 @@ if (isProduction) {
     }
 }
 
+// ★修正3: AI呼び出し節約のため、設定ファイル等の色定義を追加
 const LANGUAGE_COLORS = {
     JavaScript: '#f0db4f', TypeScript: '#007acc', Python: '#306998', HTML: '#e34c26', CSS: '#563d7c',
     Ruby: '#CC342D', Java: '#b07219', C: '#555555', 'C++': '#f34b7d', 'C#': '#178600',
@@ -47,7 +48,11 @@ const LANGUAGE_COLORS = {
     Swift: '#F05138', Kotlin: '#A97BFF', Shell: '#89e051', Dart: '#00B4AB',
     Scala: '#c22d40', Perl: '#0298c3', Lua: '#000080', Haskell: '#5e5086',
     R: '#198CE7', Julia: '#a270ba', Vue: '#41b883', Dockerfile: '#384d54',
-    Svelte: '#ff3e00', Elixir: '#6e4a7e', 'Objective-C': '#438eff', VimScript: '#199f4b'
+    Svelte: '#ff3e00', Elixir: '#6e4a7e', 'Objective-C': '#438eff', VimScript: '#199f4b',
+    // 追加分
+    'Batchfile': '#C1F12E', 'PowerShell': '#012456',
+    'Markdown': '#083fa1', 'JSON': '#292929', 'YAML': '#cb171e',
+    'SQL': '#e38c00', 'GraphQL': '#e10098', 'Terraform': '#623ce4'
 };
 
 const EXTENSION_MAP = {
@@ -78,7 +83,13 @@ const EXTENSION_MAP = {
     'svelte': 'Svelte',
     'ex': 'Elixir', 'exs': 'Elixir',
     'm': 'Objective-C', 'mm': 'Objective-C',
-    'vim': 'VimScript'
+    'vim': 'VimScript',
+    // 追加マッピング
+    'bat': 'Batchfile', 'cmd': 'Batchfile', 'ps1': 'PowerShell',
+    'md': 'Markdown', 'markdown': 'Markdown',
+    'json': 'JSON', 'yaml': 'YAML', 'yml': 'YAML',
+    'sql': 'SQL', 'graphql': 'GraphQL', 'gql': 'GraphQL',
+    'tf': 'Terraform'
 };
 
 const DYNAMIC_COLOR_CACHE = {};
@@ -665,54 +676,62 @@ app.post('/api/meteor', async (req, res) => {
     }
 });
 
-// ★修正: 1コミット1コメット
-app.post('/webhook', async (req, res) => {
+// ★修正2: Webhook処理を非同期化してタイムアウトを防ぐ
+app.post('/webhook', (req, res) => {
     try {
         const payload = req.body;
-        if (payload && payload.repository && payload.commits && Array.isArray(payload.commits)) {
-            const repoLang = payload.repository.language || 'Unknown';
 
-            for (const commit of payload.commits) {
-                let targetLang = repoLang;
-
-                const files = [
-                    ...(commit.added || []),
-                    ...(commit.modified || [])
-                ];
-
-                const totalLines = commit.total_lines || 0;
-                const changeCount = files.length;
-                let meteorScale = 1.0;
-
-                // ★修正: 対数計算に変更して、巨大な数字でも穏やかに大きくする
-                if (totalLines > 0) {
-                    meteorScale = 1.0 + (Math.log10(totalLines + 1) * 0.25);
-                } else {
-                    // 通常Webhook用
-                    meteorScale = 1.0 + (changeCount / 10) * 0.5;
-                }
-
-                // ★修正: 上限を2.0に制限（確実にサイズダウン）
-                if (meteorScale > 2.0) meteorScale = 2.0;
-
-                for (const file of files) {
-                    const ext = file.split('.').pop().toLowerCase();
-                    if (EXTENSION_MAP[ext]) {
-                        targetLang = EXTENSION_MAP[ext];
-                        break;
-                    }
-                }
-
-                const color = await resolveLanguageColor(targetLang);
-                console.log(`[Webhook] Commit: ${commit.id.substring(0, 7)} -> Language: ${targetLang}, Color: ${color}, Scale: ${meteorScale}, Lines: ${totalLines}`);
-
-                io.emit('meteor', { color: color, language: targetLang, scale: meteorScale });
-            }
-        }
+        // ★重要: 重い処理の前にGitHubへ「OK」を返しておく
         res.status(200).send('OK');
+
+        // 非同期で処理を実行（Fire-and-Forget）
+        (async () => {
+            if (payload && payload.repository && payload.commits && Array.isArray(payload.commits)) {
+                const repoLang = payload.repository.language || 'Unknown';
+
+                for (const commit of payload.commits) {
+                    let targetLang = repoLang;
+
+                    const files = [
+                        ...(commit.added || []),
+                        ...(commit.modified || [])
+                    ];
+
+                    const totalLines = commit.total_lines || 0;
+                    const changeCount = files.length;
+                    let meteorScale = 1.0;
+
+                    if (totalLines > 0) {
+                        // 1万行でちょうど +1.0倍（合計2.0倍）になる計算
+                        meteorScale = 1.0 + (Math.log10(totalLines + 1) * 0.25);
+                    } else {
+                        // 通常Webhook用
+                        meteorScale = 1.0 + (changeCount / 10) * 0.5;
+                    }
+
+                    // 上限を2.0に制限（確実にサイズダウン）
+                    if (meteorScale > 2.0) meteorScale = 2.0;
+
+                    for (const file of files) {
+                        const ext = file.split('.').pop().toLowerCase();
+                        if (EXTENSION_MAP[ext]) {
+                            targetLang = EXTENSION_MAP[ext];
+                            break;
+                        }
+                    }
+
+                    const color = await resolveLanguageColor(targetLang);
+                    console.log(`[Webhook] Commit: ${commit.id.substring(0, 7)} -> Language: ${targetLang}, Color: ${color}, Scale: ${meteorScale}, Lines: ${totalLines}`);
+
+                    io.emit('meteor', { color: color, language: targetLang, scale: meteorScale });
+                }
+            }
+        })().catch(err => console.error('[Webhook Async Error]', err));
+
     } catch (e) {
         console.error('[Webhook Error]', e);
-        res.status(500).send('Error');
+        // 万が一ここまでレスポンスが送られていなければ送る
+        if (!res.headersSent) res.status(500).send('Error');
     }
 });
 
