@@ -9,6 +9,7 @@ let welcomeModal, okButton, mainUiWrapper;
 let isFetchingRandomPlanet = false;
 let lastRandomVisitTime = 0;
 let planetRotationSpeed = 0.001;
+let loggedInUsername = null; // ★追加: ログインユーザー名を保持
 
 // ローディングオーバーレイ
 let loadingOverlay;
@@ -41,6 +42,7 @@ async function fetchMyPlanetData() {
         const data = await res.json();
 
         if (data.planetData && data.user) {
+            loggedInUsername = data.user.login; // ★追加: ログインユーザー名を保存
             data.planetData.username = data.user.login;
             return data.planetData;
         }
@@ -166,6 +168,17 @@ async function loadPlanet(data) {
     if (!data) return;
 
     console.log('loadPlanet called with data:', data);
+
+    // ★追加: 自分の惑星の時は「自分の星に戻る」ボタンを非表示にする
+    const returnBtn = document.getElementById('return-my-planet-btn');
+    if (returnBtn) {
+        // ログインしていて、かつ表示中の惑星が自分のユーザー名と異なる場合のみ表示
+        if (loggedInUsername && data.username && loggedInUsername !== data.username) {
+            returnBtn.style.display = 'block';
+        } else {
+            returnBtn.style.display = 'none';
+        }
+    }
 
     let wCommits = data.weeklyCommits;
     if ((!wCommits || wCommits === 0) && data.totalCommits > 0) {
@@ -731,6 +744,29 @@ function setupUI() {
             alert('通信エラーが発生しました');
         } finally {
             isFetchingRandomPlanet = false;
+            toggleLoading(false);
+        }
+    });
+
+    // ★追加: 「自分の星に戻る」ボタンの処理
+    document.getElementById('return-my-planet-btn')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        toggleLoading(true);
+
+        try {
+            const data = await fetchMyPlanetData();
+            if (data) {
+                await loadPlanet(data);
+                // モーダルを閉じる
+                modal.classList.remove('is-visible');
+                if (topRightUI) topRightUI.style.display = '';
+            } else {
+                alert('自分の星が見つかりませんでした（ログインしていない可能性があります）');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('エラーが発生しました');
+        } finally {
             toggleLoading(false);
         }
     });

@@ -164,8 +164,10 @@ body {
     z-index: 10;
 
     display: flex; /* Flexboxで中央揃え */
+    flex-direction: column; /* ★ 変更: 縦並びに変更 */
     justify-content: center;
     align-items: center;
+    gap: 50px; /* ★ 追加: 上の2つのボタンと下のボタンの間隔 */
 
     /* 表示・非表示のアニメーション */
     opacity: 0;
@@ -258,6 +260,38 @@ body {
     color: #e0e0e0;
     font-size: 16px;
     font-weight: bold;
+}
+
+/* ★ 追加・変更: 「自分の星に戻る」ボタンのスタイル */
+.return-planet-button {
+    display: block;
+    text-decoration: none;
+    
+    /* ★ 鮮やかな黄色でおしゃれに */
+    color: #2c2a4a; /* 背景が黄色なので文字は濃い紺色で見やすくおしゃれに */
+    font-size: 1.1rem;
+    font-weight: bold;
+    padding: 15px 50px;
+    
+    /* グラデーションで鮮やかさと立体感を出す */
+    background: linear-gradient(135deg, #ffd700, #ffaa00);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    
+    border-radius: 10px; /* 長方形風の角丸 */
+    
+    /* 黄色い光彩を放つシャドウ */
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+    
+    transition: all 0.3s ease;
+}
+
+.return-planet-button:hover {
+    /* ホバー時はさらに明るく発光感を強める */
+    background: linear-gradient(135deg, #ffe033, #ffb300);
+    color: #000;
+    transform: scale(1.05);
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.7);
+    border-color: #fff;
 }
 
 /* ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★ */
