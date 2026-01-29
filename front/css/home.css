@@ -620,3 +620,94 @@ body {
     background-color: rgba(100, 100, 100, 0.9);
     transform: scale(1.05);
 }
+.ok-button {
+    display: inline-block;
+    /* <a>タグや<button>をボタン風に */
+    padding: 10px 50px;
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    background-color: rgba(80, 80, 80, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 30px; /* 画像のような楕円形 */
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+.ok-button:hover {
+    background-color: rgba(100, 100, 100, 0.9);
+    transform: scale(1.05); /* ホバー時に少し拡大 */
+}
+
+/* ★★★ 追記: フォローボタンのスタイル ★★★ */
+#follow-btn {
+    font-weight: bold;
+    border: none;
+    color: #333;
+    transition: background-color 0.2s, color 0.2s;
+    min-width: 80px;
+}
+
+/* 未フォロー時（Follow） */
+#follow-btn:not(.is-following) {
+    background-color: rgba(255, 255, 255, 0.9);
+}
+
+/* フォロー中（Following） */
+#follow-btn.is-following {
+    background-color: rgba(100, 100, 255, 0.8);
+    color: white;
+}
+
+#follow-btn:hover {
+    transform: scale(1.05);
+}
+
+/* ========================================= */
+/* ここから下は index.html から移動してきたスタイル */
+/* ========================================= */
+
+/* ウェルカムモーダル用のスタイル（ホーム画面専用） */
+.welcome-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 450px;
+    /* ガラス効果 */
+    background-color: rgba(25, 25, 30, 0.75);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 25px 30px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+    z-index: 100;
+    text-align: center;
+    color: #e0e0e0;
+    display: none;
+}
+
+.welcome-logo {
+    width: 350px;
+    max-width: 100%;
+    height: auto;
+    margin-bottom: 20px;
+}
+
+.welcome-modal h2 {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #fff;
+    margin-top: 0;
+}
+
+.welcome-modal p {
+    font-size: 15px;
+    line-height: 1.7;
+    margin-bottom: 30px;
+    text-align: left;
+}
