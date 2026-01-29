@@ -263,35 +263,26 @@ body {
 }
 
 /* ★ 追加・変更: 「自分の星に戻る」ボタンのスタイル */
+/* ★ 最初の状態（白い文字・白い枠線・暗い半透明背景）に戻す */
 .return-planet-button {
     display: block;
     text-decoration: none;
-    
-    /* ★ 鮮やかな黄色でおしゃれに */
-    color: #2c2a4a; /* 背景が黄色なので文字は濃い紺色で見やすくおしゃれに */
+    color: white;
     font-size: 1.1rem;
     font-weight: bold;
     padding: 15px 50px;
-    
-    /* グラデーションで鮮やかさと立体感を出す */
-    background: linear-gradient(135deg, #ffd700, #ffaa00);
-    border: 2px solid rgba(255, 255, 255, 0.4);
-    
+    background-color: rgba(20, 20, 40, 0.7);
+    border: 2px solid rgba(255, 255, 255, 0.5);
     border-radius: 10px; /* 長方形風の角丸 */
-    
-    /* 黄色い光彩を放つシャドウ */
-    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
-    
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     transition: all 0.3s ease;
 }
 
 .return-planet-button:hover {
-    /* ホバー時はさらに明るく発光感を強める */
-    background: linear-gradient(135deg, #ffe033, #ffb300);
-    color: #000;
-    transform: scale(1.05);
-    box-shadow: 0 0 30px rgba(255, 215, 0, 0.7);
-    border-color: #fff;
+    background-color: rgba(255, 255, 255, 0.9);
+    color: #111;
+    
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
 }
 
 /* ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★ */
@@ -612,98 +603,6 @@ body {
 }
 
 /* OKボタン */
-.ok-button {
-    display: inline-block;
-    /* <a>タグや<button>をボタン風に */
-    padding: 10px 50px;
-    font-size: 18px;
-    font-weight: bold;
-    color: white;
-    background-color: rgba(80, 80, 80, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 30px; /* 画像のような楕円形 */
-    text-decoration: none;
-    cursor: pointer;
-    transition: background-color 0.3s, transform 0.2s;
-}
-
-.ok-button:hover {
-    background-color: rgba(100, 100, 100, 0.9);
-    transform: scale(1.05); /* ホバー時に少し拡大 */
-}
-
-/* ★★★ 追記: フォローボタンのスタイル ★★★ */
-#follow-btn {
-    font-weight: bold;
-    border: none;
-    color: #333;
-    transition: background-color 0.2s, color 0.2s;
-    min-width: 80px;
-}
-
-/* 未フォロー時（Follow） */
-#follow-btn:not(.is-following) {
-    background-color: rgba(255, 255, 255, 0.9);
-}
-
-/* フォロー中（Following） */
-#follow-btn.is-following {
-    background-color: rgba(100, 100, 255, 0.8);
-    color: white;
-}
-
-#follow-btn:hover {
-    transform: scale(1.05);
-}
-
-/* ========================================= */
-/* ここから下は index.html から移動してきたスタイル */
-/* ========================================= */
-
-/* ウェルカムモーダル用のスタイル（ホーム画面専用） */
-.welcome-modal {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 90%;
-    max-width: 450px;
-    /* ガラス効果 */
-    background-color: rgba(25, 25, 30, 0.75);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 16px;
-    padding: 25px 30px;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-    z-index: 100;
-    text-align: center;
-    color: #e0e0e0;
-    display: none;
-}
-
-.welcome-logo {
-    width: 350px;
-    max-width: 100%;
-    height: auto;
-    margin-bottom: 20px;
-}
-
-.welcome-modal h2 {
-    font-size: 22px;
-    font-weight: bold;
-    margin-bottom: 20px;
-    color: #fff;
-    margin-top: 0;
-}
-
-.welcome-modal p {
-    font-size: 15px;
-    line-height: 1.7;
-    margin-bottom: 30px;
-    text-align: left;
-}
-
 .ok-button {
     display: inline-block;
     padding: 10px 50px;
