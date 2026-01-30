@@ -26,6 +26,7 @@ body {
     position: fixed; /* 画面固定 */
     top: 0;
     left: 0;
+    right: 0; /* 中央揃え用 */
     max-width: 1200px; 
     margin: 0 auto; 
     padding: 30px 40px;
@@ -251,9 +252,9 @@ body {
     flex-grow: 1;
     margin-top: 10px;
     animation: fadeIn 0.3s ease;
-    overflow-y: auto;
-    overflow-x: hidden; /* 横揺れ防止 */
-    overscroll-behavior: none; /* バウンド防止 */
+    overflow-y: hidden; /* ★変更: auto -> hidden でスクロールを完全禁止 */
+    overflow-x: hidden;
+    overscroll-behavior: none;
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
@@ -341,12 +342,11 @@ body {
 }
 
 .reward-label {
-    /* ★変更: UNLOCK TITLEのサイズを0.7remから0.9remへ拡大 */
     font-size: 0.9rem;
     color: #8b949e;
     text-transform: uppercase;
     letter-spacing: 3px;
-    margin: 0 0 12px 0; /* マージンも少し調整 */
+    margin: 0 0 12px 0;
     font-weight: 700;
     display: inline-block;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
@@ -365,7 +365,6 @@ body {
     /* プレート風デザイン */
     background: rgba(13, 17, 23, 0.95);
     color: #fff;
-    /* ★変更: 称号タグのサイズを大きく戻す (0.9rem -> 1.2rem) */
     padding: 10px 24px;
     border-radius: 6px;
     font-weight: bold;
