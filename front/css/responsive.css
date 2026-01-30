@@ -140,7 +140,7 @@
 
     .menu-item {
         /* 上下の余白を減らす (PC版は 15px 20px) */
-        padding: 10px 15px; 
+        padding: 13px 18px; 
         /* 文字サイズを小さくする (PC版は 16px) */
         font-size: 0.85rem; 
     }
