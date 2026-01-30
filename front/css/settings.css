@@ -168,14 +168,22 @@ select:focus {
 }
 
 .save-btn:hover {
-    transform: translateY(-2px);
+    /* transformを削除して固定 */
     /* ★変更: ホバー時の影の色も青系に変更 */
     box-shadow: 0 6px 20px rgba(31, 111, 235, 0.6);
     filter: brightness(1.1);
 }
 
 .save-btn:active {
-    transform: translateY(1px);
+    /* transformを削除して固定 */
+}
+
+/* ★追加: 連打対策（無効化時）のスタイル */
+.save-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    filter: grayscale(0.5);
+    box-shadow: none;
 }
 
 @keyframes fadeIn {
