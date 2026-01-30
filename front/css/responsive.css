@@ -24,14 +24,78 @@
 
 /* スマホ向け (画面幅 480px 以下) */
 @media (max-width: 480px) {
-    /* 詳細パネルが画面からはみ出ないように幅を調整 */
+    /* ▼▼▼ 詳細パネルのサイズ調整 (さらに狭くする) ▼▼▼ */
     #planet-details-panel {
-        width: 85%;
-        left: -90%;
+        /* ★修正: 幅を55%に縮小 (これで左右の要素が近づきます) */
+        width: 52%; 
+        height: 275px;
+        /* ★修正: 隠れる位置を調整 (幅+枠線分) */
+        left: -60%; 
     }
+    
     #toggle-details-btn.is-open {
-        left: 85%;
+        /* ★修正: 開いた時のボタン位置を55%に合わせる */
+        left: 52%; 
     }
+
+    /* パネル開閉ボタン自体のサイズ縮小 */
+    #toggle-details-btn {
+        width: 32px;
+        height: 48px;
+    }
+    
+    /* 矢印アイコンのサイズ調整 */
+    .arrow-icon {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* パネル内のヘッダー文字サイズ調整 */
+    .details-header {
+        padding: 12px 10px; /* ★微調整: さらに少しコンパクトに */
+    }
+    .details-header h3 {
+        font-size: 1.1rem; /* ★微調整: 少し小さく */
+    }
+
+    /* パネル内のコンテンツ余白調整 */
+    .details-content {
+        padding: 10px; /* ★微調整: 狭いパネルに合わせて余白を減らす */
+    }
+
+    /* ▼▼▼ 修正箇所: 整列設定を元に戻し、サイズだけ調整 ▼▼▼ */
+    /* justify-content: center を削除し、デフォルトの space-between (両端揃え) に戻す */
+    .details-content p:not(.planet-name):not(.planet-title) {
+        font-size: 0.85rem; /* ★微調整: 幅が狭いのではみ出し防止に少し小さく */
+        line-height: 1.5;
+        /* ここに justify-content や gap は書かない（home.cssの設定を使う） */
+    }
+
+    .details-content p:not(.planet-name):not(.planet-title) span {
+        font-size: 0.85rem; 
+    }
+    
+    /* コントリビューション数の下に余白を強制的に入れる */
+    .details-content .commit-count {
+        margin-bottom: 18px !important; /* 称号との間隔を広げる */
+    }
+
+    /* 称号と惑星名のサイズ調整 */
+    .planet-title {
+        font-size: 0.7rem; /* ★微調整 */
+    }
+
+    .planet-name {
+        font-size: 1.0rem; /* ★微調整 */
+    }
+    
+    /* コントリビューション数などのマージン微調整 */
+    .language-stats {
+        padding-bottom: 8px;
+        margin-bottom: 4px;
+    }
+    /* ▲▲▲ 詳細パネル調整ここまで ▲▲▲ */
+
 
     /* モーダルのアイコンを少し小さく */
     .planet-icon {
@@ -53,37 +117,51 @@
         padding: 10px 30px;
     }
 
-    /* ▼▼▼ 追加: 左上と右上のボタンを小さく ▼▼▼ */
+    /* 左上と右上のボタン */
     #open-select-modal-btn,
     #menu-btn {
         width: 50px;
         height: 50px;
-        border-radius: 8px; /* サイズに合わせて角丸も少し調整 */
+        border-radius: 8px;
     }
 
-    /* メニューボタン内のアイコンサイズも調整 */
     #menu-btn svg {
         width: 24px;
         height: 24px;
     }
 
-    /* ▼▼▼ 追加: 中央上のGitHubボタンとテキストも左右に合わせる ▼▼▼ */
+    /* メニュードロップダウンのサイズ調整 */
+    .menu-dropdown {
+        /* ボタンサイズ(50px) + 余白(10px) に合わせて位置を調整 */
+        top: 60px; 
+        /* 幅を少しスリムにする (PC版は140px) */
+        min-width: 110px; 
+    }
+
+    .menu-item {
+        /* 上下の余白を減らす (PC版は 15px 20px) */
+        padding: 10px 15px; 
+        /* 文字サイズを小さくする (PC版は 16px) */
+        font-size: 0.85rem; 
+    }
+
+    /* 中央上のGitHubボタンとテキスト */
     .github-link {
         width: 38px;
         height: 38px;
-        border-radius: 13px; /* 左右のボタンに合わせて8pxに */
+        border-radius: 13px;
     }
 
     .github-link svg {
-        width: 28px; /* アイコンサイズも微調整 */
+        width: 28px;
         height: 28px;
     }
 
     #planet-owner-display {
-        font-size: 0.85rem; /* テキストサイズをボタンに合わせて少し小さく */
+        font-size: 0.85rem;
     }
 
     #planet-owner-container {
-        gap: 8px; /* ボタンとテキストの間隔を調整 */
+        gap: 8px;
     }
 }
