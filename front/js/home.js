@@ -44,6 +44,13 @@ async function fetchMyPlanetData() {
         if (data.planetData && data.user) {
             loggedInUsername = data.user.login; // ★追加: ログインユーザー名を保存
             data.planetData.username = data.user.login;
+
+            // ★修正: どの惑星を見ていても、カード作成は常に自分のユーザー名で行うように固定
+            const cardLink = document.getElementById('card-link');
+            if (cardLink) {
+                cardLink.href = `/card.html?username=${loggedInUsername}`;
+            }
+
             return data.planetData;
         }
         return null;
@@ -196,10 +203,8 @@ async function loadPlanet(data) {
         profileLink.style.display = 'flex';
     }
 
-    const cardLink = document.getElementById('card-link');
-    if (cardLink && data.username) {
-        cardLink.href = `/card.html?username=${data.username}`;
-    }
+    // ★修正: 他人の惑星を見ているときでも自分のカードを作れるよう、ここではカードリンクを書き換えない
+    // (fetchMyPlanetDataで設定した自分のリンクを維持する)
 
     updatePlanetDetails(data);
 
