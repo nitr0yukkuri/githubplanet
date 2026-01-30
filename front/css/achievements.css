@@ -1,6 +1,6 @@
 /* front/css/achievements.css */
 
-/* ★追加: 全要素のボックスサイズ計算を統一し、レイアウト崩れやガタつきを防止 */
+/* 全要素のボックスサイズ計算を統一し、レイアウト崩れやガタつきを防止 */
 *, *::before, *::after {
     box-sizing: border-box;
 }
@@ -282,7 +282,6 @@ body {
 .detail-icon-large {
     margin-bottom: 20px;
 }
-/* ★変更: アイコンサイズを少し小さくして安定化 */
 .detail-icon-large svg {
     width: 2.5em !important;
     height: 2.5em !important;
@@ -297,7 +296,6 @@ body {
 }
 
 .detail-title {
-    /* ★変更: タイトルサイズを少し縮小 */
     font-size: 2.2rem;
     font-weight: bold;
     margin: 0 0 30px 0;
@@ -343,11 +341,12 @@ body {
 }
 
 .reward-label {
-    font-size: 0.7rem;
+    /* ★変更: UNLOCK TITLEのサイズを0.7remから0.9remへ拡大 */
+    font-size: 0.9rem;
     color: #8b949e;
     text-transform: uppercase;
     letter-spacing: 3px;
-    margin: 0 0 8px 0; /* ★変更: マージンを少し詰める */
+    margin: 0 0 12px 0; /* マージンも少し調整 */
     font-weight: 700;
     display: inline-block;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
@@ -366,18 +365,18 @@ body {
     /* プレート風デザイン */
     background: rgba(13, 17, 23, 0.95);
     color: #fff;
-    /* ★変更: パディング、フォントサイズ、最小幅を縮小して「小さく」する */
-    padding: 6px 16px;
+    /* ★変更: 称号タグのサイズを大きく戻す (0.9rem -> 1.2rem) */
+    padding: 10px 24px;
     border-radius: 6px;
     font-weight: bold;
-    font-size: 0.9rem;
+    font-size: 1.2rem;
     letter-spacing: 1px;
     border: 1px solid #388bfd; /* GitHub Blue */
     box-shadow: 0 0 15px rgba(56, 139, 253, 0.2);
     text-shadow: 0 0 5px rgba(56, 139, 253, 0.5);
-    /* ★変更: transformを遷移対象から外し、位置移動を完全に防止 */
+    /* transformを遷移対象から外し、位置移動を完全に防止 */
     transition: box-shadow 0.3s ease, border-color 0.3s ease, color 0.3s ease;
-    min-width: 60px;
+    min-width: 90px;
     text-align: center;
     /* レイヤー固定 */
     transform: translateZ(0);
@@ -385,7 +384,7 @@ body {
 }
 
 .reward-tag:hover {
-    /* ★変更: 位置移動(transform)を強制的に無効化して動かさない */
+    /* 位置移動(transform)を強制的に無効化して動かさない */
     transform: translateZ(0) !important;
     box-shadow: 0 0 25px rgba(56, 139, 253, 0.4);
     border-color: #58a6ff;
@@ -475,7 +474,7 @@ body {
     }
     
     .reward-tag {
-        font-size: 0.9rem;
-        padding: 6px 14px;
+        font-size: 1.0rem;
+        padding: 8px 18px;
     }
 }
