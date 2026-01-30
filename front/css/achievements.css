@@ -8,13 +8,18 @@ body {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    background-attachment: fixed; /* ★追加: 背景を固定してズレを防止 */
     height: 100vh;
-    overflow: hidden; 
+    overflow: hidden;
+    overscroll-behavior: none; /* ★追加: 画面全体のバウンド（ゴム紐効果）を禁止 */
 }
 
 .achievement-container {
     width: 100%;
-    height: 100vh;
+    height: 100%; /* ★変更: 画面いっぱいに固定 */
+    position: fixed; /* ★追加: コンテナを画面に完全固定して安定させる */
+    top: 0;
+    left: 0;
     max-width: 1200px; 
     margin: 0 auto; 
     padding: 30px 40px;
@@ -142,6 +147,7 @@ body {
     padding-right: 10px; 
     margin-top: 20px; 
     animation: fadeIn 0.3s ease;
+    overscroll-behavior: contain; /* ★追加: 内部スクロールのみに制限 */
 }
 .achievement-list {
     display: grid;
@@ -239,6 +245,15 @@ body {
     flex-grow: 1;
     margin-top: 10px;
     animation: fadeIn 0.3s ease;
+    overflow-y: auto; /* ★追加: コンテンツが溢れた場合にスクロール可能にする */
+    overscroll-behavior: contain; /* ★追加: スクロールバウンドを防止 */
+    scrollbar-width: none; /* Firefox用: スクロールバー非表示 */
+    -ms-overflow-style: none; /* IE/Edge用: スクロールバー非表示 */
+}
+
+/* Chrome/Safari用: スクロールバー非表示 */
+.achievement-detail-view::-webkit-scrollbar {
+    display: none;
 }
 
 .detail-nav {
@@ -261,6 +276,12 @@ body {
 .detail-icon-large {
     margin-bottom: 20px;
 }
+/* ★追加: 詳細画面のアイコンサイズを小さく調整 */
+.detail-icon-large svg {
+    width: 3em !important;
+    height: 3em !important;
+}
+
 .detail-icon-large.unlocked {
     color: #ffd700;
     filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.3)); /* 詳細画面では少し豪華に */
@@ -317,11 +338,11 @@ body {
 }
 
 .reward-label {
-    font-size: 0.85rem;
+    font-size: 0.7rem; /* ★変更: サイズ縮小 */
     color: #8b949e;
     text-transform: uppercase;
     letter-spacing: 3px;
-    margin: 0 0 20px 0;
+    margin: 0 0 10px 0; /* ★変更: 余白縮小 */
     font-weight: 700;
     display: inline-block;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
@@ -340,22 +361,22 @@ body {
     /* プレート風デザイン */
     background: rgba(13, 17, 23, 0.95);
     color: #fff;
-    padding: 12px 30px;
+    padding: 8px 20px; /* ★変更: サイズ縮小 */
     border-radius: 6px;
     font-weight: bold;
-    font-size: 1.3rem;
+    font-size: 1.0rem; /* ★変更: サイズ縮小 */
     letter-spacing: 1px;
     border: 1px solid #388bfd; /* GitHub Blue */
     box-shadow: 0 0 15px rgba(56, 139, 253, 0.2);
     text-shadow: 0 0 5px rgba(56, 139, 253, 0.5);
     transition: all 0.3s ease;
-    min-width: 100px;
+    min-width: 80px; /* ★変更: サイズ縮小 */
     text-align: center;
 }
 
 .reward-tag:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 5px 25px rgba(56, 139, 253, 0.4);
+    /* ★変更: transform（移動）を削除して固定し、ぐらつきを防止 */
+    box-shadow: 0 0 25px rgba(56, 139, 253, 0.4);
     border-color: #58a6ff;
     color: #58a6ff;
 }
@@ -445,7 +466,7 @@ body {
     }
     
     .reward-tag {
-        font-size: 1.1rem;
-        padding: 10px 20px;
+        font-size: 1.0rem; /* ★変更: さらに縮小 */
+        padding: 8px 16px; /* ★変更: さらに縮小 */
     }
 }
