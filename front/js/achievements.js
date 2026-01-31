@@ -51,7 +51,7 @@ function showDetail(masterData, userData) {
     const statusText = isUnlocked ? `Unlocked (${unlockedDate})` : 'Locked';
 
     // アイコン設定
-    detailIcon.innerHTML = isUnlocked ? TROPHY_SVG.replace('height="1.2em" width="1.2em"', 'height="4em" width="4em"') : '<span style="font-size: 4em;">🔒</span>';
+    detailIcon.innerHTML = isUnlocked ? TROPHY_SVG.replace('height="1.2em" width="1.2em"', 'height="4em" width="4em"') : '<span style="font-size: 2.5em;">🔒</span>';
     detailIcon.className = isUnlocked ? 'detail-icon-large unlocked' : 'detail-icon-large locked';
 
     // テキスト設定
