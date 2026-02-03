@@ -802,7 +802,7 @@ app.get('/login', (req, res) => {
     const authUrl = new URL('https://github.com/login/oauth/authorize');
     authUrl.searchParams.set('client_id', GITHUB_CLIENT_ID);
     authUrl.searchParams.set('redirect_uri', CALLBACK_URL);
-    authUrl.searchParams.set('scope', 'user:email repo');
+    authUrl.searchParams.set('scope', 'read:user');
     authUrl.searchParams.set('state', crypto.randomBytes(16).toString('hex'));
     authUrl.searchParams.set('code_challenge', code_challenge);
     authUrl.searchParams.set('code_challenge_method', 'S256');
