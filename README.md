@@ -73,5 +73,55 @@ github planetに訪れて、以下のコードを自分の `README.md` に貼る
 プロジェクトのルートディレクトリで以下のコマンドを実行し、必要なパッケージをインストールします。
 ```bash
 
-npm install
+# 🚀 開発環境のセットアップ (Docker)
 
+GitHub Planetをローカルで起動するための手順です。
+Dockerを使用することで、データベース(PostgreSQL)の設定も自動で行われます。
+
+## 1. 事前準備
+
+1. **GitHub OAuthアプリの作成**
+   - [GitHub Developer Settings](https://github.com/settings/developers) で「New OAuth App」を作成。
+   - **Homepage URL**: `http://localhost:3000`
+   - **Callback URL**: `http://localhost:3000/callback`
+   - Client IDとClient Secretを控えます。
+
+2. **Gemini APIキーの取得 (任意)**
+   - 惑星の色や名前をAI生成する場合、[Google AI Studio](https://aistudio.google.com/) でキーを取得します。
+
+## 2. 環境変数の設定
+
+プロジェクトルートに `.env` ファイルを作成し、以下を記述してください。
+
+```ini
+# --- 基本設定 ---
+PORT=3000
+NODE_ENV=development
+SESSION_SECRET=dev_secret_key_123
+
+# --- データベース (Docker内設定) ---
+# 変更不要
+DATABASE_URL=postgres://githubplanet:password@db:5432/githubplanet
+
+# --- APIキー設定 ---
+# 手順1で取得したIDとSecret
+GITHUB_CLIENT_ID_LOCAL=ここにClientID
+GITHUB_CLIENT_SECRET_LOCAL=ここにClientSecret
+
+# 手順2で取得したKey (なしでも動作可)
+GEMINI_API_KEY=ここにGeminiKey
+
+# システム連携用 (任意の文字列)
+SYSTEM_API_KEY=dev_system_key
+```
+
+## 3. 起動コマンド
+
+以下のコマンドを実行すると、アプリとデータベースが立ち上がります。
+
+```bash
+docker-compose up --build
+```
+
+- ブラウザで [http://localhost:3000](http://localhost:3000) にアクセスしてください。
+- 停止するには `Ctrl+C` を押します。
