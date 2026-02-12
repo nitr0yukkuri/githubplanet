@@ -56,7 +56,11 @@ github planetに訪れて、以下のコードを自分の `README.md` に貼る
 
 #### 🪐 バックエンド ＆ デプロイ
 **@nitr0yukkuri**
-![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/6/https://githubplanet.onrender.com/card.html?username=nitr0yukkuri&fix=responsive9=v9897652322232332______)
+<div align="center">
+  <a href="https://githubplanet.onrender.com/card.html?username=nitr0yukkuri">
+    <img src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet.onrender.com/card.html?username=nitr0yukkuri&fix=true&time=1769___" width="100%" alt="GitHub Planet Card">
+  </a>
+
 
 #### 🪐 フロントエンド & デザイン
 **@lenagig**
