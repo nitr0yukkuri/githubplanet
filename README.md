@@ -118,7 +118,6 @@ GEMINI_API_KEY=ここにGeminiKey
 # システム連携用 (任意の文字列)
 SYSTEM_API_KEY=dev_system_key
 ```
-
 ## 3. 起動コマンド
 
 以下のコマンドを実行すると、アプリとデータベースが立ち上がります。
