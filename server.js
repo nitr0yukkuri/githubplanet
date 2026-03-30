@@ -13,6 +13,15 @@ import { Server } from 'socket.io';
 const app = express();
 const port = parseInt(process.env.PORT) || 3000;
 
+// RenderからのアクセスをGCPへリダイレクト
+app.use((req, res, next) => {
+    const host = req.headers.host || '';
+    if (host.includes('githubplanet.onrender.com')) {
+        return res.redirect(301, 'https://githubplanet-git-543426763451.asia-northeast2.run.app' + req.originalUrl);
+    }
+    next();
+});
+
 // ★修正1: キャッシュを1時間に設定 (展示中のAPI死を防ぐ)
 const DATA_CACHE_DURATION = 60 * 60 * 1000;
 
