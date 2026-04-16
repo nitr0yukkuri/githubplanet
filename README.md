@@ -58,7 +58,7 @@ github planetに訪れて、以下のコードを自分の `README.md` に貼る
 **@nitr0yukkuri**
 <div align="center">
   <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/">
-    <img src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=nitr0yukkuri&fix=true&time=1776318283769" width="100%" alt="GitHub Planet Card">
+    <img src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=nitr0yukkuri&fix=true" />
   </a>
 </div>
  
@@ -66,7 +66,11 @@ github planetに訪れて、以下のコードを自分の `README.md` に貼る
 
 #### 🪐 フロントエンド & デザイン
 **@lenagig**
-[![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=lenagig&fix=true&time=1776318283769)](https://githubplanet-git-543426763451.asia-northeast2.run.app/)
+<div align="center">
+  <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/">
+    <img src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=lenagig&fix=true" />
+  </a>
+</div>
 
 
 ## 🚀 セットアップと実行方法
