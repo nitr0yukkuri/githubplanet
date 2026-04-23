@@ -56,9 +56,12 @@ github planetに訪れて、以下のコードを自分の `README.md` に貼る
 #### 🪐 バックエンド ＆ デプロイ
 **@nitr0yukkuri**
 
-<a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/">
-  <img src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=nitr0yukkuri&fix=true" />
-</a>
+<div align="center">
+  <p><strong>@nitr0yukkuri</strong></p>
+  <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/">
+    <img src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=nitr0yukkuri&fix=true" />
+  </a>
+</div>
  
 
 
