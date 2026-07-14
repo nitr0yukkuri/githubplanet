@@ -284,6 +284,29 @@ body {
     
 }
 
+.next-random-planet-button {
+    display: none;
+    position: fixed;
+    left: 50%;
+    bottom: 32px;
+    transform: translateX(-50%);
+    z-index: 3;
+    padding: 14px 30px;
+    white-space: nowrap;
+    transition: none;
+}
+
+.next-random-planet-button:hover {
+    background-color: rgba(20, 20, 40, 0.7);
+    color: white;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    transform: translateX(-50%);
+}
+
+.next-random-planet-button:active {
+    transform: translateX(-50%);
+}
+
 /* ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★ */
 /* ★ 最小限の変更点: 未ログイン時コンテナのスタイル ★ */
 /* ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★ */

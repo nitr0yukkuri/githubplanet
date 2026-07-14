@@ -23,6 +23,23 @@ app.use((req, res, next) => {
 
 // ★修正1: キャッシュを1時間に設定 (展示中のAPI死を防ぐ)
 const DATA_CACHE_DURATION = 60 * 60 * 1000;
+const MAX_TOTAL_COMMITS = 10000;
+const MAX_WEEKLY_COMMITS = 100;
+
+function clampCommitCount(value, max) {
+    const count = Number(value);
+    if (!Number.isFinite(count)) return 0;
+    return Math.min(Math.max(Math.trunc(count), 0), max);
+}
+
+function normalizePlanetCommitCounts(data) {
+    if (!data) return data;
+    return {
+        ...data,
+        totalCommits: clampCommitCount(data.totalCommits, MAX_TOTAL_COMMITS),
+        weeklyCommits: clampCommitCount(data.weeklyCommits, MAX_WEEKLY_COMMITS)
+    };
+}
 
 // 巨大なペイロードを受け取れるように制限を緩和 (50mb)
 app.use(express.json({ limit: '50mb' }));
@@ -472,6 +489,9 @@ async function updateAndSavePlanetData(user, accessToken) {
         throw e;
     }
 
+    totalCommits = clampCommitCount(totalCommits, MAX_TOTAL_COMMITS);
+    weeklyCommits = clampCommitCount(weeklyCommits, MAX_WEEKLY_COMMITS);
+
     const languageStats = {};
     let receivedStars = 0;
 
@@ -872,7 +892,10 @@ app.get('/api/me', async (req, res) => {
         console.log('[Auto Update] キャッシュ有効のためスキップ');
     }
 
-    res.json(req.session.planetData);
+    res.json({
+        ...req.session.planetData,
+        planetData: normalizePlanetCommitCounts(req.session.planetData.planetData)
+    });
 });
 
 app.post('/api/save-title', async (req, res) => {
@@ -942,7 +965,7 @@ app.get('/api/planets/user/:username', async (req, res) => {
             return res.status(404).json({ error: 'Planet not found' });
         }
 
-        const totalCommits = parseInt(row.total_commits) || 0;
+        const totalCommits = clampCommitCount(row.total_commits, MAX_TOTAL_COMMITS);
         const languageStats = row.language_stats || {};
         const hasStats = Object.keys(languageStats).length > 0;
 
@@ -964,7 +987,7 @@ app.get('/api/planets/user/:username', async (req, res) => {
             mainLanguage: mainLanguage,
             languageStats: languageStats,
             totalCommits: totalCommits,
-            weeklyCommits: row.weekly_commits || 0,
+            weeklyCommits: clampCommitCount(row.weekly_commits, MAX_WEEKLY_COMMITS),
             planetName: planetName,
             achievements: row.achievements || {},
             activeTitle: activeTitle
@@ -1049,7 +1072,7 @@ app.get('/api/planets/random', async (req, res) => {
             }
         }
 
-        const totalCommits = parseInt(row.total_commits) || 0;
+        const totalCommits = clampCommitCount(row.total_commits, MAX_TOTAL_COMMITS);
         const languageStats = row.language_stats || {};
         const hasStats = Object.keys(languageStats).length > 0;
 
@@ -1071,7 +1094,7 @@ app.get('/api/planets/random', async (req, res) => {
             mainLanguage: mainLanguage,
             languageStats: languageStats,
             totalCommits: totalCommits,
-            weeklyCommits: row.weekly_commits || 0,
+            weeklyCommits: clampCommitCount(row.weekly_commits, MAX_WEEKLY_COMMITS),
             planetName: planetName,
             achievements: row.achievements || {},
             activeTitle: activeTitle

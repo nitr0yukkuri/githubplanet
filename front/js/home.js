@@ -179,15 +179,17 @@ async function loadPlanet(data) {
 
     console.log('loadPlanet called with data:', data);
 
-    // ★追加: 自分の惑星の時は「自分の星に戻る」ボタンを非表示にする
     const returnBtn = document.getElementById('return-my-planet-btn');
+    const nextRandomBtn = document.getElementById('next-random-planet-btn');
+    const isViewingOtherPlanet = Boolean(
+        data.username && (!loggedInUsername || loggedInUsername !== data.username)
+    );
+
     if (returnBtn) {
-        // ログインしていて、かつ表示中の惑星が自分のユーザー名と異なる場合のみ表示
-        if (loggedInUsername && data.username && loggedInUsername !== data.username) {
-            returnBtn.style.display = 'block';
-        } else {
-            returnBtn.style.display = 'none';
-        }
+        returnBtn.style.display = loggedInUsername && isViewingOtherPlanet ? 'block' : 'none';
+    }
+    if (nextRandomBtn) {
+        nextRandomBtn.style.display = isViewingOtherPlanet ? 'block' : 'none';
     }
 
     let wCommits = data.weeklyCommits;
@@ -195,7 +197,8 @@ async function loadPlanet(data) {
         wCommits = Math.ceil(data.totalCommits * 0.02);
     }
 
-    planetRotationSpeed = 0.001 + ((wCommits || 0) * 0.0001);
+    const rotationCommits = Math.min(Math.max(Number(wCommits) || 0, 0), 100);
+    planetRotationSpeed = 0.001 + (rotationCommits * 0.0001);
 
     if (ownerDisplay && data.username) {
         ownerDisplay.textContent = `${data.username} の星`;
@@ -715,7 +718,7 @@ function setupUI() {
         }
     });
 
-    document.getElementById('random-visit-btn')?.addEventListener('click', async (e) => {
+    const visitRandomPlanet = async (e) => {
         e.preventDefault();
 
         const now = Date.now();
@@ -754,7 +757,10 @@ function setupUI() {
             isFetchingRandomPlanet = false;
             toggleLoading(false);
         }
-    });
+    };
+
+    document.getElementById('random-visit-btn')?.addEventListener('click', visitRandomPlanet);
+    document.getElementById('next-random-planet-btn')?.addEventListener('click', visitRandomPlanet);
 
     // ★追加: 「自分の星に戻る」ボタンの処理
     document.getElementById('return-my-planet-btn')?.addEventListener('click', async (e) => {
