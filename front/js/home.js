@@ -81,7 +81,10 @@ function updatePlanetDetails(data) {
                         .slice(0, 3)
                         .forEach(([lang, bytes]) => {
                             const p = document.createElement('p');
-                            const percentage = Math.round((bytes / total) * 100);
+                            const rawPercentage = (bytes / total) * 100;
+                            const percentage = rawPercentage <= 1
+                                ? rawPercentage.toFixed(1)
+                                : Math.round(rawPercentage);
                             p.innerHTML = `${lang}<span>${percentage}%</span>`;
                             stats.appendChild(p);
                         });

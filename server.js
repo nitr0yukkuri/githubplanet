@@ -478,7 +478,7 @@ async function updateAndSavePlanetData(user, accessToken) {
     for (const repo of repositories) {
         if (repo.languages && repo.languages.edges) {
             for (const edge of repo.languages.edges) {
-                const langName = edge.node.name;
+                const langName = edge.node.name === 'Sass' ? 'CSS' : edge.node.name;
                 const size = edge.size;
                 languageStats[langName] = (languageStats[langName] || 0) + size;
             }
