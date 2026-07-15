@@ -1,6 +1,7 @@
 // front/js/card.js
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { createCssPlanetFlowMaterial, isCssPlanet, updateCssPlanetFlow } from './css-planet-flow.js';
 
 const MAX_STAR_COUNT = 120;
 
@@ -125,6 +126,7 @@ planetGroup.position.set(0, 0, 0);
 scene.add(planetGroup);
 
 let planetMesh;
+let cssPlanetMaterial = null;
 
 async function init() {
     try {
@@ -206,6 +208,7 @@ function createPlanet(data) {
     while (planetGroup.children.length > 0) {
         planetGroup.remove(planetGroup.children[0]);
     }
+    cssPlanetMaterial = null;
 
     const baseSize = Math.min(1.3 * (data.planetSizeFactor || 1), 6.0);
 
@@ -215,13 +218,17 @@ function createPlanet(data) {
     const level = Math.floor((data.totalCommits || 0) / 30) + 1;
     const auraIntensity = Math.min(3.0, (level / 5.0) * 0.5);
 
-    const material = new THREE.MeshStandardMaterial({
-        color: data.planetColor || 0xffffff,
-        aoMap: planetTexture,
-        aoMapIntensity: 1.5,
-        roughness: 0.8,
-        metalness: 0.2
-    });
+    const material = isCssPlanet(data)
+        ? createCssPlanetFlowMaterial(THREE, planetTexture)
+        : new THREE.MeshStandardMaterial({
+            color: data.planetColor || 0xffffff,
+            aoMap: planetTexture,
+            aoMapIntensity: 1.5,
+            roughness: 0.8,
+            metalness: 0.2
+        });
+
+    if (isCssPlanet(data)) cssPlanetMaterial = material;
 
     planetMesh = new THREE.Mesh(geometry, material);
     planetGroup.add(planetMesh);
@@ -359,6 +366,7 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
     planetGroup.rotation.y -= 0.003;
+    updateCssPlanetFlow(cssPlanetMaterial, performance.now());
     renderer.render(scene, camera);
 }
 

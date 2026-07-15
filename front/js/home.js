@@ -2,10 +2,12 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import anime from 'animejs';
 import { io } from 'socket.io-client';
+import { createCssPlanetFlowMaterial, isCssPlanet, updateCssPlanetFlow } from './css-planet-flow.js';
 
 const MAX_STAR_COUNT = 120;
 
 let scene, camera, renderer, controls, planetGroup;
+let cssPlanetMaterial = null;
 
 let welcomeModal, okButton, mainUiWrapper;
 let isFetchingRandomPlanet = false;
@@ -221,17 +223,22 @@ async function loadPlanet(data) {
         scene.remove(planetGroup);
         planetGroup = undefined;
     }
+    cssPlanetMaterial = null;
 
     planetGroup = new THREE.Group();
 
     const tex = await loadPlanetTexture();
 
     const geo = new THREE.SphereGeometry(4, 32, 32);
-    const mat = new THREE.MeshStandardMaterial({
-        color: data.planetColor ? new THREE.Color(data.planetColor).getHex() : 0x808080,
-        metalness: 0.2, roughness: 0.8, aoMapIntensity: 1.5,
-        aoMap: tex
-    });
+    const mat = isCssPlanet(data)
+        ? createCssPlanetFlowMaterial(THREE, tex)
+        : new THREE.MeshStandardMaterial({
+            color: data.planetColor ? new THREE.Color(data.planetColor).getHex() : 0x808080,
+            metalness: 0.2, roughness: 0.8, aoMapIntensity: 1.5,
+            aoMap: tex
+        });
+
+    if (isCssPlanet(data)) cssPlanetMaterial = mat;
 
     const planet = new THREE.Mesh(geo, mat);
     planet.geometry.setAttribute('uv2', new THREE.BufferAttribute(geo.attributes.uv.array, 2));
@@ -662,6 +669,7 @@ async function loadMainContent() {
 function animate() {
     requestAnimationFrame(animate);
     if (planetGroup) planetGroup.rotation.z += planetRotationSpeed;
+    updateCssPlanetFlow(cssPlanetMaterial, performance.now());
     controls.update();
     renderer.render(scene, camera);
 }
