@@ -3,6 +3,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import anime from 'animejs';
 import { io } from 'socket.io-client';
 
+const MAX_STAR_COUNT = 120;
+
 let scene, camera, renderer, controls, planetGroup;
 
 let welcomeModal, okButton, mainUiWrapper;
@@ -118,7 +120,7 @@ function calculateStarCount(totalCommits) {
     const costIncreaseStep = 10;
     const levelUpThreshold = 5;
 
-    while (true) {
+    while (starCount < MAX_STAR_COUNT) {
         const currentLevelCost = requiredCommitsPerStar + (Math.floor(starCount / levelUpThreshold) * costIncreaseStep);
         if (totalCommits >= commitsUsed + currentLevelCost) {
             starCount++;

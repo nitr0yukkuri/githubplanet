@@ -23,7 +23,7 @@ app.use((req, res, next) => {
 
 // ★修正1: キャッシュを1時間に設定 (展示中のAPI死を防ぐ)
 const DATA_CACHE_DURATION = 60 * 60 * 1000;
-const MAX_TOTAL_COMMITS = 10000;
+const MAX_TOTAL_COMMITS = 99999;
 const MAX_WEEKLY_COMMITS = 100;
 
 function clampCommitCount(value, max) {

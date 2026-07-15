@@ -288,7 +288,7 @@ body {
     display: none;
     position: fixed;
     left: 50%;
-    bottom: 32px;
+    bottom: 50px;
     transform: translateX(-50%);
     z-index: 3;
     padding: 14px 30px;
