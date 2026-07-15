@@ -2,6 +2,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+const MAX_STAR_COUNT = 120;
+
 const params = new URLSearchParams(window.location.search);
 const username = params.get('username') || 'NITROYUKKURI';
 const isScreenshotMode = params.has('fix');
@@ -188,7 +190,7 @@ function calculateStarCount(totalCommits) {
     const costIncreaseStep = 10;
     const levelUpThreshold = 5;
 
-    while (true) {
+    while (starCount < MAX_STAR_COUNT) {
         const currentLevelCost = requiredCommitsPerStar + (Math.floor(starCount / levelUpThreshold) * costIncreaseStep);
         if (totalCommits >= commitsUsed + currentLevelCost) {
             starCount++;
@@ -271,7 +273,7 @@ function createPlanet(data) {
         `;
 
         // 修正: 画面幅に応じてサイズをなめらかに変化（最小0.4、1200px以上で1.0）
-        const multiplier = isScreenshotMode ? 1.3 : Math.min(1.0, Math.max(0.4, window.innerWidth / 1200));
+        const multiplier = isScreenshotMode ? 1.1 : Math.min(1.0, Math.max(0.4, window.innerWidth / 1200));
         const pixelRatioValue = window.devicePixelRatio * multiplier;
 
         const starMaterial = new THREE.ShaderMaterial({
