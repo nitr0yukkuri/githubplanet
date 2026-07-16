@@ -80,6 +80,7 @@ body {
     backdrop-filter: none; /* ガラス効果は解除 */
     color: white;
     border: 2px solid white; /* 白い枠線を追加 */
+    opacity: 0.8;
 }
 
 #menu-btn:hover {
@@ -374,6 +375,9 @@ body {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     transition: background-color 0.2s;
     backdrop-filter: none; /* ガラス効果は解除 */
+
+    border: 2px solid white;
+    opacity: 0.8;
 }
 
 #open-select-modal-btn:hover {
@@ -461,9 +465,10 @@ body {
     transition: left 0.4s ease-out; /* スライドアニメーション */
     display: flex;
     flex-direction: column; /* 要素を縦に並べる */
+    opacity: 0.8;
     
     border-radius: 0 5px 5px 0; /* 右側は角丸、左側は直線を追加 */
-    border: 3px solid white; /* 白い枠線を追加 */
+    border: 2px solid white; /* 白い枠線を追加 */
     box-sizing: border-box; /* paddingとborderをwidth/heightに含める */
 }
 
@@ -570,13 +575,14 @@ body {
     height: 60px; /* ボタンの高さ */
     padding: 0;
     background-color: #2c2a4a; /* 濃い紺色/紫色 */
-    border: 3px solid white;
+    border: 2px solid white;
     border-radius: 0 10px 10px 0; /* 左側は直線、右側は角丸 */
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 6; /* パネルより手前 */
     transition: left 0.4s ease-out; /* パネルと連動するアニメーション */
+    opacity: 0.8;
 }
 
 /* パネルが開いている時のボタンの位置 */
