@@ -1,3 +1,5 @@
+import { applyI18n, t } from './i18n.js';
+
 const prefixSelect = document.getElementById('prefix-select');
 const suffixSelect = document.getElementById('suffix-select');
 const previewPrefix = document.getElementById('preview-prefix');
@@ -25,21 +27,25 @@ saveBtn.addEventListener('click', async () => {
             body: JSON.stringify({ prefix: currentPrefix, suffix: currentSuffix })
         });
         if (res.ok) {
-            alert('称号を保存しました！');
+            alert(t('settings.saved'));
         } else {
-            alert('保存に失敗しました。');
+            alert(t('settings.saveFailed'));
         }
     } catch (e) {
         console.error(e);
-        alert('通信エラーが発生しました。');
+        alert(t('settings.networkError'));
     }
 });
 
 async function init() {
+    applyI18n();
+
     try {
         const res = await fetch('/api/me');
         if (!res.ok) {
-            document.querySelector('.settings-container').innerHTML = '<p>ログインが必要です。</p><a href="/" class="back-button">戻る</a>';
+            const settingsContainer = document.querySelector('.settings-container');
+            settingsContainer.innerHTML = `<p>${t('common.loginRequired')}</p><a href="/" class="back-button">${t('common.back')}</a>`;
+            applyI18n(settingsContainer);
             return;
         }
         const data = await res.json();

@@ -2,12 +2,15 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createCssPlanetFlowMaterial, isCssPlanet, updateCssPlanetFlow } from './css-planet-flow.js';
+import { applyI18n, localizedPath } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
 
 const params = new URLSearchParams(window.location.search);
 const username = params.get('username') || 'NITROYUKKURI';
 const isScreenshotMode = params.has('fix');
+
+applyI18n();
 
 if (isScreenshotMode) {
     document.documentElement.classList.add('is-screenshot');
@@ -38,7 +41,7 @@ if (!isScreenshotMode) {
 
     const deployUrl = window.location.origin;
     const timestamp = Date.now();
-    const targetUrl = `${deployUrl}/card.html?username=${username}&fix=true&time=${timestamp}`;
+    const targetUrl = `${deployUrl}${localizedPath('/card.html')}?username=${username}&fix=true&time=${timestamp}`;
     const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
 
     // リンク先をトップページに変更
@@ -108,7 +111,7 @@ if (!isScreenshotMode) {
 }
 
 const textureLoader = new THREE.TextureLoader();
-const planetTexture = textureLoader.load('front/img/2k_mars.jpg');
+const planetTexture = textureLoader.load('/front/img/2k_mars.jpg');
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
 scene.add(ambientLight);

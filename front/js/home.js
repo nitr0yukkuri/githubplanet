@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import anime from 'animejs';
 import { io } from 'socket.io-client';
 import { createCssPlanetFlowMaterial, isCssPlanet, updateCssPlanetFlow } from './css-planet-flow.js';
+import { applyI18n, localizedPath, t } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
 
@@ -52,7 +53,7 @@ async function fetchMyPlanetData() {
             // ★修正: どの惑星を見ていても、カード作成は常に自分のユーザー名で行うように固定
             const cardLink = document.getElementById('card-link');
             if (cardLink) {
-                cardLink.href = `/card.html?username=${loggedInUsername}`;
+                cardLink.href = `${localizedPath('/card.html')}?username=${loggedInUsername}`;
             }
 
             return data.planetData;
@@ -111,7 +112,7 @@ function updatePlanetDetails(data) {
     }
 
     if (name) {
-        name.textContent = data.planetName || '名もなき星';
+        name.textContent = data.planetName || t('home.unnamedPlanet');
     }
 }
 
@@ -137,7 +138,7 @@ function calculateStarCount(totalCommits) {
 function loadPlanetTexture() {
     if (cachedPlanetTexture) return Promise.resolve(cachedPlanetTexture);
     return new Promise((resolve) => {
-        textureLoader.load('front/img/2k_mars.jpg', (tex) => {
+        textureLoader.load('/front/img/2k_mars.jpg', (tex) => {
             cachedPlanetTexture = tex;
             resolve(tex);
         });
@@ -205,7 +206,7 @@ async function loadPlanet(data) {
     planetRotationSpeed = 0.001 + (rotationCommits * 0.0001);
 
     if (ownerDisplay && data.username) {
-        ownerDisplay.textContent = `${data.username} の星`;
+        ownerDisplay.textContent = t('home.ownerPlanet', { username: data.username });
         ownerDisplay.style.display = 'inline-block';
     }
     if (profileLink && data.username) {
@@ -558,6 +559,8 @@ function spawnMeteor(data) {
 }
 
 async function init() {
+    applyI18n();
+
     welcomeModal = document.getElementById('welcome-modal');
     okButton = document.getElementById('welcome-ok-btn');
     mainUiWrapper = document.getElementById('main-ui-wrapper');
@@ -593,7 +596,6 @@ async function init() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
     document.getElementById('canvas-container').appendChild(renderer.domElement);
     controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.autoRotate = false;
 
@@ -603,7 +605,7 @@ async function init() {
     scene.add(new THREE.AmbientLight(0x888888, 2));
     const pl = new THREE.PointLight(0xffffff, 25, 1000); pl.position.set(20, 10, 5); scene.add(pl);
     const dl = new THREE.DirectionalLight(0xffffff, 0.4); dl.position.set(50, 15, 10); scene.add(dl);
-    new THREE.CubeTextureLoader().setPath('front/img/skybox/').load(['right.png', 'left.png', 'top.png', 'bottom.png', 'front.png', 'back.png'], (tex) => scene.background = tex);
+    new THREE.CubeTextureLoader().setPath('/front/img/skybox/').load(['right.png', 'left.png', 'top.png', 'bottom.png', 'front.png', 'back.png'], (tex) => scene.background = tex);
 
     socket.on('meteor', (data) => {
         if (document.hidden) return;
@@ -692,7 +694,7 @@ function setupUI() {
 
     document.getElementById('visit-user-btn')?.addEventListener('click', async (e) => {
         e.preventDefault();
-        const username = prompt('見に行きたいGitHubユーザー名を入力してください:');
+        const username = prompt(t('home.promptUsername'));
         if (!username || username.trim() === '') return;
 
         toggleLoading(true);
@@ -708,7 +710,7 @@ function setupUI() {
                     const path = `/planet/${planetData.username}`;
                     gtag('event', 'page_view', {
                         page_path: path,
-                        page_title: `${planetData.username} の星`,
+                        page_title: t('home.ownerPlanet', { username: planetData.username }),
                         page_location: window.location.origin + path
                     });
                 }
@@ -716,13 +718,13 @@ function setupUI() {
                 modal.classList.remove('is-visible');
                 if (topRightUI) topRightUI.style.display = '';
             } else if (res.status === 404) {
-                alert('そのユーザーの惑星は見つかりませんでした。\n(GitHub Planetにログインしたことがあるユーザーのみ表示できます)');
+                alert(t('home.userPlanetNotFound'));
             } else {
-                alert('惑星の検索中にエラーが発生しました');
+                alert(t('home.searchError'));
             }
         } catch (e) {
             console.error('Error fetching user planet:', e);
-            alert('通信エラーが発生しました');
+            alert(t('home.networkError'));
         } finally {
             toggleLoading(false);
         }
@@ -751,7 +753,7 @@ function setupUI() {
                     const path = `/planet/${planetData.username}`;
                     gtag('event', 'page_view', {
                         page_path: path,
-                        page_title: `${planetData.username} の星 (Random)`,
+                        page_title: t('home.pageTitleRandom', { username: planetData.username }),
                         page_location: window.location.origin + path
                     });
                 }
@@ -759,10 +761,10 @@ function setupUI() {
                 modal.classList.remove('is-visible');
                 if (topRightUI) topRightUI.style.display = '';
             }
-            else alert('他の惑星が見つかりませんでした');
+            else alert(t('home.randomNotFound'));
         } catch (e) {
             console.error('Error fetching random planet:', e);
-            alert('通信エラーが発生しました');
+            alert(t('home.networkError'));
         } finally {
             isFetchingRandomPlanet = false;
             toggleLoading(false);
@@ -785,11 +787,11 @@ function setupUI() {
                 modal.classList.remove('is-visible');
                 if (topRightUI) topRightUI.style.display = '';
             } else {
-                alert('自分の星が見つかりませんでした（ログインしていない可能性があります）');
+                alert(t('home.myPlanetNotFound'));
             }
         } catch (error) {
             console.error(error);
-            alert('エラーが発生しました');
+            alert(t('home.genericError'));
         } finally {
             toggleLoading(false);
         }
