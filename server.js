@@ -823,9 +823,12 @@ app.get(['/settings', '/en/settings', '/english/settings'], (req, res) => {
     res.sendFile(path.join(__dirname, 'settings.html'));
 });
 
-app.get('/login', (req, res) => {
+app.get(['/login', '/en/login', '/english/login'], (req, res) => {
     const code_verifier = base64URLEncode(crypto.randomBytes(32));
     req.session.code_verifier = code_verifier;
+    req.session.login_return_to = req.path === '/en/login' || req.path === '/english/login'
+        ? '/en'
+        : '/';
     const code_challenge = base64URLEncode(sha256(code_verifier));
     const authUrl = new URL('https://github.com/login/oauth/authorize');
     authUrl.searchParams.set('client_id', GITHUB_CLIENT_ID);
@@ -834,12 +837,19 @@ app.get('/login', (req, res) => {
     authUrl.searchParams.set('state', crypto.randomBytes(16).toString('hex'));
     authUrl.searchParams.set('code_challenge', code_challenge);
     authUrl.searchParams.set('code_challenge_method', 'S256');
-    res.redirect(authUrl.href);
+    req.session.save((error) => {
+        if (error) {
+            console.error('Login Session Error:', error.message);
+            return res.redirect(req.session.login_return_to);
+        }
+        res.redirect(authUrl.href);
+    });
 });
 
 app.get('/callback', async (req, res) => {
     const { code } = req.query;
     const { code_verifier } = req.session;
+    const loginReturnTo = req.session.login_return_to === '/en' ? '/en' : '/';
     if (!code || !code_verifier) return res.status(400).send('不正なリクエストです');
 
     try {
@@ -860,11 +870,13 @@ app.get('/callback', async (req, res) => {
         req.session.last_updated = Date.now();
         req.session.planetData = { user, planetData };
 
-        res.redirect('/');
+        delete req.session.login_return_to;
+        res.redirect(loginReturnTo);
 
     } catch (error) {
         console.error('Login Error:', error.message);
-        res.redirect('/');
+        delete req.session.login_return_to;
+        res.redirect(loginReturnTo);
     }
 });
 

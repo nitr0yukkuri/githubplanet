@@ -278,6 +278,7 @@ export function localizedPath(path) {
 function applyLocalizedLinks(root) {
     const links = [
         ['a[href="/"]', '/'],
+        ['a[href="/login"]', '/login'],
         ['a[href="/achievements"]', '/achievements'],
         ['a[href="/settings"]', '/settings']
     ];
