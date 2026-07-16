@@ -83,9 +83,6 @@ body {
     opacity: 0.8;
 }
 
-#menu-btn:hover {
-    background-color: #403d61; /* ホバー色 */
-}
 
 #menu-btn svg {
     stroke: white; /* 線を白に */
@@ -588,7 +585,6 @@ body {
 /* パネルが開いている時のボタンの位置 */
 #toggle-details-btn.is-open {
     left: 300px; /* パネルの幅分右に移動 */
-    border-radius: 10px 0 0 10px; /* 矢印の向きに合わせて角丸の方向を変える */
 }
 
 /* 矢印SVGのスタイル */
