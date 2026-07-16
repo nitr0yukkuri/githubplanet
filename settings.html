@@ -6,19 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>設定 - GitHub Planet</title>
     <link rel="icon" href="/front/img/favicon.png" type="image/png">
-    <link rel="stylesheet" href="./front/css/settings.css">
+    <link rel="stylesheet" href="/front/css/settings.css">
 </head>
 
-<body>
+<body data-i18n-title="settings.pageTitle">
     <div class="settings-container">
-        <a href="/" class="back-button">＜ 惑星に戻る</a>
+        <a href="/" class="back-button" data-i18n="common.backToPlanet">＜ 惑星に戻る</a>
 
         <div class="settings-content">
-            <h1>Settings</h1>
+            <h1 data-i18n="settings.heading">Settings</h1>
 
             <div class="title-editor">
-                <h2>称号の変更</h2>
-                <p>実績を解除すると新しい言葉が増えます。</p>
+                <h2 data-i18n="settings.titleEditor">称号の変更</h2>
+                <p data-i18n="settings.description">実績を解除すると新しい言葉が増えます。</p>
 
                 <div class="preview-box">
                     <span id="preview-prefix"></span> <span id="preview-suffix"></span>
@@ -29,12 +29,12 @@
                     <select id="suffix-select"></select>
                 </div>
 
-                <button id="save-btn" class="save-btn">設定を保存する</button>
+                <button id="save-btn" class="save-btn" data-i18n="settings.save">設定を保存する</button>
             </div>
         </div>
     </div>
 
-    <script type="module" src="./front/js/settings.js"></script>
+    <script type="module" src="/front/js/settings.js"></script>
 </body>
 
 </html>

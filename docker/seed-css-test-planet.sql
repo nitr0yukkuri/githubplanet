@@ -1,0 +1,42 @@
+INSERT INTO planets (
+    github_id,
+    username,
+    planet_color,
+    planet_size_factor,
+    main_language,
+    language_stats,
+    total_commits,
+    last_updated,
+    achievements,
+    planet_name,
+    weekly_commits,
+    unlocked_titles,
+    active_title
+) VALUES (
+    -2000,
+    'css-test-2000',
+    '#563d7c',
+    2.0,
+    'CSS',
+    '{"CSS": 2000000, "HTML": 120000, "JavaScript": 80000}'::jsonb,
+    2000,
+    NOW(),
+    '{}'::jsonb,
+    '美麗な紫水晶の帝星',
+    100,
+    '{"prefixes": ["美麗な"], "suffixes": ["旅人"]}'::jsonb,
+    '{"prefix": "美麗な", "suffix": "旅人"}'::jsonb
+)
+ON CONFLICT (github_id) DO UPDATE SET
+    username = EXCLUDED.username,
+    planet_color = EXCLUDED.planet_color,
+    planet_size_factor = EXCLUDED.planet_size_factor,
+    main_language = EXCLUDED.main_language,
+    language_stats = EXCLUDED.language_stats,
+    total_commits = EXCLUDED.total_commits,
+    last_updated = EXCLUDED.last_updated,
+    achievements = EXCLUDED.achievements,
+    planet_name = EXCLUDED.planet_name,
+    weekly_commits = EXCLUDED.weekly_commits,
+    unlocked_titles = EXCLUDED.unlocked_titles,
+    active_title = EXCLUDED.active_title;

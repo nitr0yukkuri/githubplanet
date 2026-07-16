@@ -1,30 +1,17 @@
 // front/js/achievements.js
+import { applyI18n, getTranslation, t } from './i18n.js';
 
 const MASTER_ACHIEVEMENTS = {
-    OCTOCAT_FRIEND: { id: 'OCTOCAT_FRIEND', name: '星界の盟友', description: '長い間この宇宙を旅し、登録から1年以上が経過した。' },
-    VELOCITY_STAR: { id: 'VELOCITY_STAR', name: '光速の星', description: '爆発的な開発スピードで宇宙を駆け抜け、週間50コミット以上を記録した。' },
-    OS_CONTRIBUTOR: { id: 'OS_CONTRIBUTOR', name: '銀河の貢献者', description: '他の星系に文明をもたらし、他リポジトリへの貢献を果たした。' },
-    STARGAZER: { id: 'STARGAZER', name: '星を見上げる者', description: '多くの輝きを知り、または自身が輝き、Star数10以上を達成した。' },
-    POLYGLOT_PIONEER: { id: 'POLYGLOT_PIONEER', name: '多言語の開拓者', description: '多様な技術を操り、5種類以上の言語で彩り豊かな惑星を築き上げた。' },
-    FIRST_COMMIT: { id: 'FIRST_COMMIT', name: '星の産声', description: 'GitHub Planetにログイン後、初めてのコミットを記録した。' },
-    FIRST_PLANET: { id: 'FIRST_PLANET', name: '最初の星', description: '初めて自分の惑星を宇宙に誕生させた。' },
-    COMMIT_100: { id: 'COMMIT_100', name: 'コミット100', description: '累計コミット数が100を超えた。' },
-    COMMIT_500: { id: 'COMMIT_500', name: 'コミット500', description: '累計コミット数が500を超えた。' },
-    COMMIT_1000: { id: 'COMMIT_1000', name: 'コミット1000', description: '累計コミット数が1000を超えた。' },
-};
-
-// ★追加: クライアント側で表示するための称号データ
-const TITLE_REWARDS = {
-    FIRST_PLANET: { prefix: '始まりの', suffix: '創造主' },
-    FIRST_COMMIT: { prefix: '記念すべき', suffix: '第一歩' },
-    VELOCITY_STAR: { prefix: '光速の', suffix: '彗星' },
-    OS_CONTRIBUTOR: { prefix: '銀河の', suffix: '貢献者' },
-    STARGAZER: { prefix: '輝く', suffix: '一番星' },
-    POLYGLOT_PIONEER: { prefix: '多才な', suffix: '翻訳家' },
-    OCTOCAT_FRIEND: { prefix: '古参の', suffix: '盟友' },
-    COMMIT_100: { prefix: '努力の', suffix: '職人' },
-    COMMIT_500: { prefix: '熟練の', suffix: '達人' },
-    COMMIT_1000: { prefix: '伝説の', suffix: '英雄' },
+    OCTOCAT_FRIEND: { id: 'OCTOCAT_FRIEND' },
+    VELOCITY_STAR: { id: 'VELOCITY_STAR' },
+    OS_CONTRIBUTOR: { id: 'OS_CONTRIBUTOR' },
+    STARGAZER: { id: 'STARGAZER' },
+    POLYGLOT_PIONEER: { id: 'POLYGLOT_PIONEER' },
+    FIRST_COMMIT: { id: 'FIRST_COMMIT' },
+    FIRST_PLANET: { id: 'FIRST_PLANET' },
+    COMMIT_100: { id: 'COMMIT_100' },
+    COMMIT_500: { id: 'COMMIT_500' },
+    COMMIT_1000: { id: 'COMMIT_1000' },
 };
 
 const TROPHY_SVG = `<svg stroke="currentColor" fill="none" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" height="1.2em" width="1.2em" xmlns="http://www.w3.org/2000/svg" style="margin-right: 8px;"><path d="M8 21h8"></path><path d="M12 17v4"></path><path d="M7 4h10v8a5 5 0 0 1-10 0V4z"></path><path d="M17 8h1a2 2 0 0 1 0 4h-1"></path><path d="M7 8H6a2 2 0 0 0 0 4h1"></path></svg>`;
@@ -48,18 +35,18 @@ const rewardSuffix = document.getElementById('reward-suffix');
 function showDetail(masterData, userData) {
     const isUnlocked = !!userData;
     const unlockedDate = (userData?.unlockedAt || '').split('T')[0].replace(/-/g, '/');
-    const statusText = isUnlocked ? `Unlocked (${unlockedDate})` : 'Locked';
+    const statusText = isUnlocked ? t('achievements.unlocked', { date: unlockedDate }) : t('achievements.locked');
 
     // アイコン設定
-    detailIcon.innerHTML = isUnlocked ? TROPHY_SVG.replace('height="1.2em" width="1.2em"', 'height="4em" width="4em"') : '<span style="font-size: 2.5em;">🔒</span>';
+    detailIcon.innerHTML = isUnlocked ? TROPHY_SVG.replace('height="1.2em" width="1.2em"', 'height="4em" width="4em"') : `<span style="font-size: 2.5em;">${t('achievements.lockIcon')}</span>`;
     detailIcon.className = isUnlocked ? 'detail-icon-large unlocked' : 'detail-icon-large locked';
 
     // テキスト設定
-    detailTitle.textContent = masterData.name;
-    detailDesc.textContent = masterData.description;
+    detailTitle.textContent = t(`achievements.names.${masterData.id}`);
+    detailDesc.textContent = t(`achievements.descriptions.${masterData.id}`);
 
     // ★変更: 報酬称号を専用エリアに表示
-    const reward = TITLE_REWARDS[masterData.id];
+    const reward = getTranslation(`achievements.rewards.${masterData.id}`);
     if (reward) {
         rewardContainer.style.display = 'block';
         rewardPrefix.textContent = reward.prefix;
@@ -87,16 +74,19 @@ function hideDetail() {
 }
 
 function renderPage(data) {
+    applyI18n();
     if (!data || !data.user || !data.planetData) {
-        document.getElementById('achievement-list').innerHTML = '<p class="loading-text">ログインしていません。<a href="/">ホーム</a>に戻ってログインしてください。</p>';
+        const listContainer = document.getElementById('achievement-list');
+        listContainer.innerHTML = `<p class="loading-text">${t('achievements.notLoggedInHtml')}</p>`;
+        applyI18n(listContainer);
         return;
     }
 
     const { user, planetData } = data;
     const userAchievements = planetData.achievements || {};
 
-    document.getElementById('planet-type').textContent = planetData.planetName || '名もなき星';
-    document.getElementById('user-name').textContent = user.login || '不明なユーザー';
+    document.getElementById('planet-type').textContent = planetData.planetName || t('home.unnamedPlanet');
+    document.getElementById('user-name').textContent = user.login || t('achievements.unknownUser');
 
     const masterKeys = Object.keys(MASTER_ACHIEVEMENTS);
     const totalCount = masterKeys.length;
@@ -124,13 +114,13 @@ function renderPage(data) {
         card.id = key;
 
         const headerIcon = isUnlocked ? TROPHY_SVG : '🔒';
-        const statusText = isUnlocked ? `Unlocked: ${unlockedDate}` : 'Locked';
+        const statusText = isUnlocked ? t('achievements.unlockedList', { date: unlockedDate }) : t('achievements.locked');
 
         card.innerHTML = `
-            <h3 class="card-header"><span class="icon">${headerIcon}</span> ${masterData.name}</h3>
+            <h3 class="card-header"><span class="icon">${headerIcon}</span> ${t(`achievements.names.${masterData.id}`)}</h3>
             <p class="card-status">${statusText}</p>
             <div class="card-details">
-                <a class="detail-link">詳細を確認する ></a>
+                <a class="detail-link">${t('achievements.detailLink')}</a>
             </div>
         `;
 
@@ -149,6 +139,8 @@ if (backBtn) {
 }
 
 async function initAchievementsPage() {
+    applyI18n();
+
     try {
         const res = await fetch('/api/me');
         if (!res.ok) throw new Error('Not logged in');

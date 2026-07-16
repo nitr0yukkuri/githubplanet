@@ -637,7 +637,7 @@ function generateSignature(username) {
     return crypto.createHmac('sha256', secret).update(username).digest('hex');
 }
 
-app.get('/', (req, res) => {
+app.get(['/', '/en', '/english'], (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
@@ -672,7 +672,7 @@ app.get('/api/card/:username', (req, res) => {
     res.redirect(screenshotServiceUrl);
 });
 
-app.get('/card.html', (req, res) => {
+app.get(['/card.html', '/en/card.html', '/english/card.html'], (req, res) => {
     const { username, fix, sig } = req.query;
 
     if (fix) {
@@ -815,11 +815,11 @@ app.get('/api/debug-name/:lang', async (req, res) => {
     });
 });
 
-app.get('/achievements', (req, res) => {
+app.get(['/achievements', '/en/achievements', '/english/achievements'], (req, res) => {
     res.sendFile(path.join(__dirname, 'achievements.html'));
 });
 
-app.get('/settings', (req, res) => {
+app.get(['/settings', '/en/settings', '/english/settings'], (req, res) => {
     res.sendFile(path.join(__dirname, 'settings.html'));
 });
 

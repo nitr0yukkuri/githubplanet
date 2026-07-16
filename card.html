@@ -18,7 +18,7 @@
         }
     </script>
 
-    <link rel="stylesheet" href="front/css/card.css">
+    <link rel="stylesheet" href="/front/css/card.css">
 
     <script type="importmap">
     {
@@ -30,9 +30,9 @@
     </script>
 </head>
 
-<body>
+<body data-i18n-title="card.pageTitle">
     <div class="nav-container">
-        <a href="/" class="back-button">＜ 惑星に戻る</a>
+        <a href="/" class="back-button" data-i18n="common.backToPlanet">＜ 惑星に戻る</a>
     </div>
 
     <div class="content-wrapper">
@@ -50,20 +50,20 @@
 
                 <div class="stats-row">
                     <div class="stat-group">
-                        <span class="stat-label">LANGUAGE</span>
+                        <span class="stat-label" data-i18n="card.language">LANGUAGE</span>
                         <span class="stat-value" id="main-lang-stat">LOADING</span>
                     </div>
                     <div class="stat-divider"></div>
                     <div class="stat-group">
-                        <span class="stat-label">CONTRIBUTIONS</span>
+                        <span class="stat-label" data-i18n="card.contributions">CONTRIBUTIONS</span>
                         <span class="stat-value" id="commits-val">0000</span>
                     </div>
                 </div>
 
                 <div class="footer-section">
                     <div class="lang-label-row">
-                        <span>SYSTEM STATUS</span>
-                        <span class="sys-status">● ONLINE</span>
+                        <span data-i18n="card.systemStatus">SYSTEM STATUS</span>
+                        <span class="sys-status" data-i18n="card.online">● ONLINE</span>
                     </div>
                     <div class="bar-track">
                         <div id="lang-bar" class="bar-fill"></div>
@@ -73,10 +73,10 @@
         </div>
 
         <div class="share-container" id="share-section">
-            <p>👇 下のURLをコピーしてgithubのプロフィールに貼ろう！</p>
+            <p data-i18n="card.share">👇 下のURLをコピーしてgithubのプロフィールに貼ろう！</p>
             <div class="code-box">
                 <code id="markdown-code">LOADING...</code>
-                <button id="copy-btn" title="コピー">
+                <button id="copy-btn" title="コピー" data-i18n-attr="title:card.copy,aria-label:card.copy">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -84,11 +84,11 @@
                     </svg>
                 </button>
             </div>
-            <p style="font-size: 0.75rem; color: #6e7a8e; margin-top: 15px;">※GitHub PlanetはGitHub公式とは一切関係ありません。</p>
+            <p style="font-size: 0.75rem; color: #6e7a8e; margin-top: 15px;" data-i18n="common.disclaimer">※GitHub PlanetはGitHub公式とは一切関係ありません。</p>
         </div>
     </div>
 
-    <script type="module" src="front/js/card.js"></script>
+    <script type="module" src="/front/js/card.js"></script>
 </body>
 
 </html>

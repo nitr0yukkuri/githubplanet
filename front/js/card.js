@@ -1,12 +1,16 @@
 // front/js/card.js
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { createCssPlanetFlowMaterial, isCssPlanet, updateCssPlanetFlow } from './css-planet-flow.js';
+import { applyI18n, localizedPath } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
 
 const params = new URLSearchParams(window.location.search);
 const username = params.get('username') || 'NITROYUKKURI';
 const isScreenshotMode = params.has('fix');
+
+applyI18n();
 
 if (isScreenshotMode) {
     document.documentElement.classList.add('is-screenshot');
@@ -37,7 +41,7 @@ if (!isScreenshotMode) {
 
     const deployUrl = window.location.origin;
     const timestamp = Date.now();
-    const targetUrl = `${deployUrl}/card.html?username=${username}&fix=true&time=${timestamp}`;
+    const targetUrl = `${deployUrl}${localizedPath('/card.html')}?username=${username}&fix=true&time=${timestamp}`;
     const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
 
     // リンク先をトップページに変更
@@ -107,7 +111,7 @@ if (!isScreenshotMode) {
 }
 
 const textureLoader = new THREE.TextureLoader();
-const planetTexture = textureLoader.load('front/img/2k_mars.jpg');
+const planetTexture = textureLoader.load('/front/img/2k_mars.jpg');
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
 scene.add(ambientLight);
@@ -125,6 +129,7 @@ planetGroup.position.set(0, 0, 0);
 scene.add(planetGroup);
 
 let planetMesh;
+let cssPlanetMaterial = null;
 
 async function init() {
     try {
@@ -206,6 +211,7 @@ function createPlanet(data) {
     while (planetGroup.children.length > 0) {
         planetGroup.remove(planetGroup.children[0]);
     }
+    cssPlanetMaterial = null;
 
     const baseSize = Math.min(1.3 * (data.planetSizeFactor || 1), 6.0);
 
@@ -215,13 +221,17 @@ function createPlanet(data) {
     const level = Math.floor((data.totalCommits || 0) / 30) + 1;
     const auraIntensity = Math.min(3.0, (level / 5.0) * 0.5);
 
-    const material = new THREE.MeshStandardMaterial({
-        color: data.planetColor || 0xffffff,
-        aoMap: planetTexture,
-        aoMapIntensity: 1.5,
-        roughness: 0.8,
-        metalness: 0.2
-    });
+    const material = isCssPlanet(data)
+        ? createCssPlanetFlowMaterial(THREE, planetTexture)
+        : new THREE.MeshStandardMaterial({
+            color: data.planetColor || 0xffffff,
+            aoMap: planetTexture,
+            aoMapIntensity: 1.5,
+            roughness: 0.8,
+            metalness: 0.2
+        });
+
+    if (isCssPlanet(data)) cssPlanetMaterial = material;
 
     planetMesh = new THREE.Mesh(geometry, material);
     planetGroup.add(planetMesh);
@@ -359,6 +369,7 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
     planetGroup.rotation.y -= 0.003;
+    updateCssPlanetFlow(cssPlanetMaterial, performance.now());
     renderer.render(scene, camera);
 }
 

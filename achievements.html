@@ -6,18 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>実績 - GitHub Planet</title>
     <link rel="icon" href="/front/img/favicon.png" type="image/png">
-    <link rel="stylesheet" href="./front/css/achievements.css">
+    <link rel="stylesheet" href="/front/css/achievements.css">
 </head>
 
-<body>
+<body data-i18n-title="achievements.pageTitle">
     <div class="achievement-container">
 
         <header class="achievement-header">
 
             <div class="header-left">
-                <a href="/" class="back-button">＜ 惑星に戻る</a>
+                <a href="/" class="back-button" data-i18n="common.backToPlanet">＜ 惑星に戻る</a>
                 <h1 class="title">
-                    Achievement
+                    <span data-i18n="achievements.title">Achievement</span>
                     <svg stroke="currentColor" fill="none" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round"
                         stroke-linejoin="round" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"
                         style="margin-left: 10px;">
@@ -32,7 +32,7 @@
 
             <div class="header-center">
                 <div class="rate-control">
-                    <span class="rate-label">Achievement Rate</span>
+                    <span class="rate-label" data-i18n="achievements.rate">Achievement Rate</span>
                     <span class="rate-value" id="achievement-rate">0%</span>
                     <div class="rate-chart">
                         <svg viewBox="0 0 36 36">
@@ -47,8 +47,8 @@
 
             <div class="header-right">
                 <div class="user-info">
-                    <p class="info-label">Type: <span id="planet-type">読み込み中...</span></p>
-                    <p class="info-label">User: <span id="user-name">読み込み中...</span></p>
+                    <p class="info-label"><span data-i18n="achievements.type">Type:</span> <span id="planet-type" data-i18n="common.loading">読み込み中...</span></p>
+                    <p class="info-label"><span data-i18n="achievements.user">User:</span> <span id="user-name" data-i18n="common.loading">読み込み中...</span></p>
                 </div>
             </div>
 
@@ -58,26 +58,26 @@
         <main class="achievement-main">
             <div class="achievement-list-wrapper" id="achievement-list-view">
                 <div class="achievement-list" id="achievement-list">
-                    <p class="loading-text">実績データを読み込み中...</p>
+                    <p class="loading-text" data-i18n="achievements.loadingData">実績データを読み込み中...</p>
                 </div>
             </div>
 
             <div class="achievement-detail-view" id="achievement-detail-view" style="display: none;">
                 <div class="detail-nav">
-                    <button id="back-to-list-btn" class="back-button">＜ 実績一覧に戻る</button>
+                    <button id="back-to-list-btn" class="back-button" data-i18n="achievements.backToList">＜ 実績一覧に戻る</button>
                 </div>
                 <div class="detail-content-container">
                     <div class="detail-icon-large" id="detail-icon-large"></div>
-                    <h2 class="detail-title" id="detail-title">タイトル</h2>
+                    <h2 class="detail-title" id="detail-title" data-i18n="achievements.detailTitle">タイトル</h2>
 
                     <div class="detail-info-section">
                         <div class="detail-box">
-                            <h3>実績解除条件</h3>
-                            <p id="detail-description">ここに解除条件の説明が入ります。</p>
+                            <h3 data-i18n="achievements.unlockCondition">実績解除条件</h3>
+                            <p id="detail-description" data-i18n="achievements.detailDescription">ここに解除条件の説明が入ります。</p>
                         </div>
 
                         <div id="reward-container" class="reward-container" style="display: none;">
-                            <h3 class="reward-label">UNLOCK TITLE</h3>
+                            <h3 class="reward-label" data-i18n="achievements.reward">UNLOCK TITLE</h3>
                             <div class="reward-tags">
                                 <span class="reward-tag prefix" id="reward-prefix"></span>
                                 <span class="reward-tag suffix" id="reward-suffix"></span>
@@ -85,7 +85,7 @@
                         </div>
 
                         <div class="detail-status-row">
-                            <span class="status-label">ステータス:</span>
+                            <span class="status-label" data-i18n="common.status">ステータス:</span>
                             <span class="status-value" id="detail-status-text">Locked</span>
                         </div>
                     </div>
@@ -95,7 +95,7 @@
         </main>
     </div>
 
-    <script type="module" src="./front/js/achievements.js"></script>
+    <script type="module" src="/front/js/achievements.js"></script>
 </body>
 
 </html>

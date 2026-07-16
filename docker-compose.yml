@@ -57,5 +57,26 @@ services:
       .catch(err => console.error('❌ Missed:', err.message));
       "
 
+  css-test-planet:
+    image: postgres:15-alpine
+    profiles:
+      - css-test
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: password
+    volumes:
+      - ./docker/seed-css-test-planet.sql:/seed-css-test-planet.sql:ro
+    command: >
+      sh -c "
+      until psql -h db -U githubplanet -d githubplanet -c 'SELECT 1 FROM planets LIMIT 1' >/dev/null 2>&1; do
+        sleep 1;
+      done;
+      psql -h db -U githubplanet -d githubplanet -f /seed-css-test-planet.sql;
+      "
+
 volumes:
   db_data:
