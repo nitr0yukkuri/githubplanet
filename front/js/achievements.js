@@ -1,5 +1,5 @@
 // front/js/achievements.js
-import { applyI18n, getTranslation, t } from './i18n.js';
+import { applyI18n, getTranslation, localizedPlanetName, t } from './i18n.js';
 
 const MASTER_ACHIEVEMENTS = {
     OCTOCAT_FRIEND: { id: 'OCTOCAT_FRIEND' },
@@ -85,7 +85,7 @@ function renderPage(data) {
     const { user, planetData } = data;
     const userAchievements = planetData.achievements || {};
 
-    document.getElementById('planet-type').textContent = planetData.planetName || t('home.unnamedPlanet');
+    document.getElementById('planet-type').textContent = localizedPlanetName(planetData);
     document.getElementById('user-name').textContent = user.login || t('achievements.unknownUser');
 
     const masterKeys = Object.keys(MASTER_ACHIEVEMENTS);

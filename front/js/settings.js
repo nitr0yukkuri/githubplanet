@@ -1,4 +1,4 @@
-import { applyI18n, t } from './i18n.js';
+import { applyI18n, localizedTitlePart, t } from './i18n.js';
 
 const prefixSelect = document.getElementById('prefix-select');
 const suffixSelect = document.getElementById('suffix-select');
@@ -12,8 +12,8 @@ let currentSuffix = '';
 function updatePreview() {
     currentPrefix = prefixSelect.value;
     currentSuffix = suffixSelect.value;
-    previewPrefix.textContent = currentPrefix;
-    previewSuffix.textContent = currentSuffix;
+    previewPrefix.textContent = localizedTitlePart(currentPrefix, 'prefix');
+    previewSuffix.textContent = localizedTitlePart(currentSuffix, 'suffix');
 }
 
 prefixSelect.addEventListener('change', updatePreview);
@@ -58,7 +58,7 @@ async function init() {
         unlocked.prefixes.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p;
-            opt.textContent = p;
+            opt.textContent = localizedTitlePart(p, 'prefix');
             if (p === active.prefix) opt.selected = true;
             prefixSelect.appendChild(opt);
         });
@@ -66,7 +66,7 @@ async function init() {
         unlocked.suffixes.forEach(s => {
             const opt = document.createElement('option');
             opt.value = s;
-            opt.textContent = s;
+            opt.textContent = localizedTitlePart(s, 'suffix');
             if (s === active.suffix) opt.selected = true;
             suffixSelect.appendChild(opt);
         });

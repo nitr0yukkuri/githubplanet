@@ -269,26 +269,23 @@ export function getTranslation(key) {
     return getNestedValue(key) ?? getNestedValue(key, 'en');
 }
 
-export function localizedTitle(activeTitle) {
-    if (!activeTitle) return '';
-    if (getLanguage() !== 'en') {
-        return `${activeTitle.prefix} ${activeTitle.suffix}`;
-    }
-
+export function localizedTitlePart(value, type) {
+    if (getLanguage() !== 'en') return value;
     const japaneseRewards = translations.ja.achievements.rewards;
     const englishRewards = translations.en.achievements.rewards;
-    const prefixKey = Object.keys(japaneseRewards).find(
-        (key) => japaneseRewards[key].prefix === activeTitle.prefix
+    const rewardKey = Object.keys(japaneseRewards).find(
+        (key) => japaneseRewards[key][type] === value
     );
-    const suffixKey = Object.keys(japaneseRewards).find(
-        (key) => japaneseRewards[key].suffix === activeTitle.suffix
-    );
-    const prefix = activeTitle.prefix === '名もなき'
-        ? 'Nameless'
-        : englishRewards[prefixKey]?.prefix || activeTitle.prefix;
-    const suffix = activeTitle.suffix === '旅人'
-        ? 'Traveler'
-        : englishRewards[suffixKey]?.suffix || activeTitle.suffix;
+
+    if (type === 'prefix' && value === '名もなき') return 'Nameless';
+    if (type === 'suffix' && value === '旅人') return 'Traveler';
+    return englishRewards[rewardKey]?.[type] || value;
+}
+
+export function localizedTitle(activeTitle) {
+    if (!activeTitle) return '';
+    const prefix = localizedTitlePart(activeTitle.prefix, 'prefix');
+    const suffix = localizedTitlePart(activeTitle.suffix, 'suffix');
 
     return `${prefix} ${suffix}`;
 }
