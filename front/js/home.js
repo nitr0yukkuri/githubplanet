@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import anime from 'animejs';
 import { io } from 'socket.io-client';
 import { createCssPlanetFlowMaterial, isCssPlanet, updateCssPlanetFlow } from './css-planet-flow.js';
-import { applyI18n, localizedPath, t } from './i18n.js';
+import { applyI18n, localizedPath, localizedPlanetName, localizedTitle, t } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
 
@@ -105,14 +105,14 @@ function updatePlanetDetails(data) {
 
     if (title) {
         if (data.activeTitle) {
-            title.textContent = `${data.activeTitle.prefix} ${data.activeTitle.suffix}`;
+            title.textContent = localizedTitle(data.activeTitle);
         } else {
             title.textContent = '';
         }
     }
 
     if (name) {
-        name.textContent = data.planetName || t('home.unnamedPlanet');
+        name.textContent = localizedPlanetName(data);
     }
 }
 

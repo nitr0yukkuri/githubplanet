@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createCssPlanetFlowMaterial, isCssPlanet, updateCssPlanetFlow } from './css-planet-flow.js';
-import { applyI18n, localizedPath } from './i18n.js';
+import { applyI18n, localizedPath, localizedPlanetName } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
 
@@ -155,7 +155,7 @@ async function init() {
 
 function updateUI(data) {
     usernameDisplay.textContent = data.username || username;
-    planetNameSub.textContent = (data.planetName || 'UNKNOWN').toUpperCase();
+    planetNameSub.textContent = localizedPlanetName(data).toUpperCase();
 
     const duration = isScreenshotMode ? 0 : 1500;
     animateValue(commitsVal, 0, data.totalCommits || 0, duration);

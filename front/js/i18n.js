@@ -269,6 +269,59 @@ export function getTranslation(key) {
     return getNestedValue(key) ?? getNestedValue(key, 'en');
 }
 
+export function localizedTitlePart(value, type) {
+    if (getLanguage() !== 'en') return value;
+    const japaneseRewards = translations.ja.achievements.rewards;
+    const englishRewards = translations.en.achievements.rewards;
+    const rewardKey = Object.keys(japaneseRewards).find(
+        (key) => japaneseRewards[key][type] === value
+    );
+
+    if (type === 'prefix' && value === '名もなき') return 'Nameless';
+    if (type === 'suffix' && value === '旅人') return 'Traveler';
+    return englishRewards[rewardKey]?.[type] || value;
+}
+
+export function localizedTitle(activeTitle) {
+    if (!activeTitle) return '';
+    const prefix = localizedTitlePart(activeTitle.prefix, 'prefix');
+    const suffix = localizedTitlePart(activeTitle.suffix, 'suffix');
+
+    return `${prefix} ${suffix}`;
+}
+
+export function localizedPlanetName(data) {
+    if (getLanguage() !== 'en') {
+        return data.planetName || t('home.unnamedPlanet');
+    }
+
+    const adjectives = {
+        JavaScript: 'Flexible', TypeScript: 'Resilient', Python: 'Wise', HTML: 'Structural', CSS: 'Elegant',
+        Ruby: 'Passionate', Java: 'Immutable', C: 'Primal', 'C++': 'High-Speed', 'C#': 'Sharp',
+        Go: 'Swift', Rust: 'Secure', PHP: 'Elephantine', Swift: 'Rapid', Kotlin: 'Serene',
+        Shell: 'Automated', Dart: 'Daring', Scala: 'Spiraling', Perl: 'Pearlescent', Lua: 'Moonlit',
+        Haskell: 'Pure', R: 'Statistical', Julia: 'Scientific', Vue: 'Reactive', Dockerfile: 'Ark-Bound',
+        Svelte: 'Constructed', Elixir: 'Alchemical', ObjectiveC: 'Objective', VimScript: 'Operational',
+        Unknown: 'Mysterious'
+    };
+    const colorNames = {
+        '#f0db4f': 'Golden', '#007acc': 'Azure', '#306998': 'Deep-Sea', '#e34c26': 'Blazing',
+        '#563d7c': 'Amethyst', '#cc342d': 'Crimson', '#b07219': 'Earthen', '#555555': 'Steel',
+        '#f34b7d': 'Cherry-Blossom', '#178600': 'Jade', '#00add8': 'Glacial', '#dea584': 'Sandy',
+        '#4f5d95': 'Indigo', '#f05138': 'Vermilion', '#a97bff': 'Lightning', '#808080': 'Mystic',
+        '#89e051': 'Verdant', '#00b4ab': 'Clearwater', '#c22d40': 'Rose', '#0298c3': 'Cerulean',
+        '#000080': 'Abyssal', '#5e5086': 'Night-Sky', '#198ce7': 'Sky-Blue', '#a270ba': 'Wisteria',
+        '#41b883': 'Meadow', '#384d54': 'Obsidian', '#ff3e00': 'Orange', '#6e4a7e': 'Grape',
+        '#438eff': 'Blue-Sky', '#199f4b': 'Evergreen'
+    };
+    const adjective = adjectives[data.mainLanguage] || adjectives.Unknown;
+    const color = colorNames[String(data.planetColor || '').toLowerCase()] || colorNames['#808080'];
+    const commits = Number(data.totalCommits) || 0;
+    const starClass = commits > 1000 ? 'Imperial Star' : commits > 500 ? 'Giant Star' : 'Star';
+
+    return `${adjective} ${color} ${starClass}`;
+}
+
 export function localizedPath(path) {
     if (!isEnglishPath()) return path;
     if (path === '/') return '/en';
@@ -278,6 +331,7 @@ export function localizedPath(path) {
 function applyLocalizedLinks(root) {
     const links = [
         ['a[href="/"]', '/'],
+        ['a[href="/login"]', '/login'],
         ['a[href="/achievements"]', '/achievements'],
         ['a[href="/settings"]', '/settings']
     ];
