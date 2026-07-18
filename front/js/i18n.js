@@ -26,7 +26,7 @@ const translations = {
             settings: '設定',
             card: 'カード',
             githubProfile: 'GitHubプロフィールを見る',
-            nextRandom: '次のランダムな惑星へ',
+            nextRandom: '違う星を見に行く',
             statusTitle: '星のステータス',
             contributions: 'コントリビューション',
             toggleDetails: '詳細パネルの切り替え',
