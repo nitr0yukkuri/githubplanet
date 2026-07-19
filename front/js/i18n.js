@@ -386,4 +386,7 @@ export function applyI18n(root = document) {
     });
 
     applyLocalizedLinks(root);
+    
+    const hideStyle = document.getElementById('i18n-hide');
+    if (hideStyle) hideStyle.remove();
 }

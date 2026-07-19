@@ -44,7 +44,15 @@ async function init() {
         const res = await fetch('/api/me');
         if (!res.ok) {
             const settingsContainer = document.querySelector('.settings-container');
-            settingsContainer.innerHTML = `<p>${t('common.loginRequired')}</p><a href="/" class="back-button">${t('common.back')}</a>`;
+            settingsContainer.innerHTML = `
+                <div class="settings-content" style="justify-content: center; height: 100%;">
+                    <div class="title-editor" style="max-width: 400px; padding: 3rem 2rem;">
+                        <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">${t('common.loginRequired')}</h2>
+                        <p style="margin-bottom: 2.5rem; font-size: 0.95rem;">GitHub Planetのすべての機能を利用するには<br>ログインが必要です。</p>
+                        <a href="/" class="save-btn" style="display: inline-block; text-decoration: none; box-sizing: border-box;">ホームに戻る</a>
+                    </div>
+                </div>
+            `;
             applyI18n(settingsContainer);
             return;
         }

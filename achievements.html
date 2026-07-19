@@ -7,6 +7,11 @@
     <title>実績 - GitHub Planet</title>
     <link rel="icon" href="/front/img/favicon.png" type="image/png">
     <link rel="stylesheet" href="/front/css/achievements.css">
+    <script>
+        if (/^\/(en|english)(\/|$)/.test(window.location.pathname)) {
+            document.write('<style id="i18n-hide">[data-i18n], [data-i18n-html] { visibility: hidden !important; }</style>');
+        }
+    </script>
 </head>
 
 <body data-i18n-title="achievements.pageTitle">
