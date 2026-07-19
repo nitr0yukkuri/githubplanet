@@ -17,6 +17,8 @@
     <meta name="twitter:description" content="あなたのコードが、星になる。GitHubの活動履歴からあなただけの惑星を生成しよう。" data-i18n-attr="content:meta.ogDescription">
     <meta name="twitter:image" content="https://githubplanet-git-543426763451.asia-northeast2.run.app/front/img/GitHubPlanet_logo.png">
     <link rel="icon" href="/front/img/favicon.png" type="image/png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#000000">
     <link rel="stylesheet" href="/front/css/home.css">
     <link rel="stylesheet" href="/front/css/responsive.css">
 
@@ -160,6 +162,17 @@
     </script>
 
     <script type="module" src="/front/js/home.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(registration => {
+                    console.log('ServiceWorker registration successful');
+                }).catch(err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
 </body>
 
 </html>

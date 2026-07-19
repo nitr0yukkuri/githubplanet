@@ -1,3 +1,5 @@
+const INITIAL_GO_WIND_PHASE_SECONDS = 0.65;
+
 export function isGoPlanet(data) {
     return data?.mainLanguage?.trim().toLowerCase() === 'go';
 }
@@ -18,7 +20,7 @@ export function createGoPlanetWindMaterial(THREE, planetTexture, flowDirection =
         metalness: 0.16
     });
     const uniforms = {
-        goWindTime: { value: 0 },
+        goWindTime: { value: INITIAL_GO_WIND_PHASE_SECONDS },
         goWindDirection: { value: flowDirection < 0 ? -1 : 1 }
     };
 
@@ -103,7 +105,7 @@ diffuseColor.rgb = mix(goMappedTexture, goFlowColor, 0.82);`
 export function createGoPlanetAtmosphere(THREE, radius, flowDirection = 1) {
     const atmosphere = new THREE.Group();
     const uniforms = {
-        goAtmosphereTime: { value: 0 },
+        goAtmosphereTime: { value: INITIAL_GO_WIND_PHASE_SECONDS },
         goWindDirection: { value: flowDirection < 0 ? -1 : 1 }
     };
 

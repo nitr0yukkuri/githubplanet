@@ -94,9 +94,9 @@ test('injects directional oblique wind streaks while preserving terrain', () => 
 test('updates wind time in seconds', () => {
     const material = createGoPlanetWindMaterial(THREE, {}, '#00ADD8');
     updateGoPlanetWind(material, 1000);
-    assert.equal(material.userData.goWindUniforms.goWindTime.value, 0);
+    assert.equal(material.userData.goWindUniforms.goWindTime.value, 0.65);
     updateGoPlanetWind(material, 2250);
-    assert.equal(material.userData.goWindUniforms.goWindTime.value, 1.25);
+    assert.equal(material.userData.goWindUniforms.goWindTime.value, 1.9);
 });
 
 test('scales surface and atmosphere wind time with planet rotation speed', () => {
@@ -108,8 +108,8 @@ test('scales surface and atmosphere wind time with planet rotation speed', () =>
     updateGoPlanetWind(material, 2000, 3);
     updateGoPlanetAtmosphere(atmosphere, 2000, 3);
 
-    assert.equal(material.userData.goWindUniforms.goWindTime.value, 3);
-    assert.equal(atmosphere.userData.goAtmosphereUniforms.goAtmosphereTime.value, 3);
+    assert.equal(material.userData.goWindUniforms.goWindTime.value, 3.65);
+    assert.equal(atmosphere.userData.goAtmosphereUniforms.goAtmosphereTime.value, 3.65);
 });
 
 test('builds and updates a soft atmosphere with two broad wake layers', () => {
@@ -123,8 +123,8 @@ test('builds and updates a soft atmosphere with two broad wake layers', () => {
     assert.equal(atmosphere.userData.goAtmosphereUniforms.goWindDirection.value, -1);
 
     updateGoPlanetAtmosphere(atmosphere, 5000);
-    assert.equal(atmosphere.userData.goAtmosphereUniforms.goAtmosphereTime.value, 0);
+    assert.equal(atmosphere.userData.goAtmosphereUniforms.goAtmosphereTime.value, 0.65);
     updateGoPlanetAtmosphere(atmosphere, 6250);
-    assert.equal(atmosphere.userData.goAtmosphereUniforms.goAtmosphereTime.value, 1.25);
+    assert.equal(atmosphere.userData.goAtmosphereUniforms.goAtmosphereTime.value, 1.9);
     assert.equal(atmosphere.rotation.y, 0);
 });
