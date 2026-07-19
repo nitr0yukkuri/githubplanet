@@ -55,7 +55,7 @@ if (isProduction) {
 }
 
 const pool = createPostgresPool(process.env.DATABASE_URL);
-prepareDatabase(pool);
+await prepareDatabase(pool);
 const planetRepository = createPlanetRepository(pool);
 const geminiClient = createGeminiClient({
     axios,
@@ -91,7 +91,7 @@ app.use(session({
     store: pool ? new PgSession({ pool, createTableIfMissing: true }) : undefined,
     secret: process.env.SESSION_SECRET || 'dev_secret',
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: { secure: isProduction, httpOnly: true, sameSite: 'lax' }
 }));
 

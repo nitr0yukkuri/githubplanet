@@ -9,7 +9,10 @@ export function createPostgresPool(connectionString) {
 
     return new pg.Pool({
         connectionString,
-        ssl: isLocalDatabase ? undefined : { rejectUnauthorized: false }
+        ssl: isLocalDatabase ? undefined : { rejectUnauthorized: false },
+        connectionTimeoutMillis: 5000,
+        query_timeout: 5000,
+        statement_timeout: 5000
     });
 }
 
@@ -19,7 +22,7 @@ export function prepareDatabase(pool) {
         return;
     }
 
-    pool.query(`
+    return pool.query(`
         CREATE TABLE IF NOT EXISTS planets (
             github_id BIGINT PRIMARY KEY,
             username TEXT NOT NULL,
