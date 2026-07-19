@@ -44,7 +44,7 @@ if (!isScreenshotMode) {
     const deployUrl = window.location.origin;
     const timestamp = Date.now();
     const targetUrl = `${deployUrl}${localizedPath('/card.html')}?username=${username}&fix=true&time=${timestamp}`;
-    const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
+    const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/3/${targetUrl}`;
 
     // リンク先をトップページに変更
     const pageUrl = `${deployUrl}/`;

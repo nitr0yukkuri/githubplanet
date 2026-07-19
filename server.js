@@ -83,6 +83,7 @@ const planetQueryService = planetRepository ? createPlanetQueryService({
 
 app.use('/front/img', express.static(path.join(__dirname, 'front/img'), { maxAge: '30d' }));
 app.use('/front', express.static(path.join(__dirname, 'front'), { maxAge: 0 }));
+app.use('/vendor/three', express.static(path.join(__dirname, 'node_modules/three'), { maxAge: '30d' }));
 
 if (isProduction) app.set('trust proxy', 1);
 
