@@ -48,13 +48,19 @@ test('orchestrates GitHub aggregation, domain rules, and persistence', async () 
     assert.equal(result.mainLanguage, 'TypeScript');
     assert.deepEqual(result.languageStats, { TypeScript: 70, CSS: 50 });
     assert.equal(result.totalCommits, 99999);
+    assert.equal(result.observedTotalContributions, 120000);
+    assert.equal(result.isNewPlanet, true);
     assert.equal(result.weeklyCommits, 100);
     assert.equal(result.planetColor, '#007acc');
   assert.equal(result.planetName, '堅牢な神秘の帝星');
     assert.equal(result.planetSizeFactor, 2);
     assert.ok(result.achievements.COMMIT_1000);
+    assert.ok(result.achievements.CONTRIBUTION_10000);
     assert.ok(result.achievements.OS_CONTRIBUTOR);
-    assert.ok(result.unlockedTitles.prefixes.includes('伝説の'));
+    assert.ok(result.unlockedTitles.prefixes.includes('星雲を渡る'));
+    assert.ok(result.unlockedTitles.suffixes.includes('航海者'));
+    assert.ok(result.unlockedTitles.prefixes.includes('銀河に名を刻む'));
+    assert.ok(result.unlockedTitles.suffixes.includes('伝説'));
     assert.deepEqual(saved, {
         githubId: 1,
         username: 'tester',
@@ -102,5 +108,6 @@ test('reuses the existing color, name, title, and achievements for the same lang
     assert.equal(result.planetName, '既存の惑星名');
     assert.deepEqual(result.activeTitle, { prefix: '記念すべき', suffix: '職人' });
     assert.equal(result.achievements.FIRST_PLANET, existingAchievement);
+    assert.equal(result.isNewPlanet, false);
     assert.equal(saved.planetName, '既存の惑星名');
 });

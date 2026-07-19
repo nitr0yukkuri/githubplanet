@@ -13,7 +13,8 @@ export function registerPlanetRoutes(app, { planetService, planetQueryService, c
             console.log('[Auto Update] データを更新中... (キャッシュ切れ)');
             try {
                 const user = req.session.planetData.user;
-                const newPlanetData = await planetService.updateAndSavePlanetData(user, req.session.github_token);
+                const updatedPlanetData = await planetService.updateAndSavePlanetData(user, req.session.github_token);
+                const { observedTotalContributions, isNewPlanet, ...newPlanetData } = updatedPlanetData;
                 req.session.planetData.planetData = newPlanetData;
                 req.session.last_updated = Date.now();
                 console.log('[Auto Update] 更新完了');
@@ -24,9 +25,16 @@ export function registerPlanetRoutes(app, { planetService, planetQueryService, c
             console.log('[Auto Update] キャッシュ有効のためスキップ');
         }
 
+        const progressNotice = req.session.pendingProgressNotice || {
+            contributionDelta: 0,
+            newlyUnlockedAchievementIds: []
+        };
+        delete req.session.pendingProgressNotice;
+
         res.json({
             ...req.session.planetData,
-            planetData: normalizePlanetCommitCounts(req.session.planetData.planetData)
+            planetData: normalizePlanetCommitCounts(req.session.planetData.planetData),
+            progressNotice
         });
     });
 

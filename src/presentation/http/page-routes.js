@@ -31,7 +31,7 @@ export function registerPageRoutes(app, { rootDirectory, isProduction, systemApi
         const targetUrl = `${protocol}://${host}/card.html?username=${targetUsername}&fix=true&ts=${timestamp}&sig=${signature}`;
 
         console.log(`[Card] Redirecting generation for: ${targetUrl}`);
-        res.redirect(`https://image.thum.io/get/png/width/800/crop/400/noanimate/wait/8/${targetUrl}`);
+        res.redirect(`https://image.thum.io/get/png/width/800/crop/400/noanimate/wait/3/${targetUrl}`);
     });
 
     app.get(['/card.html', '/en/card.html', '/english/card.html'], (req, res) => {

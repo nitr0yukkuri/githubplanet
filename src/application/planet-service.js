@@ -17,7 +17,8 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
         const contributedRepos = userData.repositoriesContributedTo.nodes || [];
         const repositories = [...ownedRepos, ...contributedRepos];
         const starredCount = userData.starredRepositories ? userData.starredRepositories.totalCount : 0;
-        let totalCommits = userData.contributionsCollection?.contributionCalendar?.totalContributions || 0;
+        const observedTotalContributions = userData.contributionsCollection?.contributionCalendar?.totalContributions || 0;
+        let totalCommits = observedTotalContributions;
         let weeklyCommits = 0;
         const calendar = userData.contributionsCollection?.contributionCalendar;
         const oneWeekAgo = new Date();
@@ -121,7 +122,6 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
                 totalStars: starredCount + receivedStars,
                 createdAt: user.created_at
             });
-
             for (const key of Object.keys(achievements)) {
                 const reward = TITLE_REWARDS[key];
                 if (!reward) continue;
@@ -137,9 +137,22 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
 
         return {
             mainLanguage, planetColor, languageStats, totalCommits, weeklyCommits, planetSizeFactor,
-            planetName, achievements, unlockedTitles, activeTitle
+            planetName, achievements, unlockedTitles, activeTitle,
+            observedTotalContributions,
+            isNewPlanet: !existingData
         };
     }
 
-    return { updateAndSavePlanetData };
+    async function recordLoginProgress(githubId, updateResult) {
+        if (!repository?.recordLoginProgress) {
+            return { contributionDelta: 0, newlyUnlockedAchievementIds: [] };
+        }
+        return repository.recordLoginProgress(githubId, {
+            currentContributions: updateResult.observedTotalContributions,
+            currentAchievementIds: Object.keys(updateResult.achievements || {}),
+            notifyCurrentAchievements: updateResult.isNewPlanet
+        });
+    }
+
+    return { updateAndSavePlanetData, recordLoginProgress };
 }

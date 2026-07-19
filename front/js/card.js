@@ -2,9 +2,19 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createCssPlanetFlowMaterial, isCssPlanet, updateCssPlanetFlow } from './css-planet-flow.js';
+import { createCppPlanetLightningMaterial, isCppPlanet, updateCppPlanetLightning } from './cpp-planet-lightning.js';
+import {
+    createGoPlanetAtmosphere,
+    createGoPlanetWindMaterial,
+    calculateGoWindSpeedFactor,
+    isGoPlanet,
+    updateGoPlanetAtmosphere,
+    updateGoPlanetWind
+} from './go-planet-wind.js';
 import { applyI18n, localizedPath, localizedPlanetName } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
+const CARD_DATA_TIMEOUT_MS = 6000;
 
 const params = new URLSearchParams(window.location.search);
 const username = params.get('username') || 'NITROYUKKURI';
@@ -42,7 +52,7 @@ if (!isScreenshotMode) {
     const deployUrl = window.location.origin;
     const timestamp = Date.now();
     const targetUrl = `${deployUrl}${localizedPath('/card.html')}?username=${username}&fix=true&time=${timestamp}`;
-    const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${targetUrl}`;
+    const thumbUrl = `https://image.thum.io/get/width/800/crop/400/wait/3/${targetUrl}`;
 
     // リンク先をトップページに変更
     const pageUrl = `${deployUrl}/`;
@@ -74,7 +84,8 @@ if (isScreenshotMode) {
 
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setSize(width, height);
-renderer.setPixelRatio(window.devicePixelRatio);
+const rendererPixelRatio = Math.min(window.devicePixelRatio, 2);
+renderer.setPixelRatio(rendererPixelRatio);
 canvasContainer.appendChild(renderer.domElement);
 
 if (isScreenshotMode) {
@@ -99,6 +110,7 @@ if (isScreenshotMode) {
 } else {
     controls.target.set(3.5, 0, 0);
 }
+controls.update();
 
 if (!isScreenshotMode) {
     window.addEventListener('resize', () => {
@@ -130,10 +142,15 @@ scene.add(planetGroup);
 
 let planetMesh;
 let cssPlanetMaterial = null;
+let cppPlanetMaterial = null;
+let goPlanetWindMaterial = null;
+let goPlanetAtmosphere = null;
 
 async function init() {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), CARD_DATA_TIMEOUT_MS);
     try {
-        const res = await fetch(`/api/planets/user/${username}`);
+        const res = await fetch(`/api/planets/user/${username}`, { signal: controller.signal });
         if (!res.ok) throw new Error('Data fetch failed');
         const data = await res.json();
         updateUI(data);
@@ -150,6 +167,8 @@ async function init() {
         };
         updateUI(dummyData);
         createPlanet(dummyData);
+    } finally {
+        window.clearTimeout(timeoutId);
     }
 }
 
@@ -212,6 +231,9 @@ function createPlanet(data) {
         planetGroup.remove(planetGroup.children[0]);
     }
     cssPlanetMaterial = null;
+    cppPlanetMaterial = null;
+    goPlanetWindMaterial = null;
+    goPlanetAtmosphere = null;
 
     const baseSize = Math.min(1.3 * (data.planetSizeFactor || 1), 6.0);
 
@@ -221,20 +243,32 @@ function createPlanet(data) {
     const level = Math.floor((data.totalCommits || 0) / 30) + 1;
     const auraIntensity = Math.min(3.0, (level / 5.0) * 0.5);
 
-    const material = isCssPlanet(data)
-        ? createCssPlanetFlowMaterial(THREE, planetTexture)
-        : new THREE.MeshStandardMaterial({
+    let material;
+    if (isCssPlanet(data)) {
+        material = createCssPlanetFlowMaterial(THREE, planetTexture);
+        cssPlanetMaterial = material;
+    } else if (isCppPlanet(data)) {
+        material = createCppPlanetLightningMaterial(THREE, planetTexture, data.planetColor);
+        cppPlanetMaterial = material;
+    } else if (isGoPlanet(data)) {
+        material = createGoPlanetWindMaterial(THREE, planetTexture, -1);
+        goPlanetWindMaterial = material;
+    } else {
+        material = new THREE.MeshStandardMaterial({
             color: data.planetColor || 0xffffff,
             aoMap: planetTexture,
             aoMapIntensity: 1.5,
             roughness: 0.8,
             metalness: 0.2
         });
-
-    if (isCssPlanet(data)) cssPlanetMaterial = material;
+    }
 
     planetMesh = new THREE.Mesh(geometry, material);
     planetGroup.add(planetMesh);
+    if (isGoPlanet(data)) {
+        goPlanetAtmosphere = createGoPlanetAtmosphere(THREE, baseSize, -1);
+        planetGroup.add(goPlanetAtmosphere);
+    }
 
     const starCount = calculateStarCount(data.totalCommits || 0);
 
@@ -284,7 +318,7 @@ function createPlanet(data) {
 
         // 修正: 画面幅に応じてサイズをなめらかに変化（最小0.4、1200px以上で1.0）
         const multiplier = isScreenshotMode ? 1.1 : Math.min(1.0, Math.max(0.4, window.innerWidth / 1200));
-        const pixelRatioValue = window.devicePixelRatio * multiplier;
+        const pixelRatioValue = rendererPixelRatio * multiplier;
 
         const starMaterial = new THREE.ShaderMaterial({
             uniforms: { pixelRatio: { value: pixelRatioValue } },
@@ -365,11 +399,21 @@ function addParticles(color) {
     planetGroup.add(particlesMesh);
 }
 
+const CARD_PLANET_ROTATION_SPEED = 0.003;
+const BASE_PLANET_ROTATION_SPEED = 0.001;
+
 function animate() {
     requestAnimationFrame(animate);
-    controls.update();
-    planetGroup.rotation.y -= 0.003;
-    updateCssPlanetFlow(cssPlanetMaterial, performance.now());
+    planetGroup.rotation.y -= CARD_PLANET_ROTATION_SPEED;
+    const now = performance.now();
+    const goWindSpeedFactor = calculateGoWindSpeedFactor(
+        CARD_PLANET_ROTATION_SPEED,
+        BASE_PLANET_ROTATION_SPEED
+    );
+    updateCssPlanetFlow(cssPlanetMaterial, now);
+    updateCppPlanetLightning(cppPlanetMaterial, now);
+    updateGoPlanetWind(goPlanetWindMaterial, now, goWindSpeedFactor);
+    updateGoPlanetAtmosphere(goPlanetAtmosphere, now, goWindSpeedFactor);
     renderer.render(scene, camera);
 }
 

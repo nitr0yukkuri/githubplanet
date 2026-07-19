@@ -55,7 +55,7 @@ if (isProduction) {
 }
 
 const pool = createPostgresPool(process.env.DATABASE_URL);
-prepareDatabase(pool);
+await prepareDatabase(pool);
 const planetRepository = createPlanetRepository(pool);
 const geminiClient = createGeminiClient({
     axios,
@@ -83,15 +83,16 @@ const planetQueryService = planetRepository ? createPlanetQueryService({
 
 app.use('/front/img', express.static(path.join(__dirname, 'front/img'), { maxAge: '30d' }));
 app.use('/front', express.static(path.join(__dirname, 'front'), { maxAge: 0 }));
+app.use('/vendor/three', express.static(path.join(__dirname, 'node_modules/three'), { maxAge: '30d' }));
 
 if (isProduction) app.set('trust proxy', 1);
 
 const PgSession = connectPgSimple(session);
 app.use(session({
-    store: pool ? new PgSession({ pool, createTableIfMissing: true }) : undefined,
+    store: pool ? new PgSession({ pool, createTableIfMissing: false }) : undefined,
     secret: process.env.SESSION_SECRET || 'dev_secret',
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: { secure: isProduction, httpOnly: true, sameSite: 'lax' }
 }));
 

@@ -52,11 +52,18 @@ export function registerAuthRoutes(app, {
         try {
             const accessToken = await githubClient.exchangeCode(code, codeVerifier);
             const user = await githubClient.getAuthenticatedUser(accessToken);
-            const planetData = await planetService.updateAndSavePlanetData(user, accessToken);
+            const updatedPlanetData = await planetService.updateAndSavePlanetData(user, accessToken);
+            const progressNotice = await planetService.recordLoginProgress(user.id, updatedPlanetData);
+            const {
+                observedTotalContributions,
+                isNewPlanet,
+                ...planetData
+            } = updatedPlanetData;
 
             req.session.github_token = accessToken;
             req.session.last_updated = Date.now();
             req.session.planetData = { user, planetData };
+            req.session.pendingProgressNotice = progressNotice;
 
             delete req.session.login_return_to;
             res.redirect(loginReturnTo);

@@ -46,6 +46,7 @@ export function checkAchievements(existingAchievements, stats, now = new Date())
     if (totalCommits >= 100) unlock(ACHIEVEMENTS.COMMIT_100);
     if (totalCommits >= 500) unlock(ACHIEVEMENTS.COMMIT_500);
     if (totalCommits >= 1000) unlock(ACHIEVEMENTS.COMMIT_1000);
+    if (totalCommits >= 10000) unlock(ACHIEVEMENTS.CONTRIBUTION_10000);
     return newAchievements;
 }
 

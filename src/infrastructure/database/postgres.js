@@ -9,7 +9,14 @@ export function createPostgresPool(connectionString) {
 
     return new pg.Pool({
         connectionString,
-        ssl: isLocalDatabase ? undefined : { rejectUnauthorized: false }
+        ssl: isLocalDatabase ? undefined : { rejectUnauthorized: false },
+        max: 5,
+        connectionTimeoutMillis: 15000,
+        idleTimeoutMillis: 60000,
+        keepAlive: true,
+        keepAliveInitialDelayMillis: 10000,
+        query_timeout: 15000,
+        statement_timeout: 15000
     });
 }
 
@@ -19,7 +26,7 @@ export function prepareDatabase(pool) {
         return;
     }
 
-    pool.query(`
+    return pool.query(`
         CREATE TABLE IF NOT EXISTS planets (
             github_id BIGINT PRIMARY KEY,
             username TEXT NOT NULL,
@@ -36,8 +43,22 @@ export function prepareDatabase(pool) {
             console.log('[DB] planetsテーブルの準備ができました');
             return pool.query(`ALTER TABLE planets ADD COLUMN IF NOT EXISTS achievements JSONB DEFAULT '{}'::jsonb;`);
         })
+        .then(() => pool.query(`
+            CREATE TABLE IF NOT EXISTS "session" (
+                sid VARCHAR PRIMARY KEY,
+                sess JSON NOT NULL,
+                expire TIMESTAMP(6) NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" (expire);
+        `))
         .then(() => pool.query(`ALTER TABLE planets ADD COLUMN IF NOT EXISTS planet_name TEXT;`))
         .then(() => pool.query(`ALTER TABLE planets ADD COLUMN IF NOT EXISTS weekly_commits INTEGER DEFAULT 0;`))
+        .then(() => pool.query(`
+            ALTER TABLE planets
+            ADD COLUMN IF NOT EXISTS last_login_contributions BIGINT,
+            ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP,
+            ADD COLUMN IF NOT EXISTS notified_achievement_ids JSONB;
+        `))
         .then(() => pool.query(`
             ALTER TABLE planets
             ADD COLUMN IF NOT EXISTS unlocked_titles JSONB DEFAULT '{"prefixes": ["名もなき"], "suffixes": ["旅人"]}'::jsonb,

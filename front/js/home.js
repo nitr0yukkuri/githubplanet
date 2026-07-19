@@ -3,17 +3,30 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import anime from 'animejs';
 import { io } from 'socket.io-client';
 import { createCssPlanetFlowMaterial, isCssPlanet, updateCssPlanetFlow } from './css-planet-flow.js';
+import { createCppPlanetLightningMaterial, isCppPlanet, updateCppPlanetLightning } from './cpp-planet-lightning.js';
+import {
+    createGoPlanetAtmosphere,
+    createGoPlanetWindMaterial,
+    calculateGoWindSpeedFactor,
+    isGoPlanet,
+    updateGoPlanetAtmosphere,
+    updateGoPlanetWind
+} from './go-planet-wind.js';
 import { applyI18n, localizedPath, localizedPlanetName, localizedTitle, t } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
+const BASE_PLANET_ROTATION_SPEED = 0.001;
 
 let scene, camera, renderer, controls, planetGroup;
 let cssPlanetMaterial = null;
+let cppPlanetMaterial = null;
+let goPlanetWindMaterial = null;
+let goPlanetAtmosphere = null;
 
 let welcomeModal, okButton, mainUiWrapper;
 let isFetchingRandomPlanet = false;
 let lastRandomVisitTime = 0;
-let planetRotationSpeed = 0.001;
+let planetRotationSpeed = BASE_PLANET_ROTATION_SPEED;
 let loggedInUsername = null; // ★追加: ログインユーザー名を保持
 
 // ローディングオーバーレイ
@@ -39,12 +52,93 @@ function toggleLoading(show) {
     }
 }
 
+function showPlanetProgressToast(progressNotice = {}) {
+    const achievementIds = Array.isArray(progressNotice.newlyUnlockedAchievementIds)
+        ? progressNotice.newlyUnlockedAchievementIds
+        : [];
+    const contributionDelta = Math.max(0, Number(progressNotice.contributionDelta) || 0);
+    if (achievementIds.length === 0 && contributionDelta === 0) return;
+
+    document.querySelector('.achievement-unlock-toast')?.remove();
+
+    const toast = document.createElement('aside');
+    toast.className = 'achievement-unlock-toast';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+
+    const header = document.createElement('div');
+    header.className = 'achievement-unlock-header';
+
+    const title = document.createElement('strong');
+    title.textContent = achievementIds.length > 0
+        ? t('home.newAchievementsTitle', { count: achievementIds.length })
+        : t('home.contributionGrowthTitle', {
+            count: new Intl.NumberFormat(document.documentElement.lang || undefined).format(contributionDelta)
+        });
+
+    const closeButton = document.createElement('button');
+    closeButton.className = 'achievement-unlock-close';
+    closeButton.type = 'button';
+    closeButton.textContent = '×';
+    closeButton.setAttribute('aria-label', t('home.closeAchievementNotice'));
+    closeButton.title = t('home.closeAchievementNotice');
+
+    const dismiss = () => {
+        toast.classList.remove('is-visible');
+        window.setTimeout(() => toast.remove(), 220);
+    };
+
+    closeButton.addEventListener('click', dismiss);
+    header.append(title, closeButton);
+    toast.append(header);
+
+    if (achievementIds.length > 0) {
+        const names = document.createElement('p');
+        names.className = 'achievement-unlock-names';
+        const visibleIds = achievementIds.slice(0, 3);
+        names.textContent = visibleIds
+            .map((id) => t(`achievements.names.${id}`))
+            .join(' / ');
+        if (achievementIds.length > visibleIds.length) {
+            names.textContent += ` ${t('home.newAchievementsMore', {
+                count: achievementIds.length - visibleIds.length
+            })}`;
+        }
+
+        const link = document.createElement('a');
+        link.className = 'achievement-unlock-link';
+        link.href = localizedPath('/achievements');
+        link.textContent = t('home.viewAchievements');
+        toast.append(names, link);
+    }
+    document.body.appendChild(toast);
+    window.requestAnimationFrame(() => toast.classList.add('is-visible'));
+    window.setTimeout(dismiss, 7000);
+}
+
+function showLocalAchievementPreview() {
+    const isLocal = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+    const isPreview = new URLSearchParams(window.location.search).has('preview-achievement');
+    if (!isLocal || !isPreview) return;
+
+    showPlanetProgressToast({
+        contributionDelta: 128,
+        newlyUnlockedAchievementIds: [
+            'FIRST_PLANET',
+            'FIRST_COMMIT',
+            'COMMIT_100',
+            'POLYGLOT_PIONEER'
+        ]
+    });
+}
+
 async function fetchMyPlanetData() {
     try {
         const res = await fetch(`/api/me?t=${Date.now()}`, { cache: 'no-store' });
 
         if (!res.ok) return null;
         const data = await res.json();
+        showPlanetProgressToast(data.progressNotice);
 
         if (data.planetData && data.user) {
             loggedInUsername = data.user.login; // ★追加: ログインユーザー名を保存
@@ -203,7 +297,7 @@ async function loadPlanet(data) {
     }
 
     const rotationCommits = Math.min(Math.max(Number(wCommits) || 0, 0), 100);
-    planetRotationSpeed = 0.001 + (rotationCommits * 0.0001);
+    planetRotationSpeed = BASE_PLANET_ROTATION_SPEED + (rotationCommits * 0.0001);
 
     if (ownerDisplay && data.username) {
         ownerDisplay.textContent = t('home.ownerPlanet', { username: data.username });
@@ -225,26 +319,41 @@ async function loadPlanet(data) {
         planetGroup = undefined;
     }
     cssPlanetMaterial = null;
+    cppPlanetMaterial = null;
+    goPlanetWindMaterial = null;
+    goPlanetAtmosphere = null;
 
     planetGroup = new THREE.Group();
 
     const tex = await loadPlanetTexture();
 
     const geo = new THREE.SphereGeometry(4, 32, 32);
-    const mat = isCssPlanet(data)
-        ? createCssPlanetFlowMaterial(THREE, tex)
-        : new THREE.MeshStandardMaterial({
+    let mat;
+    if (isCssPlanet(data)) {
+        mat = createCssPlanetFlowMaterial(THREE, tex);
+        cssPlanetMaterial = mat;
+    } else if (isCppPlanet(data)) {
+        mat = createCppPlanetLightningMaterial(THREE, tex, data.planetColor);
+        cppPlanetMaterial = mat;
+    } else if (isGoPlanet(data)) {
+        mat = createGoPlanetWindMaterial(THREE, tex, 1);
+        goPlanetWindMaterial = mat;
+    } else {
+        mat = new THREE.MeshStandardMaterial({
             color: data.planetColor ? new THREE.Color(data.planetColor).getHex() : 0x808080,
             metalness: 0.2, roughness: 0.8, aoMapIntensity: 1.5,
             aoMap: tex
         });
-
-    if (isCssPlanet(data)) cssPlanetMaterial = mat;
+    }
 
     const planet = new THREE.Mesh(geo, mat);
     planet.geometry.setAttribute('uv2', new THREE.BufferAttribute(geo.attributes.uv.array, 2));
     const s = data.planetSizeFactor || 1.0;
     planetGroup.add(planet);
+    if (isGoPlanet(data)) {
+        goPlanetAtmosphere = createGoPlanetAtmosphere(THREE, 4, 1);
+        planetGroup.add(goPlanetAtmosphere);
+    }
 
     const starCount = calculateStarCount(data.totalCommits || 0);
 
@@ -564,6 +673,7 @@ async function init() {
     welcomeModal = document.getElementById('welcome-modal');
     okButton = document.getElementById('welcome-ok-btn');
     mainUiWrapper = document.getElementById('main-ui-wrapper');
+    showLocalAchievementPreview();
 
     const loadingStyle = document.createElement('style');
     loadingStyle.innerHTML = `
@@ -671,7 +781,14 @@ async function loadMainContent() {
 function animate() {
     requestAnimationFrame(animate);
     if (planetGroup) planetGroup.rotation.z += planetRotationSpeed;
+    const goWindSpeedFactor = calculateGoWindSpeedFactor(
+        planetRotationSpeed,
+        BASE_PLANET_ROTATION_SPEED
+    );
     updateCssPlanetFlow(cssPlanetMaterial, performance.now());
+    updateCppPlanetLightning(cppPlanetMaterial, performance.now());
+    updateGoPlanetWind(goPlanetWindMaterial, performance.now(), goWindSpeedFactor);
+    updateGoPlanetAtmosphere(goPlanetAtmosphere, performance.now(), goWindSpeedFactor);
     controls.update();
     renderer.render(scene, camera);
 }

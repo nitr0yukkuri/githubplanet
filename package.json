@@ -7,12 +7,14 @@
     "express-session": "^1.18.2",
     "pg": "^8.16.3",
     "pngjs": "^7.0.0",
-    "socket.io": "^4.7.2"
+    "socket.io": "^4.7.2",
+    "three": "0.160.0"
   },
   "type": "module",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
+    "preview:achievement": "node scripts/preview-achievement.mjs",
     "test": "node --test --test-concurrency=1"
   },
   "license": "MIT",
