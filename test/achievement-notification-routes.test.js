@@ -42,7 +42,7 @@ function createResponse() {
     };
 }
 
-test('stores only newly unlocked achievement ids after a successful login', async () => {
+test('stores login progress once after a successful login', async () => {
     const { app, routes } = createRouteHarness();
     registerAuthRoutes(app, {
         githubClient: {
@@ -53,6 +53,11 @@ test('stores only newly unlocked achievement ids after a successful login', asyn
             updateAndSavePlanetData: async () => ({
                 mainLanguage: 'Go',
                 achievements: { FIRST_PLANET: { id: 'FIRST_PLANET' } },
+                observedTotalContributions: 128,
+                isNewPlanet: false
+            }),
+            recordLoginProgress: async () => ({
+                contributionDelta: 28,
                 newlyUnlockedAchievementIds: ['FIRST_PLANET']
             })
         },
@@ -67,12 +72,16 @@ test('stores only newly unlocked achievement ids after a successful login', asyn
     const res = createResponse();
     await routes.get('GET /callback')(req, res);
 
-    assert.deepEqual(req.session.pendingAchievementIds, ['FIRST_PLANET']);
-    assert.equal('newlyUnlockedAchievementIds' in req.session.planetData.planetData, false);
+    assert.deepEqual(req.session.pendingProgressNotice, {
+        contributionDelta: 28,
+        newlyUnlockedAchievementIds: ['FIRST_PLANET']
+    });
+    assert.equal('observedTotalContributions' in req.session.planetData.planetData, false);
+    assert.equal('isNewPlanet' in req.session.planetData.planetData, false);
     assert.equal(res.redirectTarget, '/en');
 });
 
-test('returns pending achievement ids once and consumes them', async () => {
+test('returns pending login progress once and consumes it', async () => {
     const { app, routes } = createRouteHarness();
     registerPlanetRoutes(app, {
         planetService: {},
@@ -83,7 +92,10 @@ test('returns pending achievement ids once and consumes them', async () => {
     const req = {
         session: {
             last_updated: Date.now(),
-            pendingAchievementIds: ['FIRST_PLANET', 'FIRST_COMMIT'],
+            pendingProgressNotice: {
+                contributionDelta: 28,
+                newlyUnlockedAchievementIds: ['FIRST_PLANET', 'FIRST_COMMIT']
+            },
             planetData: {
                 user: { id: 1, login: 'tester' },
                 planetData: { totalCommits: 1, weeklyCommits: 1 }
@@ -93,10 +105,16 @@ test('returns pending achievement ids once and consumes them', async () => {
 
     const firstResponse = createResponse();
     await routes.get('GET /api/me')(req, firstResponse);
-    assert.deepEqual(firstResponse.body.newlyUnlockedAchievementIds, ['FIRST_PLANET', 'FIRST_COMMIT']);
-    assert.equal('pendingAchievementIds' in req.session, false);
+    assert.deepEqual(firstResponse.body.progressNotice, {
+        contributionDelta: 28,
+        newlyUnlockedAchievementIds: ['FIRST_PLANET', 'FIRST_COMMIT']
+    });
+    assert.equal('pendingProgressNotice' in req.session, false);
 
     const secondResponse = createResponse();
     await routes.get('GET /api/me')(req, secondResponse);
-    assert.deepEqual(secondResponse.body.newlyUnlockedAchievementIds, []);
+    assert.deepEqual(secondResponse.body.progressNotice, {
+        contributionDelta: 0,
+        newlyUnlockedAchievementIds: []
+    });
 });

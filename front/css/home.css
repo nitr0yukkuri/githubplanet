@@ -551,6 +551,11 @@ body {
     font-weight: bold;
 }
 
+html[lang="en"] .planet-title {
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
 .planet-name {
     display: block; 
     text-align: center; /* ★ 中央揃え */
@@ -699,7 +704,7 @@ body {
     top: 80px;
     left: 50%;
     z-index: 120;
-    width: min(360px, calc(100vw - 32px));
+    width: min(420px, calc(100vw - 32px));
     box-sizing: border-box;
     padding: 16px 18px;
     color: #f7fbff;

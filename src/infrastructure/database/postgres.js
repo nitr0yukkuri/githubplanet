@@ -43,6 +43,12 @@ export function prepareDatabase(pool) {
         .then(() => pool.query(`ALTER TABLE planets ADD COLUMN IF NOT EXISTS weekly_commits INTEGER DEFAULT 0;`))
         .then(() => pool.query(`
             ALTER TABLE planets
+            ADD COLUMN IF NOT EXISTS last_login_contributions BIGINT,
+            ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP,
+            ADD COLUMN IF NOT EXISTS notified_achievement_ids JSONB;
+        `))
+        .then(() => pool.query(`
+            ALTER TABLE planets
             ADD COLUMN IF NOT EXISTS unlocked_titles JSONB DEFAULT '{"prefixes": ["名もなき"], "suffixes": ["旅人"]}'::jsonb,
             ADD COLUMN IF NOT EXISTS active_title JSONB DEFAULT '{"prefix": "名もなき", "suffix": "旅人"}'::jsonb;
         `))

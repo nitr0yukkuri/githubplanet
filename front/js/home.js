@@ -50,8 +50,12 @@ function toggleLoading(show) {
     }
 }
 
-function showAchievementUnlockToast(achievementIds) {
-    if (!Array.isArray(achievementIds) || achievementIds.length === 0) return;
+function showPlanetProgressToast(progressNotice = {}) {
+    const achievementIds = Array.isArray(progressNotice.newlyUnlockedAchievementIds)
+        ? progressNotice.newlyUnlockedAchievementIds
+        : [];
+    const contributionDelta = Math.max(0, Number(progressNotice.contributionDelta) || 0);
+    if (achievementIds.length === 0 && contributionDelta === 0) return;
 
     document.querySelector('.achievement-unlock-toast')?.remove();
 
@@ -64,7 +68,11 @@ function showAchievementUnlockToast(achievementIds) {
     header.className = 'achievement-unlock-header';
 
     const title = document.createElement('strong');
-    title.textContent = t('home.newAchievementsTitle', { count: achievementIds.length });
+    title.textContent = achievementIds.length > 0
+        ? t('home.newAchievementsTitle', { count: achievementIds.length })
+        : t('home.contributionGrowthTitle', {
+            count: new Intl.NumberFormat(document.documentElement.lang || undefined).format(contributionDelta)
+        });
 
     const closeButton = document.createElement('button');
     closeButton.className = 'achievement-unlock-close';
@@ -73,23 +81,6 @@ function showAchievementUnlockToast(achievementIds) {
     closeButton.setAttribute('aria-label', t('home.closeAchievementNotice'));
     closeButton.title = t('home.closeAchievementNotice');
 
-    const names = document.createElement('p');
-    names.className = 'achievement-unlock-names';
-    const visibleIds = achievementIds.slice(0, 3);
-    names.textContent = visibleIds
-        .map((id) => t(`achievements.names.${id}`))
-        .join(' / ');
-    if (achievementIds.length > visibleIds.length) {
-        names.textContent += ` ${t('home.newAchievementsMore', {
-            count: achievementIds.length - visibleIds.length
-        })}`;
-    }
-
-    const link = document.createElement('a');
-    link.className = 'achievement-unlock-link';
-    link.href = localizedPath('/achievements');
-    link.textContent = t('home.viewAchievements');
-
     const dismiss = () => {
         toast.classList.remove('is-visible');
         window.setTimeout(() => toast.remove(), 220);
@@ -97,7 +88,27 @@ function showAchievementUnlockToast(achievementIds) {
 
     closeButton.addEventListener('click', dismiss);
     header.append(title, closeButton);
-    toast.append(header, names, link);
+    toast.append(header);
+
+    if (achievementIds.length > 0) {
+        const names = document.createElement('p');
+        names.className = 'achievement-unlock-names';
+        const visibleIds = achievementIds.slice(0, 3);
+        names.textContent = visibleIds
+            .map((id) => t(`achievements.names.${id}`))
+            .join(' / ');
+        if (achievementIds.length > visibleIds.length) {
+            names.textContent += ` ${t('home.newAchievementsMore', {
+                count: achievementIds.length - visibleIds.length
+            })}`;
+        }
+
+        const link = document.createElement('a');
+        link.className = 'achievement-unlock-link';
+        link.href = localizedPath('/achievements');
+        link.textContent = t('home.viewAchievements');
+        toast.append(names, link);
+    }
     document.body.appendChild(toast);
     window.requestAnimationFrame(() => toast.classList.add('is-visible'));
     window.setTimeout(dismiss, 7000);
@@ -108,12 +119,15 @@ function showLocalAchievementPreview() {
     const isPreview = new URLSearchParams(window.location.search).has('preview-achievement');
     if (!isLocal || !isPreview) return;
 
-    showAchievementUnlockToast([
-        'FIRST_PLANET',
-        'FIRST_COMMIT',
-        'COMMIT_100',
-        'POLYGLOT_PIONEER'
-    ]);
+    showPlanetProgressToast({
+        contributionDelta: 128,
+        newlyUnlockedAchievementIds: [
+            'FIRST_PLANET',
+            'FIRST_COMMIT',
+            'COMMIT_100',
+            'POLYGLOT_PIONEER'
+        ]
+    });
 }
 
 async function fetchMyPlanetData() {
@@ -122,7 +136,7 @@ async function fetchMyPlanetData() {
 
         if (!res.ok) return null;
         const data = await res.json();
-        showAchievementUnlockToast(data.newlyUnlockedAchievementIds);
+        showPlanetProgressToast(data.progressNotice);
 
         if (data.planetData && data.user) {
             loggedInUsername = data.user.login; // ★追加: ログインユーザー名を保存

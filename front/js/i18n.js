@@ -44,6 +44,7 @@ const translations = {
             genericError: 'エラーが発生しました',
             pageTitleRandom: '{username} の星 (Random)',
             newAchievementsTitle: '新しく実績を{count}件解除しました',
+            contributionGrowthTitle: '前回ログインから{count}コントリビューション増えました！',
             newAchievementsMore: 'ほか{count}件',
             viewAchievements: '実績を見る',
             closeAchievementNotice: '通知を閉じる'
@@ -172,6 +173,7 @@ const translations = {
             genericError: 'An error occurred.',
             pageTitleRandom: '{username}\'s star (Random)',
             newAchievementsTitle: '{count} new achievements unlocked',
+            contributionGrowthTitle: '{count} contributions since your last login!',
             newAchievementsMore: '+{count} more',
             viewAchievements: 'View achievements',
             closeAchievementNotice: 'Close notification'
