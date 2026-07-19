@@ -75,16 +75,15 @@ for (int cppIndex = 0; cppIndex < ${CPP_FILAMENT_COUNT}; cppIndex++) {
     float cppIndexValue = float(cppIndex);
     float cppSeed = cppLightningHash(cppIndexValue * 19.7 + 2.4);
     float cppBaseAngle = cppIndexValue * 2.39996322973 + cppSeed * 0.38;
-    float cppSlowDrift = cppLightningTime * (0.045 + cppSeed * 0.018);
-    float cppObjectAngle = cppBaseAngle + cppSlowDrift;
+    float cppObjectAngle = cppBaseAngle;
     vec3 cppObjectDirection = normalize(vec3(
         cos(cppObjectAngle),
         sin(cppObjectAngle),
         (cppSeed - 0.5) * 0.9
     ));
     vec3 cppViewDirection = normalize(cppModelViewRotation * cppObjectDirection);
-    float cppPathDrift = cppLightningTime * (0.16 + cppSeed * 0.08);
-    float cppDirectionJitter = (cppLightningSmoothNoise(cppLightningTime * 0.55 + cppIndexValue * 3.7, cppSeed) - 0.5) * 0.035;
+    float cppPathDrift = 0.0;
+    float cppDirectionJitter = (cppLightningSmoothNoise(cppIndexValue * 3.7, cppSeed) - 0.5) * 0.035;
     float cppTargetAngle = atan(cppViewDirection.y, cppViewDirection.x) + cppDirectionJitter;
 
     float cppNaturalBend = (cppLightningSmoothNoise(cppPlasmaRadius * 8.5 + cppPathDrift, cppSeed) - 0.5) * 0.14;
@@ -224,7 +223,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb, cppPlasmaColor, cppPlasmaBlend);`
             );
     };
 
-    material.customProgramCacheKey = () => 'cpp-planet-idle-plasma-globe-v11-gently-moving-core';
+    material.customProgramCacheKey = () => 'cpp-planet-idle-plasma-globe-v12-stable-filament-path';
     material.userData.cppLightningUniforms = uniforms;
     material.userData.cppLightningStartMilliseconds = null;
     return material;

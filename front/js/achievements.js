@@ -12,6 +12,7 @@ const MASTER_ACHIEVEMENTS = {
     COMMIT_100: { id: 'COMMIT_100' },
     COMMIT_500: { id: 'COMMIT_500' },
     COMMIT_1000: { id: 'COMMIT_1000' },
+    CONTRIBUTION_10000: { id: 'CONTRIBUTION_10000' },
 };
 
 const TROPHY_SVG = `<svg stroke="currentColor" fill="none" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" height="1.2em" width="1.2em" xmlns="http://www.w3.org/2000/svg" style="margin-right: 8px;"><path d="M8 21h8"></path><path d="M12 17v4"></path><path d="M7 4h10v8a5 5 0 0 1-10 0V4z"></path><path d="M17 8h1a2 2 0 0 1 0 4h-1"></path><path d="M7 8H6a2 2 0 0 0 0 4h1"></path></svg>`;

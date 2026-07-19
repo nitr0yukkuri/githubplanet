@@ -4,6 +4,7 @@ import anime from 'animejs';
 import { io } from 'socket.io-client';
 import { createCssPlanetFlowMaterial, isCssPlanet, updateCssPlanetFlow } from './css-planet-flow.js';
 import { createCppPlanetLightningMaterial, isCppPlanet, updateCppPlanetLightning } from './cpp-planet-lightning.js';
+import { createGoPlanetWindMaterial, isGoPlanet, updateGoPlanetWind } from './go-planet-wind.js';
 import { applyI18n, localizedPath, localizedPlanetName, localizedTitle, t } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
@@ -11,6 +12,7 @@ const MAX_STAR_COUNT = 120;
 let scene, camera, renderer, controls, planetGroup;
 let cssPlanetMaterial = null;
 let cppPlanetMaterial = null;
+let goPlanetWindMaterial = null;
 
 let welcomeModal, okButton, mainUiWrapper;
 let isFetchingRandomPlanet = false;
@@ -228,6 +230,7 @@ async function loadPlanet(data) {
     }
     cssPlanetMaterial = null;
     cppPlanetMaterial = null;
+    goPlanetWindMaterial = null;
 
     planetGroup = new THREE.Group();
 
@@ -241,6 +244,9 @@ async function loadPlanet(data) {
     } else if (isCppPlanet(data)) {
         mat = createCppPlanetLightningMaterial(THREE, tex, data.planetColor);
         cppPlanetMaterial = mat;
+    } else if (isGoPlanet(data)) {
+        mat = createGoPlanetWindMaterial(THREE, tex);
+        goPlanetWindMaterial = mat;
     } else {
         mat = new THREE.MeshStandardMaterial({
             color: data.planetColor ? new THREE.Color(data.planetColor).getHex() : 0x808080,
@@ -681,6 +687,7 @@ function animate() {
     if (planetGroup) planetGroup.rotation.z += planetRotationSpeed;
     updateCssPlanetFlow(cssPlanetMaterial, performance.now());
     updateCppPlanetLightning(cppPlanetMaterial, performance.now());
+    updateGoPlanetWind(goPlanetWindMaterial, performance.now());
     controls.update();
     renderer.render(scene, camera);
 }

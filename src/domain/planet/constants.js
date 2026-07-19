@@ -35,9 +35,10 @@ export const ACHIEVEMENTS = {
     STARGAZER: { id: 'STARGAZER', name: '星を見上げる者', description: '多くの輝きを知り、または自身が輝き、Star数10以上を達成した。' },
     POLYGLOT_PIONEER: { id: 'POLYGLOT_PIONEER', name: '多言語の開拓者', description: '多様な技術を操り、5種類以上の言語で彩り豊かな惑星を築き上げた。' },
     OCTOCAT_FRIEND: { id: 'OCTOCAT_FRIEND', name: '星界の盟友', description: '長い間この宇宙を旅し、登録から1年以上が経過した。' },
-    COMMIT_100: { id: 'COMMIT_100', name: 'コントリビューション100', description: '累計活動数が100を超えた。' },
-    COMMIT_500: { id: 'COMMIT_500', name: 'コントリビューション500', description: '累計活動数が500を超えた。' },
-    COMMIT_1000: { id: 'COMMIT_1000', name: 'コントリビューション1000', description: '累計活動数が1000を超えた。' }
+    COMMIT_100: { id: 'COMMIT_100', name: '星の歩み', description: 'GitHubで100回のコントリビューションを記録した。' },
+    COMMIT_500: { id: 'COMMIT_500', name: '軌道の旅人', description: 'GitHubで500回のコントリビューションを記録した。' },
+    COMMIT_1000: { id: 'COMMIT_1000', name: '星雲の航海者', description: 'GitHubで1000回のコントリビューションを記録した。' },
+    CONTRIBUTION_10000: { id: 'CONTRIBUTION_10000', name: '銀河に名を刻む者', description: 'GitHubで10000回のコントリビューションを記録した。' }
 };
 
 export const TITLE_REWARDS = {
@@ -48,7 +49,8 @@ export const TITLE_REWARDS = {
     STARGAZER: { prefix: '輝く', suffix: '一番星' },
     POLYGLOT_PIONEER: { prefix: '多才な', suffix: '翻訳家' },
     OCTOCAT_FRIEND: { prefix: '古参の', suffix: '盟友' },
-    COMMIT_100: { prefix: '努力の', suffix: '職人' },
-    COMMIT_500: { prefix: '熟練の', suffix: '達人' },
-    COMMIT_1000: { prefix: '伝説の', suffix: '英雄' }
+    COMMIT_100: { prefix: '星を歩む', suffix: '探索者' },
+    COMMIT_500: { prefix: '軌道を巡る', suffix: '旅人' },
+    COMMIT_1000: { prefix: '星雲を渡る', suffix: '航海者' },
+    CONTRIBUTION_10000: { prefix: '銀河に名を刻む', suffix: '伝説' }
 };

@@ -41,10 +41,20 @@ test('unlocks the same achievements without replacing existing timestamps', () =
 
     assert.equal(result.FIRST_PLANET.unlockedAt, 'old');
     assert.equal(result.COMMIT_1000.unlockedAt, now.toISOString());
+    assert.equal(result.CONTRIBUTION_10000, undefined);
     assert.deepEqual(Object.keys(result).sort(), [
         'COMMIT_100', 'COMMIT_1000', 'COMMIT_500', 'FIRST_COMMIT', 'FIRST_PLANET',
         'OCTOCAT_FRIEND', 'OS_CONTRIBUTOR', 'POLYGLOT_PIONEER', 'STARGAZER', 'VELOCITY_STAR'
     ]);
+
+    const milestone = checkAchievements({}, {
+        totalCommits: 10000,
+        weeklyCommits: 0,
+        languagesCount: 0,
+        hasContributedToOthers: false,
+        totalStars: 0
+    }, now);
+    assert.equal(milestone.CONTRIBUTION_10000.unlockedAt, now.toISOString());
 });
 
 test('maps database rows to the existing API shape', () => {

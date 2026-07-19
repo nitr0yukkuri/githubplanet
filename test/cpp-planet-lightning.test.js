@@ -22,7 +22,7 @@ test('matches only normalized C++ planets', () => {
     assert.equal(isCppPlanet({ mainLanguage: 'CSS' }), false);
 });
 
-test('injects thin continuously drifting idle plasma filaments without mouse uniforms', () => {
+test('injects thin stable-path idle plasma filaments without mouse uniforms', () => {
     const texture = { id: 'terrain' };
     const material = createCppPlanetLightningMaterial(THREE, texture, '#f34b7d');
     const shader = {
@@ -48,7 +48,10 @@ test('injects thin continuously drifting idle plasma filaments without mouse uni
     assert.match(shader.fragmentShader, /cppTravelPulse/);
     assert.match(shader.fragmentShader, /cppRimSparkStrength/);
     assert.doesNotMatch(shader.fragmentShader, /cppLocalWander|cppCoarseBend|cppRootTwist/);
-    assert.match(shader.fragmentShader, /cppSlowDrift/);
+    assert.match(shader.fragmentShader, /cppObjectAngle = cppBaseAngle/);
+    assert.match(shader.fragmentShader, /cppPathDrift = 0\.0/);
+    assert.match(shader.fragmentShader, /cppLightningSmoothNoise\(cppIndexValue \* 3\.7, cppSeed\)/);
+    assert.doesNotMatch(shader.fragmentShader, /cppSlowDrift|cppLightningTime \* 0\.55/);
     assert.match(shader.fragmentShader, /cppFineFlicker/);
     assert.match(shader.fragmentShader, /cppFilamentPresence/);
     assert.match(shader.fragmentShader, /cppBranchDistanceA/);

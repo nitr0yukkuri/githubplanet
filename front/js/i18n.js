@@ -71,9 +71,10 @@ const translations = {
                 POLYGLOT_PIONEER: '多言語の開拓者',
                 FIRST_COMMIT: '星の産声',
                 FIRST_PLANET: '最初の星',
-                COMMIT_100: 'コミット100',
-                COMMIT_500: 'コミット500',
-                COMMIT_1000: 'コミット1000'
+                COMMIT_100: '星の歩み',
+                COMMIT_500: '軌道の旅人',
+                COMMIT_1000: '星雲の航海者',
+                CONTRIBUTION_10000: '銀河に名を刻む者'
             },
             descriptions: {
                 OCTOCAT_FRIEND: '長い間この宇宙を旅し、登録から1年以上が経過した。',
@@ -83,9 +84,10 @@ const translations = {
                 POLYGLOT_PIONEER: '多様な技術を操り、5種類以上の言語で彩り豊かな惑星を築き上げた。',
                 FIRST_COMMIT: 'GitHub Planetにログイン後、初めてのコミットを記録した。',
                 FIRST_PLANET: '初めて自分の惑星を宇宙に誕生させた。',
-                COMMIT_100: '累計コミット数が100を超えた。',
-                COMMIT_500: '累計コミット数が500を超えた。',
-                COMMIT_1000: '累計コミット数が1000を超えた。'
+                COMMIT_100: 'GitHubで100回のコントリビューションを記録した。',
+                COMMIT_500: 'GitHubで500回のコントリビューションを記録した。',
+                COMMIT_1000: 'GitHubで1000回のコントリビューションを記録した。',
+                CONTRIBUTION_10000: 'GitHubで10000回のコントリビューションを記録した。'
             },
             rewards: {
                 FIRST_PLANET: { prefix: '始まりの', suffix: '創造主' },
@@ -95,9 +97,10 @@ const translations = {
                 STARGAZER: { prefix: '輝く', suffix: '一番星' },
                 POLYGLOT_PIONEER: { prefix: '多才な', suffix: '翻訳家' },
                 OCTOCAT_FRIEND: { prefix: '古参の', suffix: '盟友' },
-                COMMIT_100: { prefix: '努力の', suffix: '職人' },
-                COMMIT_500: { prefix: '熟練の', suffix: '達人' },
-                COMMIT_1000: { prefix: '伝説の', suffix: '英雄' }
+                COMMIT_100: { prefix: '星を歩む', suffix: '探索者' },
+                COMMIT_500: { prefix: '軌道を巡る', suffix: '旅人' },
+                COMMIT_1000: { prefix: '星雲を渡る', suffix: '航海者' },
+                CONTRIBUTION_10000: { prefix: '銀河に名を刻む', suffix: '伝説' }
             }
         },
         settings: {
@@ -192,9 +195,10 @@ const translations = {
                 POLYGLOT_PIONEER: 'Polyglot Pioneer',
                 FIRST_COMMIT: 'First Signal',
                 FIRST_PLANET: 'First Planet',
-                COMMIT_100: 'Commit 100',
-                COMMIT_500: 'Commit 500',
-                COMMIT_1000: 'Commit 1000'
+                COMMIT_100: 'Stellar Footsteps',
+                COMMIT_500: 'Orbital Traveler',
+                COMMIT_1000: 'Nebula Voyager',
+                CONTRIBUTION_10000: 'Galactic Legend'
             },
             descriptions: {
                 OCTOCAT_FRIEND: 'Traveled this universe for a long time, with more than a year since registration.',
@@ -204,9 +208,10 @@ const translations = {
                 POLYGLOT_PIONEER: 'Built a richly colored planet with five or more programming languages.',
                 FIRST_COMMIT: 'Recorded your first commit after logging in to GitHub Planet.',
                 FIRST_PLANET: 'Created your own planet in this universe for the first time.',
-                COMMIT_100: 'Reached more than 100 total commits.',
-                COMMIT_500: 'Reached more than 500 total commits.',
-                COMMIT_1000: 'Reached more than 1000 total commits.'
+                COMMIT_100: 'Recorded 100 contributions on GitHub.',
+                COMMIT_500: 'Recorded 500 contributions on GitHub.',
+                COMMIT_1000: 'Recorded 1,000 contributions on GitHub.',
+                CONTRIBUTION_10000: 'Recorded 10,000 contributions on GitHub.'
             },
             rewards: {
                 FIRST_PLANET: { prefix: 'Genesis', suffix: 'Creator' },
@@ -216,9 +221,10 @@ const translations = {
                 STARGAZER: { prefix: 'Radiant', suffix: 'First Star' },
                 POLYGLOT_PIONEER: { prefix: 'Versatile', suffix: 'Translator' },
                 OCTOCAT_FRIEND: { prefix: 'Veteran', suffix: 'Ally' },
-                COMMIT_100: { prefix: 'Diligent', suffix: 'Artisan' },
-                COMMIT_500: { prefix: 'Seasoned', suffix: 'Master' },
-                COMMIT_1000: { prefix: 'Legendary', suffix: 'Hero' }
+                COMMIT_100: { prefix: 'Stellar', suffix: 'Explorer' },
+                COMMIT_500: { prefix: 'Orbital', suffix: 'Traveler' },
+                COMMIT_1000: { prefix: 'Nebula', suffix: 'Voyager' },
+                CONTRIBUTION_10000: { prefix: 'Galactic', suffix: 'Legend' }
             }
         },
         settings: {

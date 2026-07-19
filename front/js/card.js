@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createCssPlanetFlowMaterial, isCssPlanet, updateCssPlanetFlow } from './css-planet-flow.js';
 import { createCppPlanetLightningMaterial, isCppPlanet, updateCppPlanetLightning } from './cpp-planet-lightning.js';
+import { createGoPlanetWindMaterial, isGoPlanet, updateGoPlanetWind } from './go-planet-wind.js';
 import { applyI18n, localizedPath, localizedPlanetName } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
@@ -135,6 +136,7 @@ scene.add(planetGroup);
 let planetMesh;
 let cssPlanetMaterial = null;
 let cppPlanetMaterial = null;
+let goPlanetWindMaterial = null;
 
 async function init() {
     const controller = new AbortController();
@@ -222,6 +224,7 @@ function createPlanet(data) {
     }
     cssPlanetMaterial = null;
     cppPlanetMaterial = null;
+    goPlanetWindMaterial = null;
 
     const baseSize = Math.min(1.3 * (data.planetSizeFactor || 1), 6.0);
 
@@ -238,6 +241,9 @@ function createPlanet(data) {
     } else if (isCppPlanet(data)) {
         material = createCppPlanetLightningMaterial(THREE, planetTexture, data.planetColor);
         cppPlanetMaterial = material;
+    } else if (isGoPlanet(data)) {
+        material = createGoPlanetWindMaterial(THREE, planetTexture);
+        goPlanetWindMaterial = material;
     } else {
         material = new THREE.MeshStandardMaterial({
             color: data.planetColor || 0xffffff,
@@ -386,6 +392,7 @@ function animate() {
     const now = performance.now();
     updateCssPlanetFlow(cssPlanetMaterial, now);
     updateCppPlanetLightning(cppPlanetMaterial, now);
+    updateGoPlanetWind(goPlanetWindMaterial, now);
     renderer.render(scene, camera);
 }
 
