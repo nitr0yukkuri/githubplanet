@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    createGoPlanetAtmosphere,
     createGoPlanetWindMaterial,
     isGoPlanet,
+    updateGoPlanetAtmosphere,
     updateGoPlanetWind
 } from '../front/js/go-planet-wind.js';
 
@@ -13,7 +15,42 @@ class FakeMaterial {
     }
 }
 
+class FakeGroup {
+    constructor() {
+        this.children = [];
+        this.userData = {};
+        this.rotation = { y: 0 };
+    }
+
+    add(child) {
+        this.children.push(child);
+    }
+}
+
+class FakeMesh {
+    constructor(geometry, material) {
+        this.geometry = geometry;
+        this.material = material;
+        this.rotation = { set(...values) { this.values = values; } };
+    }
+}
+
+class FakeGeometry {
+    constructor(...args) {
+        this.args = args;
+    }
+}
+
 const THREE = { MeshStandardMaterial: FakeMaterial };
+const ATMOSPHERE_THREE = {
+    Group: FakeGroup,
+    Mesh: FakeMesh,
+    ShaderMaterial: FakeMaterial,
+    SphereGeometry: FakeGeometry,
+    TorusGeometry: FakeGeometry,
+    AdditiveBlending: 'additive',
+    BackSide: 'back'
+};
 
 test('matches only normalized Go planets', () => {
     assert.equal(isGoPlanet({ mainLanguage: 'Go' }), true);
@@ -52,4 +89,18 @@ test('updates wind time in seconds', () => {
     assert.equal(material.userData.goWindUniforms.goWindTime.value, 0);
     updateGoPlanetWind(material, 2250);
     assert.equal(material.userData.goWindUniforms.goWindTime.value, 1.25);
+});
+
+test('builds and updates an external atmosphere with three moving wind tails', () => {
+    const atmosphere = createGoPlanetAtmosphere(ATMOSPHERE_THREE, 4);
+
+    assert.equal(atmosphere.children.length, 4);
+    assert.deepEqual(atmosphere.children[0].geometry.args, [4.4, 48, 48]);
+    assert.equal(atmosphere.children[1].material.depthWrite, false);
+
+    updateGoPlanetAtmosphere(atmosphere, 5000);
+    assert.equal(atmosphere.userData.goAtmosphereUniforms.goAtmosphereTime.value, 0);
+    updateGoPlanetAtmosphere(atmosphere, 6250);
+    assert.equal(atmosphere.userData.goAtmosphereUniforms.goAtmosphereTime.value, 1.25);
+    assert.equal(atmosphere.rotation.y, 0);
 });

@@ -75,13 +75,13 @@ vec3 goWindColor = vec3(0.72, 0.95, 1.0);
 vec3 goFlashColor = vec3(0.94, 1.0, 1.0);
 vec3 goTerrainColor = mix(goDeepColor, goBaseColor, 0.38 + goContrastedRelief * 0.62);
 goTerrainColor *= 0.72 + goContrastedRelief * 0.48;
-vec3 goFlowColor = mix(goTerrainColor, goWindColor, goWindStreak * 0.78);
-goFlowColor = mix(goFlowColor, goFlashColor, goRimGust * 0.72);
+vec3 goFlowColor = mix(goTerrainColor, goWindColor, goWindStreak * 0.07);
+goFlowColor = mix(goFlowColor, goFlashColor, goRimGust * 0.08);
 diffuseColor.rgb = mix(goMappedTexture, goFlowColor, 0.82);`
             )
             .replace(
                 '#include <emissivemap_fragment>',
-                '#include <emissivemap_fragment>\ntotalEmissiveRadiance += goWindColor * goWindStreak * 0.22;\ntotalEmissiveRadiance += goFlashColor * goRimGust * 0.62;'
+                '#include <emissivemap_fragment>\ntotalEmissiveRadiance += goWindColor * goWindStreak * 0.018;\ntotalEmissiveRadiance += goFlashColor * goRimGust * 0.06;'
             );
     };
 
@@ -89,6 +89,141 @@ diffuseColor.rgb = mix(goMappedTexture, goFlowColor, 0.82);`
     material.userData.goWindUniforms = uniforms;
     material.userData.goWindStartMilliseconds = null;
     return material;
+}
+
+export function createGoPlanetAtmosphere(THREE, radius) {
+    const atmosphere = new THREE.Group();
+    const uniforms = {
+        goAtmosphereTime: { value: 0 }
+    };
+
+    const shellMaterial = new THREE.ShaderMaterial({
+        uniforms,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        side: THREE.BackSide,
+        vertexShader: `
+            varying vec3 vGoAtmosphereNormal;
+            varying vec3 vGoAtmosphereViewDirection;
+            varying vec3 vGoAtmospherePosition;
+
+            void main() {
+                vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+                vGoAtmosphereNormal = normalize(normalMatrix * normal);
+                vGoAtmosphereViewDirection = normalize(-viewPosition.xyz);
+                vGoAtmospherePosition = normalize(position);
+                gl_Position = projectionMatrix * viewPosition;
+            }
+        `,
+        fragmentShader: `
+            uniform float goAtmosphereTime;
+            varying vec3 vGoAtmosphereNormal;
+            varying vec3 vGoAtmosphereViewDirection;
+            varying vec3 vGoAtmospherePosition;
+
+            void main() {
+                vec3 windAxis = normalize(vec3(0.28, 0.91, 0.31));
+                vec3 windBasisX = normalize(cross(windAxis, vec3(0.0, 0.0, 1.0)));
+                vec3 windBasisY = normalize(cross(windAxis, windBasisX));
+                float longitude = atan(
+                    dot(vGoAtmospherePosition, windBasisY),
+                    dot(vGoAtmospherePosition, windBasisX)
+                );
+                float latitude = dot(vGoAtmospherePosition, windAxis);
+                float travel = longitude + latitude * 2.35 - goAtmosphereTime * 3.15;
+                float streakWave = sin(travel * 13.0 + latitude * 4.0) * 0.5 + 0.5;
+                float streak = pow(smoothstep(0.68, 1.0, streakWave), 7.0);
+                float tailWave = sin(travel * 4.0 - latitude * 11.0) * 0.5 + 0.5;
+                float tail = smoothstep(0.48, 0.7, tailWave)
+                    * (1.0 - smoothstep(0.84, 0.98, tailWave));
+                float rim = pow(1.0 - clamp(
+                    dot(vGoAtmosphereViewDirection, vGoAtmosphereNormal),
+                    0.0,
+                    1.0
+                ), 2.1);
+                float gust = streak * tail;
+                vec3 color = mix(vec3(0.0, 0.56, 0.82), vec3(0.9, 1.0, 1.0), gust);
+                float alpha = rim * (0.16 + gust * 0.68);
+                gl_FragColor = vec4(color, alpha);
+            }
+        `
+    });
+    const shell = new THREE.Mesh(
+        new THREE.SphereGeometry(radius * 1.1, 48, 48),
+        shellMaterial
+    );
+    shell.renderOrder = 2;
+    atmosphere.add(shell);
+
+    const ringTilts = [
+        [0.48, 0.16, 0.38],
+        [-0.34, 0.58, -0.2],
+        [0.2, -0.42, 0.72]
+    ];
+
+    ringTilts.forEach((tilt, index) => {
+        const ringMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                goAtmosphereTime: uniforms.goAtmosphereTime,
+                goRingOffset: { value: index * 0.29 },
+                goRingOpacity: { value: 0.38 - index * 0.045 }
+            },
+            transparent: true,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            vertexShader: `
+                varying vec2 vGoRingUv;
+
+                void main() {
+                    vGoRingUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform float goAtmosphereTime;
+                uniform float goRingOffset;
+                uniform float goRingOpacity;
+                varying vec2 vGoRingUv;
+
+                void main() {
+                    float tailPosition = fract(vGoRingUv.x * 5.0 - goAtmosphereTime * 1.9 + goRingOffset);
+                    float tail = smoothstep(0.0, 0.045, tailPosition)
+                        * (1.0 - smoothstep(0.18, 0.42, tailPosition));
+                    float edgeFade = sin(vGoRingUv.y * 3.14159265359);
+                    vec3 color = mix(vec3(0.0, 0.68, 0.9), vec3(0.92, 1.0, 1.0), tail);
+                    gl_FragColor = vec4(color, tail * edgeFade * goRingOpacity);
+                }
+            `
+        });
+        const ring = new THREE.Mesh(
+            new THREE.TorusGeometry(
+                radius * (1.13 + index * 0.035),
+                radius * (0.011 + index * 0.002),
+                6,
+                192
+            ),
+            ringMaterial
+        );
+        ring.rotation.set(...tilt);
+        ring.renderOrder = 3;
+        atmosphere.add(ring);
+    });
+
+    atmosphere.userData.goAtmosphereUniforms = uniforms;
+    atmosphere.userData.goAtmosphereStartMilliseconds = null;
+    return atmosphere;
+}
+
+export function updateGoPlanetAtmosphere(atmosphere, nowMilliseconds) {
+    const uniforms = atmosphere?.userData?.goAtmosphereUniforms;
+    if (!uniforms) return;
+    if (atmosphere.userData.goAtmosphereStartMilliseconds === null) {
+        atmosphere.userData.goAtmosphereStartMilliseconds = nowMilliseconds;
+    }
+    uniforms.goAtmosphereTime.value = (
+        nowMilliseconds - atmosphere.userData.goAtmosphereStartMilliseconds
+    ) / 1000;
 }
 
 export function updateGoPlanetWind(material, nowMilliseconds) {

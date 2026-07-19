@@ -3,7 +3,13 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createCssPlanetFlowMaterial, isCssPlanet, updateCssPlanetFlow } from './css-planet-flow.js';
 import { createCppPlanetLightningMaterial, isCppPlanet, updateCppPlanetLightning } from './cpp-planet-lightning.js';
-import { createGoPlanetWindMaterial, isGoPlanet, updateGoPlanetWind } from './go-planet-wind.js';
+import {
+    createGoPlanetAtmosphere,
+    createGoPlanetWindMaterial,
+    isGoPlanet,
+    updateGoPlanetAtmosphere,
+    updateGoPlanetWind
+} from './go-planet-wind.js';
 import { applyI18n, localizedPath, localizedPlanetName } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
@@ -137,6 +143,7 @@ let planetMesh;
 let cssPlanetMaterial = null;
 let cppPlanetMaterial = null;
 let goPlanetWindMaterial = null;
+let goPlanetAtmosphere = null;
 
 async function init() {
     const controller = new AbortController();
@@ -225,6 +232,7 @@ function createPlanet(data) {
     cssPlanetMaterial = null;
     cppPlanetMaterial = null;
     goPlanetWindMaterial = null;
+    goPlanetAtmosphere = null;
 
     const baseSize = Math.min(1.3 * (data.planetSizeFactor || 1), 6.0);
 
@@ -256,6 +264,10 @@ function createPlanet(data) {
 
     planetMesh = new THREE.Mesh(geometry, material);
     planetGroup.add(planetMesh);
+    if (isGoPlanet(data)) {
+        goPlanetAtmosphere = createGoPlanetAtmosphere(THREE, baseSize);
+        planetGroup.add(goPlanetAtmosphere);
+    }
 
     const starCount = calculateStarCount(data.totalCommits || 0);
 
@@ -393,6 +405,7 @@ function animate() {
     updateCssPlanetFlow(cssPlanetMaterial, now);
     updateCppPlanetLightning(cppPlanetMaterial, now);
     updateGoPlanetWind(goPlanetWindMaterial, now);
+    updateGoPlanetAtmosphere(goPlanetAtmosphere, now);
     renderer.render(scene, camera);
 }
 

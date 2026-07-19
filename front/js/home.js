@@ -4,7 +4,13 @@ import anime from 'animejs';
 import { io } from 'socket.io-client';
 import { createCssPlanetFlowMaterial, isCssPlanet, updateCssPlanetFlow } from './css-planet-flow.js';
 import { createCppPlanetLightningMaterial, isCppPlanet, updateCppPlanetLightning } from './cpp-planet-lightning.js';
-import { createGoPlanetWindMaterial, isGoPlanet, updateGoPlanetWind } from './go-planet-wind.js';
+import {
+    createGoPlanetAtmosphere,
+    createGoPlanetWindMaterial,
+    isGoPlanet,
+    updateGoPlanetAtmosphere,
+    updateGoPlanetWind
+} from './go-planet-wind.js';
 import { applyI18n, localizedPath, localizedPlanetName, localizedTitle, t } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
@@ -13,6 +19,7 @@ let scene, camera, renderer, controls, planetGroup;
 let cssPlanetMaterial = null;
 let cppPlanetMaterial = null;
 let goPlanetWindMaterial = null;
+let goPlanetAtmosphere = null;
 
 let welcomeModal, okButton, mainUiWrapper;
 let isFetchingRandomPlanet = false;
@@ -231,6 +238,7 @@ async function loadPlanet(data) {
     cssPlanetMaterial = null;
     cppPlanetMaterial = null;
     goPlanetWindMaterial = null;
+    goPlanetAtmosphere = null;
 
     planetGroup = new THREE.Group();
 
@@ -259,6 +267,10 @@ async function loadPlanet(data) {
     planet.geometry.setAttribute('uv2', new THREE.BufferAttribute(geo.attributes.uv.array, 2));
     const s = data.planetSizeFactor || 1.0;
     planetGroup.add(planet);
+    if (isGoPlanet(data)) {
+        goPlanetAtmosphere = createGoPlanetAtmosphere(THREE, 4);
+        planetGroup.add(goPlanetAtmosphere);
+    }
 
     const starCount = calculateStarCount(data.totalCommits || 0);
 
@@ -688,6 +700,7 @@ function animate() {
     updateCssPlanetFlow(cssPlanetMaterial, performance.now());
     updateCppPlanetLightning(cppPlanetMaterial, performance.now());
     updateGoPlanetWind(goPlanetWindMaterial, performance.now());
+    updateGoPlanetAtmosphere(goPlanetAtmosphere, performance.now());
     controls.update();
     renderer.render(scene, camera);
 }
