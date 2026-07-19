@@ -694,6 +694,85 @@ body {
     transform: scale(1.05);
 }
 
+.achievement-unlock-toast {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    z-index: 120;
+    width: min(360px, calc(100vw - 32px));
+    box-sizing: border-box;
+    padding: 16px 18px;
+    color: #f7fbff;
+    background: rgba(12, 18, 28, 0.94);
+    border: 1px solid rgba(102, 214, 255, 0.42);
+    border-left: 3px solid #66d6ff;
+    border-radius: 6px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.42);
+    opacity: 0;
+    transform: translate(-50%, -16px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.achievement-unlock-toast.is-visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.achievement-unlock-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 0.95rem;
+}
+
+.achievement-unlock-close {
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    color: #c8d5df;
+    background: transparent;
+    border: 0;
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.achievement-unlock-close:hover {
+    color: #ffffff;
+}
+
+.achievement-unlock-names {
+    margin: 8px 0 10px;
+    color: #c8d5df;
+    font-size: 0.84rem;
+    line-height: 1.5;
+}
+
+.achievement-unlock-link {
+    color: #66d6ff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.achievement-unlock-link:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+    .achievement-unlock-toast {
+        top: 70px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .achievement-unlock-toast {
+        transition: none;
+    }
+}
+
 /* ========================================= */
 /* ここから下は index.html から移動してきたスタイル */
 /* ========================================= */

@@ -250,7 +250,7 @@ function createPlanet(data) {
         material = createCppPlanetLightningMaterial(THREE, planetTexture, data.planetColor);
         cppPlanetMaterial = material;
     } else if (isGoPlanet(data)) {
-        material = createGoPlanetWindMaterial(THREE, planetTexture);
+        material = createGoPlanetWindMaterial(THREE, planetTexture, -1);
         goPlanetWindMaterial = material;
     } else {
         material = new THREE.MeshStandardMaterial({
@@ -265,7 +265,7 @@ function createPlanet(data) {
     planetMesh = new THREE.Mesh(geometry, material);
     planetGroup.add(planetMesh);
     if (isGoPlanet(data)) {
-        goPlanetAtmosphere = createGoPlanetAtmosphere(THREE, baseSize);
+        goPlanetAtmosphere = createGoPlanetAtmosphere(THREE, baseSize, -1);
         planetGroup.add(goPlanetAtmosphere);
     }
 

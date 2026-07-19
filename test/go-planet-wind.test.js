@@ -59,9 +59,9 @@ test('matches only normalized Go planets', () => {
     assert.equal(isGoPlanet({ mainLanguage: 'C++' }), false);
 });
 
-test('injects one-way oblique wind streaks while preserving terrain', () => {
+test('injects directional oblique wind streaks while preserving terrain', () => {
     const texture = { id: 'terrain' };
-    const material = createGoPlanetWindMaterial(THREE, texture);
+    const material = createGoPlanetWindMaterial(THREE, texture, -1);
     const shader = {
         uniforms: {},
         vertexShader: '#include <common>\n#include <begin_vertex>',
@@ -81,6 +81,7 @@ test('injects one-way oblique wind streaks while preserving terrain', () => {
     assert.match(shader.fragmentShader, /goRimGust/);
     assert.match(shader.fragmentShader, /goMappedTexture/);
     assert.equal(shader.uniforms.goWindTime, material.userData.goWindUniforms.goWindTime);
+    assert.equal(shader.uniforms.goWindDirection.value, -1);
 });
 
 test('updates wind time in seconds', () => {
@@ -92,11 +93,12 @@ test('updates wind time in seconds', () => {
 });
 
 test('builds and updates an external atmosphere with three moving wind tails', () => {
-    const atmosphere = createGoPlanetAtmosphere(ATMOSPHERE_THREE, 4);
+    const atmosphere = createGoPlanetAtmosphere(ATMOSPHERE_THREE, 4, -1);
 
     assert.equal(atmosphere.children.length, 4);
     assert.deepEqual(atmosphere.children[0].geometry.args, [4.4, 48, 48]);
     assert.equal(atmosphere.children[1].material.depthWrite, false);
+    assert.equal(atmosphere.userData.goAtmosphereUniforms.goWindDirection.value, -1);
 
     updateGoPlanetAtmosphere(atmosphere, 5000);
     assert.equal(atmosphere.userData.goAtmosphereUniforms.goAtmosphereTime.value, 0);

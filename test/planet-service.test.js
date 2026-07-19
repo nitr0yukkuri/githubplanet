@@ -55,6 +55,8 @@ test('orchestrates GitHub aggregation, domain rules, and persistence', async () 
     assert.ok(result.achievements.COMMIT_1000);
     assert.ok(result.achievements.CONTRIBUTION_10000);
     assert.ok(result.achievements.OS_CONTRIBUTOR);
+    assert.ok(result.newlyUnlockedAchievementIds.includes('FIRST_PLANET'));
+    assert.ok(result.newlyUnlockedAchievementIds.includes('COMMIT_1000'));
     assert.ok(result.unlockedTitles.prefixes.includes('星雲を渡る'));
     assert.ok(result.unlockedTitles.suffixes.includes('航海者'));
     assert.ok(result.unlockedTitles.prefixes.includes('銀河に名を刻む'));
@@ -106,5 +108,6 @@ test('reuses the existing color, name, title, and achievements for the same lang
     assert.equal(result.planetName, '既存の惑星名');
     assert.deepEqual(result.activeTitle, { prefix: '記念すべき', suffix: '職人' });
     assert.equal(result.achievements.FIRST_PLANET, existingAchievement);
+    assert.equal(result.newlyUnlockedAchievementIds.includes('FIRST_PLANET'), false);
     assert.equal(saved.planetName, '既存の惑星名');
 });

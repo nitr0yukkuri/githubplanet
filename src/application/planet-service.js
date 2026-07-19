@@ -112,6 +112,7 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
         }
 
         let achievements = {};
+        let newlyUnlockedAchievementIds = [];
         if (repository) {
             achievements = checkAchievements(existingAchievements, {
                 totalCommits,
@@ -121,6 +122,8 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
                 totalStars: starredCount + receivedStars,
                 createdAt: user.created_at
             });
+            newlyUnlockedAchievementIds = Object.keys(achievements)
+                .filter((id) => !existingAchievements[id]);
 
             for (const key of Object.keys(achievements)) {
                 const reward = TITLE_REWARDS[key];
@@ -137,7 +140,7 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
 
         return {
             mainLanguage, planetColor, languageStats, totalCommits, weeklyCommits, planetSizeFactor,
-            planetName, achievements, unlockedTitles, activeTitle
+            planetName, achievements, unlockedTitles, activeTitle, newlyUnlockedAchievementIds
         };
     }
 

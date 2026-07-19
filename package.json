@@ -14,6 +14,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
+    "preview:achievement": "node scripts/preview-achievement.mjs",
     "test": "node --test --test-concurrency=1"
   },
   "license": "MIT",

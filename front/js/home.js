@@ -50,12 +50,79 @@ function toggleLoading(show) {
     }
 }
 
+function showAchievementUnlockToast(achievementIds) {
+    if (!Array.isArray(achievementIds) || achievementIds.length === 0) return;
+
+    document.querySelector('.achievement-unlock-toast')?.remove();
+
+    const toast = document.createElement('aside');
+    toast.className = 'achievement-unlock-toast';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+
+    const header = document.createElement('div');
+    header.className = 'achievement-unlock-header';
+
+    const title = document.createElement('strong');
+    title.textContent = t('home.newAchievementsTitle', { count: achievementIds.length });
+
+    const closeButton = document.createElement('button');
+    closeButton.className = 'achievement-unlock-close';
+    closeButton.type = 'button';
+    closeButton.textContent = '×';
+    closeButton.setAttribute('aria-label', t('home.closeAchievementNotice'));
+    closeButton.title = t('home.closeAchievementNotice');
+
+    const names = document.createElement('p');
+    names.className = 'achievement-unlock-names';
+    const visibleIds = achievementIds.slice(0, 3);
+    names.textContent = visibleIds
+        .map((id) => t(`achievements.names.${id}`))
+        .join(' / ');
+    if (achievementIds.length > visibleIds.length) {
+        names.textContent += ` ${t('home.newAchievementsMore', {
+            count: achievementIds.length - visibleIds.length
+        })}`;
+    }
+
+    const link = document.createElement('a');
+    link.className = 'achievement-unlock-link';
+    link.href = localizedPath('/achievements');
+    link.textContent = t('home.viewAchievements');
+
+    const dismiss = () => {
+        toast.classList.remove('is-visible');
+        window.setTimeout(() => toast.remove(), 220);
+    };
+
+    closeButton.addEventListener('click', dismiss);
+    header.append(title, closeButton);
+    toast.append(header, names, link);
+    document.body.appendChild(toast);
+    window.requestAnimationFrame(() => toast.classList.add('is-visible'));
+    window.setTimeout(dismiss, 7000);
+}
+
+function showLocalAchievementPreview() {
+    const isLocal = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+    const isPreview = new URLSearchParams(window.location.search).has('preview-achievement');
+    if (!isLocal || !isPreview) return;
+
+    showAchievementUnlockToast([
+        'FIRST_PLANET',
+        'FIRST_COMMIT',
+        'COMMIT_100',
+        'POLYGLOT_PIONEER'
+    ]);
+}
+
 async function fetchMyPlanetData() {
     try {
         const res = await fetch(`/api/me?t=${Date.now()}`, { cache: 'no-store' });
 
         if (!res.ok) return null;
         const data = await res.json();
+        showAchievementUnlockToast(data.newlyUnlockedAchievementIds);
 
         if (data.planetData && data.user) {
             loggedInUsername = data.user.login; // ★追加: ログインユーザー名を保存
@@ -253,7 +320,7 @@ async function loadPlanet(data) {
         mat = createCppPlanetLightningMaterial(THREE, tex, data.planetColor);
         cppPlanetMaterial = mat;
     } else if (isGoPlanet(data)) {
-        mat = createGoPlanetWindMaterial(THREE, tex);
+        mat = createGoPlanetWindMaterial(THREE, tex, 1);
         goPlanetWindMaterial = mat;
     } else {
         mat = new THREE.MeshStandardMaterial({
@@ -268,7 +335,7 @@ async function loadPlanet(data) {
     const s = data.planetSizeFactor || 1.0;
     planetGroup.add(planet);
     if (isGoPlanet(data)) {
-        goPlanetAtmosphere = createGoPlanetAtmosphere(THREE, 4);
+        goPlanetAtmosphere = createGoPlanetAtmosphere(THREE, 4, 1);
         planetGroup.add(goPlanetAtmosphere);
     }
 
@@ -590,6 +657,7 @@ async function init() {
     welcomeModal = document.getElementById('welcome-modal');
     okButton = document.getElementById('welcome-ok-btn');
     mainUiWrapper = document.getElementById('main-ui-wrapper');
+    showLocalAchievementPreview();
 
     const loadingStyle = document.createElement('style');
     loadingStyle.innerHTML = `

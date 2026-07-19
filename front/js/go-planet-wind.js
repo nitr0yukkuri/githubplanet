@@ -2,7 +2,7 @@ export function isGoPlanet(data) {
     return data?.mainLanguage?.trim().toLowerCase() === 'go';
 }
 
-export function createGoPlanetWindMaterial(THREE, planetTexture) {
+export function createGoPlanetWindMaterial(THREE, planetTexture, flowDirection = 1) {
     const material = new THREE.MeshStandardMaterial({
         color: 0xffffff,
         map: planetTexture,
@@ -12,11 +12,13 @@ export function createGoPlanetWindMaterial(THREE, planetTexture) {
         metalness: 0.16
     });
     const uniforms = {
-        goWindTime: { value: 0 }
+        goWindTime: { value: 0 },
+        goWindDirection: { value: flowDirection < 0 ? -1 : 1 }
     };
 
     material.onBeforeCompile = (shader) => {
         shader.uniforms.goWindTime = uniforms.goWindTime;
+        shader.uniforms.goWindDirection = uniforms.goWindDirection;
 
         shader.vertexShader = shader.vertexShader
             .replace(
@@ -33,6 +35,7 @@ export function createGoPlanetWindMaterial(THREE, planetTexture) {
                 '#include <common>',
                 `#include <common>
 uniform float goWindTime;
+uniform float goWindDirection;
 varying vec3 vGoWindPosition;
 varying vec3 vGoWindViewNormal;
 varying vec3 vGoWindViewDirection;`
@@ -53,7 +56,7 @@ float goLongitude = atan(
 );
 float goLatitude = dot(goSurfacePosition, goWindAxis);
 
-float goTravel = goLongitude + goLatitude * 2.35 - goWindTime * 3.15;
+float goTravel = goLongitude + goLatitude * 2.35 - goWindTime * 3.15 * goWindDirection;
 float goPrimaryWave = sin(goTravel * 11.0 + goLatitude * 2.4) * 0.5 + 0.5;
 float goSecondaryWave = sin(goTravel * 22.0 + goLatitude * 5.2 + 1.1) * 0.5 + 0.5;
 float goPrimaryStreak = pow(smoothstep(0.62, 1.0, goPrimaryWave), 7.0);
@@ -91,10 +94,11 @@ diffuseColor.rgb = mix(goMappedTexture, goFlowColor, 0.82);`
     return material;
 }
 
-export function createGoPlanetAtmosphere(THREE, radius) {
+export function createGoPlanetAtmosphere(THREE, radius, flowDirection = 1) {
     const atmosphere = new THREE.Group();
     const uniforms = {
-        goAtmosphereTime: { value: 0 }
+        goAtmosphereTime: { value: 0 },
+        goWindDirection: { value: flowDirection < 0 ? -1 : 1 }
     };
 
     const shellMaterial = new THREE.ShaderMaterial({
@@ -118,6 +122,7 @@ export function createGoPlanetAtmosphere(THREE, radius) {
         `,
         fragmentShader: `
             uniform float goAtmosphereTime;
+            uniform float goWindDirection;
             varying vec3 vGoAtmosphereNormal;
             varying vec3 vGoAtmosphereViewDirection;
             varying vec3 vGoAtmospherePosition;
@@ -131,7 +136,8 @@ export function createGoPlanetAtmosphere(THREE, radius) {
                     dot(vGoAtmospherePosition, windBasisX)
                 );
                 float latitude = dot(vGoAtmospherePosition, windAxis);
-                float travel = longitude + latitude * 2.35 - goAtmosphereTime * 3.15;
+                float travel = longitude + latitude * 2.35
+                    - goAtmosphereTime * 3.15 * goWindDirection;
                 float streakWave = sin(travel * 13.0 + latitude * 4.0) * 0.5 + 0.5;
                 float streak = pow(smoothstep(0.68, 1.0, streakWave), 7.0);
                 float tailWave = sin(travel * 4.0 - latitude * 11.0) * 0.5 + 0.5;
@@ -166,6 +172,7 @@ export function createGoPlanetAtmosphere(THREE, radius) {
         const ringMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 goAtmosphereTime: uniforms.goAtmosphereTime,
+                goWindDirection: uniforms.goWindDirection,
                 goRingOffset: { value: index * 0.29 },
                 goRingOpacity: { value: 0.38 - index * 0.045 }
             },
@@ -182,12 +189,14 @@ export function createGoPlanetAtmosphere(THREE, radius) {
             `,
             fragmentShader: `
                 uniform float goAtmosphereTime;
+                uniform float goWindDirection;
                 uniform float goRingOffset;
                 uniform float goRingOpacity;
                 varying vec2 vGoRingUv;
 
                 void main() {
-                    float tailPosition = fract(vGoRingUv.x * 5.0 - goAtmosphereTime * 1.9 + goRingOffset);
+                    float tailPosition = fract(vGoRingUv.x * 5.0
+                        - goAtmosphereTime * 1.9 * goWindDirection + goRingOffset);
                     float tail = smoothstep(0.0, 0.045, tailPosition)
                         * (1.0 - smoothstep(0.18, 0.42, tailPosition));
                     float edgeFade = sin(vGoRingUv.y * 3.14159265359);

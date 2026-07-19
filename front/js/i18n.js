@@ -42,7 +42,11 @@ const translations = {
             randomNotFound: '他の惑星が見つかりませんでした',
             myPlanetNotFound: '自分の星が見つかりませんでした（ログインしていない可能性があります）',
             genericError: 'エラーが発生しました',
-            pageTitleRandom: '{username} の星 (Random)'
+            pageTitleRandom: '{username} の星 (Random)',
+            newAchievementsTitle: '新しく実績を{count}件解除しました',
+            newAchievementsMore: 'ほか{count}件',
+            viewAchievements: '実績を見る',
+            closeAchievementNotice: '通知を閉じる'
         },
         achievements: {
             pageTitle: '実績 - GitHub Planet',
@@ -166,7 +170,11 @@ const translations = {
             randomNotFound: 'No other planets were found.',
             myPlanetNotFound: 'Your planet was not found. You may not be logged in.',
             genericError: 'An error occurred.',
-            pageTitleRandom: '{username}\'s star (Random)'
+            pageTitleRandom: '{username}\'s star (Random)',
+            newAchievementsTitle: '{count} new achievements unlocked',
+            newAchievementsMore: '+{count} more',
+            viewAchievements: 'View achievements',
+            closeAchievementNotice: 'Close notification'
         },
         achievements: {
             pageTitle: 'Achievements - GitHub Planet',
