@@ -89,7 +89,7 @@ if (isProduction) app.set('trust proxy', 1);
 
 const PgSession = connectPgSimple(session);
 app.use(session({
-    store: pool ? new PgSession({ pool, createTableIfMissing: true }) : undefined,
+    store: pool ? new PgSession({ pool, createTableIfMissing: false }) : undefined,
     secret: process.env.SESSION_SECRET || 'dev_secret',
     resave: false,
     saveUninitialized: false,

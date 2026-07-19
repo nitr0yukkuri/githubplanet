@@ -7,6 +7,7 @@ import { createCppPlanetLightningMaterial, isCppPlanet, updateCppPlanetLightning
 import {
     createGoPlanetAtmosphere,
     createGoPlanetWindMaterial,
+    calculateGoWindSpeedFactor,
     isGoPlanet,
     updateGoPlanetAtmosphere,
     updateGoPlanetWind
@@ -780,7 +781,10 @@ async function loadMainContent() {
 function animate() {
     requestAnimationFrame(animate);
     if (planetGroup) planetGroup.rotation.z += planetRotationSpeed;
-    const goWindSpeedFactor = planetRotationSpeed / BASE_PLANET_ROTATION_SPEED;
+    const goWindSpeedFactor = calculateGoWindSpeedFactor(
+        planetRotationSpeed,
+        BASE_PLANET_ROTATION_SPEED
+    );
     updateCssPlanetFlow(cssPlanetMaterial, performance.now());
     updateCppPlanetLightning(cppPlanetMaterial, performance.now());
     updateGoPlanetWind(goPlanetWindMaterial, performance.now(), goWindSpeedFactor);

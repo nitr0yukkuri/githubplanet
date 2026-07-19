@@ -6,6 +6,7 @@ import { createCppPlanetLightningMaterial, isCppPlanet, updateCppPlanetLightning
 import {
     createGoPlanetAtmosphere,
     createGoPlanetWindMaterial,
+    calculateGoWindSpeedFactor,
     isGoPlanet,
     updateGoPlanetAtmosphere,
     updateGoPlanetWind
@@ -51,7 +52,7 @@ if (!isScreenshotMode) {
     const deployUrl = window.location.origin;
     const timestamp = Date.now();
     const targetUrl = `${deployUrl}${localizedPath('/card.html')}?username=${username}&fix=true&time=${timestamp}`;
-    const thumbUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/3/${targetUrl}`;
+    const thumbUrl = `https://image.thum.io/get/width/800/crop/400/wait/3/${targetUrl}`;
 
     // リンク先をトップページに変更
     const pageUrl = `${deployUrl}/`;
@@ -405,7 +406,10 @@ function animate() {
     requestAnimationFrame(animate);
     planetGroup.rotation.y -= CARD_PLANET_ROTATION_SPEED;
     const now = performance.now();
-    const goWindSpeedFactor = CARD_PLANET_ROTATION_SPEED / BASE_PLANET_ROTATION_SPEED;
+    const goWindSpeedFactor = calculateGoWindSpeedFactor(
+        CARD_PLANET_ROTATION_SPEED,
+        BASE_PLANET_ROTATION_SPEED
+    );
     updateCssPlanetFlow(cssPlanetMaterial, now);
     updateCppPlanetLightning(cppPlanetMaterial, now);
     updateGoPlanetWind(goPlanetWindMaterial, now, goWindSpeedFactor);

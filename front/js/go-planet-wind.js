@@ -2,6 +2,12 @@ export function isGoPlanet(data) {
     return data?.mainLanguage?.trim().toLowerCase() === 'go';
 }
 
+export function calculateGoWindSpeedFactor(rotationSpeed, baseRotationSpeed = 0.001) {
+    const safeBaseSpeed = Math.max(Number(baseRotationSpeed) || 0, Number.EPSILON);
+    const rotationRatio = Math.max(1, (Number(rotationSpeed) || 0) / safeBaseSpeed);
+    return Math.min(2.5, 1 + Math.sqrt(rotationRatio - 1) * 0.5);
+}
+
 export function createGoPlanetWindMaterial(THREE, planetTexture, flowDirection = 1) {
     const material = new THREE.MeshStandardMaterial({
         color: 0xffffff,
@@ -78,17 +84,17 @@ vec3 goWindColor = vec3(0.72, 0.95, 1.0);
 vec3 goFlashColor = vec3(0.94, 1.0, 1.0);
 vec3 goTerrainColor = mix(goDeepColor, goBaseColor, 0.38 + goContrastedRelief * 0.62);
 goTerrainColor *= 0.72 + goContrastedRelief * 0.48;
-vec3 goFlowColor = mix(goTerrainColor, goWindColor, goWindStreak * 0.07);
-goFlowColor = mix(goFlowColor, goFlashColor, goRimGust * 0.08);
+vec3 goFlowColor = mix(goTerrainColor, goWindColor, goWindStreak * 0.035);
+goFlowColor = mix(goFlowColor, goFlashColor, goRimGust * 0.04);
 diffuseColor.rgb = mix(goMappedTexture, goFlowColor, 0.82);`
             )
             .replace(
                 '#include <emissivemap_fragment>',
-                '#include <emissivemap_fragment>\ntotalEmissiveRadiance += goWindColor * goWindStreak * 0.018;\ntotalEmissiveRadiance += goFlashColor * goRimGust * 0.06;'
+                '#include <emissivemap_fragment>\ntotalEmissiveRadiance += goWindColor * goWindStreak * 0.008;\ntotalEmissiveRadiance += goFlashColor * goRimGust * 0.028;'
             );
     };
 
-    material.customProgramCacheKey = () => 'go-planet-oblique-gale-v1';
+    material.customProgramCacheKey = () => 'go-planet-oblique-gale-v2';
     material.userData.goWindUniforms = uniforms;
     material.userData.goWindLastMilliseconds = null;
     return material;
@@ -138,19 +144,17 @@ export function createGoPlanetAtmosphere(THREE, radius, flowDirection = 1) {
                 float latitude = dot(vGoAtmospherePosition, windAxis);
                 float travel = longitude + latitude * 2.35
                     - goAtmosphereTime * 3.15 * goWindDirection;
-                float streakWave = sin(travel * 13.0 + latitude * 4.0) * 0.5 + 0.5;
-                float streak = pow(smoothstep(0.68, 1.0, streakWave), 7.0);
-                float tailWave = sin(travel * 4.0 - latitude * 11.0) * 0.5 + 0.5;
-                float tail = smoothstep(0.48, 0.7, tailWave)
-                    * (1.0 - smoothstep(0.84, 0.98, tailWave));
+                float streakWave = sin(travel * 3.0 + latitude * 2.0) * 0.5 + 0.5;
+                float streak = smoothstep(0.28, 0.88, streakWave);
+                float latitudeFade = 1.0 - smoothstep(0.42, 0.96, abs(latitude));
                 float rim = pow(1.0 - clamp(
                     dot(vGoAtmosphereViewDirection, vGoAtmosphereNormal),
                     0.0,
                     1.0
                 ), 2.1);
-                float gust = streak * tail;
-                vec3 color = mix(vec3(0.0, 0.56, 0.82), vec3(0.9, 1.0, 1.0), gust);
-                float alpha = rim * (0.16 + gust * 0.68);
+                float gust = streak * latitudeFade;
+                vec3 color = mix(vec3(0.0, 0.42, 0.62), vec3(0.18, 0.72, 0.84), gust);
+                float alpha = rim * (0.045 + gust * 0.3);
                 gl_FragColor = vec4(color, alpha);
             }
         `
@@ -162,61 +166,74 @@ export function createGoPlanetAtmosphere(THREE, radius, flowDirection = 1) {
     shell.renderOrder = 2;
     atmosphere.add(shell);
 
-    const ringTilts = [
-        [0.48, 0.16, 0.38],
-        [-0.34, 0.58, -0.2],
-        [0.2, -0.42, 0.72]
-    ];
-
-    ringTilts.forEach((tilt, index) => {
-        const ringMaterial = new THREE.ShaderMaterial({
+    [
+        { radiusScale: 1.14, opacity: 0.17, phase: 0.0 },
+        { radiusScale: 1.2, opacity: 0.1, phase: 1.8 }
+    ].forEach(({ radiusScale, opacity, phase }) => {
+        const wakeMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 goAtmosphereTime: uniforms.goAtmosphereTime,
                 goWindDirection: uniforms.goWindDirection,
-                goRingOffset: { value: index * 0.29 },
-                goRingOpacity: { value: 0.38 - index * 0.045 }
+                goWakeOpacity: { value: opacity },
+                goWakePhase: { value: phase }
             },
             transparent: true,
             depthWrite: false,
             blending: THREE.AdditiveBlending,
+            side: THREE.BackSide,
             vertexShader: `
-                varying vec2 vGoRingUv;
+                varying vec3 vGoWakeNormal;
+                varying vec3 vGoWakeViewDirection;
+                varying vec3 vGoWakePosition;
 
                 void main() {
-                    vGoRingUv = uv;
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+                    vGoWakeNormal = normalize(normalMatrix * normal);
+                    vGoWakeViewDirection = normalize(-viewPosition.xyz);
+                    vGoWakePosition = normalize(position);
+                    gl_Position = projectionMatrix * viewPosition;
                 }
             `,
             fragmentShader: `
                 uniform float goAtmosphereTime;
                 uniform float goWindDirection;
-                uniform float goRingOffset;
-                uniform float goRingOpacity;
-                varying vec2 vGoRingUv;
+                uniform float goWakeOpacity;
+                uniform float goWakePhase;
+                varying vec3 vGoWakeNormal;
+                varying vec3 vGoWakeViewDirection;
+                varying vec3 vGoWakePosition;
 
                 void main() {
-                    float tailPosition = fract(vGoRingUv.x * 5.0
-                        - goAtmosphereTime * 1.9 * goWindDirection + goRingOffset);
-                    float tail = smoothstep(0.0, 0.045, tailPosition)
-                        * (1.0 - smoothstep(0.18, 0.42, tailPosition));
-                    float edgeFade = sin(vGoRingUv.y * 3.14159265359);
-                    vec3 color = mix(vec3(0.0, 0.68, 0.9), vec3(0.92, 1.0, 1.0), tail);
-                    gl_FragColor = vec4(color, tail * edgeFade * goRingOpacity);
+                    vec3 windAxis = normalize(vec3(0.28, 0.91, 0.31));
+                    vec3 windBasisX = normalize(cross(windAxis, vec3(0.0, 0.0, 1.0)));
+                    vec3 windBasisY = normalize(cross(windAxis, windBasisX));
+                    float longitude = atan(
+                        dot(vGoWakePosition, windBasisY),
+                        dot(vGoWakePosition, windBasisX)
+                    );
+                    float latitude = dot(vGoWakePosition, windAxis);
+                    float travel = longitude + latitude * 2.0
+                        - goAtmosphereTime * 1.35 * goWindDirection + goWakePhase;
+                    float broadBand = sin(travel * 2.0) * 0.5 + 0.5;
+                    broadBand = smoothstep(0.18, 0.86, broadBand);
+                    float latitudeFade = 1.0 - smoothstep(0.38, 0.98, abs(latitude));
+                    float rim = pow(1.0 - clamp(
+                        dot(vGoWakeViewDirection, vGoWakeNormal),
+                        0.0,
+                        1.0
+                    ), 1.7);
+                    float alpha = rim * latitudeFade * (0.25 + broadBand * 0.75) * goWakeOpacity;
+                    vec3 color = mix(vec3(0.0, 0.38, 0.55), vec3(0.12, 0.65, 0.76), broadBand);
+                    gl_FragColor = vec4(color, alpha);
                 }
             `
         });
-        const ring = new THREE.Mesh(
-            new THREE.TorusGeometry(
-                radius * (1.13 + index * 0.035),
-                radius * (0.011 + index * 0.002),
-                6,
-                192
-            ),
-            ringMaterial
+        const wake = new THREE.Mesh(
+            new THREE.SphereGeometry(radius * radiusScale, 48, 48),
+            wakeMaterial
         );
-        ring.rotation.set(...tilt);
-        ring.renderOrder = 3;
-        atmosphere.add(ring);
+        wake.renderOrder = 3;
+        atmosphere.add(wake);
     });
 
     atmosphere.userData.goAtmosphereUniforms = uniforms;

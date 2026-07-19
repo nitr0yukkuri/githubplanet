@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    calculateGoWindSpeedFactor,
     createGoPlanetAtmosphere,
     createGoPlanetWindMaterial,
     isGoPlanet,
@@ -59,6 +60,12 @@ test('matches only normalized Go planets', () => {
     assert.equal(isGoPlanet({ mainLanguage: 'C++' }), false);
 });
 
+test('compresses rotation speed into a restrained wind range', () => {
+    assert.equal(calculateGoWindSpeedFactor(0.001), 1);
+    assert.equal(calculateGoWindSpeedFactor(0.003), 1 + Math.sqrt(2) * 0.5);
+    assert.equal(calculateGoWindSpeedFactor(0.011), 2.5);
+});
+
 test('injects directional oblique wind streaks while preserving terrain', () => {
     const texture = { id: 'terrain' };
     const material = createGoPlanetWindMaterial(THREE, texture, -1);
@@ -105,11 +112,13 @@ test('scales surface and atmosphere wind time with planet rotation speed', () =>
     assert.equal(atmosphere.userData.goAtmosphereUniforms.goAtmosphereTime.value, 3);
 });
 
-test('builds and updates an external atmosphere with three moving wind tails', () => {
+test('builds and updates a soft atmosphere with two broad wake layers', () => {
     const atmosphere = createGoPlanetAtmosphere(ATMOSPHERE_THREE, 4, -1);
 
-    assert.equal(atmosphere.children.length, 4);
+    assert.equal(atmosphere.children.length, 3);
     assert.deepEqual(atmosphere.children[0].geometry.args, [4.4, 48, 48]);
+    assert.deepEqual(atmosphere.children[1].geometry.args, [4.56, 48, 48]);
+    assert.deepEqual(atmosphere.children[2].geometry.args, [4.8, 48, 48]);
     assert.equal(atmosphere.children[1].material.depthWrite, false);
     assert.equal(atmosphere.userData.goAtmosphereUniforms.goWindDirection.value, -1);
 
