@@ -60,7 +60,10 @@ test('injects thin continuously drifting idle plasma filaments without mouse uni
     assert.match(shader.fragmentShader, /cppContactStrength/);
     assert.match(shader.fragmentShader, /cppElectrodeHot/);
     assert.match(shader.fragmentShader, /cppElectrodeCore/);
+    assert.match(shader.fragmentShader, /cppCoreBeat/);
+    assert.match(shader.fragmentShader, /cppCoreSparkSway/);
     assert.match(shader.fragmentShader, /cppCoreSparkStrength/);
+    assert.doesNotMatch(shader.fragmentShader, /cppCoreFrame/);
     assert.match(shader.fragmentShader, /cppElectrodeLayerColor/);
     assert.match(shader.fragmentShader, /cppElectrodeHotColor/);
     assert.match(shader.fragmentShader, /cppCoreCoronaColor/);

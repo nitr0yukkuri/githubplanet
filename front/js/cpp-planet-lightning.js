@@ -172,28 +172,31 @@ float cppRimNeedle = 1.0 - smoothstep(0.0015, 0.008, cppRimAngularDistance);
 float cppRimFlicker = 0.72 + cppLightningHash(cppRimSector * 5.1 + cppRimFrame * 37.7) * 0.28;
 float cppRimSparkStrength = cppRimActive * cppRimRadialMask * cppRimNeedle * cppRimFlicker;
 
-float cppElectrodePulse = 0.9 + 0.1 * sin(cppLightningTime * 5.2);
+float cppCoreBeat = 0.5 + 0.5 * sin(cppLightningTime * 5.2);
+float cppElectrodePulse = 0.88 + 0.12 * cppCoreBeat;
 float cppElectrodeHot = (1.0 - smoothstep(0.006, 0.022, cppPlasmaRadius)) * cppElectrodePulse;
 float cppElectrodeCore = (1.0 - smoothstep(0.022, 0.082, cppPlasmaRadius)) * cppElectrodePulse;
-float cppCoreFrame = floor(cppLightningTime * 18.0);
 float cppCoreSectorCount = 13.0;
 float cppCoreCoordinate = (cppPlasmaAngle + 3.14159265359) / 6.28318530718 * cppCoreSectorCount;
 float cppCoreSector = floor(cppCoreCoordinate);
-float cppCoreNoise = cppLightningHash(cppCoreSector * 11.7 + cppCoreFrame * 29.3);
+float cppCoreNoise = cppLightningHash(cppCoreSector * 11.7 + 29.3);
 float cppElectrodeHalo = (1.0 - smoothstep(0.055, 0.17, cppPlasmaRadius))
     * (0.11 + cppCoreNoise * 0.09) * cppElectrodePulse;
 float cppCoreSparkActive = step(0.38, cppCoreNoise);
 float cppCoreSparkOffset = (cppLightningHash(cppCoreSector * 17.9 + 6.1) - 0.5) * 0.54;
+float cppCoreSparkSway = sin(cppLightningTime * 5.2 + cppCoreSector * 1.37) * 0.012;
 float cppCoreSparkAngle = ((cppCoreSector + 0.5 + cppCoreSparkOffset) / cppCoreSectorCount)
-    * 6.28318530718 - 3.14159265359;
+    * 6.28318530718 - 3.14159265359 + cppCoreSparkSway;
 float cppCoreSparkDistance = cppLightningAngleDistance(cppPlasmaAngle, cppCoreSparkAngle)
     * max(cppPlasmaRadius, 0.06);
-float cppCoreSparkLength = 0.12 + cppLightningHash(cppCoreSector * 41.3 + cppCoreFrame * 3.7) * 0.07;
+float cppCoreSparkLength = (0.12 + cppLightningHash(cppCoreSector * 41.3 + 3.7) * 0.07)
+    * (0.96 + 0.04 * cppCoreBeat);
 float cppCoreSparkMask = smoothstep(0.045, 0.065, cppPlasmaRadius)
     * (1.0 - smoothstep(cppCoreSparkLength - 0.025, cppCoreSparkLength, cppPlasmaRadius));
 float cppCoreSparkNeedle = 1.0 - smoothstep(0.0014, 0.006, cppCoreSparkDistance);
 float cppCoreSparkStrength = cppCoreSparkActive * cppCoreSparkMask * cppCoreSparkNeedle
-    * (0.68 + cppLightningHash(cppCoreSector * 7.1 + cppCoreFrame * 43.7) * 0.32);
+    * (0.68 + cppLightningHash(cppCoreSector * 7.1 + 43.7) * 0.32)
+    * (0.72 + 0.28 * cppCoreBeat);
 float cppOuterColorMix = smoothstep(0.72, 0.97, cppPlasmaRadius);
 vec3 cppFilamentColor = vec3(0.76, 0.8, 1.0);
 vec3 cppHaloColor = vec3(0.56, 0.2, 0.8);
@@ -221,7 +224,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb, cppPlasmaColor, cppPlasmaBlend);`
             );
     };
 
-    material.customProgramCacheKey = () => 'cpp-planet-idle-plasma-globe-v9';
+    material.customProgramCacheKey = () => 'cpp-planet-idle-plasma-globe-v11-gently-moving-core';
     material.userData.cppLightningUniforms = uniforms;
     material.userData.cppLightningStartMilliseconds = null;
     return material;
