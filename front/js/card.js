@@ -398,14 +398,18 @@ function addParticles(color) {
     planetGroup.add(particlesMesh);
 }
 
+const CARD_PLANET_ROTATION_SPEED = 0.003;
+const BASE_PLANET_ROTATION_SPEED = 0.001;
+
 function animate() {
     requestAnimationFrame(animate);
-    planetGroup.rotation.y -= 0.003;
+    planetGroup.rotation.y -= CARD_PLANET_ROTATION_SPEED;
     const now = performance.now();
+    const goWindSpeedFactor = CARD_PLANET_ROTATION_SPEED / BASE_PLANET_ROTATION_SPEED;
     updateCssPlanetFlow(cssPlanetMaterial, now);
     updateCppPlanetLightning(cppPlanetMaterial, now);
-    updateGoPlanetWind(goPlanetWindMaterial, now);
-    updateGoPlanetAtmosphere(goPlanetAtmosphere, now);
+    updateGoPlanetWind(goPlanetWindMaterial, now, goWindSpeedFactor);
+    updateGoPlanetAtmosphere(goPlanetAtmosphere, now, goWindSpeedFactor);
     renderer.render(scene, camera);
 }
 

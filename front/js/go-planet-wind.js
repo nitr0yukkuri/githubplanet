@@ -90,7 +90,7 @@ diffuseColor.rgb = mix(goMappedTexture, goFlowColor, 0.82);`
 
     material.customProgramCacheKey = () => 'go-planet-oblique-gale-v1';
     material.userData.goWindUniforms = uniforms;
-    material.userData.goWindStartMilliseconds = null;
+    material.userData.goWindLastMilliseconds = null;
     return material;
 }
 
@@ -220,28 +220,30 @@ export function createGoPlanetAtmosphere(THREE, radius, flowDirection = 1) {
     });
 
     atmosphere.userData.goAtmosphereUniforms = uniforms;
-    atmosphere.userData.goAtmosphereStartMilliseconds = null;
+    atmosphere.userData.goAtmosphereLastMilliseconds = null;
     return atmosphere;
 }
 
-export function updateGoPlanetAtmosphere(atmosphere, nowMilliseconds) {
+export function updateGoPlanetAtmosphere(atmosphere, nowMilliseconds, speedFactor = 1) {
     const uniforms = atmosphere?.userData?.goAtmosphereUniforms;
     if (!uniforms) return;
-    if (atmosphere.userData.goAtmosphereStartMilliseconds === null) {
-        atmosphere.userData.goAtmosphereStartMilliseconds = nowMilliseconds;
+    const lastMilliseconds = atmosphere.userData.goAtmosphereLastMilliseconds;
+    atmosphere.userData.goAtmosphereLastMilliseconds = nowMilliseconds;
+    if (lastMilliseconds === null) {
+        return;
     }
-    uniforms.goAtmosphereTime.value = (
-        nowMilliseconds - atmosphere.userData.goAtmosphereStartMilliseconds
-    ) / 1000;
+    const elapsedSeconds = Math.max(0, nowMilliseconds - lastMilliseconds) / 1000;
+    uniforms.goAtmosphereTime.value += elapsedSeconds * Math.max(0, speedFactor);
 }
 
-export function updateGoPlanetWind(material, nowMilliseconds) {
+export function updateGoPlanetWind(material, nowMilliseconds, speedFactor = 1) {
     const uniforms = material?.userData?.goWindUniforms;
     if (!uniforms) return;
-    if (material.userData.goWindStartMilliseconds === null) {
-        material.userData.goWindStartMilliseconds = nowMilliseconds;
+    const lastMilliseconds = material.userData.goWindLastMilliseconds;
+    material.userData.goWindLastMilliseconds = nowMilliseconds;
+    if (lastMilliseconds === null) {
+        return;
     }
-    uniforms.goWindTime.value = (
-        nowMilliseconds - material.userData.goWindStartMilliseconds
-    ) / 1000;
+    const elapsedSeconds = Math.max(0, nowMilliseconds - lastMilliseconds) / 1000;
+    uniforms.goWindTime.value += elapsedSeconds * Math.max(0, speedFactor);
 }

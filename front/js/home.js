@@ -14,6 +14,7 @@ import {
 import { applyI18n, localizedPath, localizedPlanetName, localizedTitle, t } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
+const BASE_PLANET_ROTATION_SPEED = 0.001;
 
 let scene, camera, renderer, controls, planetGroup;
 let cssPlanetMaterial = null;
@@ -24,7 +25,7 @@ let goPlanetAtmosphere = null;
 let welcomeModal, okButton, mainUiWrapper;
 let isFetchingRandomPlanet = false;
 let lastRandomVisitTime = 0;
-let planetRotationSpeed = 0.001;
+let planetRotationSpeed = BASE_PLANET_ROTATION_SPEED;
 let loggedInUsername = null; // ★追加: ログインユーザー名を保持
 
 // ローディングオーバーレイ
@@ -295,7 +296,7 @@ async function loadPlanet(data) {
     }
 
     const rotationCommits = Math.min(Math.max(Number(wCommits) || 0, 0), 100);
-    planetRotationSpeed = 0.001 + (rotationCommits * 0.0001);
+    planetRotationSpeed = BASE_PLANET_ROTATION_SPEED + (rotationCommits * 0.0001);
 
     if (ownerDisplay && data.username) {
         ownerDisplay.textContent = t('home.ownerPlanet', { username: data.username });
@@ -779,10 +780,11 @@ async function loadMainContent() {
 function animate() {
     requestAnimationFrame(animate);
     if (planetGroup) planetGroup.rotation.z += planetRotationSpeed;
+    const goWindSpeedFactor = planetRotationSpeed / BASE_PLANET_ROTATION_SPEED;
     updateCssPlanetFlow(cssPlanetMaterial, performance.now());
     updateCppPlanetLightning(cppPlanetMaterial, performance.now());
-    updateGoPlanetWind(goPlanetWindMaterial, performance.now());
-    updateGoPlanetAtmosphere(goPlanetAtmosphere, performance.now());
+    updateGoPlanetWind(goPlanetWindMaterial, performance.now(), goWindSpeedFactor);
+    updateGoPlanetAtmosphere(goPlanetAtmosphere, performance.now(), goWindSpeedFactor);
     controls.update();
     renderer.render(scene, camera);
 }

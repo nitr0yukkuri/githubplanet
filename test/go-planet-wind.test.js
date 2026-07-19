@@ -92,6 +92,19 @@ test('updates wind time in seconds', () => {
     assert.equal(material.userData.goWindUniforms.goWindTime.value, 1.25);
 });
 
+test('scales surface and atmosphere wind time with planet rotation speed', () => {
+    const material = createGoPlanetWindMaterial(THREE, { id: 'texture' });
+    const atmosphere = createGoPlanetAtmosphere(ATMOSPHERE_THREE, 1);
+
+    updateGoPlanetWind(material, 1000, 3);
+    updateGoPlanetAtmosphere(atmosphere, 1000, 3);
+    updateGoPlanetWind(material, 2000, 3);
+    updateGoPlanetAtmosphere(atmosphere, 2000, 3);
+
+    assert.equal(material.userData.goWindUniforms.goWindTime.value, 3);
+    assert.equal(atmosphere.userData.goAtmosphereUniforms.goAtmosphereTime.value, 3);
+});
+
 test('builds and updates an external atmosphere with three moving wind tails', () => {
     const atmosphere = createGoPlanetAtmosphere(ATMOSPHERE_THREE, 4, -1);
 
