@@ -5,13 +5,66 @@ export function isTypeScriptPlanet(data) {
 }
 
 export function createTypeScriptPlanetMaterial(THREE, planetTexture) {
-    return new THREE.MeshStandardMaterial({
+    const material = new THREE.MeshStandardMaterial({
         color: '#007acc',
         aoMap: planetTexture,
         aoMapIntensity: 1.5,
         roughness: 0.8,
         metalness: 0.2
     });
+    const narrowingUniforms = {
+        tsNarrowingTime: { value: 0 }
+    };
+
+    material.userData.tsNarrowingUniforms = narrowingUniforms;
+    material.onBeforeCompile = (shader) => {
+        shader.uniforms.tsNarrowingTime = narrowingUniforms.tsNarrowingTime;
+        shader.vertexShader = shader.vertexShader
+            .replace(
+                'void main() {',
+                `varying vec3 vTsNarrowingPosition;
+
+                void main() {`
+            )
+            .replace(
+                '#include <begin_vertex>',
+                `#include <begin_vertex>
+                vTsNarrowingPosition = normalize(position);`
+            );
+        shader.fragmentShader = shader.fragmentShader
+            .replace(
+                'void main() {',
+                `uniform float tsNarrowingTime;
+                varying vec3 vTsNarrowingPosition;
+
+                void main() {`
+            )
+            .replace(
+                '#include <map_fragment>',
+                `#include <map_fragment>
+                float tsPhase = tsNarrowingTime * 6.28318530718;
+                float tsFocus = pow(max(sin(tsPhase), 0.0), 2.0);
+                vec3 tsPosition = normalize(vTsNarrowingPosition);
+                vec3 tsDirection = normalize(vec3(0.62, 0.47, 0.63));
+                float tsField = dot(tsPosition, tsDirection);
+                float tsWidth = mix(0.3, 0.055, tsFocus);
+                float tsDistance = abs(tsField - 0.12);
+                float tsCandidate = 1.0 - smoothstep(
+                    tsWidth,
+                    tsWidth + 0.11,
+                    tsDistance
+                );
+                float tsCandidateLight = tsCandidate * (1.0 - tsFocus) * 0.1;
+                vec3 tsNarrowingColor = vec3(0.38, 0.78, 1.0);
+                diffuseColor.rgb = mix(
+                    diffuseColor.rgb,
+                    tsNarrowingColor,
+                    tsCandidateLight
+                );`
+            );
+    };
+    material.customProgramCacheKey = () => 'typescript-planet-type-narrowing-v2';
+    return material;
 }
 
 function createShellLayerMaterial(THREE, sharedUniforms, layer) {
@@ -99,9 +152,19 @@ function createShellLayerMaterial(THREE, sharedUniforms, layer) {
                 float outerLayer = rim * (
                     0.14 + fixedStructure * 0.38 + junction * 0.48 + validation * 0.88
                 );
+                float typedGuardRim = pow(1.0 - facing, 7.0);
+                float typedGuard = typedGuardRim * (
+                    fixedStructure * 0.3 + junction * 0.24
+                ) * (0.72 + validation * 0.28);
+                float guardedStructureLayer = structureLayer + typedGuard;
+                float guardedOuterLayer = outerLayer + typedGuard * 0.42;
                 float layerStrength = mix(
                     innerLayer,
-                    mix(structureLayer, outerLayer, step(1.5, tsShellLayer)),
+                    mix(
+                        guardedStructureLayer,
+                        guardedOuterLayer,
+                        step(1.5, tsShellLayer)
+                    ),
                     step(0.5, tsShellLayer)
                 );
                 float alpha = min(layerStrength * tsShellOpacity, 0.68);
@@ -118,8 +181,8 @@ export function createTypeScriptPlanetShell(THREE, radius) {
     };
     const layers = [
         { radiusScale: 1.08, color: '#007acc', kind: 0, opacity: 0.29 },
-        { radiusScale: 1.13, color: '#4fb7ff', kind: 1, opacity: 0.38 },
-        { radiusScale: 1.18, color: '#9addff', kind: 2, opacity: 0.23 }
+        { radiusScale: 1.125, color: '#258fd4', kind: 1, opacity: 0.25 },
+        { radiusScale: 1.165, color: '#62b8eb', kind: 2, opacity: 0.14 }
     ];
 
     layers.forEach((layer, index) => {
@@ -137,9 +200,11 @@ export function createTypeScriptPlanetShell(THREE, radius) {
 }
 
 export function updateTypeScriptPlanetShell(target, nowMilliseconds) {
-    const uniforms = target?.userData?.tsShellUniforms;
-    if (!uniforms) return;
-    uniforms.tsShellTime.value = (
+    const normalizedTime = (
         nowMilliseconds / 1000 % TYPESCRIPT_SHELL_CYCLE_SECONDS
     ) / TYPESCRIPT_SHELL_CYCLE_SECONDS;
+    const shellUniforms = target?.userData?.tsShellUniforms;
+    const narrowingUniforms = target?.userData?.tsNarrowingUniforms;
+    if (shellUniforms) shellUniforms.tsShellTime.value = normalizedTime;
+    if (narrowingUniforms) narrowingUniforms.tsNarrowingTime.value = normalizedTime;
 }

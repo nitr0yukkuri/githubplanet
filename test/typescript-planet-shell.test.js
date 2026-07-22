@@ -63,7 +63,7 @@ test('matches only normalized TypeScript planets', () => {
     assert.equal(isTypeScriptPlanet({ mainLanguage: 'TypeScript React' }), false);
 });
 
-test('keeps the original textured TypeScript planet material unchanged', () => {
+test('keeps the textured terrain while adding a narrowing surface pass', () => {
     const texture = { id: 'mars-terrain' };
     const material = createTypeScriptPlanetMaterial(THREE, texture);
 
@@ -73,7 +73,24 @@ test('keeps the original textured TypeScript planet material unchanged', () => {
     assert.equal(material.aoMapIntensity, 1.5);
     assert.equal(material.roughness, 0.8);
     assert.equal(material.metalness, 0.2);
-    assert.equal(material.onBeforeCompile, undefined);
+    assert.equal(typeof material.onBeforeCompile, 'function');
+    assert.equal(material.customProgramCacheKey(), 'typescript-planet-type-narrowing-v2');
+
+    const shader = {
+        uniforms: {},
+        vertexShader: 'void main() {\n#include <begin_vertex>\n}',
+        fragmentShader: 'void main() {\n#include <map_fragment>\n}'
+    };
+    material.onBeforeCompile(shader);
+
+    assert.equal(
+        shader.uniforms.tsNarrowingTime,
+        material.userData.tsNarrowingUniforms.tsNarrowingTime
+    );
+    assert.match(shader.vertexShader, /vTsNarrowingPosition/);
+    assert.match(shader.fragmentShader, /tsCandidate/);
+    assert.doesNotMatch(shader.fragmentShader, /tsConfirmedBoundary/);
+    assert.match(shader.fragmentShader, /tsWidth = mix\(0\.3, 0\.055, tsFocus\)/);
 });
 
 test('builds three back-facing defensive layers outside the untouched planet', () => {
@@ -81,8 +98,8 @@ test('builds three back-facing defensive layers outside the untouched planet', (
 
     assert.equal(shell.children.length, 3);
     assert.deepEqual(shell.children[0].geometry.args, [4.32, 48, 48]);
-    assert.deepEqual(shell.children[1].geometry.args, [4.52, 48, 48]);
-    assert.deepEqual(shell.children[2].geometry.args, [4.72, 48, 48]);
+    assert.deepEqual(shell.children[1].geometry.args, [4.5, 48, 48]);
+    assert.deepEqual(shell.children[2].geometry.args, [4.66, 48, 48]);
     shell.children.forEach((layer) => {
         assert.equal(layer.material.transparent, true);
         assert.equal(layer.material.depthWrite, false);
@@ -90,6 +107,8 @@ test('builds three back-facing defensive layers outside the untouched planet', (
         assert.match(layer.material.fragmentShader, /fixedStructure/);
         assert.match(layer.material.fragmentShader, /junction/);
         assert.match(layer.material.fragmentShader, /validationA/);
+        assert.match(layer.material.fragmentShader, /typedGuardRim/);
+        assert.match(layer.material.fragmentShader, /guardedStructureLayer/);
         assert.doesNotMatch(layer.material.fragmentShader, /scan/);
     });
 });
@@ -99,7 +118,9 @@ test('changes only validation brightness on a seamless twenty-four-second cycle'
     const shell = createTypeScriptPlanetShell(THREE, 1);
 
     updateTypeScriptPlanetShell(material, 6000);
-    assert.equal(material.userData.tsShellUniforms, undefined);
+    assert.equal(material.userData.tsNarrowingUniforms.tsNarrowingTime.value, 0.25);
+    updateTypeScriptPlanetShell(material, 30000);
+    assert.equal(material.userData.tsNarrowingUniforms.tsNarrowingTime.value, 0.25);
 
     updateTypeScriptPlanetShell(shell, 6000);
     assert.equal(shell.userData.tsShellUniforms.tsShellTime.value, 0.25);
