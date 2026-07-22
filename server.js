@@ -121,6 +121,11 @@ registerEventRoutes(app, {
     emitMeteor: (payload) => io.emit('meteor', payload)
 });
 
+// 404 handler
+app.use((req, res) => {
+    res.status(404).sendFile(path.join(__dirname, '404.html'));
+});
+
 const server = app.listen(port, '0.0.0.0', () => {
     console.log(`Server running on port ${port}`);
 });

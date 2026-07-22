@@ -11,6 +11,12 @@ import {
     updateGoPlanetAtmosphere,
     updateGoPlanetWind
 } from './go-planet-wind.js';
+import {
+    createTypeScriptPlanetMaterial,
+    createTypeScriptPlanetShell,
+    isTypeScriptPlanet,
+    updateTypeScriptPlanetShell
+} from './typescript-planet-shell.js';
 import { applyI18n, localizedPath, localizedPlanetName } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
@@ -145,6 +151,8 @@ let cssPlanetMaterial = null;
 let cppPlanetMaterial = null;
 let goPlanetWindMaterial = null;
 let goPlanetAtmosphere = null;
+let typeScriptPlanetMaterial = null;
+let typeScriptPlanetShell = null;
 
 async function init() {
     const controller = new AbortController();
@@ -234,6 +242,8 @@ function createPlanet(data) {
     cppPlanetMaterial = null;
     goPlanetWindMaterial = null;
     goPlanetAtmosphere = null;
+    typeScriptPlanetMaterial = null;
+    typeScriptPlanetShell = null;
 
     const baseSize = Math.min(1.3 * (data.planetSizeFactor || 1), 6.0);
 
@@ -253,6 +263,9 @@ function createPlanet(data) {
     } else if (isGoPlanet(data)) {
         material = createGoPlanetWindMaterial(THREE, planetTexture, -1);
         goPlanetWindMaterial = material;
+    } else if (isTypeScriptPlanet(data)) {
+        material = createTypeScriptPlanetMaterial(THREE, planetTexture);
+        typeScriptPlanetMaterial = material;
     } else {
         material = new THREE.MeshStandardMaterial({
             color: data.planetColor || 0xffffff,
@@ -268,6 +281,10 @@ function createPlanet(data) {
     if (isGoPlanet(data)) {
         goPlanetAtmosphere = createGoPlanetAtmosphere(THREE, baseSize, -1);
         planetGroup.add(goPlanetAtmosphere);
+    }
+    if (isTypeScriptPlanet(data)) {
+        typeScriptPlanetShell = createTypeScriptPlanetShell(THREE, baseSize);
+        planetGroup.add(typeScriptPlanetShell);
     }
 
     const starCount = calculateStarCount(data.totalCommits || 0);
@@ -414,6 +431,8 @@ function animate() {
     updateCppPlanetLightning(cppPlanetMaterial, now);
     updateGoPlanetWind(goPlanetWindMaterial, now, goWindSpeedFactor);
     updateGoPlanetAtmosphere(goPlanetAtmosphere, now, goWindSpeedFactor);
+    updateTypeScriptPlanetShell(typeScriptPlanetMaterial, now);
+    updateTypeScriptPlanetShell(typeScriptPlanetShell, now);
     renderer.render(scene, camera);
 }
 

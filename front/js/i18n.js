@@ -124,8 +124,14 @@ const translations = {
             contributions: 'CONTRIBUTIONS',
             systemStatus: 'SYSTEM STATUS',
             online: '● ONLINE',
-            share: '👇 下のURLをコピーしてgithubのプロフィールに貼ろう！',
-            copy: 'コピー'
+            share: '👇 URLをコピーしてGitHubのプロフィールに貼り付けよう',
+            copy: 'Copy'
+        },
+        notFound: {
+            pageTitle: '404 - Planet Not Found',
+            lostCoordinate: 'LOST COORDINATE',
+            description: '指定された座標に星は存在しません。',
+            returnHome: '最初の座標へ戻る'
         }
     },
     en: {
@@ -255,6 +261,12 @@ const translations = {
             online: '● ONLINE',
             share: '👇 Copy the URL below and paste it into your GitHub profile.',
             copy: 'Copy'
+        },
+        notFound: {
+            pageTitle: '404 - Planet Not Found',
+            lostCoordinate: 'LOST COORDINATE',
+            description: 'Page not found.',
+            returnHome: 'Return to the planet'
         }
     }
 };
