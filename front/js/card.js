@@ -17,6 +17,11 @@ import {
     isTypeScriptPlanet,
     updateTypeScriptPlanetShell
 } from './typescript-planet-shell.js';
+import {
+    createJavaScriptPlanetMaterial,
+    isJavaScriptPlanet,
+    updateJavaScriptPlanetReactivity
+} from './javascript-planet-reactivity.js';
 import { applyI18n, localizedPath, localizedPlanetName } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
@@ -153,6 +158,7 @@ let goPlanetWindMaterial = null;
 let goPlanetAtmosphere = null;
 let typeScriptPlanetMaterial = null;
 let typeScriptPlanetShell = null;
+let javaScriptPlanetMaterial = null;
 
 async function init() {
     const controller = new AbortController();
@@ -244,6 +250,7 @@ function createPlanet(data) {
     goPlanetAtmosphere = null;
     typeScriptPlanetMaterial = null;
     typeScriptPlanetShell = null;
+    javaScriptPlanetMaterial = null;
 
     const baseSize = Math.min(1.3 * (data.planetSizeFactor || 1), 6.0);
 
@@ -266,6 +273,9 @@ function createPlanet(data) {
     } else if (isTypeScriptPlanet(data)) {
         material = createTypeScriptPlanetMaterial(THREE, planetTexture);
         typeScriptPlanetMaterial = material;
+    } else if (isJavaScriptPlanet(data)) {
+        material = createJavaScriptPlanetMaterial(THREE, planetTexture, data.planetColor);
+        javaScriptPlanetMaterial = material;
     } else {
         material = new THREE.MeshStandardMaterial({
             color: data.planetColor || 0xffffff,
@@ -433,6 +443,7 @@ function animate() {
     updateGoPlanetAtmosphere(goPlanetAtmosphere, now, goWindSpeedFactor);
     updateTypeScriptPlanetShell(typeScriptPlanetMaterial, now);
     updateTypeScriptPlanetShell(typeScriptPlanetShell, now);
+    updateJavaScriptPlanetReactivity(javaScriptPlanetMaterial, now);
     renderer.render(scene, camera);
 }
 

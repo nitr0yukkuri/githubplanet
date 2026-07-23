@@ -74,7 +74,7 @@ test('keeps the textured terrain while adding a narrowing surface pass', () => {
     assert.equal(material.roughness, 0.8);
     assert.equal(material.metalness, 0.2);
     assert.equal(typeof material.onBeforeCompile, 'function');
-    assert.equal(material.customProgramCacheKey(), 'typescript-planet-type-narrowing-v2');
+    assert.equal(material.customProgramCacheKey(), 'typescript-planet-type-narrowing-v3');
 
     const shader = {
         uniforms: {},
@@ -89,6 +89,8 @@ test('keeps the textured terrain while adding a narrowing surface pass', () => {
     );
     assert.match(shader.vertexShader, /vTsNarrowingPosition/);
     assert.match(shader.fragmentShader, /tsCandidate/);
+    assert.match(shader.fragmentShader, /tsUncertainty/);
+    assert.match(shader.fragmentShader, /0\.24 - tsFocus \* 0\.12/);
     assert.doesNotMatch(shader.fragmentShader, /tsConfirmedBoundary/);
     assert.match(shader.fragmentShader, /tsWidth = mix\(0\.3, 0\.055, tsFocus\)/);
 });

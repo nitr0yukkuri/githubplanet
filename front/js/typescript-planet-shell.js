@@ -46,7 +46,10 @@ export function createTypeScriptPlanetMaterial(THREE, planetTexture) {
                 float tsFocus = pow(max(sin(tsPhase), 0.0), 2.0);
                 vec3 tsPosition = normalize(vTsNarrowingPosition);
                 vec3 tsDirection = normalize(vec3(0.62, 0.47, 0.63));
-                float tsField = dot(tsPosition, tsDirection);
+                float tsUncertainty = sin(tsPosition.y * 7.0 + tsPhase)
+                    * cos(tsPosition.z * 5.0 - tsPhase * 2.0)
+                    * (1.0 - tsFocus) * 0.035;
+                float tsField = dot(tsPosition, tsDirection) + tsUncertainty;
                 float tsWidth = mix(0.3, 0.055, tsFocus);
                 float tsDistance = abs(tsField - 0.12);
                 float tsCandidate = 1.0 - smoothstep(
@@ -54,7 +57,7 @@ export function createTypeScriptPlanetMaterial(THREE, planetTexture) {
                     tsWidth + 0.11,
                     tsDistance
                 );
-                float tsCandidateLight = tsCandidate * (1.0 - tsFocus) * 0.1;
+                float tsCandidateLight = tsCandidate * (0.24 - tsFocus * 0.12);
                 vec3 tsNarrowingColor = vec3(0.38, 0.78, 1.0);
                 diffuseColor.rgb = mix(
                     diffuseColor.rgb,
@@ -63,7 +66,7 @@ export function createTypeScriptPlanetMaterial(THREE, planetTexture) {
                 );`
             );
     };
-    material.customProgramCacheKey = () => 'typescript-planet-type-narrowing-v2';
+    material.customProgramCacheKey = () => 'typescript-planet-type-narrowing-v3';
     return material;
 }
 
