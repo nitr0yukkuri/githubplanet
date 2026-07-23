@@ -58,10 +58,44 @@ export function createJavaScriptPlanetMaterial(THREE, planetTexture, color) {
                 float jsReaction = clamp(jsRegionA + jsRegionB + jsRegionC, 0.0, 1.0);
                 float jsUncertainty = pow(max(sin(jsPhase * 3.0 + jsPosition.x * 11.0), 0.0), 8.0)
                     * jsReaction * 0.18;
-                diffuseColor.rgb *= 1.0 + jsReaction * 0.42 + jsUncertainty;`
+                float jsIncidentWindow = pow(max(sin(jsPhase - 0.35), 0.0), 4.0);
+                float jsPrimaryBranch = (
+                    1.0 - smoothstep(
+                        0.075,
+                        0.22,
+                        abs(jsFieldA + jsFieldC * 0.28 - 0.08)
+                    )
+                ) * smoothstep(-0.35, 0.28, jsFieldB) * jsIncidentWindow;
+                float jsFailedBranchShape = (
+                    1.0 - smoothstep(
+                        0.07,
+                        0.2,
+                        abs(jsFieldA - jsFieldC * 0.34 - 0.02)
+                    )
+                ) * smoothstep(-0.28, 0.34, -jsFieldB) * jsIncidentWindow;
+                float jsFailedBranchLife = smoothstep(
+                    -0.18,
+                    0.48,
+                    cos(jsPhase - 0.72)
+                );
+                float jsFailedBranch = jsFailedBranchShape * jsFailedBranchLife;
+                float jsAbortFlash = pow(
+                    max(sin(jsPhase * 4.0 + jsPosition.z * 5.0), 0.0),
+                    14.0
+                ) * jsFailedBranch;
+                float jsCollapsedBranch = jsFailedBranchShape
+                    * (1.0 - jsFailedBranchLife);
+                float jsBrightness = 1.0
+                    + jsReaction * 0.34
+                    + jsUncertainty
+                    + jsPrimaryBranch * 0.34
+                    + jsFailedBranch * 0.58
+                    + jsAbortFlash * 0.46
+                    - jsCollapsedBranch * 0.48;
+                diffuseColor.rgb *= max(jsBrightness, 0.52);`
             );
     };
-    material.customProgramCacheKey = () => 'javascript-planet-flexible-reactivity-v2';
+    material.customProgramCacheKey = () => 'javascript-planet-flexible-reactivity-v6';
     return material;
 }
 

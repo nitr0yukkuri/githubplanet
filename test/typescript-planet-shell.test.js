@@ -63,7 +63,7 @@ test('matches only normalized TypeScript planets', () => {
     assert.equal(isTypeScriptPlanet({ mainLanguage: 'TypeScript React' }), false);
 });
 
-test('keeps the textured terrain while adding a narrowing surface pass', () => {
+test('keeps the textured terrain without an unexplained surface highlight', () => {
     const texture = { id: 'mars-terrain' };
     const material = createTypeScriptPlanetMaterial(THREE, texture);
 
@@ -74,7 +74,7 @@ test('keeps the textured terrain while adding a narrowing surface pass', () => {
     assert.equal(material.roughness, 0.8);
     assert.equal(material.metalness, 0.2);
     assert.equal(typeof material.onBeforeCompile, 'function');
-    assert.equal(material.customProgramCacheKey(), 'typescript-planet-type-narrowing-v3');
+    assert.equal(material.customProgramCacheKey(), 'typescript-planet-textured-surface-v4');
 
     const shader = {
         uniforms: {},
@@ -87,12 +87,10 @@ test('keeps the textured terrain while adding a narrowing surface pass', () => {
         shader.uniforms.tsNarrowingTime,
         material.userData.tsNarrowingUniforms.tsNarrowingTime
     );
-    assert.match(shader.vertexShader, /vTsNarrowingPosition/);
-    assert.match(shader.fragmentShader, /tsCandidate/);
-    assert.match(shader.fragmentShader, /tsUncertainty/);
-    assert.match(shader.fragmentShader, /0\.24 - tsFocus \* 0\.12/);
-    assert.doesNotMatch(shader.fragmentShader, /tsConfirmedBoundary/);
-    assert.match(shader.fragmentShader, /tsWidth = mix\(0\.3, 0\.055, tsFocus\)/);
+    assert.doesNotMatch(shader.vertexShader, /vTsNarrowingPosition/);
+    assert.doesNotMatch(shader.fragmentShader, /tsCandidate/);
+    assert.doesNotMatch(shader.fragmentShader, /tsUncertainty/);
+    assert.doesNotMatch(shader.fragmentShader, /tsNarrowingColor/);
 });
 
 test('builds three back-facing defensive layers outside the untouched planet', () => {

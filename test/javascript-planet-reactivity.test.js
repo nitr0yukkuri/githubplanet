@@ -31,7 +31,7 @@ test('preserves the supplied language color and textured terrain', () => {
     assert.equal(material.aoMapIntensity, 1.5);
     assert.equal(material.roughness, 0.8);
     assert.equal(material.metalness, 0.2);
-    assert.equal(material.customProgramCacheKey(), 'javascript-planet-flexible-reactivity-v2');
+    assert.equal(material.customProgramCacheKey(), 'javascript-planet-flexible-reactivity-v6');
 
     const shader = {
         uniforms: {},
@@ -40,10 +40,15 @@ test('preserves the supplied language color and textured terrain', () => {
     };
     material.onBeforeCompile(shader);
 
+    assert.doesNotMatch(shader.vertexShader, /transformed \+= normal/);
     assert.match(shader.fragmentShader, /jsFlex/);
     assert.match(shader.fragmentShader, /jsUncertainty/);
     assert.match(shader.fragmentShader, /jsRegionA/);
-    assert.match(shader.fragmentShader, /jsReaction \* 0\.42/);
+    assert.match(shader.fragmentShader, /jsPrimaryBranch/);
+    assert.match(shader.fragmentShader, /jsFailedBranchLife/);
+    assert.match(shader.fragmentShader, /jsAbortFlash/);
+    assert.match(shader.fragmentShader, /jsCollapsedBranch/);
+    assert.match(shader.fragmentShader, /max\(jsBrightness, 0\.52\)/);
     assert.doesNotMatch(shader.fragmentShader, /vec3\(0\.9, 0\.82, 0\.7\)/);
 });
 
