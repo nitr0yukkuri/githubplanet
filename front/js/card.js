@@ -33,7 +33,9 @@ const MAX_STAR_COUNT = 120;
 const CARD_DATA_TIMEOUT_MS = 6000;
 
 const params = new URLSearchParams(window.location.search);
-const username = params.get('username') || 'NITROYUKKURI';
+const showcaseSlug = params.get('showcase');
+const username = params.get('username')
+    || (showcaseSlug ? `SHOWCASE_${showcaseSlug.toUpperCase()}` : 'NITROYUKKURI');
 const isScreenshotMode = params.has('fix');
 
 applyI18n();
@@ -170,7 +172,10 @@ async function init() {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), CARD_DATA_TIMEOUT_MS);
     try {
-        const res = await fetch(`/api/planets/user/${username}`, { signal: controller.signal });
+        const dataUrl = showcaseSlug
+            ? `/api/planets/showcase/${encodeURIComponent(showcaseSlug)}`
+            : `/api/planets/user/${username}`;
+        const res = await fetch(dataUrl, { signal: controller.signal });
         if (!res.ok) throw new Error('Data fetch failed');
         const data = await res.json();
         updateUI(data);

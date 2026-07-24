@@ -115,6 +115,30 @@ test('keeps unauthenticated API responses unchanged', async () => {
     assert.deepEqual(await random.json(), { error: 'DB unavailable' });
 });
 
+test('serves deterministic showcase planets without a database', async () => {
+    const showcase = await fetch(`${baseUrl}/api/planets/showcase/typescript`);
+    const missing = await fetch(`${baseUrl}/api/planets/showcase/unknown`);
+
+    assert.equal(showcase.status, 200);
+    assert.deepEqual(await showcase.json(), {
+        username: 'SHOWCASE_TYPESCRIPT',
+        planetColor: '#007acc',
+        planetSizeFactor: 2,
+        mainLanguage: 'TypeScript',
+        languageStats: { TypeScript: 100 },
+        totalCommits: 2000,
+        weeklyCommits: 24,
+        planetName: 'Defensive Typed Shell',
+        achievements: {},
+        activeTitle: {
+            prefix: 'LANGUAGE SHOWCASE',
+            suffix: 'FEATURE PLANET'
+        }
+    });
+    assert.equal(missing.status, 404);
+    assert.deepEqual(await missing.json(), { error: 'Showcase planet not found' });
+});
+
 test('preserves the English login route and callback validation', async () => {
     const login = await fetch(`${baseUrl}/en/login`, { redirect: 'manual' });
     assert.equal(login.status, 302);

@@ -1,4 +1,5 @@
 import { normalizePlanetCommitCounts, toPlanetResponse } from '../../domain/planet/planet.js';
+import { getShowcasePlanet } from '../../domain/planet/showcase-planets.js';
 
 export function registerPlanetRoutes(app, { planetService, planetQueryService, cacheDuration }) {
     app.get('/api/me', async (req, res) => {
@@ -57,6 +58,12 @@ export function registerPlanetRoutes(app, { planetService, planetQueryService, c
             console.error('Save Title Error:', error);
             res.status(500).json({ error: 'DB Error' });
         }
+    });
+
+    app.get('/api/planets/showcase/:slug', (req, res) => {
+        const planet = getShowcasePlanet(req.params.slug);
+        if (!planet) return res.status(404).json({ error: 'Showcase planet not found' });
+        res.json(planet);
     });
 
     app.get('/api/planets/user/:username', async (req, res) => {
