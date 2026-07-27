@@ -17,7 +17,7 @@ const translations = {
         },
         home: {
             welcomeTitle: 'GitHub Planetへようこそ',
-            welcomeBody: 'これはあなたのGitHubでの活動に応じて育つ惑星を楽しめる<br>サイトです。使用言語とコントリビューション数によって惑星の色や輝きなどが変わり、自分だけの星を育てられます。<br>人の惑星を見に行くこともできます。<br>賑やかな宇宙を目指して日頃の開発を頑張りましょう！',
+            welcomeBody: 'これはあなたのGitHubでの活動に応じて育つ惑星を楽しめる<br>サイトです。使用言語とコントリビューション数によって惑星の色や輝きなどが変わり、自分だけの星を育てられます。<br>人の惑星を見に行くこともできます。<br>ログインしなくても、左上のボタンから他の開発者の惑星を見に行けます。<br>賑やかな宇宙を目指して日頃の開発を頑張りましょう！',
             empty: 'まだ何もありません...',
             login: '星を誕生させる',
             searchPlanet: '惑星を探す',
@@ -134,8 +134,8 @@ const translations = {
         notFound: {
             pageTitle: '404 - Planet Not Found',
             lostCoordinate: 'LOST COORDINATE',
-            description: '指定された座標に星は存在しません。',
-            returnHome: '最初の座標へ戻る'
+            description: '探している星は見つかりませんでした。',
+            returnHome: '宇宙へ戻る'
         }
     },
     en: {
@@ -156,7 +156,7 @@ const translations = {
         },
         home: {
             welcomeTitle: 'Welcome to GitHub Planet',
-            welcomeBody: 'GitHub Planet turns your GitHub activity into a growing planet.<br>Your languages and contribution count shape its color, glow, and character, so you can raise a star that is uniquely yours.<br>You can also visit other people\'s planets.<br>Keep building, and help this little universe grow brighter.',
+            welcomeBody: 'GitHub Planet turns your GitHub activity into a growing planet.<br>Your languages and contribution count shape its color, glow, and character, so you can raise a star that is uniquely yours.<br>You can also visit other people\'s planets.<br>No sign-in required. Use the button in the top-left corner to explore other developers\' planets.<br>Keep building, and help this little universe grow brighter.',
             empty: 'Nothing here yet...',
             login: 'Create Planet',
             searchPlanet: 'Find a planet',

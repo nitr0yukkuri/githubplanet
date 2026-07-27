@@ -24,6 +24,12 @@ import {
     isJavaScriptPlanet,
     updateJavaScriptPlanetReactivity
 } from './javascript-planet-reactivity.js';
+import {
+    createRustPlanetDust,
+    createRustPlanetMaterial,
+    isRustPlanet,
+    updateRustPlanetDesert
+} from './rust-planet-desert.js';
 import { applyI18n, localizedPath, localizedPlanetName, localizedTitle, t } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
@@ -37,6 +43,8 @@ let goPlanetAtmosphere = null;
 let typeScriptPlanetMaterial = null;
 let typeScriptPlanetShell = null;
 let javaScriptPlanetMaterial = null;
+let rustPlanetMaterial = null;
+let rustPlanetDust = null;
 
 let welcomeModal, okButton, mainUiWrapper;
 let isFetchingRandomPlanet = false;
@@ -341,6 +349,8 @@ async function loadPlanet(data) {
     typeScriptPlanetMaterial = null;
     typeScriptPlanetShell = null;
     javaScriptPlanetMaterial = null;
+    rustPlanetMaterial = null;
+    rustPlanetDust = null;
 
     planetGroup = new THREE.Group();
 
@@ -365,6 +375,9 @@ async function loadPlanet(data) {
     } else if (isJavaScriptPlanet(data)) {
         mat = createJavaScriptPlanetMaterial(THREE, tex, data.planetColor);
         javaScriptPlanetMaterial = mat;
+    } else if (isRustPlanet(data)) {
+        mat = createRustPlanetMaterial(THREE, tex);
+        rustPlanetMaterial = mat;
     } else {
         mat = new THREE.MeshStandardMaterial({
             color: data.planetColor ? new THREE.Color(data.planetColor).getHex() : 0x808080,
@@ -384,6 +397,10 @@ async function loadPlanet(data) {
     if (isTypeScriptPlanet(data)) {
         typeScriptPlanetShell = createTypeScriptPlanetShell(THREE, 4);
         planetGroup.add(typeScriptPlanetShell);
+    }
+    if (isRustPlanet(data)) {
+        rustPlanetDust = createRustPlanetDust(THREE, 4);
+        planetGroup.add(rustPlanetDust);
     }
 
     const starCount = calculateStarCount(data.totalCommits || 0);
@@ -828,6 +845,8 @@ function animate() {
     updateTypeScriptPlanetShell(typeScriptPlanetMaterial, performance.now());
     updateTypeScriptPlanetShell(typeScriptPlanetShell, performance.now());
     updateJavaScriptPlanetReactivity(javaScriptPlanetMaterial, performance.now());
+    updateRustPlanetDesert(rustPlanetMaterial, performance.now());
+    updateRustPlanetDesert(rustPlanetDust, performance.now());
     controls.update();
     renderer.render(scene, camera);
 }

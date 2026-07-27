@@ -23,6 +23,12 @@ import {
     isJavaScriptPlanet,
     updateJavaScriptPlanetReactivity
 } from './javascript-planet-reactivity.js';
+import {
+    createRustPlanetDust,
+    createRustPlanetMaterial,
+    isRustPlanet,
+    updateRustPlanetDesert
+} from './rust-planet-desert.js';
 import { applyI18n, localizedPath, localizedPlanetName } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
@@ -162,6 +168,8 @@ let goPlanetAtmosphere = null;
 let typeScriptPlanetMaterial = null;
 let typeScriptPlanetShell = null;
 let javaScriptPlanetMaterial = null;
+let rustPlanetMaterial = null;
+let rustPlanetDust = null;
 
 async function init() {
     const controller = new AbortController();
@@ -257,6 +265,8 @@ function createPlanet(data) {
     typeScriptPlanetMaterial = null;
     typeScriptPlanetShell = null;
     javaScriptPlanetMaterial = null;
+    rustPlanetMaterial = null;
+    rustPlanetDust = null;
 
     const baseSize = Math.min(1.3 * (data.planetSizeFactor || 1), 6.0);
 
@@ -284,6 +294,9 @@ function createPlanet(data) {
     } else if (isJavaScriptPlanet(data)) {
         material = createJavaScriptPlanetMaterial(THREE, planetTexture, data.planetColor);
         javaScriptPlanetMaterial = material;
+    } else if (isRustPlanet(data)) {
+        material = createRustPlanetMaterial(THREE, planetTexture);
+        rustPlanetMaterial = material;
     } else {
         material = new THREE.MeshStandardMaterial({
             color: data.planetColor || 0xffffff,
@@ -303,6 +316,10 @@ function createPlanet(data) {
     if (isTypeScriptPlanet(data)) {
         typeScriptPlanetShell = createTypeScriptPlanetShell(THREE, baseSize);
         planetGroup.add(typeScriptPlanetShell);
+    }
+    if (isRustPlanet(data)) {
+        rustPlanetDust = createRustPlanetDust(THREE, baseSize);
+        planetGroup.add(rustPlanetDust);
     }
 
     const starCount = calculateStarCount(data.totalCommits || 0);
@@ -452,6 +469,8 @@ function animate() {
     updateTypeScriptPlanetShell(typeScriptPlanetMaterial, now);
     updateTypeScriptPlanetShell(typeScriptPlanetShell, now);
     updateJavaScriptPlanetReactivity(javaScriptPlanetMaterial, now);
+    updateRustPlanetDesert(rustPlanetMaterial, now);
+    updateRustPlanetDesert(rustPlanetDust, now);
     renderer.render(scene, camera);
 }
 
