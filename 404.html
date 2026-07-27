@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Planet Not Found</title>
+    <link rel="icon" href="/front/img/favicon.png" type="image/png">
+    <link rel="stylesheet" href="/front/css/404.css">
+    <script>
+        if (/^\/(en|english)(\/|$)/.test(window.location.pathname)) {
+            document.write('<style id="i18n-hide">[data-i18n], [data-i18n-html] { visibility: hidden !important; }</style>');
+        }
+    </script>
+</head>
+<body data-i18n-title="notFound.pageTitle">
+    <!-- 星空背景 -->
+    <div class="stars"></div>
+
+    <!-- ブラックホール / エクリプス -->
+    <div class="black-hole-container">
+        <div class="black-hole"></div>
+    </div>
+    
+    <!-- メインコンテンツ -->
+    <main class="content-wrapper">
+        <p class="subtitle" data-i18n="notFound.lostCoordinate">LOST COORDINATE</p>
+        <h1 class="title">404</h1>
+        <p class="description" data-i18n="notFound.description">Page not found</p>
+        <a href="/" class="return-btn" data-i18n="notFound.returnHome">Return to the planet</a>
+    </main>
+
+    <script type="module">
+        import { applyI18n } from '/front/js/i18n.js';
+        document.addEventListener('DOMContentLoaded', () => {
+            applyI18n();
+        });
+    </script>
+</body>
+</html>

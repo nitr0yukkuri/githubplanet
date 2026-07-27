@@ -11,13 +11,31 @@ import {
     updateGoPlanetAtmosphere,
     updateGoPlanetWind
 } from './go-planet-wind.js';
+import {
+    createTypeScriptPlanetMaterial,
+    createTypeScriptPlanetShell,
+    isTypeScriptPlanet,
+    updateTypeScriptPlanetShell
+} from './typescript-planet-shell.js';
+import {
+    createJavaScriptPlanetMaterial,
+    isJavaScriptPlanet,
+    updateJavaScriptPlanetReactivity
+} from './javascript-planet-reactivity.js';
+import {
+    createHtmlPlanetMaterial,
+    isHtmlPlanet,
+    updateHtmlPlanetLayers
+} from './html-planet-semantic-layers.js';
 import { applyI18n, localizedPath, localizedPlanetName } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
 const CARD_DATA_TIMEOUT_MS = 6000;
 
 const params = new URLSearchParams(window.location.search);
-const username = params.get('username') || 'NITROYUKKURI';
+const showcaseSlug = params.get('showcase');
+const username = params.get('username')
+    || (showcaseSlug ? `SHOWCASE_${showcaseSlug.toUpperCase()}` : 'NITROYUKKURI');
 const isScreenshotMode = params.has('fix');
 
 applyI18n();
@@ -145,12 +163,19 @@ let cssPlanetMaterial = null;
 let cppPlanetMaterial = null;
 let goPlanetWindMaterial = null;
 let goPlanetAtmosphere = null;
+let typeScriptPlanetMaterial = null;
+let typeScriptPlanetShell = null;
+let javaScriptPlanetMaterial = null;
+let htmlPlanetMaterial = null;
 
 async function init() {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), CARD_DATA_TIMEOUT_MS);
     try {
-        const res = await fetch(`/api/planets/user/${username}`, { signal: controller.signal });
+        const dataUrl = showcaseSlug
+            ? `/api/planets/showcase/${encodeURIComponent(showcaseSlug)}`
+            : `/api/planets/user/${username}`;
+        const res = await fetch(dataUrl, { signal: controller.signal });
         if (!res.ok) throw new Error('Data fetch failed');
         const data = await res.json();
         updateUI(data);
@@ -234,6 +259,10 @@ function createPlanet(data) {
     cppPlanetMaterial = null;
     goPlanetWindMaterial = null;
     goPlanetAtmosphere = null;
+    typeScriptPlanetMaterial = null;
+    typeScriptPlanetShell = null;
+    javaScriptPlanetMaterial = null;
+    htmlPlanetMaterial = null;
 
     const baseSize = Math.min(1.3 * (data.planetSizeFactor || 1), 6.0);
 
@@ -253,6 +282,15 @@ function createPlanet(data) {
     } else if (isGoPlanet(data)) {
         material = createGoPlanetWindMaterial(THREE, planetTexture, -1);
         goPlanetWindMaterial = material;
+    } else if (isTypeScriptPlanet(data)) {
+        material = createTypeScriptPlanetMaterial(THREE, planetTexture);
+        typeScriptPlanetMaterial = material;
+    } else if (isJavaScriptPlanet(data)) {
+        material = createJavaScriptPlanetMaterial(THREE, planetTexture, data.planetColor);
+        javaScriptPlanetMaterial = material;
+    } else if (isHtmlPlanet(data)) {
+        material = createHtmlPlanetMaterial(THREE, planetTexture, data.planetColor);
+        htmlPlanetMaterial = material;
     } else {
         material = new THREE.MeshStandardMaterial({
             color: data.planetColor || 0xffffff,
@@ -268,6 +306,10 @@ function createPlanet(data) {
     if (isGoPlanet(data)) {
         goPlanetAtmosphere = createGoPlanetAtmosphere(THREE, baseSize, -1);
         planetGroup.add(goPlanetAtmosphere);
+    }
+    if (isTypeScriptPlanet(data)) {
+        typeScriptPlanetShell = createTypeScriptPlanetShell(THREE, baseSize);
+        planetGroup.add(typeScriptPlanetShell);
     }
 
     const starCount = calculateStarCount(data.totalCommits || 0);
@@ -414,6 +456,10 @@ function animate() {
     updateCppPlanetLightning(cppPlanetMaterial, now);
     updateGoPlanetWind(goPlanetWindMaterial, now, goWindSpeedFactor);
     updateGoPlanetAtmosphere(goPlanetAtmosphere, now, goWindSpeedFactor);
+    updateTypeScriptPlanetShell(typeScriptPlanetMaterial, now);
+    updateTypeScriptPlanetShell(typeScriptPlanetShell, now);
+    updateJavaScriptPlanetReactivity(javaScriptPlanetMaterial, now);
+    updateHtmlPlanetLayers(htmlPlanetMaterial, now);
     renderer.render(scene, camera);
 }
 
