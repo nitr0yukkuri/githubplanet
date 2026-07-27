@@ -27,8 +27,8 @@
     .home-language-switcher {
         right: 12px;
         bottom: 12px;
-        grid-template-columns: repeat(2, 30px);
-        height: 30px;
+        grid-template-columns: repeat(2, 36px);
+        height: 34px;
     }
 
     /* ▼▼▼ 詳細パネルのサイズ調整 (さらに狭くする) ▼▼▼ */

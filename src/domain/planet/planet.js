@@ -80,7 +80,7 @@ export function toPlanetResponse(row) {
     let mainLanguage = row.main_language;
     let planetColor = row.planet_color;
 
-    if ((totalCommits === 0 || !hasStats) && mainLanguage !== 'Unknown') {
+    if (!hasStats && mainLanguage !== 'Unknown') {
         mainLanguage = 'Unknown';
         planetColor = '#808080';
     }

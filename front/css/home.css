@@ -206,12 +206,12 @@ body {
     bottom: 20px;
     z-index: 4;
     display: grid;
-    grid-template-columns: repeat(2, 34px);
-    height: 32px;
+    grid-template-columns: repeat(2, 42px);
+    height: 38px;
     box-sizing: border-box;
     overflow: hidden;
     background-color: #170633;
-    border: 1px solid #ffffff;
+    border: 2px solid #ffffff;
     border-radius: 8px;
     opacity: 0.8;
 }
@@ -221,7 +221,7 @@ body {
     align-items: center;
     justify-content: center;
     color: rgba(255, 255, 255, 0.68);
-    font-size: 0.72rem;
+    font-size: 0.8rem;
     font-weight: 700;
     text-decoration: none;
     transition: color 0.2s, background-color 0.2s;

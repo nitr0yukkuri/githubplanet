@@ -34,7 +34,7 @@ test('injects thin stable-path idle plasma filaments without mouse uniforms', ()
     material.onBeforeCompile(shader);
 
     assert.equal(material.aoMap, texture);
-    assert.equal(material.color, '#07558f');
+    assert.equal(material.color, '#f34b7d');
     assert.match(shader.vertexShader, /vCppLightningPosition = transformedNormal/);
     assert.match(shader.vertexShader, /vCppModelViewX = modelViewMatrix\[0\]\.xyz/);
     assert.match(shader.fragmentShader, /cppIndex < 7/);
