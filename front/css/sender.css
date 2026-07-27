@@ -42,6 +42,37 @@ h1 {
     font-weight: bold;
 }
 
+.api-key-control {
+    display: grid;
+    gap: 6px;
+    width: 100%;
+    max-width: 360px;
+    margin-bottom: 16px;
+}
+
+.api-key-control label {
+    color: #6e7a8e;
+    font-size: 0.7rem;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+}
+
+.api-key-control input {
+    min-height: 38px;
+    padding: 8px 10px;
+    color: var(--text-color);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 6px;
+    font: inherit;
+    box-sizing: border-box;
+}
+
+.api-key-control input:focus {
+    border-color: var(--accent);
+    outline: none;
+}
+
 .grid-container {
     display: grid;
     grid-template-columns: repeat(2, 1fr); /* 2列 */
