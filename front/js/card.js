@@ -22,11 +22,6 @@ import {
     isJavaScriptPlanet,
     updateJavaScriptPlanetReactivity
 } from './javascript-planet-reactivity.js';
-import {
-    createHtmlPlanetMaterial,
-    isHtmlPlanet,
-    updateHtmlPlanetLayers
-} from './html-planet-semantic-layers.js';
 import { applyI18n, localizedPath, localizedPlanetName } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
@@ -166,7 +161,6 @@ let goPlanetAtmosphere = null;
 let typeScriptPlanetMaterial = null;
 let typeScriptPlanetShell = null;
 let javaScriptPlanetMaterial = null;
-let htmlPlanetMaterial = null;
 
 async function init() {
     const controller = new AbortController();
@@ -262,7 +256,6 @@ function createPlanet(data) {
     typeScriptPlanetMaterial = null;
     typeScriptPlanetShell = null;
     javaScriptPlanetMaterial = null;
-    htmlPlanetMaterial = null;
 
     const baseSize = Math.min(1.3 * (data.planetSizeFactor || 1), 6.0);
 
@@ -288,9 +281,6 @@ function createPlanet(data) {
     } else if (isJavaScriptPlanet(data)) {
         material = createJavaScriptPlanetMaterial(THREE, planetTexture, data.planetColor);
         javaScriptPlanetMaterial = material;
-    } else if (isHtmlPlanet(data)) {
-        material = createHtmlPlanetMaterial(THREE, planetTexture, data.planetColor);
-        htmlPlanetMaterial = material;
     } else {
         material = new THREE.MeshStandardMaterial({
             color: data.planetColor || 0xffffff,
@@ -459,7 +449,6 @@ function animate() {
     updateTypeScriptPlanetShell(typeScriptPlanetMaterial, now);
     updateTypeScriptPlanetShell(typeScriptPlanetShell, now);
     updateJavaScriptPlanetReactivity(javaScriptPlanetMaterial, now);
-    updateHtmlPlanetLayers(htmlPlanetMaterial, now);
     renderer.render(scene, camera);
 }
 
