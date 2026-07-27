@@ -53,6 +53,7 @@ const THREE = {
     Group: FakeGroup,
     Color: FakeColor,
     AdditiveBlending: 'additive',
+    FrontSide: 'front',
     BackSide: 'back'
 };
 
@@ -63,18 +64,21 @@ test('matches only normalized TypeScript planets', () => {
     assert.equal(isTypeScriptPlanet({ mainLanguage: 'TypeScript React' }), false);
 });
 
-test('keeps the textured terrain without an unexplained surface highlight', () => {
+test('maps the rocky terrain into structured TypeScript-blue relief', () => {
     const texture = { id: 'mars-terrain' };
     const material = createTypeScriptPlanetMaterial(THREE, texture);
 
     assert.equal(material.color, '#007acc');
-    assert.equal(material.map, undefined);
+    assert.equal(material.map, texture);
     assert.equal(material.aoMap, texture);
     assert.equal(material.aoMapIntensity, 1.5);
     assert.equal(material.roughness, 0.8);
     assert.equal(material.metalness, 0.2);
     assert.equal(typeof material.onBeforeCompile, 'function');
-    assert.equal(material.customProgramCacheKey(), 'typescript-planet-textured-surface-v4');
+    assert.equal(
+        material.customProgramCacheKey(),
+        'typescript-planet-textured-surface-v5-mapped'
+    );
 
     const shader = {
         uniforms: {},
@@ -87,28 +91,37 @@ test('keeps the textured terrain without an unexplained surface highlight', () =
         shader.uniforms.tsNarrowingTime,
         material.userData.tsNarrowingUniforms.tsNarrowingTime
     );
+    assert.match(shader.fragmentShader, /tsMappedTexture/);
+    assert.match(shader.fragmentShader, /tsStructuredRelief/);
+    assert.match(shader.fragmentShader, /tsTerrainColor/);
+    assert.match(shader.fragmentShader, /texture2D\(map, vMapUv\)/);
     assert.doesNotMatch(shader.vertexShader, /vTsNarrowingPosition/);
     assert.doesNotMatch(shader.fragmentShader, /tsCandidate/);
     assert.doesNotMatch(shader.fragmentShader, /tsUncertainty/);
     assert.doesNotMatch(shader.fragmentShader, /tsNarrowingColor/);
 });
 
-test('builds three back-facing defensive layers outside the untouched planet', () => {
+test('builds one front guard and three back-facing defensive layers', () => {
     const shell = createTypeScriptPlanetShell(THREE, 4);
 
-    assert.equal(shell.children.length, 3);
-    assert.deepEqual(shell.children[0].geometry.args, [4.32, 48, 48]);
-    assert.deepEqual(shell.children[1].geometry.args, [4.5, 48, 48]);
-    assert.deepEqual(shell.children[2].geometry.args, [4.66, 48, 48]);
+    assert.equal(shell.children.length, 4);
+    assert.deepEqual(shell.children[0].geometry.args, [4.14, 48, 48]);
+    assert.deepEqual(shell.children[1].geometry.args, [4.32, 48, 48]);
+    assert.deepEqual(shell.children[2].geometry.args, [4.5, 48, 48]);
+    assert.deepEqual(shell.children[3].geometry.args, [4.66, 48, 48]);
+    assert.equal(shell.children[0].material.side, 'front');
+    assert.equal(shell.children[0].material.uniforms.tsShellFrontLayer.value, 1);
+    assert.match(shell.children[0].material.fragmentShader, /frontLayerStrength/);
+    assert.equal(shell.children[1].material.uniforms.tsShellFrontLayer.value, 0);
     shell.children.forEach((layer) => {
         assert.equal(layer.material.transparent, true);
         assert.equal(layer.material.depthWrite, false);
-        assert.equal(layer.material.side, 'back');
-        assert.match(layer.material.fragmentShader, /fixedStructure/);
-        assert.match(layer.material.fragmentShader, /junction/);
-        assert.match(layer.material.fragmentShader, /validationA/);
-        assert.match(layer.material.fragmentShader, /typedGuardRim/);
-        assert.match(layer.material.fragmentShader, /guardedStructureLayer/);
+        assert.match(layer.material.fragmentShader, /broadGuard/);
+        assert.match(layer.material.fragmentShader, /brokenBoundary/);
+        assert.match(layer.material.fragmentShader, /validationFilament/);
+        assert.match(layer.material.fragmentShader, /guardedNode/);
+        assert.match(layer.material.fragmentShader, /continuousGuard/);
+        assert.doesNotMatch(layer.material.fragmentShader, /rustDust|sandDust/);
         assert.doesNotMatch(layer.material.fragmentShader, /scan/);
     });
 });

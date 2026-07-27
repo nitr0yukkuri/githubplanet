@@ -24,6 +24,12 @@ import {
     isJavaScriptPlanet,
     updateJavaScriptPlanetReactivity
 } from './javascript-planet-reactivity.js';
+import {
+    createRustPlanetDust,
+    createRustPlanetMaterial,
+    isRustPlanet,
+    updateRustPlanetDesert
+} from './rust-planet-desert.js';
 import { applyI18n, localizedPath, localizedPlanetName, localizedTitle, t } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
@@ -37,6 +43,8 @@ let goPlanetAtmosphere = null;
 let typeScriptPlanetMaterial = null;
 let typeScriptPlanetShell = null;
 let javaScriptPlanetMaterial = null;
+let rustPlanetMaterial = null;
+let rustPlanetDust = null;
 
 let welcomeModal, okButton, mainUiWrapper;
 let isFetchingRandomPlanet = false;
@@ -163,6 +171,7 @@ async function fetchMyPlanetData() {
             const cardLink = document.getElementById('card-link');
             if (cardLink) {
                 cardLink.href = `${localizedPath('/card.html')}?username=${loggedInUsername}`;
+                cardLink.hidden = false;
             }
 
             return data.planetData;
@@ -340,6 +349,8 @@ async function loadPlanet(data) {
     typeScriptPlanetMaterial = null;
     typeScriptPlanetShell = null;
     javaScriptPlanetMaterial = null;
+    rustPlanetMaterial = null;
+    rustPlanetDust = null;
 
     planetGroup = new THREE.Group();
 
@@ -364,6 +375,9 @@ async function loadPlanet(data) {
     } else if (isJavaScriptPlanet(data)) {
         mat = createJavaScriptPlanetMaterial(THREE, tex, data.planetColor);
         javaScriptPlanetMaterial = mat;
+    } else if (isRustPlanet(data)) {
+        mat = createRustPlanetMaterial(THREE, tex);
+        rustPlanetMaterial = mat;
     } else {
         mat = new THREE.MeshStandardMaterial({
             color: data.planetColor ? new THREE.Color(data.planetColor).getHex() : 0x808080,
@@ -383,6 +397,10 @@ async function loadPlanet(data) {
     if (isTypeScriptPlanet(data)) {
         typeScriptPlanetShell = createTypeScriptPlanetShell(THREE, 4);
         planetGroup.add(typeScriptPlanetShell);
+    }
+    if (isRustPlanet(data)) {
+        rustPlanetDust = createRustPlanetDust(THREE, 4);
+        planetGroup.add(rustPlanetDust);
     }
 
     const starCount = calculateStarCount(data.totalCommits || 0);
@@ -745,7 +763,7 @@ async function init() {
     scene.add(new THREE.AmbientLight(0x888888, 2));
     const pl = new THREE.PointLight(0xffffff, 25, 1000); pl.position.set(20, 10, 5); scene.add(pl);
     const dl = new THREE.DirectionalLight(0xffffff, 0.4); dl.position.set(50, 15, 10); scene.add(dl);
-    new THREE.CubeTextureLoader().setPath('/front/img/skybox/').load(['right.png', 'left.png', 'top.png', 'bottom.png', 'front.png', 'back.png'], (tex) => scene.background = tex);
+    new THREE.CubeTextureLoader().setPath('/front/img/skybox/').load(['right.webp', 'left.webp', 'top.webp', 'bottom.webp', 'front.webp', 'back.webp'], (tex) => scene.background = tex);
 
     socket.on('meteor', (data) => {
         if (document.hidden) return;
@@ -761,7 +779,10 @@ async function init() {
     const hasVisited = localStorage.getItem('githubPlanetVisited');
 
     if (!hasVisited) {
-        if (welcomeModal) welcomeModal.style.display = 'block';
+        if (welcomeModal) {
+            welcomeModal.style.display = 'block';
+            okButton?.focus();
+        }
 
         if (okButton) {
             okButton.addEventListener('click', async () => {
@@ -795,6 +816,8 @@ async function loadMainContent() {
             } else {
                 // 未ログインなら「星を誕生させる」画面を表示
                 notLoggedInContainer.style.display = 'flex';
+                const returnButton = document.getElementById('return-my-planet-btn');
+                if (returnButton) returnButton.style.display = 'none';
                 controls.enabled = false;
             }
         }
@@ -822,6 +845,8 @@ function animate() {
     updateTypeScriptPlanetShell(typeScriptPlanetMaterial, performance.now());
     updateTypeScriptPlanetShell(typeScriptPlanetShell, performance.now());
     updateJavaScriptPlanetReactivity(javaScriptPlanetMaterial, performance.now());
+    updateRustPlanetDesert(rustPlanetMaterial, performance.now());
+    updateRustPlanetDesert(rustPlanetDust, performance.now());
     controls.update();
     renderer.render(scene, camera);
 }

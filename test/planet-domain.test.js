@@ -57,6 +57,28 @@ test('unlocks the same achievements without replacing existing timestamps', () =
     assert.equal(milestone.CONTRIBUTION_10000.unlockedAt, now.toISOString());
 });
 
+test('unlocks the bridge achievement only when two languages reach 10,000 bytes', () => {
+    const belowThreshold = checkAchievements({}, {
+        totalCommits: 1,
+        weeklyCommits: 0,
+        languagesCount: 2,
+        languageStats: { TypeScript: 10000, CSS: 9999 },
+        hasContributedToOthers: false,
+        totalStars: 0
+    });
+    const atThreshold = checkAchievements({}, {
+        totalCommits: 1,
+        weeklyCommits: 0,
+        languagesCount: 2,
+        languageStats: { TypeScript: 10000, CSS: 10000 },
+        hasContributedToOthers: false,
+        totalStars: 0
+    });
+
+    assert.equal(belowThreshold.DUAL_WORLD_BRIDGE, undefined);
+    assert.ok(atThreshold.DUAL_WORLD_BRIDGE);
+});
+
 test('maps database rows to the existing API shape', () => {
     const response = toPlanetResponse({
         username: 'tester', planet_color: '#007acc', planet_size_factor: '1.75', main_language: 'TypeScript',
@@ -79,4 +101,15 @@ test('normalizes planets with no usable activity to Unknown', () => {
     assert.equal(response.mainLanguage, 'Unknown');
     assert.equal(response.planetColor, '#808080');
     assert.equal(response.planetName, '未知の神秘の星');
+});
+
+test('preserves the language color when contributions are zero but language stats exist', () => {
+    const response = toPlanetResponse({
+        username: 'newcomer', planet_color: '#007acc', planet_size_factor: 1, main_language: 'TypeScript',
+        language_stats: { TypeScript: 1 }, total_commits: 0, weekly_commits: 0
+    });
+
+    assert.equal(response.mainLanguage, 'TypeScript');
+    assert.equal(response.planetColor, '#007acc');
+    assert.equal(response.planetName, '堅牢な蒼穹の星');
 });

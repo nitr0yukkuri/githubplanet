@@ -16,13 +16,15 @@
     <meta name="twitter:title" content="GitHub Planet">
     <meta name="twitter:description" content="あなたのコードが、星になる。GitHubの活動履歴からあなただけの惑星を生成しよう。" data-i18n-attr="content:meta.ogDescription">
     <meta name="twitter:image" content="https://githubplanet-git-543426763451.asia-northeast2.run.app/front/img/GitHubPlanet_logo.png">
+    <link href="https://githubplanet-git-543426763451.asia-northeast2.run.app/" rel="canonical">
+    <link href="https://githubplanet-git-543426763451.asia-northeast2.run.app/" rel="alternate" hreflang="ja">
+    <link href="https://githubplanet-git-543426763451.asia-northeast2.run.app/en" rel="alternate" hreflang="en">
+    <link href="https://githubplanet-git-543426763451.asia-northeast2.run.app/" rel="alternate" hreflang="x-default">
     <link rel="icon" href="/front/img/favicon.png" type="image/png">
     <link id="app-manifest" rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#000000">
     <link rel="stylesheet" href="/front/css/home.css">
     <link rel="stylesheet" href="/front/css/responsive.css">
-
-    <link rel="preload" href="/front/img/2k_mars.jpg" as="image">
 
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-6X54Y51TTZ"></script>
     <script>
@@ -43,10 +45,10 @@
 <body data-i18n-title="common.appTitle">
     <div class="achievement-container">
 
-        <div id="welcome-modal" class="welcome-modal">
+        <div id="welcome-modal" class="welcome-modal" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
             <img src="/front/img/GitHubPlanet_logo.png" alt="GitHub Planet Logo" class="welcome-logo" width="350"
                 height="auto">
-            <h2 data-i18n="home.welcomeTitle">GitHub Planetへようこそ</h2>
+            <h2 id="welcome-title" data-i18n="home.welcomeTitle">GitHub Planetへようこそ</h2>
             <p style="margin-bottom: 15px;" data-i18n-html="home.welcomeBody">
                 これはあなたのGitHubでの活動に応じて育つ惑星を楽しめる<br>サイトです。使用言語とコントリビューション数によって惑星の色や輝きなどが変わり、自分だけの星を育てられます。
                 <br>人の惑星を見に行くこともできます。<br>
@@ -86,7 +88,7 @@
                     <div id="menu-dropdown" class="menu-dropdown">
                         <a href="/achievements" class="menu-item" data-i18n="home.achievements">実績</a>
                         <a href="/settings" class="menu-item" data-i18n="home.settings">設定</a>
-                        <a href="#" id="card-link" class="menu-item" data-i18n="home.card">カード</a>
+                        <a href="#" id="card-link" class="menu-item" data-i18n="home.card" hidden>カード</a>
                     </div>
                 </div>
             </div>
@@ -117,12 +119,11 @@
                     <p class="planet-title" id="planet-title-val"></p>
                     <p class="planet-name" id="planet-name-val">-</p>
                 </div>
-            </div>
-
-            <div id="toggle-details-btn" class="ui-button" aria-label="詳細パネルの切り替え" data-i18n-attr="aria-label:home.toggleDetails">
-                <svg class="arrow-icon right" viewBox="0 0 24 24" fill="white">
-                    <path d="M8.59 16.34l4.58-4.59-4.58-4.59L10 5.75l6 6-6 6z" />
-                </svg>
+                <button type="button" id="toggle-details-btn" class="ui-button" aria-label="詳細パネルの切り替え" data-i18n-attr="aria-label:home.toggleDetails">
+                    <svg class="arrow-icon right" viewBox="0 0 24 24" fill="white">
+                        <path d="M8.59 16.34l4.58-4.59-4.58-4.59L10 5.75l6 6-6 6z" />
+                    </svg>
+                </button>
             </div>
 
             <div id="select-modal">
@@ -154,14 +155,20 @@
             </div>
 
         </div>
+
+        <nav class="home-language-switcher" aria-label="Language">
+            <a href="/" data-home-language="ja">JA</a>
+            <a href="/en" data-home-language="en">EN</a>
+        </nav>
+
     </div>
 
     <script type="importmap">
     {
         "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@latest/build/three.module.js",
-            "three/examples/jsm/controls/OrbitControls.js": "https://cdn.jsdelivr.net/npm/three@latest/examples/jsm/controls/OrbitControls.js",
-            "animejs": "https://cdn.jsdelivr.net/npm/animejs@latest/lib/anime.es.js",
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/examples/jsm/controls/OrbitControls.js": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js",
+            "animejs": "https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.es.js",
             "socket.io-client": "https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.esm.min.js"
         }
     }

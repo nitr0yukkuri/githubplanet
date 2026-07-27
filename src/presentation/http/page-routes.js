@@ -1,13 +1,47 @@
 import crypto from 'crypto';
+import fs from 'fs';
 import path from 'path';
 
 export function registerPageRoutes(app, { rootDirectory, isProduction, systemApiKey, sessionSecret }) {
+    const pageTitles = {
+        'index.html': 'GitHub Planet',
+        'achievements.html': 'Achievements - GitHub Planet',
+        'settings.html': 'Settings - GitHub Planet',
+        'card.html': 'GitHub Planet Card'
+    };
+    const pageCache = new Map();
+
+    function sendPage(req, res, fileName) {
+        const isEnglish = /^\/(en|english)(\/|$)/.test(req.path);
+        if (!isEnglish) return res.sendFile(path.join(rootDirectory, fileName));
+
+        let html = isProduction ? pageCache.get(fileName) : undefined;
+        if (!html) {
+            html = fs.readFileSync(path.join(rootDirectory, fileName), 'utf8');
+            if (isProduction) pageCache.set(fileName, html);
+        }
+
+        html = html
+            .replace('<html lang="ja">', '<html lang="en">')
+            .replace(/<title>[^<]*<\/title>/, `<title>${pageTitles[fileName]}</title>`);
+
+        if (fileName === 'index.html') {
+            html = html
+                .replace('GitHubの活動履歴からあなただけの惑星を生成しよう。', 'Generate your own planet from your GitHub activity.')
+                .replaceAll('あなたのコードが、星になる。GitHubの活動履歴からあなただけの惑星を生成しよう。', 'Your code becomes a star. Generate your own planet from your GitHub activity.')
+                .replace('content="https://githubplanet-git-543426763451.asia-northeast2.run.app/"', 'content="https://githubplanet-git-543426763451.asia-northeast2.run.app/en"')
+                .replace('href="https://githubplanet-git-543426763451.asia-northeast2.run.app/" rel="canonical"', 'href="https://githubplanet-git-543426763451.asia-northeast2.run.app/en" rel="canonical"');
+        }
+
+        res.type('html').send(html);
+    }
+
     function generateSignature(username) {
         return crypto.createHmac('sha256', sessionSecret).update(username).digest('hex');
     }
 
     app.get(['/', '/en', '/english'], (req, res) => {
-        res.sendFile(path.join(rootDirectory, 'index.html'));
+        sendPage(req, res, 'index.html');
     });
 
     app.get('/api/card/:username', (req, res) => {
@@ -36,11 +70,11 @@ export function registerPageRoutes(app, { rootDirectory, isProduction, systemApi
 
     app.get(['/card.html', '/en/card.html', '/english/card.html'], (req, res) => {
         const { username, fix } = req.query;
-        if (fix) return res.sendFile(path.join(rootDirectory, 'card.html'));
+        if (fix) return sendPage(req, res, 'card.html');
 
         const loggedInUser = req.session.planetData?.user?.login;
         if (!isProduction || (loggedInUser && loggedInUser === username)) {
-            return res.sendFile(path.join(rootDirectory, 'card.html'));
+            return sendPage(req, res, 'card.html');
         }
 
         res.status(403).send('Forbidden: This card is private.');
@@ -51,10 +85,10 @@ export function registerPageRoutes(app, { rootDirectory, isProduction, systemApi
     });
 
     app.get(['/achievements', '/en/achievements', '/english/achievements'], (req, res) => {
-        res.sendFile(path.join(rootDirectory, 'achievements.html'));
+        sendPage(req, res, 'achievements.html');
     });
 
     app.get(['/settings', '/en/settings', '/english/settings'], (req, res) => {
-        res.sendFile(path.join(rootDirectory, 'settings.html'));
+        sendPage(req, res, 'settings.html');
     });
 }

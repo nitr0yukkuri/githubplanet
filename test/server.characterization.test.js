@@ -62,7 +62,7 @@ after(() => {
     if (serverProcess && !serverProcess.killed) serverProcess.kill();
 });
 
-test('serves the same document for Japanese and English home routes', async () => {
+test('serves locale-correct source documents for Japanese and English home routes', async () => {
     const [japanese, english, englishAlias] = await Promise.all([
         fetch(`${baseUrl}/`),
         fetch(`${baseUrl}/en`),
@@ -72,8 +72,22 @@ test('serves the same document for Japanese and English home routes', async () =
     assert.equal(japanese.status, 200);
     assert.equal(english.status, 200);
     assert.equal(englishAlias.status, 200);
-    assert.equal(await english.text(), await japanese.text());
-    assert.equal(await englishAlias.text(), await fetch(`${baseUrl}/`).then((res) => res.text()));
+    const japaneseHtml = await japanese.text();
+    const englishHtml = await english.text();
+    const englishAliasHtml = await englishAlias.text();
+
+    assert.match(japaneseHtml, /<html lang="ja">/);
+    assert.match(japaneseHtml, /GitHubの活動履歴から/);
+    for (const html of [englishHtml, englishAliasHtml]) {
+        assert.match(html, /<html lang="en">/);
+        assert.match(html, /Generate your own planet from your GitHub activity\./);
+        assert.match(html, /href="https:\/\/githubplanet-git-543426763451\.asia-northeast2\.run\.app\/en" rel="canonical"/);
+        assert.doesNotMatch(html, /<meta name="description" content="GitHubの/);
+    }
+
+    assert.equal(english.headers.get('x-powered-by'), null);
+    assert.equal(english.headers.get('x-content-type-options'), 'nosniff');
+    assert.match(english.headers.get('content-security-policy') || '', /frame-ancestors 'none'/);
 });
 
 test('serves public pages and sender with their existing content types', async () => {

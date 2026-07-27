@@ -3,7 +3,7 @@ import test from 'node:test';
 
 globalThis.window = { location: { pathname: '/en' } };
 
-const { localizedTitle, localizedTitlePart } = await import('../front/js/i18n.js');
+const { localizedPlanetName, localizedTitle, localizedTitlePart } = await import('../front/js/i18n.js');
 
 test('localizes legacy Japanese title parts on English routes', () => {
     const legacyTitles = [
@@ -21,6 +21,14 @@ test('keeps unknown English title parts unchanged', () => {
     assert.equal(localizedTitlePart('Bit', 'prefix'), 'Bit');
     assert.equal(localizedTitlePart('Byte', 'suffix'), 'Byte');
     assert.equal(localizedTitle({ prefix: 'Bit', suffix: 'Byte' }), 'Bit Byte');
+});
+
+test('localizes the hyphenated Objective-C language key', () => {
+    assert.equal(localizedPlanetName({
+        mainLanguage: 'Objective-C',
+        planetColor: '#438eff',
+        totalCommits: 100
+    }), 'Objective Blue-Sky Star');
 });
 
 test('keeps title parts in Japanese on Japanese routes', () => {

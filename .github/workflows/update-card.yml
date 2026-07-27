@@ -37,44 +37,60 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes ffmpeg
 
-      - name: Record existing card animation
+      - name: Record animated cards
         env:
-          CARD_RECORD_URL: https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=nitr0yukkuri&fix=true
           CARD_RECORD_WIDTH: '1200'
           CARD_RECORD_HEIGHT: '400'
           CARD_RECORD_WARMUP_MS: '2000'
           CARD_RECORD_MS: '5000'
-        run: node scripts/record-profile-card.mjs
-
-      - name: Convert recording to GIF
         run: |
           set -euo pipefail
-          ffmpeg -y \
-            -sseof -5 \
-            -i artifacts/profile-card.webm \
-            -vf "fps=15,scale=800:266:flags=lanczos,split[frames][palette_source];[palette_source]palettegen=stats_mode=diff[palette];[frames][palette]paletteuse=dither=sierra2_4a:diff_mode=rectangle" \
-            -loop 0 \
-            profile_card.gif
+          mkdir -p generated-card-assets
+
+          record_card() {
+            local output_name="$1"
+            local card_url="$2"
+
+            CARD_RECORD_URL="$card_url" node scripts/record-profile-card.mjs
+            ffmpeg -y \
+              -sseof -5 \
+              -i artifacts/profile-card.webm \
+              -vf "fps=15,scale=800:266:flags=lanczos,split[frames][palette_source];[palette_source]palettegen=stats_mode=diff[palette];[frames][palette]paletteuse=dither=sierra2_4a:diff_mode=rectangle" \
+              -loop 0 \
+              "generated-card-assets/$output_name"
+          }
+
+          base_url="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html"
+          record_card profile_card.gif "$base_url?username=nitr0yukkuri&fix=true"
+          record_card showcase_css.gif "$base_url?showcase=css&fix=true"
+          record_card showcase_cpp.gif "$base_url?showcase=cpp&fix=true"
+          record_card showcase_go.gif "$base_url?showcase=go&fix=true"
+          record_card showcase_typescript.gif "$base_url?showcase=typescript&fix=true"
+          record_card showcase_javascript.gif "$base_url?showcase=javascript&fix=true"
 
       - name: Validate GIF
         run: |
           set -euo pipefail
 
-          file profile_card.gif | grep -q "GIF image data"
+          test "$(find generated-card-assets -maxdepth 1 -name '*.gif' | wc -l)" -eq 6
 
-          dimensions="$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 profile_card.gif)"
-          if [ "$dimensions" != "800x266" ]; then
-            echo "Unexpected GIF dimensions: $dimensions"
-            exit 1
-          fi
+          for gif in generated-card-assets/*.gif; do
+            file "$gif" | grep -q "GIF image data"
 
-          size_bytes="$(stat --format=%s profile_card.gif)"
-          if [ "$size_bytes" -gt 10485760 ]; then
-            echo "GIF is larger than 10 MiB: $size_bytes bytes"
-            exit 1
-          fi
+            dimensions="$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$gif")"
+            if [ "$dimensions" != "800x266" ]; then
+              echo "Unexpected GIF dimensions for $gif: $dimensions"
+              exit 1
+            fi
 
-          echo "Validated profile_card.gif ($dimensions, $size_bytes bytes)."
+            size_bytes="$(stat --format=%s "$gif")"
+            if [ "$size_bytes" -gt 10485760 ]; then
+              echo "$gif is larger than 10 MiB: $size_bytes bytes"
+              exit 1
+            fi
+
+            echo "Validated $gif ($dimensions, $size_bytes bytes)."
+          done
 
       - name: Publish GIF to asset branch
         run: |
@@ -82,17 +98,17 @@ jobs:
 
           asset_branch="card-assets"
           asset_dir="$(mktemp -d)"
-          cp profile_card.gif "$asset_dir/profile_card.gif"
+          cp generated-card-assets/*.gif "$asset_dir/"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch --orphan generated-card-assets
           git rm --recursive --force . || true
-          cp "$asset_dir/profile_card.gif" profile_card.gif
-          git add profile_card.gif
-          git commit -m "Update animated planet card [skip ci]"
+          cp "$asset_dir"/*.gif .
+          git add -- *.gif
+          git commit -m "Update animated planet cards [skip ci]"
           git push --force origin "HEAD:$asset_branch"
 
       - name: Summary
         run: |
-          echo "Animated card published to card-assets/profile_card.gif."
+          echo "Animated profile and showcase cards published to card-assets."

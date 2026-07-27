@@ -22,7 +22,7 @@ export function normalizePlanetCommitCounts(data) {
 export function checkAchievements(existingAchievements, stats, now = new Date()) {
     const newAchievements = { ...existingAchievements };
     const unlockedAt = now.toISOString();
-    const { totalCommits, weeklyCommits, languagesCount, hasContributedToOthers, totalStars, createdAt } = stats;
+    const { totalCommits, weeklyCommits, languagesCount, hasContributedToOthers, totalStars, createdAt, languageStats } = stats;
 
     const unlock = (achievement) => {
         if (!newAchievements[achievement.id]) {
@@ -36,6 +36,9 @@ export function checkAchievements(existingAchievements, stats, now = new Date())
     if (hasContributedToOthers) unlock(ACHIEVEMENTS.OS_CONTRIBUTOR);
     if (totalStars >= 10) unlock(ACHIEVEMENTS.STARGAZER);
     if (languagesCount >= 5) unlock(ACHIEVEMENTS.POLYGLOT_PIONEER);
+    const substantialLanguages = Object.values(languageStats || {})
+        .filter((bytes) => Number(bytes) >= 10000).length;
+    if (substantialLanguages >= 2) unlock(ACHIEVEMENTS.DUAL_WORLD_BRIDGE);
 
     if (createdAt) {
         const diffTime = Math.abs(now - new Date(createdAt));
@@ -57,7 +60,7 @@ export function generatePlanetName(mainLanguage, planetColor, totalCommits) {
         Go: '疾風の', Rust: '安全な', PHP: '象の', Swift: '迅速な', Kotlin: '静寂の',
         Shell: '自動の', Dart: '急襲の', Scala: '螺旋の', Perl: '真珠の', Lua: '月光の',
         Haskell: '純粋な', R: '統計の', Julia: '科学の', Vue: '反応の', Dockerfile: '箱舟の',
-        Svelte: '構築の', Elixir: '錬金の', ObjectiveC: '客観の', VimScript: '操作の', Unknown: '未知の'
+        Svelte: '構築の', Elixir: '錬金の', 'Objective-C': '客観の', VimScript: '操作の', Unknown: '未知の'
     };
     const colorNames = {
         '#f0db4f': '黄金', '#007acc': '蒼穹', '#306998': '深海', '#e34c26': '灼熱', '#563d7c': '紫水晶',
@@ -80,7 +83,7 @@ export function toPlanetResponse(row) {
     let mainLanguage = row.main_language;
     let planetColor = row.planet_color;
 
-    if ((totalCommits === 0 || !hasStats) && mainLanguage !== 'Unknown') {
+    if (!hasStats && mainLanguage !== 'Unknown') {
         mainLanguage = 'Unknown';
         planetColor = '#808080';
     }

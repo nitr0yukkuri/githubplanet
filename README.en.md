@@ -37,6 +37,8 @@
 
 Visit GitHub Planet and replace `YOUR_USERNAME` in the following snippet:
 
+### Display a static card immediately
+
 ```markdown
 [![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=YOUR_USERNAME&fix=true)](https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=YOUR_USERNAME)
 ```
@@ -86,12 +88,10 @@ jobs:
           git push
 ```
 
-Display the generated card from your profile README:
+After the workflow creates the GIF, replace `YOUR_USERNAME` and paste this animated card into your profile README:
 
-```html
-<a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/">
-  <img src="./planet-card.gif" alt="GitHub Planet" width="800" />
-</a>
+```markdown
+[![GitHub Planet](https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_USERNAME/main/planet-card.gif)](https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=YOUR_USERNAME)
 ```
 
 ## 🪐 Language Feature Showcase
@@ -103,13 +103,13 @@ These showcase planets are generated from fixed test data and do not depend on t
     <td align="center">
       <strong>CSS — Directional Color Flow</strong><br>
       <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=css&amp;fix=true">
-        <img width="400" alt="CSS showcase planet" src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=css&amp;fix=true">
+        <img width="400" alt="CSS showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_css.gif">
       </a>
     </td>
     <td align="center">
       <strong>C++ — Idle Plasma Globe</strong><br>
       <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=cpp&amp;fix=true">
-        <img width="400" alt="C++ showcase planet" src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=cpp&amp;fix=true">
+        <img width="400" alt="C++ showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_cpp.gif">
       </a>
     </td>
   </tr>
@@ -117,13 +117,13 @@ These showcase planets are generated from fixed test data and do not depend on t
     <td align="center">
       <strong>Go — Atmospheric Wind</strong><br>
       <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=go&amp;fix=true">
-        <img width="400" alt="Go showcase planet" src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=go&amp;fix=true">
+        <img width="400" alt="Go showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_go.gif">
       </a>
     </td>
     <td align="center">
       <strong>TypeScript — Defensive Typed Shell</strong><br>
       <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=typescript&amp;fix=true">
-        <img width="400" alt="TypeScript showcase planet" src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=typescript&amp;fix=true">
+        <img width="400" alt="TypeScript showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_typescript.gif">
       </a>
     </td>
   </tr>
@@ -131,7 +131,7 @@ These showcase planets are generated from fixed test data and do not depend on t
     <td align="center" colspan="2">
       <strong>JavaScript — Reactive Golden Surface</strong><br>
       <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=javascript&amp;fix=true">
-        <img width="400" alt="JavaScript showcase planet" src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=javascript&amp;fix=true">
+        <img width="400" alt="JavaScript showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_javascript.gif">
       </a>
     </td>
   </tr>

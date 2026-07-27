@@ -200,6 +200,49 @@ body {
     text-decoration: none;
 }
 
+.home-language-switcher {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 4;
+    display: grid;
+    grid-template-columns: repeat(2, 42px);
+    height: 38px;
+    box-sizing: border-box;
+    overflow: hidden;
+    background-color: #170633;
+    border: 2px solid #ffffff;
+    border-radius: 8px;
+    opacity: 0.8;
+}
+
+.home-language-switcher a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: color 0.2s, background-color 0.2s;
+}
+
+.home-language-switcher a + a {
+    border-left: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.home-language-switcher a:hover,
+.home-language-switcher a:focus-visible {
+    color: #ffffff;
+    background-color: #403d61;
+    outline: none;
+}
+
+.home-language-switcher a.is-active {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.16);
+}
+
 .planet-icon {
     width: 160px;
     height: 160px;
@@ -344,11 +387,16 @@ body {
     text-decoration: none;
     transition: background-color 0.2s, color 0.2s;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+    white-space: nowrap;
 }
 
 #login-button:hover {
     background-color: white;
     color: black;
+}
+
+.menu-item[hidden] {
+    display: none;
 }
 
 
@@ -453,7 +501,7 @@ body {
     height: 400px; /* ★パネルの固定高さ */
     max-height: calc(100vh - 80px); /* 画面の高さ-上下の余白(40px*2)を超えないように */
 
-    left: -320px; /* 初期状態は完全に画面外 */
+    left: -300px; /* パネル幅と揃え、開閉中もボタンとの間隔を一定にする */
     width: 300px; /* パネルの幅 */
     background-color: rgba(30, 30, 60, 0.9); /* 少し暗い青紫の背景 */
     backdrop-filter: blur(8px);
@@ -569,27 +617,21 @@ html[lang="en"] .planet-title {
 
 /* パネル開閉ボタン */
 #toggle-details-btn {
-    position: fixed;
+    position: absolute;
     top: 50%; /* 画面中央に配置 */
-    left: 0px; /* ★ 初期位置を 0px に変更 (パネルと重ならないように) */
+    left: calc(100% + 2px); /* パネル右枠を共有し、内部の二重線をなくす */
     transform: translateY(-50%);
     width: 40px; /* ボタンの幅 */
     height: 60px; /* ボタンの高さ */
     padding: 0;
     background-color: #2c2a4a; /* 濃い紺色/紫色 */
     border: 2px solid white;
+    border-left: 0;
     border-radius: 0 10px 10px 0; /* 左側は直線、右側は角丸 */
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 6; /* パネルより手前 */
-    transition: left 0.4s ease-out; /* パネルと連動するアニメーション */
-    opacity: 0.8;
-}
-
-/* パネルが開いている時のボタンの位置 */
-#toggle-details-btn.is-open {
-    left: 300px; /* パネルの幅分右に移動 */
+    z-index: 1; /* パネルより手前 */
 }
 
 /* 矢印SVGのスタイル */

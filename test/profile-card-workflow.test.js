@@ -19,3 +19,17 @@ test('keeps caller write access out of the reusable GIF generator', async () => 
     assert.match(readme, /needs: generate/);
     assert.match(readme, /file planet-card\.gif \| grep -q "GIF image data"/);
 });
+
+test('copies animated public card URLs instead of local screenshot URLs', async () => {
+    const cardScript = await readFile(
+        new URL('../front/js/card.js', import.meta.url),
+        'utf8'
+    );
+
+    assert.match(cardScript, /raw\.githubusercontent\.com/);
+    assert.match(cardScript, /card-assets\/showcase_/);
+    assert.match(cardScript, /main\/planet-card\.gif/);
+    assert.match(cardScript, /PUBLIC_DEPLOY_URL/);
+    assert.doesNotMatch(cardScript, /image\.thum\.io/);
+    assert.doesNotMatch(cardScript, /window\.location\.origin/);
+});

@@ -24,6 +24,29 @@ const isProduction = process.env.NODE_ENV === 'production';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    res.setHeader('Content-Security-Policy', [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.googletagmanager.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com data:",
+        "img-src 'self' data: https://image.thum.io",
+        "connect-src 'self' ws: wss: https://www.google-analytics.com https://region1.google-analytics.com",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "frame-ancestors 'none'"
+    ].join('; '));
+    if (isProduction) {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
+    next();
+});
+
 app.use((req, res, next) => {
     const host = req.headers.host || '';
     if (host.includes('githubplanet.onrender.com')) {
@@ -32,7 +55,12 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({
+    limit: '50mb',
+    verify: (req, res, buffer) => {
+        req.rawBody = Buffer.from(buffer);
+    }
+}));
 
 let githubClientId;
 let githubClientSecret;
@@ -115,10 +143,18 @@ registerPlanetRoutes(app, {
 });
 
 let io;
+const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
+if (isProduction && !webhookSecret) {
+    console.warn('[Webhook] GITHUB_WEBHOOK_SECRET is not configured; signature verification is disabled.');
+}
 registerEventRoutes(app, {
     geminiClient,
     extensionMap: EXTENSION_MAP,
-    emitMeteor: (payload) => io.emit('meteor', payload)
+    emitMeteor: (payload) => io.emit('meteor', payload),
+    systemApiKey: process.env.SYSTEM_API_KEY,
+    webhookSecret,
+    requireInternalAuth: isProduction,
+    requireWebhookSignature: isProduction && Boolean(webhookSecret)
 });
 
 // 404 handler

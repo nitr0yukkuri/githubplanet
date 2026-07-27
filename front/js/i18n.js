@@ -17,7 +17,7 @@ const translations = {
         },
         home: {
             welcomeTitle: 'GitHub Planetへようこそ',
-            welcomeBody: 'これはあなたのGitHubでの活動に応じて育つ惑星を楽しめる<br>サイトです。使用言語とコントリビューション数によって惑星の色や輝きなどが変わり、自分だけの星を育てられます。<br>人の惑星を見に行くこともできます。<br>賑やかな宇宙を目指して日頃の開発を頑張りましょう！',
+            welcomeBody: 'これはあなたのGitHubでの活動に応じて育つ惑星を楽しめる<br>サイトです。使用言語とコントリビューション数によって惑星の色や輝きなどが変わり、自分だけの星を育てられます。<br>人の惑星を見に行くこともできます。<br>ログインしなくても、左上のボタンから他の開発者の惑星を見に行けます。<br>賑やかな宇宙を目指して日頃の開発を頑張りましょう！',
             empty: 'まだ何もありません...',
             login: '星を誕生させる',
             searchPlanet: '惑星を探す',
@@ -33,6 +33,8 @@ const translations = {
             visitUser: '誰かの星を見に行く',
             visitRandom: 'ランダムで星を見に行く',
             returnMine: '自分の星に戻る',
+            usernamePlaceholder: 'GitHubユーザー名',
+            visit: '見に行く',
             unnamedPlanet: '名もなき星',
             ownerPlanet: '{username} の星',
             promptUsername: '見に行きたいGitHubユーザー名を入力してください:',
@@ -74,6 +76,7 @@ const translations = {
                 OS_CONTRIBUTOR: '銀河の貢献者',
                 STARGAZER: '星を見上げる者',
                 POLYGLOT_PIONEER: '多言語の開拓者',
+                DUAL_WORLD_BRIDGE: '二つの世界を繋ぐ者',
                 FIRST_COMMIT: '星の産声',
                 FIRST_PLANET: '最初の星',
                 COMMIT_100: '星の歩み',
@@ -87,6 +90,7 @@ const translations = {
                 OS_CONTRIBUTOR: '他のリポジトリに貢献。',
                 STARGAZER: 'Star 10件達成。',
                 POLYGLOT_PIONEER: '5言語以上を使用。',
+                DUAL_WORLD_BRIDGE: '2つの言語でそれぞれ10,000バイト以上を記録。',
                 FIRST_COMMIT: '初コントリビューション達成。',
                 FIRST_PLANET: '初めて惑星を作成。',
                 COMMIT_100: '100コントリビューション達成。',
@@ -101,6 +105,7 @@ const translations = {
                 OS_CONTRIBUTOR: { prefix: '銀河の', suffix: '貢献者' },
                 STARGAZER: { prefix: '輝く', suffix: '一番星' },
                 POLYGLOT_PIONEER: { prefix: '多才な', suffix: '翻訳家' },
+                DUAL_WORLD_BRIDGE: { prefix: '双界の', suffix: '架け橋' },
                 OCTOCAT_FRIEND: { prefix: '古参の', suffix: '盟友' },
                 COMMIT_100: { prefix: '星を歩む', suffix: '探索者' },
                 COMMIT_500: { prefix: '軌道を巡る', suffix: '旅人' },
@@ -116,7 +121,9 @@ const translations = {
             save: '設定を保存する',
             saved: '称号を保存しました！',
             saveFailed: '保存に失敗しました。',
-            networkError: '通信エラーが発生しました。'
+            networkError: '通信エラーが発生しました。',
+            loginDescription: 'GitHub Planetのすべての機能を利用するにはログインが必要です。',
+            backHome: 'ホームに戻る'
         },
         card: {
             pageTitle: 'GitHub Planet Card',
@@ -130,8 +137,8 @@ const translations = {
         notFound: {
             pageTitle: '404 - Planet Not Found',
             lostCoordinate: 'LOST COORDINATE',
-            description: '指定された座標に星は存在しません。',
-            returnHome: '最初の座標へ戻る'
+            description: '探している星は見つかりませんでした。',
+            returnHome: '宇宙へ戻る'
         }
     },
     en: {
@@ -152,9 +159,9 @@ const translations = {
         },
         home: {
             welcomeTitle: 'Welcome to GitHub Planet',
-            welcomeBody: 'GitHub Planet turns your GitHub activity into a growing planet.<br>Your languages and contribution count shape its color, glow, and character, so you can raise a star that is uniquely yours.<br>You can also visit other people\'s planets.<br>Keep building, and help this little universe grow brighter.',
+            welcomeBody: 'GitHub Planet turns your GitHub activity into a growing planet.<br>Your languages and contribution count shape its color, glow, and character, so you can raise a star that is uniquely yours.<br>You can also visit other people\'s planets.<br>No sign-in required. Use the button in the top-left corner to explore other developers\' planets.<br>Keep building, and help this little universe grow brighter.',
             empty: 'Nothing here yet...',
-            login: 'Create your star',
+            login: 'Create Planet',
             searchPlanet: 'Find a planet',
             menu: 'Menu',
             achievements: 'Achievements',
@@ -168,6 +175,8 @@ const translations = {
             visitUser: 'Visit a user planet',
             visitRandom: 'Visit a random planet',
             returnMine: 'Back to my planet',
+            usernamePlaceholder: 'GitHub username',
+            visit: 'Visit',
             unnamedPlanet: 'Nameless Star',
             ownerPlanet: '{username}\'s star',
             promptUsername: 'Enter a GitHub username to visit:',
@@ -209,6 +218,7 @@ const translations = {
                 OS_CONTRIBUTOR: 'Galactic Contributor',
                 STARGAZER: 'Stargazer',
                 POLYGLOT_PIONEER: 'Polyglot Pioneer',
+                DUAL_WORLD_BRIDGE: 'Bridge Between Worlds',
                 FIRST_COMMIT: 'First Signal',
                 FIRST_PLANET: 'First Planet',
                 COMMIT_100: 'Stellar Footsteps',
@@ -222,6 +232,7 @@ const translations = {
                 OS_CONTRIBUTOR: 'Contributed to another repository.',
                 STARGAZER: 'Reached 10 stars.',
                 POLYGLOT_PIONEER: 'Used five or more languages.',
+                DUAL_WORLD_BRIDGE: 'Recorded at least 10,000 bytes in each of two languages.',
                 FIRST_COMMIT: 'Made your first contribution.',
                 FIRST_PLANET: 'Created your first planet.',
                 COMMIT_100: 'Reached 100 contributions.',
@@ -236,6 +247,7 @@ const translations = {
                 OS_CONTRIBUTOR: { prefix: 'Galactic', suffix: 'Contributor' },
                 STARGAZER: { prefix: 'Radiant', suffix: 'First Star' },
                 POLYGLOT_PIONEER: { prefix: 'Versatile', suffix: 'Translator' },
+                DUAL_WORLD_BRIDGE: { prefix: 'Twin-World', suffix: 'Bridge' },
                 OCTOCAT_FRIEND: { prefix: 'Veteran', suffix: 'Ally' },
                 COMMIT_100: { prefix: 'Stellar', suffix: 'Explorer' },
                 COMMIT_500: { prefix: 'Orbital', suffix: 'Traveler' },
@@ -251,7 +263,9 @@ const translations = {
             save: 'Save settings',
             saved: 'Title saved.',
             saveFailed: 'Failed to save.',
-            networkError: 'A network error occurred.'
+            networkError: 'A network error occurred.',
+            loginDescription: 'Sign in to use all GitHub Planet features.',
+            backHome: 'Back to home'
         },
         card: {
             pageTitle: 'GitHub Planet Card',
@@ -342,7 +356,7 @@ export function localizedPlanetName(data) {
         Go: 'Swift', Rust: 'Secure', PHP: 'Elephantine', Swift: 'Rapid', Kotlin: 'Serene',
         Shell: 'Automated', Dart: 'Daring', Scala: 'Spiraling', Perl: 'Pearlescent', Lua: 'Moonlit',
         Haskell: 'Pure', R: 'Statistical', Julia: 'Scientific', Vue: 'Reactive', Dockerfile: 'Ark-Bound',
-        Svelte: 'Constructed', Elixir: 'Alchemical', ObjectiveC: 'Objective', VimScript: 'Operational',
+        Svelte: 'Constructed', Elixir: 'Alchemical', 'Objective-C': 'Objective', VimScript: 'Operational',
         Unknown: 'Mysterious'
     };
     const colorNames = {
@@ -388,6 +402,24 @@ function applyLocalizedLinks(root) {
         const url = new URL(cardLink.getAttribute('href'), window.location.origin);
         cardLink.href = `${localizedPath('/card.html')}${url.search}`;
     }
+
+    const languageLink = document.getElementById('language-switch-link');
+    if (languageLink) {
+        const currentPath = window.location.pathname;
+        const targetPath = isEnglishPath()
+            ? currentPath.replace(/^\/(en|english)(?=\/|$)/, '') || '/'
+            : `/en${currentPath === '/' ? '' : currentPath}`;
+        languageLink.href = `${targetPath}${window.location.search}${window.location.hash}`;
+    }
+
+    document.querySelectorAll('[data-home-language]').forEach((link) => {
+        const language = link.dataset.homeLanguage;
+        link.href = `${language === 'en' ? '/en' : '/'}${window.location.search}${window.location.hash}`;
+        const isActive = language === getLanguage();
+        link.classList.toggle('is-active', isActive);
+        if (isActive) link.setAttribute('aria-current', 'page');
+        else link.removeAttribute('aria-current');
+    });
 }
 
 export function applyI18n(root = document) {
