@@ -929,7 +929,6 @@ function setupUI() {
 
     document.getElementById('random-visit-btn')?.addEventListener('click', visitRandomPlanet);
     document.getElementById('next-random-planet-btn')?.addEventListener('click', visitRandomPlanet);
-    document.getElementById('empty-random-visit-btn')?.addEventListener('click', visitRandomPlanet);
 
     // ★追加: 「自分の星に戻る」ボタンの処理
     document.getElementById('return-my-planet-btn')?.addEventListener('click', async (e) => {
