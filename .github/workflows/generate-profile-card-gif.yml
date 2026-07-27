@@ -1,0 +1,110 @@
+name: Generate Planet Card GIF
+
+on:
+  workflow_call:
+    inputs:
+      username:
+        description: GitHub username whose planet should be recorded
+        required: true
+        type: string
+      output_path:
+        description: GIF path committed to the caller repository
+        required: false
+        default: planet-card.gif
+        type: string
+      deploy_url:
+        description: Public GitHub Planet deployment
+        required: false
+        default: https://githubplanet-git-543426763451.asia-northeast2.run.app
+        type: string
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout profile repository
+        uses: actions/checkout@v5
+
+      - name: Checkout GIF generator
+        uses: actions/checkout@v5
+        with:
+          repository: nitr0yukkuri/githubplanet
+          path: .githubplanet-generator
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: .githubplanet-generator/package-lock.json
+
+      - name: Install generator dependencies
+        working-directory: .githubplanet-generator
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false playwright@1.58.2
+          npx playwright install chromium --with-deps
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg
+
+      - name: Record planet card
+        working-directory: .githubplanet-generator
+        env:
+          CARD_RECORD_URL: ${{ inputs.deploy_url }}/card.html?username=${{ inputs.username }}&fix=true
+          CARD_RECORD_WIDTH: '1200'
+          CARD_RECORD_HEIGHT: '400'
+          CARD_RECORD_WARMUP_MS: '3000'
+          CARD_RECORD_MS: '6000'
+        run: node scripts/record-profile-card.mjs
+
+      - name: Convert recording to GIF
+        env:
+          OUTPUT_PATH: ${{ github.workspace }}/${{ inputs.output_path }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$OUTPUT_PATH")"
+          ffmpeg -y \
+            -sseof -6 \
+            -i .githubplanet-generator/artifacts/profile-card.webm \
+            -vf "fps=15,scale=800:266:flags=lanczos,split[frames][palette_source];[palette_source]palettegen=stats_mode=diff[palette];[frames][palette]paletteuse=dither=sierra2_4a:diff_mode=rectangle" \
+            -loop 0 \
+            "$OUTPUT_PATH"
+
+      - name: Validate GIF
+        env:
+          OUTPUT_PATH: ${{ github.workspace }}/${{ inputs.output_path }}
+        run: |
+          set -euo pipefail
+          file "$OUTPUT_PATH" | grep -q "GIF image data"
+
+          dimensions="$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$OUTPUT_PATH")"
+          test "$dimensions" = "800x266"
+
+          size_bytes="$(stat --format=%s "$OUTPUT_PATH")"
+          test "$size_bytes" -le 10485760
+
+      - name: Remove generator checkout
+        run: rm -rf .githubplanet-generator
+
+      - name: Commit updated GIF
+        env:
+          OUTPUT_PATH: ${{ inputs.output_path }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "$OUTPUT_PATH"
+
+          if git diff --cached --quiet; then
+            echo "Planet card GIF is unchanged."
+            exit 0
+          fi
+
+          git commit -m "Update animated planet card [skip ci]"
+          git push

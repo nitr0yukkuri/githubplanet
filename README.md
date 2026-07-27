@@ -34,6 +34,37 @@ github planetに訪れて、以下のコードを自分の `README.md` に貼る
 \`\`\`markdown
    `[![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=ユーザー名&fix=true)](https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=ユーザー名)`
 \`\`\`
+
+#### 動くGIFカードを自動更新する
+
+プロフィールREADMEのリポジトリに次の `.github/workflows/update-planet-card.yml` を追加すると、そのリポジトリ自身が毎日GIFを生成して更新します。
+
+```yaml
+name: Update Planet Card
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    uses: nitr0yukkuri/githubplanet/.github/workflows/generate-profile-card-gif.yml@main
+    with:
+      username: あなたのGitHubユーザー名
+      output_path: planet-card.gif
+```
+
+生成後はプロフィールREADMEから次のように表示できます。
+
+```html
+<a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/">
+  <img src="./planet-card.gif" alt="GitHub Planet" width="800" />
+</a>
+```
 ## 🛠️ 技術構成（Tech Stack）
 
 このプロジェクトは、フロントエンドからインフラまで一貫して設計された、モダンなWeb技術スタックで構築されています。
