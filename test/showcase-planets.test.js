@@ -11,7 +11,8 @@ const EXPECTED_SHOWCASES = {
     cpp: 'C++',
     go: 'Go',
     typescript: 'TypeScript',
-    javascript: 'JavaScript'
+    javascript: 'JavaScript',
+    rust: 'Rust'
 };
 
 test('provides deterministic feature planets without database records', () => {
