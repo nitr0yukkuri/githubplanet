@@ -28,17 +28,17 @@ export const EXTENSION_MAP = {
 };
 
 export const ACHIEVEMENTS = {
-    FIRST_PLANET: { id: 'FIRST_PLANET', name: '最初の星', description: '初めての惑星を作成した。' },
-    FIRST_COMMIT: { id: 'FIRST_COMMIT', name: '星の産声', description: '初めて活動を行った。' },
-    VELOCITY_STAR: { id: 'VELOCITY_STAR', name: '光速の星', description: '爆発的な開発スピードで宇宙を駆け抜け、週間50コントリビューション以上を記録した。' },
-    OS_CONTRIBUTOR: { id: 'OS_CONTRIBUTOR', name: '銀河の貢献者', description: '他の星系に文明をもたらし、他リポジトリへの貢献を果たした。' },
-    STARGAZER: { id: 'STARGAZER', name: '星を見上げる者', description: '多くの輝きを知り、または自身が輝き、Star数10以上を達成した。' },
-    POLYGLOT_PIONEER: { id: 'POLYGLOT_PIONEER', name: '多言語の開拓者', description: '多様な技術を操り、5種類以上の言語で彩り豊かな惑星を築き上げた。' },
-    OCTOCAT_FRIEND: { id: 'OCTOCAT_FRIEND', name: '星界の盟友', description: '長い間この宇宙を旅し、登録から1年以上が経過した。' },
-    COMMIT_100: { id: 'COMMIT_100', name: '星の歩み', description: 'GitHubで100回のコントリビューションを記録した。' },
-    COMMIT_500: { id: 'COMMIT_500', name: '軌道の旅人', description: 'GitHubで500回のコントリビューションを記録した。' },
-    COMMIT_1000: { id: 'COMMIT_1000', name: '星雲の航海者', description: 'GitHubで1000回のコントリビューションを記録した。' },
-    CONTRIBUTION_10000: { id: 'CONTRIBUTION_10000', name: '銀河に名を刻む者', description: 'GitHubで10000回のコントリビューションを記録した。' }
+    FIRST_PLANET: { id: 'FIRST_PLANET', name: '最初の星', description: '初めて惑星を作成。' },
+    FIRST_COMMIT: { id: 'FIRST_COMMIT', name: '星の産声', description: '初コントリビューション達成。' },
+    VELOCITY_STAR: { id: 'VELOCITY_STAR', name: '光速の星', description: '週間50コントリビューション達成。' },
+    OS_CONTRIBUTOR: { id: 'OS_CONTRIBUTOR', name: '銀河の貢献者', description: '他のリポジトリに貢献。' },
+    STARGAZER: { id: 'STARGAZER', name: '星を見上げる者', description: 'Star 10件達成。' },
+    POLYGLOT_PIONEER: { id: 'POLYGLOT_PIONEER', name: '多言語の開拓者', description: '5言語以上を使用。' },
+    OCTOCAT_FRIEND: { id: 'OCTOCAT_FRIEND', name: '星界の盟友', description: 'GitHub登録から1年経過。' },
+    COMMIT_100: { id: 'COMMIT_100', name: '星の歩み', description: '100コントリビューション達成。' },
+    COMMIT_500: { id: 'COMMIT_500', name: '軌道の旅人', description: '500コントリビューション達成。' },
+    COMMIT_1000: { id: 'COMMIT_1000', name: '星雲の航海者', description: '1,000コントリビューション達成。' },
+    CONTRIBUTION_10000: { id: 'CONTRIBUTION_10000', name: '銀河に名を刻む者', description: '10,000コントリビューション達成。' }
 };
 
 export const TITLE_REWARDS = {

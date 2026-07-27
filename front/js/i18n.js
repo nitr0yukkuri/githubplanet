@@ -82,17 +82,17 @@ const translations = {
                 CONTRIBUTION_10000: '銀河に名を刻む者'
             },
             descriptions: {
-                OCTOCAT_FRIEND: '長い間この宇宙を旅し、登録から1年以上が経過した。',
-                VELOCITY_STAR: '爆発的な開発スピードで宇宙を駆け抜け、週間50コミット以上を記録した。',
-                OS_CONTRIBUTOR: '他の星系に文明をもたらし、他リポジトリへの貢献を果たした。',
-                STARGAZER: '多くの輝きを知り、または自身が輝き、Star数10以上を達成した。',
-                POLYGLOT_PIONEER: '多様な技術を操り、5種類以上の言語で彩り豊かな惑星を築き上げた。',
-                FIRST_COMMIT: 'GitHub Planetにログイン後、初めてのコミットを記録した。',
-                FIRST_PLANET: '初めて自分の惑星を宇宙に誕生させた。',
-                COMMIT_100: 'GitHubで100回のコントリビューションを記録した。',
-                COMMIT_500: 'GitHubで500回のコントリビューションを記録した。',
-                COMMIT_1000: 'GitHubで1000回のコントリビューションを記録した。',
-                CONTRIBUTION_10000: 'GitHubで10000回のコントリビューションを記録した。'
+                OCTOCAT_FRIEND: 'GitHub登録から1年経過。',
+                VELOCITY_STAR: '週間50コントリビューション達成。',
+                OS_CONTRIBUTOR: '他のリポジトリに貢献。',
+                STARGAZER: 'Star 10件達成。',
+                POLYGLOT_PIONEER: '5言語以上を使用。',
+                FIRST_COMMIT: '初コントリビューション達成。',
+                FIRST_PLANET: '初めて惑星を作成。',
+                COMMIT_100: '100コントリビューション達成。',
+                COMMIT_500: '500コントリビューション達成。',
+                COMMIT_1000: '1,000コントリビューション達成。',
+                CONTRIBUTION_10000: '10,000コントリビューション達成。'
             },
             rewards: {
                 FIRST_PLANET: { prefix: '始まりの', suffix: '創造主' },
@@ -217,17 +217,17 @@ const translations = {
                 CONTRIBUTION_10000: 'Galactic Legend'
             },
             descriptions: {
-                OCTOCAT_FRIEND: 'Traveled this universe for a long time, with more than a year since registration.',
-                VELOCITY_STAR: 'Blazed through space with explosive development speed by recording 50 or more commits in a week.',
-                OS_CONTRIBUTOR: 'Brought civilization to other star systems by contributing to other repositories.',
-                STARGAZER: 'Recognized many lights, or became one yourself, by reaching 10 or more stars.',
-                POLYGLOT_PIONEER: 'Built a richly colored planet with five or more programming languages.',
-                FIRST_COMMIT: 'Recorded your first commit after logging in to GitHub Planet.',
-                FIRST_PLANET: 'Created your own planet in this universe for the first time.',
-                COMMIT_100: 'Recorded 100 contributions on GitHub.',
-                COMMIT_500: 'Recorded 500 contributions on GitHub.',
-                COMMIT_1000: 'Recorded 1,000 contributions on GitHub.',
-                CONTRIBUTION_10000: 'Recorded 10,000 contributions on GitHub.'
+                OCTOCAT_FRIEND: 'One year on GitHub.',
+                VELOCITY_STAR: '50 contributions in one week.',
+                OS_CONTRIBUTOR: 'Contributed to another repository.',
+                STARGAZER: 'Reached 10 stars.',
+                POLYGLOT_PIONEER: 'Used five or more languages.',
+                FIRST_COMMIT: 'Made your first contribution.',
+                FIRST_PLANET: 'Created your first planet.',
+                COMMIT_100: 'Reached 100 contributions.',
+                COMMIT_500: 'Reached 500 contributions.',
+                COMMIT_1000: 'Reached 1,000 contributions.',
+                CONTRIBUTION_10000: 'Reached 10,000 contributions.'
             },
             rewards: {
                 FIRST_PLANET: { prefix: 'Genesis', suffix: 'Creator' },
@@ -297,6 +297,19 @@ export function getTranslation(key) {
     return getNestedValue(key) ?? getNestedValue(key, 'en');
 }
 
+const legacyEnglishTitleParts = {
+    prefix: {
+        '努力の': 'Diligent',
+        '熟練の': 'Seasoned',
+        '伝説の': 'Legendary'
+    },
+    suffix: {
+        '職人': 'Artisan',
+        '達人': 'Master',
+        '英雄': 'Hero'
+    }
+};
+
 export function localizedTitlePart(value, type) {
     if (getLanguage() !== 'en') return value;
     const japaneseRewards = translations.ja.achievements.rewards;
@@ -307,7 +320,7 @@ export function localizedTitlePart(value, type) {
 
     if (type === 'prefix' && value === '名もなき') return 'Nameless';
     if (type === 'suffix' && value === '旅人') return 'Traveler';
-    return englishRewards[rewardKey]?.[type] || value;
+    return englishRewards[rewardKey]?.[type] || legacyEnglishTitleParts[type]?.[value] || value;
 }
 
 export function localizedTitle(activeTitle) {

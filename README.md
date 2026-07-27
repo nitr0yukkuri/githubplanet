@@ -1,3 +1,5 @@
+<p align="right"><strong>日本語</strong> | <a href="README.en.md">English</a></p>
+
 <img src="front/img/GitHubPlanet_logo.png" width="80%" alt="GitHub Planet Logo">
 
   <br>
@@ -122,16 +124,10 @@ DBや実在ユーザーに依存しない固定テストデータから生成し
     </td>
   </tr>
   <tr>
-    <td align="center">
+    <td align="center" colspan="2">
       <strong>JavaScript — Reactive Golden Surface</strong><br>
       <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=javascript&amp;fix=true">
         <img width="400" alt="JavaScript showcase planet" src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=javascript&amp;fix=true">
-      </a>
-    </td>
-    <td align="center">
-      <strong>HTML — Engraved DOM Network</strong><br>
-      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=html&amp;fix=true">
-        <img width="400" alt="HTML showcase planet" src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=html&amp;fix=true">
       </a>
     </td>
   </tr>

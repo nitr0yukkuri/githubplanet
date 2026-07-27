@@ -7,8 +7,7 @@ const SHOWCASE_PLANETS = Object.freeze({
     cpp: createShowcasePlanet('C++', '#f34b7d', 'Idle Plasma Globe'),
     go: createShowcasePlanet('Go', '#00ADD8', 'Atmospheric Wind'),
     typescript: createShowcasePlanet('TypeScript', '#007acc', 'Defensive Typed Shell'),
-    javascript: createShowcasePlanet('JavaScript', '#f0db4f', 'Reactive Golden Surface'),
-    html: createShowcasePlanet('HTML', '#e34c26', 'Engraved DOM Network')
+    javascript: createShowcasePlanet('JavaScript', '#f0db4f', 'Reactive Golden Surface')
 });
 
 function createShowcasePlanet(mainLanguage, planetColor, planetName) {
