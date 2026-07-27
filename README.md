@@ -1,3 +1,5 @@
+<p align="right"><strong>日本語</strong> | <a href="README.en.md">English</a></p>
+
 <img src="front/img/GitHubPlanet_logo.png" width="80%" alt="GitHub Planet Logo">
 
   <br>
