@@ -484,7 +484,7 @@ async function loadPlanet(data) {
 
         const auraMat = new THREE.ShaderMaterial({
             uniforms: {
-                glowColor: { value: new THREE.Color(data.planetColor ? data.planetColor : 0x808080) },
+                glowColor: { value: new THREE.Color(isCppPlanet(data) ? '#07558f' : (data.planetColor || 0x808080)) },
                 intensity: { value: auraIntensity }
             },
             vertexShader: auraVertexShader,

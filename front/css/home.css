@@ -211,7 +211,7 @@ body {
     box-sizing: border-box;
     overflow: hidden;
     background-color: #170633;
-    border: 2px solid #ffffff;
+    border: 1px solid #ffffff;
     border-radius: 8px;
     opacity: 0.8;
 }

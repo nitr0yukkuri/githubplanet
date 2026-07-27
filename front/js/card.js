@@ -395,7 +395,7 @@ function createPlanet(data) {
         `;
         const auraMat = new THREE.ShaderMaterial({
             uniforms: {
-                glowColor: { value: new THREE.Color(data.planetColor || 0xffffff) },
+                glowColor: { value: new THREE.Color(isCppPlanet(data) ? '#07558f' : (data.planetColor || 0xffffff)) },
                 intensity: { value: auraIntensity + 1.0 }
             },
             vertexShader: auraVertexShader,
