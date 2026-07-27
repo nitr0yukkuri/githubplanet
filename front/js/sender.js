@@ -16,6 +16,7 @@ const LANGUAGES = [
 
 const grid = document.getElementById('button-grid');
 const statusText = document.getElementById('status-text');
+const apiKeyInput = document.getElementById('api-key-input');
 
 function createButtons() {
     LANGUAGES.forEach(lang => {
@@ -61,6 +62,14 @@ function createButtons() {
 
 // data引数で色やサイズを受け取る
 async function sendMeteor(language, data = {}) {
+    const apiKey = apiKeyInput?.value.trim();
+    if (!apiKey) {
+        statusText.innerText = 'API KEY REQUIRED';
+        statusText.style.color = '#ffcc00';
+        apiKeyInput?.focus();
+        return;
+    }
+
     statusText.innerText = `SENDING ${language.toUpperCase()}...`;
     statusText.style.color = '#fff';
 
@@ -68,7 +77,8 @@ async function sendMeteor(language, data = {}) {
         const res = await fetch('/api/meteor', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey
             },
             // dataを展開して送信
             body: JSON.stringify({ language: language, ...data })
