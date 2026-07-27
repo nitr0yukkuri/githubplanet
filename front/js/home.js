@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import anime from 'animejs';
 import { io } from 'socket.io-client';
 import { createCssPlanetFlowMaterial, isCssPlanet, updateCssPlanetFlow } from './css-planet-flow.js';
+import { createCPlanetSteelMaterial, isCPlanet } from './c-planet-steel.js';
 import { createCppPlanetLightningMaterial, isCppPlanet, updateCppPlanetLightning } from './cpp-planet-lightning.js';
 import {
     createGoPlanetAtmosphere,
@@ -346,7 +347,9 @@ async function loadPlanet(data) {
 
     const geo = new THREE.SphereGeometry(4, 32, 32);
     let mat;
-    if (isCssPlanet(data)) {
+    if (isCPlanet(data)) {
+        mat = createCPlanetSteelMaterial(THREE, tex);
+    } else if (isCssPlanet(data)) {
         mat = createCssPlanetFlowMaterial(THREE, tex);
         cssPlanetMaterial = mat;
     } else if (isCppPlanet(data)) {

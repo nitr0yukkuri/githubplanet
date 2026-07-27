@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createCssPlanetFlowMaterial, isCssPlanet, updateCssPlanetFlow } from './css-planet-flow.js';
+import { createCPlanetSteelMaterial, isCPlanet } from './c-planet-steel.js';
 import { createCppPlanetLightningMaterial, isCppPlanet, updateCppPlanetLightning } from './cpp-planet-lightning.js';
 import {
     createGoPlanetAtmosphere,
@@ -266,7 +267,9 @@ function createPlanet(data) {
     const auraIntensity = Math.min(3.0, (level / 5.0) * 0.5);
 
     let material;
-    if (isCssPlanet(data)) {
+    if (isCPlanet(data)) {
+        material = createCPlanetSteelMaterial(THREE, planetTexture);
+    } else if (isCssPlanet(data)) {
         material = createCssPlanetFlowMaterial(THREE, planetTexture);
         cssPlanetMaterial = material;
     } else if (isCppPlanet(data)) {
