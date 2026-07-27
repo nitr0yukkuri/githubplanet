@@ -31,11 +31,31 @@ test('provides deterministic feature planets without database records', () => {
 
 test('documents every production showcase card in the README', async () => {
     const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8');
+    const englishReadme = await readFile(
+        new URL('../README.en.md', import.meta.url),
+        'utf8'
+    );
+    const updateWorkflow = await readFile(
+        new URL('../.github/workflows/update-card.yml', import.meta.url),
+        'utf8'
+    );
 
     for (const slug of Object.keys(EXPECTED_SHOWCASES)) {
-        assert.match(
-            readme,
-            new RegExp(`card\\.html\\?showcase=${slug}&(?:amp;)?fix=true`)
+        const cardLink = new RegExp(
+            `card\\.html\\?showcase=${slug}&(?:amp;)?fix=true`
         );
+        const animatedImage = new RegExp(
+            `card-assets/showcase_${slug}\\.gif`
+        );
+
+        assert.match(readme, cardLink);
+        assert.match(readme, animatedImage);
+        assert.match(englishReadme, cardLink);
+        assert.match(englishReadme, animatedImage);
+        assert.match(updateWorkflow, new RegExp(`showcase_${slug}\\.gif`));
     }
+
+    assert.match(readme, /raw\.githubusercontent\.com\/GitHubユーザー名/);
+    assert.match(englishReadme, /raw\.githubusercontent\.com\/YOUR_USERNAME/);
+    assert.doesNotMatch(readme, /\\`\\`\\`markdown/);
 });

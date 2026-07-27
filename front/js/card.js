@@ -33,6 +33,7 @@ import { applyI18n, localizedPath, localizedPlanetName } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
 const CARD_DATA_TIMEOUT_MS = 6000;
+const PUBLIC_DEPLOY_URL = 'https://githubplanet-git-543426763451.asia-northeast2.run.app';
 
 const params = new URLSearchParams(window.location.search);
 const showcaseSlug = params.get('showcase');
@@ -69,14 +70,15 @@ if (isScreenshotMode && containerElement && containerElement.parentNode !== docu
 if (!isScreenshotMode) {
     if (shareSection) shareSection.style.display = 'block';
 
-    const deployUrl = window.location.origin;
-    const timestamp = Date.now();
-    const targetUrl = `${deployUrl}${localizedPath('/card.html')}?username=${username}&fix=true&time=${timestamp}`;
-    const thumbUrl = `https://image.thum.io/get/width/800/crop/400/wait/3/${targetUrl}`;
-
-    // リンク先をトップページに変更
-    const pageUrl = `${deployUrl}/`;
-    const mdText = `[![GitHub Planet](${thumbUrl})](${pageUrl})`;
+    const encodedUsername = encodeURIComponent(username);
+    const animatedCardUrl = showcaseSlug
+        ? `https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_${encodeURIComponent(showcaseSlug)}.gif`
+        : `https://raw.githubusercontent.com/${encodedUsername}/${encodedUsername}/main/planet-card.gif`;
+    const cardQuery = showcaseSlug
+        ? `showcase=${encodeURIComponent(showcaseSlug)}`
+        : `username=${encodedUsername}`;
+    const pageUrl = `${PUBLIC_DEPLOY_URL}${localizedPath('/card.html')}?${cardQuery}`;
+    const mdText = `[![GitHub Planet](${animatedCardUrl})](${pageUrl})`;
 
     if (markdownCode) markdownCode.textContent = mdText;
     if (copyBtn) {
