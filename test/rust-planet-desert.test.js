@@ -39,13 +39,44 @@ class FakePoints {
     }
 }
 
+class FakeGroup {
+    constructor() {
+        this.children = [];
+        this.userData = {};
+    }
+
+    add(child) {
+        this.children.push(child);
+    }
+}
+
+class FakeMesh {
+    constructor(geometry, material) {
+        this.geometry = geometry;
+        this.material = material;
+    }
+}
+
+class FakeSphereGeometry {
+    constructor(radius, widthSegments, heightSegments) {
+        this.radius = radius;
+        this.widthSegments = widthSegments;
+        this.heightSegments = heightSegments;
+    }
+}
+
 const THREE = {
     MeshStandardMaterial: FakeMaterial,
     ShaderMaterial: FakeMaterial,
     BufferGeometry: FakeGeometry,
     BufferAttribute: FakeAttribute,
     Points: FakePoints,
-    NormalBlending: 'normal'
+    Group: FakeGroup,
+    Mesh: FakeMesh,
+    SphereGeometry: FakeSphereGeometry,
+    NormalBlending: 'normal',
+    FrontSide: 'front',
+    BackSide: 'back'
 };
 
 test('matches only normalized Rust planets', () => {
@@ -80,14 +111,36 @@ test('keeps the terrain texture while adding rust and deposited sand', () => {
 
 test('creates sparse surface dust that lifts briefly and returns', () => {
     const dust = createRustPlanetDust(THREE, 4);
+    const [surfaceDust, outerDust, farDust, dustPoints] = dust.children;
 
-    assert.equal(dust.geometry.attributes.position.array.length, 260 * 3);
-    assert.equal(dust.geometry.attributes.rustDustTangent.itemSize, 3);
-    assert.equal(dust.geometry.attributes.rustDustSeed.itemSize, 1);
-    assert.match(dust.material.vertexShader, /float lift/);
-    assert.match(dust.material.vertexShader, /float drift/);
-    assert.match(dust.material.vertexShader, /sin\(clamp\(life \/ 0\.72/);
-    assert.doesNotMatch(dust.material.vertexShader, /goWake|tail/i);
+    assert.equal(dust.children.length, 4);
+    assert.equal(dustPoints.geometry.attributes.position.array.length, 1800 * 3);
+    assert.equal(dustPoints.geometry.attributes.rustDustTangent.itemSize, 3);
+    assert.equal(dustPoints.geometry.attributes.rustDustSeed.itemSize, 1);
+    assert.match(dustPoints.material.vertexShader, /float lift/);
+    assert.match(dustPoints.material.vertexShader, /float drift/);
+    assert.match(dustPoints.material.vertexShader, /float coarse/);
+    assert.match(dustPoints.material.vertexShader, /stormBand/);
+    assert.match(dustPoints.material.vertexShader, /vRustDustScreenTangent/);
+    assert.match(dustPoints.material.fragmentShader, /orientedPoint/);
+    assert.match(dustPoints.material.vertexShader, /sin\(clamp\(life \/ 0\.72/);
+    assert.doesNotMatch(dustPoints.material.vertexShader, /goWake|tail/i);
+    assert.equal(surfaceDust.material.side, 'front');
+    assert.equal(outerDust.material.side, 'back');
+    assert.equal(farDust.material.side, 'back');
+    assert.equal(outerDust.material.uniforms.rustDustOuterLayer.value, 1);
+    assert.match(surfaceDust.material.fragmentShader, /flowBand/);
+    assert.match(surfaceDust.material.fragmentShader, /rustDustTime \* 0\.95/);
+    assert.match(surfaceDust.material.fragmentShader, /grainCoordinate/);
+    assert.match(surfaceDust.material.fragmentShader, /grainParticle/);
+    assert.match(surfaceDust.material.fragmentShader, /fineParticle/);
+    assert.match(surfaceDust.material.fragmentShader, /cloudBreakup/);
+    assert.match(outerDust.material.fragmentShader, /gustExposure/);
+    assert.equal(outerDust.material.uniforms.rustDustOpacity.value, 0.34);
+    assert.equal(farDust.material.uniforms.rustDustOpacity.value, 0.08);
+    assert.doesNotMatch(surfaceDust.material.fragmentShader, /brokenBand|windFilament/);
+    assert.match(outerDust.material.fragmentShader, /outerAlpha/);
+    assert.doesNotMatch(outerDust.material.fragmentShader, /goWake|tail/i);
 
     updateRustPlanetDesert(dust, 1000);
     assert.equal(dust.userData.rustDustUniforms.rustDustTime.value, 0);

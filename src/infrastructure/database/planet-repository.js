@@ -10,7 +10,7 @@ export function createPlanetRepository(pool) {
         },
 
         async findByUsername(username) {
-            const result = await pool.query('SELECT * FROM planets WHERE username = $1', [username]);
+            const result = await pool.query('SELECT * FROM planets WHERE username ILIKE $1', [username]);
             return result.rows[0] || null;
         },
 

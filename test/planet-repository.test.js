@@ -2,6 +2,26 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createPlanetRepository } from '../src/infrastructure/database/planet-repository.js';
 
+test('finds a planet by username regardless of case', async () => {
+    const calls = [];
+    const repository = createPlanetRepository({
+        async query(sql, params) {
+            calls.push([sql, params]);
+            if (sql.includes('ILIKE')) {
+                return {
+                    rows: [{ username: 'Alice' }]
+                };
+            }
+            return { rows: [] };
+        }
+    });
+
+    const row = await repository.findByUsername('ALICE');
+
+    assert.deepEqual(row, { username: 'Alice' });
+    assert.deepEqual(calls[0][1], ['ALICE']);
+});
+
 test('records and advances the owner login baseline in one transaction', async () => {
     const calls = [];
     const client = {

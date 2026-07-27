@@ -118,6 +118,7 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
                 totalCommits,
                 weeklyCommits,
                 languagesCount: Object.keys(languageStats).length,
+                languageStats,
                 hasContributedToOthers: contributedRepos.length > 0,
                 totalStars: starredCount + receivedStars,
                 createdAt: user.created_at

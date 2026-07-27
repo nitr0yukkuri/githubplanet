@@ -57,6 +57,28 @@ test('unlocks the same achievements without replacing existing timestamps', () =
     assert.equal(milestone.CONTRIBUTION_10000.unlockedAt, now.toISOString());
 });
 
+test('unlocks the bridge achievement only when two languages reach 10,000 bytes', () => {
+    const belowThreshold = checkAchievements({}, {
+        totalCommits: 1,
+        weeklyCommits: 0,
+        languagesCount: 2,
+        languageStats: { TypeScript: 10000, CSS: 9999 },
+        hasContributedToOthers: false,
+        totalStars: 0
+    });
+    const atThreshold = checkAchievements({}, {
+        totalCommits: 1,
+        weeklyCommits: 0,
+        languagesCount: 2,
+        languageStats: { TypeScript: 10000, CSS: 10000 },
+        hasContributedToOthers: false,
+        totalStars: 0
+    });
+
+    assert.equal(belowThreshold.DUAL_WORLD_BRIDGE, undefined);
+    assert.ok(atThreshold.DUAL_WORLD_BRIDGE);
+});
+
 test('maps database rows to the existing API shape', () => {
     const response = toPlanetResponse({
         username: 'tester', planet_color: '#007acc', planet_size_factor: '1.75', main_language: 'TypeScript',
