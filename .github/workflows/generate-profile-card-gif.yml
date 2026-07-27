@@ -7,11 +7,6 @@ on:
         description: GitHub username whose planet should be recorded
         required: true
         type: string
-      output_path:
-        description: GIF path committed to the caller repository
-        required: false
-        default: planet-card.gif
-        type: string
       deploy_url:
         description: Public GitHub Planet deployment
         required: false
@@ -22,16 +17,14 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
 
     steps:
-      - name: Checkout profile repository
-        uses: actions/checkout@v5
-
       - name: Checkout GIF generator
         uses: actions/checkout@v5
         with:
           repository: nitr0yukkuri/githubplanet
+          ref: 4ced8657ee24c3cb257e2fb41517a53765ca1a0d
           path: .githubplanet-generator
 
       - name: Setup Node.js
@@ -65,7 +58,7 @@ jobs:
 
       - name: Convert recording to GIF
         env:
-          OUTPUT_PATH: ${{ github.workspace }}/${{ inputs.output_path }}
+          OUTPUT_PATH: ${{ github.workspace }}/planet-card.gif
         run: |
           set -euo pipefail
           mkdir -p "$(dirname "$OUTPUT_PATH")"
@@ -78,7 +71,7 @@ jobs:
 
       - name: Validate GIF
         env:
-          OUTPUT_PATH: ${{ github.workspace }}/${{ inputs.output_path }}
+          OUTPUT_PATH: ${{ github.workspace }}/planet-card.gif
         run: |
           set -euo pipefail
           file "$OUTPUT_PATH" | grep -q "GIF image data"
@@ -89,22 +82,10 @@ jobs:
           size_bytes="$(stat --format=%s "$OUTPUT_PATH")"
           test "$size_bytes" -le 10485760
 
-      - name: Remove generator checkout
-        run: rm -rf .githubplanet-generator
-
-      - name: Commit updated GIF
-        env:
-          OUTPUT_PATH: ${{ inputs.output_path }}
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- "$OUTPUT_PATH"
-
-          if git diff --cached --quiet; then
-            echo "Planet card GIF is unchanged."
-            exit 0
-          fi
-
-          git commit -m "Update animated planet card [skip ci]"
-          git push
+      - name: Upload GIF
+        uses: actions/upload-artifact@v4
+        with:
+          name: planet-card
+          path: planet-card.gif
+          if-no-files-found: error
+          retention-days: 1

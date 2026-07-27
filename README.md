@@ -47,15 +47,37 @@ on:
     - cron: '0 0 * * *'
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
-  update:
+  generate:
+    permissions:
+      contents: read
     uses: nitr0yukkuri/githubplanet/.github/workflows/generate-profile-card-gif.yml@main
     with:
       username: あなたのGitHubユーザー名
-      output_path: planet-card.gif
+
+  publish:
+    needs: generate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: planet-card
+          path: .
+      - name: Validate downloaded GIF
+        run: |
+          file planet-card.gif | grep -q "GIF image data"
+          test "$(stat --format=%s planet-card.gif)" -le 10485760
+      - name: Commit updated GIF
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add planet-card.gif
+          git diff --cached --quiet && exit 0
+          git commit -m "Update animated planet card [skip ci]"
+          git push
 ```
 
 生成後はプロフィールREADMEから次のように表示できます。
@@ -65,6 +87,56 @@ jobs:
   <img src="./planet-card.gif" alt="GitHub Planet" width="800" />
 </a>
 ```
+
+## 🪐 Language Feature Showcase
+
+DBや実在ユーザーに依存しない固定テストデータから生成した、言語別のショーケース惑星です。各カードは本番環境の読み取り専用ショーケースAPIを使用します。
+
+<table>
+  <tr>
+    <td align="center">
+      <strong>CSS — Directional Color Flow</strong><br>
+      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=css&amp;fix=true">
+        <img width="400" alt="CSS showcase planet" src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=css&amp;fix=true">
+      </a>
+    </td>
+    <td align="center">
+      <strong>C++ — Idle Plasma Globe</strong><br>
+      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=cpp&amp;fix=true">
+        <img width="400" alt="C++ showcase planet" src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=cpp&amp;fix=true">
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <strong>Go — Atmospheric Wind</strong><br>
+      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=go&amp;fix=true">
+        <img width="400" alt="Go showcase planet" src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=go&amp;fix=true">
+      </a>
+    </td>
+    <td align="center">
+      <strong>TypeScript — Defensive Typed Shell</strong><br>
+      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=typescript&amp;fix=true">
+        <img width="400" alt="TypeScript showcase planet" src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=typescript&amp;fix=true">
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <strong>JavaScript — Reactive Golden Surface</strong><br>
+      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=javascript&amp;fix=true">
+        <img width="400" alt="JavaScript showcase planet" src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=javascript&amp;fix=true">
+      </a>
+    </td>
+    <td align="center">
+      <strong>HTML — Engraved DOM Network</strong><br>
+      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=html&amp;fix=true">
+        <img width="400" alt="HTML showcase planet" src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=html&amp;fix=true">
+      </a>
+    </td>
+  </tr>
+</table>
+
 ## 🛠️ 技術構成（Tech Stack）
 
 このプロジェクトは、フロントエンドからインフラまで一貫して設計された、モダンなWeb技術スタックで構築されています。

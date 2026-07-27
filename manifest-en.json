@@ -1,8 +1,8 @@
 {
   "name": "GitHub Planet",
   "short_name": "GitHub Planet",
-  "lang": "ja",
-  "start_url": "/",
+  "lang": "en",
+  "start_url": "/en",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
