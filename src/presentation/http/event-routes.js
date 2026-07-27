@@ -11,8 +11,7 @@ export function registerEventRoutes(app, {
 }) {
     function isInternalAuthorized(req) {
         if (!requireInternalAuth) return true;
-        if (req.session?.planetData?.user?.login) return true;
-        const apiKey = req.headers['x-api-key'] || req.query.api_key;
+        const apiKey = req.headers['x-api-key'];
         return Boolean(systemApiKey && apiKey === systemApiKey);
     }
 

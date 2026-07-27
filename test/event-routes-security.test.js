@@ -11,6 +11,12 @@ test('protects internal event tools and verifies GitHub webhook signatures', asy
             req.rawBody = Buffer.from(buffer);
         }
     }));
+    app.use((req, res, next) => {
+        if (req.get('x-test-session') === 'logged-in') {
+            req.session = { planetData: { user: { login: 'tester' } } };
+        }
+        next();
+    });
 
     registerEventRoutes(app, {
         geminiClient: {
@@ -37,8 +43,14 @@ test('protects internal event tools and verifies GitHub webhook signatures', asy
         body: JSON.stringify({ language: 'JavaScript' })
     });
     const unauthorizedDebug = await fetch(`${baseUrl}/api/debug-color/JavaScript`);
+    const loggedInDebug = await fetch(`${baseUrl}/api/debug-color/JavaScript`, {
+        headers: { 'x-test-session': 'logged-in' }
+    });
+    const queryKeyDebug = await fetch(`${baseUrl}/api/debug-color/JavaScript?api_key=system-secret`);
     assert.equal(unauthorizedMeteor.status, 401);
     assert.equal(unauthorizedDebug.status, 401);
+    assert.equal(loggedInDebug.status, 401);
+    assert.equal(queryKeyDebug.status, 401);
 
     const authorizedMeteor = await fetch(`${baseUrl}/api/meteor`, {
         method: 'POST',

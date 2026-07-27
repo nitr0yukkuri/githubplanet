@@ -143,14 +143,18 @@ registerPlanetRoutes(app, {
 });
 
 let io;
+const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
+if (isProduction && !webhookSecret) {
+    console.warn('[Webhook] GITHUB_WEBHOOK_SECRET is not configured; signature verification is disabled.');
+}
 registerEventRoutes(app, {
     geminiClient,
     extensionMap: EXTENSION_MAP,
     emitMeteor: (payload) => io.emit('meteor', payload),
     systemApiKey: process.env.SYSTEM_API_KEY,
-    webhookSecret: process.env.GITHUB_WEBHOOK_SECRET,
+    webhookSecret,
     requireInternalAuth: isProduction,
-    requireWebhookSignature: isProduction
+    requireWebhookSignature: isProduction && Boolean(webhookSecret)
 });
 
 // 404 handler
