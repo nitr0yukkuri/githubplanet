@@ -509,3 +509,13 @@ body {
         padding: 8px 18px;
     }
 }
+
+.detail-link {
+    padding: 0;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}

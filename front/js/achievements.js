@@ -77,6 +77,8 @@ function hideDetail() {
 function renderPage(data) {
     applyI18n();
     if (!data || !data.user || !data.planetData) {
+        document.getElementById('planet-type').textContent = '-';
+        document.getElementById('user-name').textContent = '-';
         const listContainer = document.getElementById('achievement-list');
         listContainer.innerHTML = `<p class="loading-text">${t('achievements.notLoggedInHtml')}</p>`;
         applyI18n(listContainer);
@@ -121,7 +123,7 @@ function renderPage(data) {
             <h3 class="card-header"><span class="icon">${headerIcon}</span> ${t(`achievements.names.${masterData.id}`)}</h3>
             <p class="card-status">${statusText}</p>
             <div class="card-details">
-                <a class="detail-link">${t('achievements.detailLink')}</a>
+                <button type="button" class="detail-link">${t('achievements.detailLink')}</button>
             </div>
         `;
 
@@ -144,7 +146,11 @@ async function initAchievementsPage() {
 
     try {
         const res = await fetch('/api/me');
-        if (!res.ok) throw new Error('Not logged in');
+        if (res.status === 401) {
+            renderPage(null);
+            return;
+        }
+        if (!res.ok) throw new Error(`Request failed: ${res.status}`);
         const data = await res.json();
         renderPage(data);
     } catch (error) {

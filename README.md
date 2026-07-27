@@ -222,6 +222,9 @@ GEMINI_API_KEY=ここにGeminiKey
 
 # システム連携用 (任意の文字列)
 SYSTEM_API_KEY=dev_system_key
+
+# GitHub Webhookの署名検証用 (Webhook設定と同じSecret)
+GITHUB_WEBHOOK_SECRET=dev_webhook_secret
 ```
 ## 3. 起動コマンド
 

@@ -32,7 +32,10 @@ const translations = {
             toggleDetails: '詳細パネルの切り替え',
             visitUser: '誰かの星を見に行く',
             visitRandom: 'ランダムで星を見に行く',
+            exploreRandom: 'ランダムな星を見る',
             returnMine: '自分の星に戻る',
+            usernamePlaceholder: 'GitHubユーザー名',
+            visit: '見に行く',
             unnamedPlanet: '名もなき星',
             ownerPlanet: '{username} の星',
             promptUsername: '見に行きたいGitHubユーザー名を入力してください:',
@@ -116,7 +119,9 @@ const translations = {
             save: '設定を保存する',
             saved: '称号を保存しました！',
             saveFailed: '保存に失敗しました。',
-            networkError: '通信エラーが発生しました。'
+            networkError: '通信エラーが発生しました。',
+            loginDescription: 'GitHub Planetのすべての機能を利用するにはログインが必要です。',
+            backHome: 'ホームに戻る'
         },
         card: {
             pageTitle: 'GitHub Planet Card',
@@ -167,7 +172,10 @@ const translations = {
             toggleDetails: 'Toggle details panel',
             visitUser: 'Visit a user planet',
             visitRandom: 'Visit a random planet',
+            exploreRandom: 'Explore a random planet',
             returnMine: 'Back to my planet',
+            usernamePlaceholder: 'GitHub username',
+            visit: 'Visit',
             unnamedPlanet: 'Nameless Star',
             ownerPlanet: '{username}\'s star',
             promptUsername: 'Enter a GitHub username to visit:',
@@ -251,7 +259,9 @@ const translations = {
             save: 'Save settings',
             saved: 'Title saved.',
             saveFailed: 'Failed to save.',
-            networkError: 'A network error occurred.'
+            networkError: 'A network error occurred.',
+            loginDescription: 'Sign in to use all GitHub Planet features.',
+            backHome: 'Back to home'
         },
         card: {
             pageTitle: 'GitHub Planet Card',
@@ -342,7 +352,7 @@ export function localizedPlanetName(data) {
         Go: 'Swift', Rust: 'Secure', PHP: 'Elephantine', Swift: 'Rapid', Kotlin: 'Serene',
         Shell: 'Automated', Dart: 'Daring', Scala: 'Spiraling', Perl: 'Pearlescent', Lua: 'Moonlit',
         Haskell: 'Pure', R: 'Statistical', Julia: 'Scientific', Vue: 'Reactive', Dockerfile: 'Ark-Bound',
-        Svelte: 'Constructed', Elixir: 'Alchemical', ObjectiveC: 'Objective', VimScript: 'Operational',
+        Svelte: 'Constructed', Elixir: 'Alchemical', 'Objective-C': 'Objective', VimScript: 'Operational',
         Unknown: 'Mysterious'
     };
     const colorNames = {
@@ -388,6 +398,24 @@ function applyLocalizedLinks(root) {
         const url = new URL(cardLink.getAttribute('href'), window.location.origin);
         cardLink.href = `${localizedPath('/card.html')}${url.search}`;
     }
+
+    const languageLink = document.getElementById('language-switch-link');
+    if (languageLink) {
+        const currentPath = window.location.pathname;
+        const targetPath = isEnglishPath()
+            ? currentPath.replace(/^\/(en|english)(?=\/|$)/, '') || '/'
+            : `/en${currentPath === '/' ? '' : currentPath}`;
+        languageLink.href = `${targetPath}${window.location.search}${window.location.hash}`;
+    }
+
+    document.querySelectorAll('[data-home-language]').forEach((link) => {
+        const language = link.dataset.homeLanguage;
+        link.href = `${language === 'en' ? '/en' : '/'}${window.location.search}${window.location.hash}`;
+        const isActive = language === getLanguage();
+        link.classList.toggle('is-active', isActive);
+        if (isActive) link.setAttribute('aria-current', 'page');
+        else link.removeAttribute('aria-current');
+    });
 }
 
 export function applyI18n(root = document) {

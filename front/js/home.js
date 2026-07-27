@@ -163,6 +163,7 @@ async function fetchMyPlanetData() {
             const cardLink = document.getElementById('card-link');
             if (cardLink) {
                 cardLink.href = `${localizedPath('/card.html')}?username=${loggedInUsername}`;
+                cardLink.hidden = false;
             }
 
             return data.planetData;
@@ -745,7 +746,7 @@ async function init() {
     scene.add(new THREE.AmbientLight(0x888888, 2));
     const pl = new THREE.PointLight(0xffffff, 25, 1000); pl.position.set(20, 10, 5); scene.add(pl);
     const dl = new THREE.DirectionalLight(0xffffff, 0.4); dl.position.set(50, 15, 10); scene.add(dl);
-    new THREE.CubeTextureLoader().setPath('/front/img/skybox/').load(['right.png', 'left.png', 'top.png', 'bottom.png', 'front.png', 'back.png'], (tex) => scene.background = tex);
+    new THREE.CubeTextureLoader().setPath('/front/img/skybox/').load(['right.webp', 'left.webp', 'top.webp', 'bottom.webp', 'front.webp', 'back.webp'], (tex) => scene.background = tex);
 
     socket.on('meteor', (data) => {
         if (document.hidden) return;
@@ -761,7 +762,10 @@ async function init() {
     const hasVisited = localStorage.getItem('githubPlanetVisited');
 
     if (!hasVisited) {
-        if (welcomeModal) welcomeModal.style.display = 'block';
+        if (welcomeModal) {
+            welcomeModal.style.display = 'block';
+            okButton?.focus();
+        }
 
         if (okButton) {
             okButton.addEventListener('click', async () => {
@@ -795,6 +799,8 @@ async function loadMainContent() {
             } else {
                 // 未ログインなら「星を誕生させる」画面を表示
                 notLoggedInContainer.style.display = 'flex';
+                const returnButton = document.getElementById('return-my-planet-btn');
+                if (returnButton) returnButton.style.display = 'none';
                 controls.enabled = false;
             }
         }
@@ -923,6 +929,7 @@ function setupUI() {
 
     document.getElementById('random-visit-btn')?.addEventListener('click', visitRandomPlanet);
     document.getElementById('next-random-planet-btn')?.addEventListener('click', visitRandomPlanet);
+    document.getElementById('empty-random-visit-btn')?.addEventListener('click', visitRandomPlanet);
 
     // ★追加: 「自分の星に戻る」ボタンの処理
     document.getElementById('return-my-planet-btn')?.addEventListener('click', async (e) => {

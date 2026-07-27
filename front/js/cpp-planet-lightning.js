@@ -6,7 +6,7 @@ export function isCppPlanet(data) {
 
 export function createCppPlanetLightningMaterial(THREE, planetTexture, planetColor) {
     const material = new THREE.MeshStandardMaterial({
-        color: planetColor || '#f34b7d',
+        color: '#07558f',
         aoMap: planetTexture,
         aoMapIntensity: 1.5,
         roughness: 0.8,

@@ -24,6 +24,13 @@ body {
     box-sizing: border-box;
 }
 
+.settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
 .back-button {
     color: #ccc;
     text-decoration: none;
@@ -42,6 +49,31 @@ body {
 .back-button:hover {
     background-color: rgba(255, 255, 255, 0.2);
     color: #fff;
+}
+
+.language-switch {
+    min-width: 48px;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+    padding: 8px 12px;
+    color: #dce8f5;
+    background: rgba(13, 17, 23, 0.66);
+    border: 1px solid rgba(88, 166, 255, 0.55);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    text-decoration: none;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.language-switch:hover,
+.language-switch:focus-visible {
+    color: #ffffff;
+    background: rgba(31, 111, 235, 0.3);
+    border-color: #58a6ff;
+    outline: none;
 }
 
 /* メインコンテンツを中央寄せにするラッパー */
@@ -195,6 +227,11 @@ select:focus {
 @media screen and (max-width: 768px) {
     .settings-container {
         padding: 20px;
+    }
+
+    .language-switch {
+        min-width: 44px;
+        padding: 7px 10px;
     }
     
     .settings-content h1 {

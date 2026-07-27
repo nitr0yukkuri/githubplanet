@@ -1,5 +1,39 @@
-export function registerEventRoutes(app, { geminiClient, extensionMap, emitMeteor }) {
-    app.post('/api/meteor', async (req, res) => {
+import crypto from 'crypto';
+
+export function registerEventRoutes(app, {
+    geminiClient,
+    extensionMap,
+    emitMeteor,
+    systemApiKey,
+    webhookSecret,
+    requireInternalAuth = false,
+    requireWebhookSignature = false
+}) {
+    function isInternalAuthorized(req) {
+        if (!requireInternalAuth) return true;
+        if (req.session?.planetData?.user?.login) return true;
+        const apiKey = req.headers['x-api-key'] || req.query.api_key;
+        return Boolean(systemApiKey && apiKey === systemApiKey);
+    }
+
+    function requireAuthorization(req, res, next) {
+        if (isInternalAuthorized(req)) return next();
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    function hasValidWebhookSignature(req) {
+        if (!requireWebhookSignature) return true;
+        if (!webhookSecret || !req.rawBody) return false;
+
+        const supplied = req.get('x-hub-signature-256') || '';
+        const expected = `sha256=${crypto.createHmac('sha256', webhookSecret).update(req.rawBody).digest('hex')}`;
+        const suppliedBuffer = Buffer.from(supplied);
+        const expectedBuffer = Buffer.from(expected);
+        return suppliedBuffer.length === expectedBuffer.length
+            && crypto.timingSafeEqual(suppliedBuffer, expectedBuffer);
+    }
+
+    app.post('/api/meteor', requireAuthorization, async (req, res) => {
         try {
             const { language, color, scale } = req.body;
             const finalColor = color || await geminiClient.resolveLanguageColor(language || 'Unknown');
@@ -17,6 +51,13 @@ export function registerEventRoutes(app, { geminiClient, extensionMap, emitMeteo
 
     app.post('/webhook', (req, res) => {
         try {
+            if (requireWebhookSignature && !webhookSecret) {
+                return res.status(503).send('Webhook secret is not configured');
+            }
+            if (!hasValidWebhookSignature(req)) {
+                return res.status(401).send('Invalid signature');
+            }
+
             const payload = req.body;
             res.status(200).send('OK');
 
@@ -53,18 +94,18 @@ export function registerEventRoutes(app, { geminiClient, extensionMap, emitMeteo
         }
     });
 
-    app.get('/api/test-gemini', async (req, res) => {
+    app.get('/api/test-gemini', requireAuthorization, async (req, res) => {
         const output = await geminiClient.ask("Explain 'Hello World' in one short sentence.");
         res.json({ status: output ? 'success' : 'error', output });
     });
 
-    app.get('/api/debug-color/:lang', async (req, res) => {
+    app.get('/api/debug-color/:lang', requireAuthorization, async (req, res) => {
         const mainLanguage = req.params.lang;
         const color = await geminiClient.resolveLanguageColor(mainLanguage);
         res.json({ target_language: mainLanguage, generated_color: color });
     });
 
-    app.get('/api/debug-name/:lang', async (req, res) => {
+    app.get('/api/debug-name/:lang', requireAuthorization, async (req, res) => {
         const mainLanguage = req.params.lang;
         const planetColor = req.query.color || '#808080';
         const totalCommits = parseInt(req.query.commits || '100');

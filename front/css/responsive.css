@@ -24,20 +24,22 @@
 
 /* スマホ向け (画面幅 480px 以下) */
 @media (max-width: 480px) {
+    .home-language-switcher {
+        right: 12px;
+        bottom: 12px;
+        grid-template-columns: repeat(2, 30px);
+        height: 30px;
+    }
+
     /* ▼▼▼ 詳細パネルのサイズ調整 (さらに狭くする) ▼▼▼ */
     #planet-details-panel {
         /* ★修正: 幅を55%に縮小 (これで左右の要素が近づきます) */
         width: 52%; 
         height: 275px;
         /* ★修正: 隠れる位置を調整 (幅+枠線分) */
-        left: -60%; 
+        left: -52%;
     }
     
-    #toggle-details-btn.is-open {
-        /* ★修正: 開いた時のボタン位置を55%に合わせる */
-        left: 52%; 
-    }
-
     /* パネル開閉ボタン自体のサイズ縮小 */
     #toggle-details-btn {
         width: 32px;

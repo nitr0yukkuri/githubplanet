@@ -57,7 +57,7 @@ export function generatePlanetName(mainLanguage, planetColor, totalCommits) {
         Go: '疾風の', Rust: '安全な', PHP: '象の', Swift: '迅速な', Kotlin: '静寂の',
         Shell: '自動の', Dart: '急襲の', Scala: '螺旋の', Perl: '真珠の', Lua: '月光の',
         Haskell: '純粋な', R: '統計の', Julia: '科学の', Vue: '反応の', Dockerfile: '箱舟の',
-        Svelte: '構築の', Elixir: '錬金の', ObjectiveC: '客観の', VimScript: '操作の', Unknown: '未知の'
+        Svelte: '構築の', Elixir: '錬金の', 'Objective-C': '客観の', VimScript: '操作の', Unknown: '未知の'
     };
     const colorNames = {
         '#f0db4f': '黄金', '#007acc': '蒼穹', '#306998': '深海', '#e34c26': '灼熱', '#563d7c': '紫水晶',
