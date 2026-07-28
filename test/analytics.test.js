@@ -22,7 +22,7 @@ test('loads the shared GA4 client on every public page except the admin sender',
 test('tracks only real production visits and excludes automated card captures', () => {
     const analytics = fs.readFileSync('front/js/analytics.js', 'utf8');
 
-    assert.match(analytics, /G-6X54Y51TTZ/);
+    assert.match(analytics, /G-96E74LPVN6/);
     assert.match(analytics, /githubplanet-git-543426763451\.asia-northeast2\.run\.app/);
     assert.match(analytics, /URLSearchParams\(window\.location\.search\)\.has\('fix'\)/);
     assert.match(analytics, /window\.gtag\('config', GA_MEASUREMENT_ID\)/);
