@@ -128,10 +128,16 @@ These showcase planets are generated from fixed test data and do not depend on t
     </td>
   </tr>
   <tr>
-    <td align="center" colspan="2">
+    <td align="center">
       <strong>JavaScript — Reactive Golden Surface</strong><br>
       <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=javascript&amp;fix=true">
         <img width="400" alt="JavaScript showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_javascript.gif">
+      </a>
+    </td>
+    <td align="center">
+      <strong>Rust — Desert Dust World</strong><br>
+      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=rust&amp;fix=true">
+        <img width="400" alt="Rust showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_rust.gif">
       </a>
     </td>
   </tr>
