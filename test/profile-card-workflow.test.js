@@ -33,3 +33,14 @@ test('copies animated public card URLs instead of local screenshot URLs', async 
     assert.doesNotMatch(cardScript, /image\.thum\.io/);
     assert.doesNotMatch(cardScript, /window\.location\.origin/);
 });
+
+test('shows the animated owner card in both READMEs', async () => {
+    const [readme, englishReadme] = await Promise.all([
+        readFile(new URL('../README.md', import.meta.url), 'utf8'),
+        readFile(new URL('../README.en.md', import.meta.url), 'utf8')
+    ]);
+    const animatedOwnerCard = /githubplanet\/card-assets\/profile_card\.gif/;
+
+    assert.match(readme, animatedOwnerCard);
+    assert.match(englishReadme, animatedOwnerCard);
+});

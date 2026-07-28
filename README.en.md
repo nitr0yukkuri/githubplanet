@@ -164,7 +164,7 @@ These showcase planets are generated from fixed test data and do not depend on t
 <div align="center">
   <p><strong>@nitr0yukkuri</strong></p>
   <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/">
-    <img src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=nitr0yukkuri&fix=true" alt="nitr0yukkuri's GitHub Planet" />
+    <img src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/profile_card.gif" alt="nitr0yukkuri's GitHub Planet" />
   </a>
 </div>
 
