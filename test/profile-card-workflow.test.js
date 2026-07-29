@@ -33,3 +33,28 @@ test('copies animated public card URLs instead of local screenshot URLs', async 
     assert.doesNotMatch(cardScript, /image\.thum\.io/);
     assert.doesNotMatch(cardScript, /window\.location\.origin/);
 });
+
+test('shows the animated owner card in both READMEs', async () => {
+    const [readme, englishReadme] = await Promise.all([
+        readFile(new URL('../README.md', import.meta.url), 'utf8'),
+        readFile(new URL('../README.en.md', import.meta.url), 'utf8')
+    ]);
+    const animatedOwnerCard = /githubplanet\/card-assets\/profile_card\.gif/;
+
+    assert.match(readme, animatedOwnerCard);
+    assert.match(englishReadme, animatedOwnerCard);
+});
+
+test('documents static cards as the default and animated cards as optional', async () => {
+    const [readme, englishReadme] = await Promise.all([
+        readFile(new URL('../README.md', import.meta.url), 'utf8'),
+        readFile(new URL('../README.en.md', import.meta.url), 'utf8')
+    ]);
+
+    assert.match(readme, /静止カード（標準）/);
+    assert.match(readme, /任意（GitHub Actions使用）：動くGIFカード/);
+    assert.match(readme, /Actions.+Update Planet Card.+手動実行/s);
+    assert.match(englishReadme, /Static card \(default\)/);
+    assert.match(englishReadme, /Optional \(uses GitHub Actions\): Animated GIF card/);
+    assert.match(englishReadme, /Actions.+manually run.+Update Planet Card/s);
+});

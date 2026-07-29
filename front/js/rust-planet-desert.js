@@ -1,4 +1,4 @@
-const RUST_DUST_PARTICLE_COUNT = 1800;
+const RUST_DUST_PARTICLE_COUNT = 12000;
 
 export function isRustPlanet(data) {
     return data?.mainLanguage?.trim().toLowerCase() === 'rust';
@@ -184,8 +184,8 @@ export function createRustPlanetDust(THREE, radius) {
                 vec4 viewPosition = modelViewMatrix * vec4(displaced, 1.0);
                 gl_Position = projectionMatrix * viewPosition;
                 gl_PointSize = mix(
-                    mix(0.8, 1.8, rustDustSeed),
-                    mix(2.0, 3.5, rustDustSeed),
+                    mix(1.0, 2.2, rustDustSeed),
+                    mix(2.2, 4.0, rustDustSeed),
                     coarse
                 )
                     * rustDustPixelRatio * (12.0 / max(1.0, -viewPosition.z));
@@ -194,7 +194,7 @@ export function createRustPlanetDust(THREE, radius) {
                 vRustDustScreenTangent = screenTangent
                     / max(length(screenTangent), 0.0001);
                 vRustDustAlpha = awake * sparse * stormBand
-                    * mix(0.28 + lift * 0.38, 0.36 + lift * 0.44, coarse);
+                    * mix(0.2 + lift * 0.24, 0.24 + lift * 0.28, coarse);
                 vRustDustWarmth = rustDustSeed;
                 vRustDustCoarse = coarse;
             }
@@ -215,10 +215,10 @@ export function createRustPlanetDust(THREE, radius) {
                 );
                 float radius = length(orientedPoint);
                 if (radius > 1.0) discard;
-                float grain = 1.0 - smoothstep(0.16, 1.0, radius);
+                float grain = 1.0 - smoothstep(0.0, 1.0, radius);
                 vec3 color = mix(
-                    vec3(0.48, 0.24, 0.12),
-                    vec3(0.84, 0.63, 0.43),
+                    vec3(0.4, 0.19, 0.09),
+                    vec3(0.64, 0.42, 0.24),
                     vRustDustWarmth
                 );
                 gl_FragColor = vec4(color, grain * vRustDustAlpha);

@@ -31,17 +31,29 @@
 ### 5. プロフィール用3Dカード生成
 - **OGP画像生成:** あなたの惑星の現在のステータス（言語、コミット数、惑星の姿）を収めた専用のカードページ (`card.html`) を生成します。
 ### 🌌 あなたのGitHubプロフィールに惑星を飾ろう！
-github planetに訪れて、以下のコードを自分の `README.md` に貼るだけで、あなたの惑星カードが表示されます。
 
-#### 静止カードをすぐ表示する
+| 表示方法 | おすすめ用途 | GitHub Actions | 更新方法 |
+| --- | --- | --- | --- |
+| 静止カード（標準） | まず表示したい人 | 不要 | カードを開いた時点の画像 |
+| GIFカード（任意） | 惑星の動きも見せたい人 | 必要 | 毎日自動更新 |
+
+通常は静止カードがおすすめです。`ユーザー名` を置き換えてプロフィールの `README.md` に貼るだけで利用でき、リポジトリへのファイル追加やGitHub Actionsの設定は必要ありません。
+
+#### 標準（おすすめ・GitHub Actions不要）：静止カード
 
 ```markdown
 [![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=ユーザー名&fix=true)](https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=ユーザー名)
 ```
 
-#### 動くGIFカードを自動更新する
+#### 任意（GitHub Actions使用）：動くGIFカード
 
-プロフィールREADMEのリポジトリに次の `.github/workflows/update-planet-card.yml` を追加すると、そのリポジトリ自身が毎日GIFを生成して更新します。
+惑星を動かしたい場合だけ、次の手順を行います。
+
+1. 自分のプロフィールREADMEリポジトリ（`GitHubユーザー名/GitHubユーザー名`）を開きます。
+2. `.github/workflows/update-planet-card.yml` を作成し、次の内容を追加します。
+3. `あなたのGitHubユーザー名` を自分のユーザー名へ置き換えます。
+4. GitHubの **Actions** タブから **Update Planet Card** を一度手動実行します。
+5. `planet-card.gif` がプロフィールリポジトリへ追加されたことを確認します。以降は毎日自動更新されます。
 
 ```yaml
 name: Update Planet Card
@@ -84,7 +96,7 @@ jobs:
           git push
 ```
 
-生成後は `GitHubユーザー名` を置き換え、プロフィールREADMEに次のコードを貼るとアニメーションが表示されます。
+生成後は `GitHubユーザー名` を置き換え、プロフィールREADMEに次のコードを貼るとアニメーションが表示されます。GIFがまだ生成されていない状態では画像が表示されないため、先にワークフローの完了を確認してください。
 
 ```markdown
 [![GitHub Planet](https://raw.githubusercontent.com/GitHubユーザー名/GitHubユーザー名/main/planet-card.gif)](https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=GitHubユーザー名)
@@ -164,7 +176,7 @@ DBや実在ユーザーに依存しない固定テストデータから生成し
 <div align="center">
   <p><strong>@nitr0yukkuri</strong></p>
   <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/">
-    <img src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=nitr0yukkuri&fix=true" />
+    <img src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/profile_card.gif" />
   </a>
 </div>
  

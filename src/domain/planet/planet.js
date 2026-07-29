@@ -22,7 +22,10 @@ export function normalizePlanetCommitCounts(data) {
 export function checkAchievements(existingAchievements, stats, now = new Date()) {
     const newAchievements = { ...existingAchievements };
     const unlockedAt = now.toISOString();
-    const { totalCommits, weeklyCommits, languagesCount, hasContributedToOthers, totalStars, createdAt, languageStats } = stats;
+    const {
+        totalCommits, weeklyCommits, languagesCount, hasContributedToOthers,
+        hasMergedExternalPullRequest, totalStars, createdAt, languageStats
+    } = stats;
 
     const unlock = (achievement) => {
         if (!newAchievements[achievement.id]) {
@@ -34,6 +37,7 @@ export function checkAchievements(existingAchievements, stats, now = new Date())
     if (totalCommits >= 1) unlock(ACHIEVEMENTS.FIRST_COMMIT);
     if (weeklyCommits >= 50) unlock(ACHIEVEMENTS.VELOCITY_STAR);
     if (hasContributedToOthers) unlock(ACHIEVEMENTS.OS_CONTRIBUTOR);
+    if (hasMergedExternalPullRequest) unlock(ACHIEVEMENTS.FIRST_CONTACT);
     if (totalStars >= 10) unlock(ACHIEVEMENTS.STARGAZER);
     if (languagesCount >= 5) unlock(ACHIEVEMENTS.POLYGLOT_PIONEER);
     const substantialLanguages = Object.values(languageStats || {})

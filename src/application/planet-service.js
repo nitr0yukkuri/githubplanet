@@ -15,6 +15,10 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
 
         const ownedRepos = userData.repositories.nodes || [];
         const contributedRepos = userData.repositoriesContributedTo.nodes || [];
+        const hasMergedExternalPullRequest = (userData.mergedPullRequests || []).some((pullRequest) => {
+            const ownerLogin = pullRequest.repository?.owner?.login;
+            return ownerLogin && ownerLogin.toLowerCase() !== user.login.toLowerCase();
+        });
         const repositories = [...ownedRepos, ...contributedRepos];
         const starredCount = userData.starredRepositories ? userData.starredRepositories.totalCount : 0;
         const observedTotalContributions = userData.contributionsCollection?.contributionCalendar?.totalContributions || 0;
@@ -120,6 +124,7 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
                 languagesCount: Object.keys(languageStats).length,
                 languageStats,
                 hasContributedToOthers: contributedRepos.length > 0,
+                hasMergedExternalPullRequest,
                 totalStars: starredCount + receivedStars,
                 createdAt: user.created_at
             });
