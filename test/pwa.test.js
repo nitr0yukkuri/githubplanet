@@ -21,7 +21,7 @@ test('uses accurate icons and locale-specific PWA start routes', async () => {
     assert.match(index, /manifest-en\.json/);
 });
 
-test('removes the legacy cache and intercepts network requests', async () => {
+test('removes the legacy cache without intercepting network requests', async () => {
     const serviceWorker = await readFile(new URL('sw.js', rootUrl), 'utf8');
 
     assert.match(serviceWorker, /caches\.delete/);
