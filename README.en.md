@@ -35,17 +35,28 @@
 
 ## 🌌 Add Your Planet to Your GitHub Profile
 
-Visit GitHub Planet and replace `YOUR_USERNAME` in the following snippet:
+| Display option | Recommended for | GitHub Actions | Updates |
+| --- | --- | --- | --- |
+| Static card (default) | Getting a card displayed immediately | Not required | Snapshot when the card is requested |
+| Animated GIF (optional) | Showing the planet in motion | Required | Automatically every day |
 
-### Display a static card immediately
+The static card is the recommended default. Replace `YOUR_USERNAME` and paste the snippet into your profile `README.md`; no repository files or GitHub Actions setup are required.
+
+### Default (recommended, no GitHub Actions): Static card
 
 ```markdown
 [![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=YOUR_USERNAME&fix=true)](https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=YOUR_USERNAME)
 ```
 
-### Automatically update an animated GIF card
+### Optional (uses GitHub Actions): Animated GIF card
 
-Add `.github/workflows/update-planet-card.yml` to your profile README repository. The workflow generates and publishes an updated GIF every day.
+Use the following steps only when you want an animated planet:
+
+1. Open your profile README repository (`YOUR_USERNAME/YOUR_USERNAME`).
+2. Create `.github/workflows/update-planet-card.yml` with the following content.
+3. Replace `YOUR_GITHUB_USERNAME` with your GitHub username.
+4. Open the repository's **Actions** tab and manually run **Update Planet Card** once.
+5. Confirm that `planet-card.gif` was added to the profile repository. It will then update automatically every day.
 
 ```yaml
 name: Update Planet Card
@@ -88,7 +99,7 @@ jobs:
           git push
 ```
 
-After the workflow creates the GIF, replace `YOUR_USERNAME` and paste this animated card into your profile README:
+After the workflow creates the GIF, replace `YOUR_USERNAME` and paste this animated card into your profile README. The image will be broken until the first workflow run has successfully created `planet-card.gif`.
 
 ```markdown
 [![GitHub Planet](https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_USERNAME/main/planet-card.gif)](https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=YOUR_USERNAME)

@@ -114,7 +114,7 @@ test('creates sparse surface dust that lifts briefly and returns', () => {
     const [surfaceDust, outerDust, farDust, dustPoints] = dust.children;
 
     assert.equal(dust.children.length, 4);
-    assert.equal(dustPoints.geometry.attributes.position.array.length, 1800 * 3);
+    assert.equal(dustPoints.geometry.attributes.position.array.length, 12000 * 3);
     assert.equal(dustPoints.geometry.attributes.rustDustTangent.itemSize, 3);
     assert.equal(dustPoints.geometry.attributes.rustDustSeed.itemSize, 1);
     assert.match(dustPoints.material.vertexShader, /float lift/);
@@ -122,7 +122,10 @@ test('creates sparse surface dust that lifts briefly and returns', () => {
     assert.match(dustPoints.material.vertexShader, /float coarse/);
     assert.match(dustPoints.material.vertexShader, /stormBand/);
     assert.match(dustPoints.material.vertexShader, /vRustDustScreenTangent/);
+    assert.match(dustPoints.material.vertexShader, /mix\(1\.0, 2\.2, rustDustSeed\)/);
+    assert.match(dustPoints.material.vertexShader, /mix\(2\.2, 4\.0, rustDustSeed\)/);
     assert.match(dustPoints.material.fragmentShader, /orientedPoint/);
+    assert.match(dustPoints.material.fragmentShader, /smoothstep\(0\.0, 1\.0, radius\)/);
     assert.match(dustPoints.material.vertexShader, /sin\(clamp\(life \/ 0\.72/);
     assert.doesNotMatch(dustPoints.material.vertexShader, /goWake|tail/i);
     assert.equal(surfaceDust.material.side, 'front');

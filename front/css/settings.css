@@ -56,9 +56,9 @@ body {
     box-sizing: border-box;
     margin-bottom: 20px;
     padding: 8px 12px;
-    color: #dce8f5;
+    color: #f0edff;
     background: rgba(13, 17, 23, 0.66);
-    border: 1px solid rgba(88, 166, 255, 0.55);
+    border: 1px solid rgba(178, 171, 216, 0.62);
     border-radius: 6px;
     font-size: 0.85rem;
     font-weight: 700;
@@ -71,8 +71,8 @@ body {
 .language-switch:hover,
 .language-switch:focus-visible {
     color: #ffffff;
-    background: rgba(31, 111, 235, 0.3);
-    border-color: #58a6ff;
+    background: rgba(86, 81, 127, 0.82);
+    border-color: #b2abd8;
     outline: none;
 }
 
@@ -132,7 +132,7 @@ body {
 /* プレビュー表示 */
 .preview-box {
     background: rgba(13, 17, 23, 0.8);
-    border: 1px solid #58a6ff;
+    border: 1px solid #b2abd8;
     border-radius: 8px;
     /* ★変更: 1rem(小)と1.5rem(大)の間くらい */
     padding: 1.25rem;
@@ -140,11 +140,11 @@ body {
     font-size: 1.35rem;
     /* ★変更: 1.5rem(小)と2rem(大)の間くらい */
     margin-bottom: 1.75rem;
-    color: #58a6ff;
+    color: #e1dcff;
     font-weight: bold;
     letter-spacing: 1px;
-    box-shadow: 0 0 15px rgba(88, 166, 255, 0.2);
-    text-shadow: 0 0 8px rgba(88, 166, 255, 0.4);
+    box-shadow: 0 0 15px rgba(86, 81, 127, 0.58);
+    text-shadow: 0 0 8px rgba(178, 171, 216, 0.45);
 }
 
 .selectors {
@@ -178,32 +178,32 @@ select:hover {
 
 select:focus {
     outline: none;
-    border-color: #58a6ff;
-    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+    border-color: #b2abd8;
+    box-shadow: 0 0 0 3px rgba(86, 81, 127, 0.5);
 }
 
 /* 保存ボタン */
 .save-btn {
-    /* ★変更: 緑色から青色のグラデーションに変更 */
-    background: linear-gradient(135deg, #1f6feb, #58a6ff);
+    /* ★変更: 宇宙背景になじむ紫のアクセント */
+    background: #56517f;
     color: white;
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.28);
     padding: 0.9rem 2.5rem; /* サイズ調整 */
     border-radius: 30px;
     font-size: 1.05rem;
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s ease;
-    /* ★変更: 影の色も青系に変更 */
-    box-shadow: 0 4px 15px rgba(31, 111, 235, 0.4);
+    /* ★変更: 影の色も紫系に変更 */
+    box-shadow: 0 4px 15px rgba(23, 6, 51, 0.6);
     width: 100%;
 }
 
 .save-btn:hover {
     /* transformを削除して固定 */
-    /* ★変更: ホバー時の影の色も青系に変更 */
-    box-shadow: 0 6px 20px rgba(31, 111, 235, 0.6);
-    filter: brightness(1.1);
+    /* ★変更: ホバー時の影の色も紫系に変更 */
+    background: #696391;
+    box-shadow: 0 6px 20px rgba(23, 6, 51, 0.75);
 }
 
 .save-btn:active {

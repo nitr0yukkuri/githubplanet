@@ -35,6 +35,7 @@ test('unlocks the same achievements without replacing existing timestamps', () =
         weeklyCommits: 50,
         languagesCount: 5,
         hasContributedToOthers: true,
+        hasMergedExternalPullRequest: true,
         totalStars: 10,
         createdAt: '2025-01-01T00:00:00.000Z'
     }, now);
@@ -43,7 +44,7 @@ test('unlocks the same achievements without replacing existing timestamps', () =
     assert.equal(result.COMMIT_1000.unlockedAt, now.toISOString());
     assert.equal(result.CONTRIBUTION_10000, undefined);
     assert.deepEqual(Object.keys(result).sort(), [
-        'COMMIT_100', 'COMMIT_1000', 'COMMIT_500', 'FIRST_COMMIT', 'FIRST_PLANET',
+        'COMMIT_100', 'COMMIT_1000', 'COMMIT_500', 'FIRST_COMMIT', 'FIRST_CONTACT', 'FIRST_PLANET',
         'OCTOCAT_FRIEND', 'OS_CONTRIBUTOR', 'POLYGLOT_PIONEER', 'STARGAZER', 'VELOCITY_STAR'
     ]);
 
@@ -77,6 +78,28 @@ test('unlocks the bridge achievement only when two languages reach 10,000 bytes'
 
     assert.equal(belowThreshold.DUAL_WORLD_BRIDGE, undefined);
     assert.ok(atThreshold.DUAL_WORLD_BRIDGE);
+});
+
+test('unlocks first contact only for a merged pull request in an externally owned repository', () => {
+    const withoutMergedExternalPullRequest = checkAchievements({}, {
+        totalCommits: 0,
+        weeklyCommits: 0,
+        languagesCount: 0,
+        hasContributedToOthers: true,
+        hasMergedExternalPullRequest: false,
+        totalStars: 0
+    });
+    const withMergedExternalPullRequest = checkAchievements({}, {
+        totalCommits: 0,
+        weeklyCommits: 0,
+        languagesCount: 0,
+        hasContributedToOthers: true,
+        hasMergedExternalPullRequest: true,
+        totalStars: 0
+    });
+
+    assert.equal(withoutMergedExternalPullRequest.FIRST_CONTACT, undefined);
+    assert.ok(withMergedExternalPullRequest.FIRST_CONTACT);
 });
 
 test('maps database rows to the existing API shape', () => {

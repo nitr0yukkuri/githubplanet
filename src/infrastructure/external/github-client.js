@@ -45,6 +45,18 @@ const RECENT_CONTRIBUTIONS_QUERY = `
   }
 `;
 
+const MERGED_PULL_REQUESTS_QUERY = `
+  query MergedPullRequests($login: String!) {
+    user(login: $login) {
+      pullRequests(first: 100, states: MERGED, orderBy: {field: UPDATED_AT, direction: DESC}) {
+        nodes {
+          repository { owner { login } }
+        }
+      }
+    }
+  }
+`;
+
 export function createGithubClient({ axios, clientId, clientSecret, callbackUrl }) {
     async function requestGraphql(query, variables, accessToken) {
         const response = await axios.post('https://api.github.com/graphql', {
@@ -92,6 +104,7 @@ export function createGithubClient({ axios, clientId, clientSecret, callbackUrl 
         async getPlanetSource(login, accessToken) {
             const repositoryData = await requestGraphql(REPOSITORY_DATA_QUERY, { login }, accessToken);
             const annualData = await requestGraphql(ANNUAL_CONTRIBUTIONS_QUERY, { login }, accessToken);
+            const pullRequestData = await requestGraphql(MERGED_PULL_REQUESTS_QUERY, { login }, accessToken);
 
             const to = new Date();
             const from = new Date(to);
@@ -104,6 +117,7 @@ export function createGithubClient({ axios, clientId, clientSecret, callbackUrl 
 
             return {
                 ...repositoryData,
+                mergedPullRequests: pullRequestData.pullRequests?.nodes || [],
                 contributionsCollection: {
                     contributionCalendar: {
                         totalContributions: annualData.contributionsCollection?.contributionCalendar?.totalContributions || 0,
