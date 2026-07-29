@@ -26,6 +26,6 @@ test('removes the legacy cache without intercepting network requests', async () 
 
     assert.match(serviceWorker, /caches\.delete/);
     assert.match(serviceWorker, /self\.clients\.claim/);
-    assert.match(serviceWorker, /addEventListener\(['"]fetch/);
-    assert.match(serviceWorker, /caches\.match/);
+    assert.doesNotMatch(serviceWorker, /addEventListener\(['"]fetch/);
+    assert.doesNotMatch(serviceWorker, /caches\.match/);
 });
