@@ -453,7 +453,7 @@ function addParticles(color) {
     planetGroup.add(particlesMesh);
 }
 
-const CARD_PLANET_ROTATION_SPEED = 0.003;
+const CARD_PLANET_ROTATION_SPEED = 0.005;
 const BASE_PLANET_ROTATION_SPEED = 0.001;
 
 function animate() {
