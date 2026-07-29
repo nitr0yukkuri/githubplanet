@@ -13,6 +13,11 @@ import {
     updateGoPlanetWind
 } from './go-planet-wind.js';
 import {
+    createVueLeafWind,
+    isVuePlanet,
+    updateVueLeafWind
+} from './vue-planet-circulation.js';
+import {
     createTypeScriptPlanetMaterial,
     createTypeScriptPlanetShell,
     isTypeScriptPlanet,
@@ -167,6 +172,9 @@ let cssPlanetMaterial = null;
 let cppPlanetMaterial = null;
 let goPlanetWindMaterial = null;
 let goPlanetAtmosphere = null;
+let vueLeafWind = null;
+let cardRotationMultiplier = 1;
+let windAnimationMultiplier = 1;
 let typeScriptPlanetMaterial = null;
 let typeScriptPlanetShell = null;
 let javaScriptPlanetMaterial = null;
@@ -264,6 +272,9 @@ function createPlanet(data) {
     cppPlanetMaterial = null;
     goPlanetWindMaterial = null;
     goPlanetAtmosphere = null;
+    vueLeafWind = null;
+    cardRotationMultiplier = isVuePlanet(data) ? 0.7 : 1;
+    windAnimationMultiplier = isVuePlanet(data) ? 0.5 : 1;
     typeScriptPlanetMaterial = null;
     typeScriptPlanetShell = null;
     javaScriptPlanetMaterial = null;
@@ -287,8 +298,13 @@ function createPlanet(data) {
     } else if (isCppPlanet(data)) {
         material = createCppPlanetLightningMaterial(THREE, planetTexture, data.planetColor);
         cppPlanetMaterial = material;
-    } else if (isGoPlanet(data)) {
-        material = createGoPlanetWindMaterial(THREE, planetTexture, -1);
+    } else if (isGoPlanet(data) || isVuePlanet(data)) {
+        material = createGoPlanetWindMaterial(
+            THREE,
+            planetTexture,
+            -1,
+            isVuePlanet(data) ? 'vue' : 'go'
+        );
         goPlanetWindMaterial = material;
     } else if (isTypeScriptPlanet(data)) {
         material = createTypeScriptPlanetMaterial(THREE, planetTexture);
@@ -311,9 +327,18 @@ function createPlanet(data) {
 
     planetMesh = new THREE.Mesh(geometry, material);
     planetGroup.add(planetMesh);
-    if (isGoPlanet(data)) {
-        goPlanetAtmosphere = createGoPlanetAtmosphere(THREE, baseSize, -1);
+    if (isGoPlanet(data) || isVuePlanet(data)) {
+        goPlanetAtmosphere = createGoPlanetAtmosphere(
+            THREE,
+            baseSize,
+            -1,
+            isVuePlanet(data) ? 'vue' : 'go'
+        );
         planetGroup.add(goPlanetAtmosphere);
+    }
+    if (isVuePlanet(data)) {
+        vueLeafWind = createVueLeafWind(THREE, baseSize);
+        planetGroup.add(vueLeafWind);
     }
     if (isTypeScriptPlanet(data)) {
         typeScriptPlanetShell = createTypeScriptPlanetShell(THREE, baseSize);
@@ -458,16 +483,19 @@ const BASE_PLANET_ROTATION_SPEED = 0.001;
 
 function animate() {
     requestAnimationFrame(animate);
-    planetGroup.rotation.y -= CARD_PLANET_ROTATION_SPEED;
+    const cardRotationSpeed = CARD_PLANET_ROTATION_SPEED * cardRotationMultiplier;
+    planetGroup.rotation.y -= cardRotationSpeed;
     const now = performance.now();
     const goWindSpeedFactor = calculateGoWindSpeedFactor(
-        CARD_PLANET_ROTATION_SPEED,
+        cardRotationSpeed,
         BASE_PLANET_ROTATION_SPEED
     );
+    const windSpeed = goWindSpeedFactor * windAnimationMultiplier;
     updateCssPlanetFlow(cssPlanetMaterial, now);
     updateCppPlanetLightning(cppPlanetMaterial, now);
-    updateGoPlanetWind(goPlanetWindMaterial, now, goWindSpeedFactor);
-    updateGoPlanetAtmosphere(goPlanetAtmosphere, now, goWindSpeedFactor);
+    updateGoPlanetWind(goPlanetWindMaterial, now, windSpeed);
+    updateGoPlanetAtmosphere(goPlanetAtmosphere, now, windSpeed);
+    updateVueLeafWind(vueLeafWind, now, windSpeed);
     updateTypeScriptPlanetShell(typeScriptPlanetMaterial, now);
     updateTypeScriptPlanetShell(typeScriptPlanetShell, now);
     updateJavaScriptPlanetReactivity(javaScriptPlanetMaterial, now);

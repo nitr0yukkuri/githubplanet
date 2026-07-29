@@ -152,6 +152,14 @@ These showcase planets are generated from fixed test data and do not depend on t
       </a>
     </td>
   </tr>
+  <tr>
+    <td align="center" colspan="2">
+      <strong>Vue — Gentle Reactive Wind</strong><br>
+      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=vue&amp;fix=true">
+        <img width="400" alt="Vue showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_vue.gif">
+      </a>
+    </td>
+  </tr>
 </table>
 
 ## 🛠️ Tech Stack

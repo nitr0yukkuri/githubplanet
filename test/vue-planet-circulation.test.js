@@ -127,3 +127,14 @@ test('slows only Vue rotation and wind on home', () => {
     assert.match(home, /createVueLeafWind\(THREE, 4\)/);
     assert.match(home, /updateVueLeafWind\(vueLeafWind/);
 });
+
+test('uses the same Vue theme, leaves, and slower motion on cards', () => {
+    const card = readFileSync(new URL('../front/js/card.js', import.meta.url), 'utf8');
+
+    assert.match(card, /isGoPlanet\(data\) \|\| isVuePlanet\(data\)/);
+    assert.match(card, /isVuePlanet\(data\) \? 'vue' : 'go'/);
+    assert.match(card, /cardRotationMultiplier = isVuePlanet\(data\) \? 0\.7 : 1/);
+    assert.match(card, /windAnimationMultiplier = isVuePlanet\(data\) \? 0\.5 : 1/);
+    assert.match(card, /createVueLeafWind\(THREE, baseSize\)/);
+    assert.match(card, /updateVueLeafWind\(vueLeafWind/);
+});
