@@ -1,4 +1,4 @@
-const RUST_DUST_PARTICLE_COUNT = 24000;
+const RUST_DUST_PARTICLE_COUNT = 12000;
 
 export function isRustPlanet(data) {
     return data?.mainLanguage?.trim().toLowerCase() === 'rust';
