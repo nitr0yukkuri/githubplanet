@@ -26,8 +26,7 @@ test('uses the optimized shared background and excludes legacy images from Cloud
     }
 
     const optimizedSize = fs.statSync('front/img/Achievementsimage.webp').size;
-    const originalSize = fs.statSync('front/img/Achievementsimage.jpg').size;
-    assert.ok(optimizedSize < originalSize * 0.2, `${optimizedSize} is not below 20% of ${originalSize}`);
+    assert.ok(optimizedSize < 1024 * 1024, `${optimizedSize} is not below 1 MiB`);
 
     const dockerIgnore = fs.readFileSync('.dockerignore', 'utf8');
     assert.match(dockerIgnore, /front\/img\/skybox\/\*\.png/);
