@@ -29,3 +29,16 @@ test('removes the legacy cache without intercepting network requests', async () 
     assert.doesNotMatch(serviceWorker, /addEventListener\(['"]fetch/);
     assert.doesNotMatch(serviceWorker, /caches\.match/);
 });
+
+test('serves both manifests and the service worker from their linked root paths', async () => {
+    const pageRoutes = await readFile(
+        new URL('src/presentation/http/page-routes.js', rootUrl),
+        'utf8'
+    );
+
+    assert.match(pageRoutes, /app\.get\('\/manifest\.json'/);
+    assert.match(pageRoutes, /app\.get\('\/manifest-en\.json'/);
+    assert.match(pageRoutes, /app\.get\('\/sw\.js'/);
+    assert.match(pageRoutes, /application\/manifest\+json/);
+    assert.match(pageRoutes, /Cache-Control', 'no-cache/);
+});

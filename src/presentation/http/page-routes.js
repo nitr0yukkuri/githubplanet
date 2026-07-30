@@ -44,6 +44,22 @@ export function registerPageRoutes(app, { rootDirectory, isProduction, systemApi
         sendPage(req, res, 'index.html');
     });
 
+    app.get('/manifest.json', (req, res) => {
+        res.type('application/manifest+json');
+        res.sendFile(path.join(rootDirectory, 'manifest.json'));
+    });
+
+    app.get('/manifest-en.json', (req, res) => {
+        res.type('application/manifest+json');
+        res.sendFile(path.join(rootDirectory, 'manifest-en.json'));
+    });
+
+    app.get('/sw.js', (req, res) => {
+        res.setHeader('Cache-Control', 'no-cache');
+        res.type('application/javascript');
+        res.sendFile(path.join(rootDirectory, 'sw.js'));
+    });
+
     app.get('/api/card/:username', (req, res) => {
         const loggedInUser = req.session.planetData?.user?.login;
         const { username } = req.params;
