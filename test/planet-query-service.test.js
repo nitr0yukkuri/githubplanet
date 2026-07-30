@@ -72,17 +72,38 @@ test('keeps the previous stale row when the post-refresh read is empty', async (
     assert.equal(reads, 2);
 });
 
-test('refreshes a random planet when last_updated is missing', async () => {
+test('returns a stale random planet without waiting for its refresh', async () => {
     const row = { github_id: 2, username: 'random', last_updated: null };
-    const { calls, service } = createHarness({ random: row });
+    const calls = [];
+    let finishRefresh;
+    const refreshBlocked = new Promise((resolve) => { finishRefresh = resolve; });
+    const service = createPlanetQueryService({
+        repository: {
+            async findRandom() {
+                calls.push(['findRandom']);
+                return row;
+            }
+        },
+        githubClient: {
+            async getUser(username) {
+                calls.push(['getUser', username]);
+                return { id: 2, login: username };
+            }
+        },
+        planetService: {
+            async updateAndSavePlanetData(user) {
+                calls.push(['updateAndSavePlanetData', user.login]);
+                await refreshBlocked;
+            }
+        },
+        cacheDuration: 60_000
+    });
 
     assert.equal(await service.getRandom({ loggedInUserId: 1, accessToken: 'token' }), row);
-    assert.deepEqual(calls, [
-        ['findRandom', [1]],
-        ['getUser', 'random'],
-        ['updateAndSavePlanetData', 'random'],
-        ['findByGithubId', 2]
-    ]);
+    assert.deepEqual(calls, [['findRandom'], ['getUser', 'random'], ['updateAndSavePlanetData', 'random']]);
+
+    finishRefresh();
+    await refreshBlocked;
 });
 
 test('uses the same random fallback order and delegates title persistence', async () => {
