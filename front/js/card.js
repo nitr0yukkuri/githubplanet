@@ -264,10 +264,27 @@ function calculateStarCount(totalCommits) {
     return starCount;
 }
 
-function createPlanet(data) {
-    while (planetGroup.children.length > 0) {
-        planetGroup.remove(planetGroup.children[0]);
+function disposeObject(object) {
+    if (!object) return;
+    for (let index = object.children?.length - 1; index >= 0; index--) {
+        const child = object.children[index];
+        disposeObject(child);
+        object.remove(child);
     }
+    object.geometry?.dispose();
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    materials.forEach((material) => {
+        if (!material) return;
+        const textures = new Set([material.map, material.aoMap]);
+        textures.forEach((texture) => {
+            if (texture && texture !== planetTexture) texture.dispose();
+        });
+        material.dispose();
+    });
+}
+
+function createPlanet(data) {
+    while (planetGroup.children.length > 0) disposeObject(planetGroup.children[0]);
     cssPlanetMaterial = null;
     cppPlanetMaterial = null;
     goPlanetWindMaterial = null;

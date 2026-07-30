@@ -285,17 +285,14 @@ function disposeObject(obj) {
     }
 
     if (obj.material) {
-        if (Array.isArray(obj.material)) {
-            obj.material.forEach(m => {
-                if (m.map) m.map.dispose();
-                if (m.aoMap && m.aoMap !== cachedPlanetTexture) m.aoMap.dispose();
-                m.dispose();
+        const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+        materials.forEach((material) => {
+            const textures = new Set([material.map, material.aoMap]);
+            textures.forEach((texture) => {
+                if (texture && texture !== cachedPlanetTexture) texture.dispose();
             });
-        } else {
-            if (obj.material.map) obj.material.map.dispose();
-            if (obj.material.aoMap && obj.material.aoMap !== cachedPlanetTexture) obj.material.aoMap.dispose();
-            obj.material.dispose();
-        }
+            material.dispose();
+        });
     }
 }
 
@@ -791,7 +788,16 @@ async function init() {
         spawnMeteor(data);
     });
 
-    window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    let resizeFrame = null;
+    window.addEventListener('resize', () => {
+        if (resizeFrame !== null) return;
+        resizeFrame = window.requestAnimationFrame(() => {
+            resizeFrame = null;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    });
 
     animate();
 
@@ -853,21 +859,22 @@ async function loadMainContent() {
 function animate() {
     requestAnimationFrame(animate);
     if (planetGroup) planetGroup.rotation.z += planetRotationSpeed;
+    const now = performance.now();
     const goWindSpeedFactor = calculateGoWindSpeedFactor(
         planetRotationSpeed,
         BASE_PLANET_ROTATION_SPEED
     );
-    updateCssPlanetFlow(cssPlanetMaterial, performance.now());
-    updateCppPlanetLightning(cppPlanetMaterial, performance.now());
+    updateCssPlanetFlow(cssPlanetMaterial, now);
+    updateCppPlanetLightning(cppPlanetMaterial, now);
     const windSpeed = goWindSpeedFactor * windAnimationMultiplier;
-    updateGoPlanetWind(goPlanetWindMaterial, performance.now(), windSpeed);
-    updateGoPlanetAtmosphere(goPlanetAtmosphere, performance.now(), windSpeed);
-    updateVueLeafWind(vueLeafWind, performance.now(), windSpeed);
-    updateTypeScriptPlanetShell(typeScriptPlanetMaterial, performance.now());
-    updateTypeScriptPlanetShell(typeScriptPlanetShell, performance.now());
-    updateJavaScriptPlanetReactivity(javaScriptPlanetMaterial, performance.now());
-    updateRustPlanetDesert(rustPlanetMaterial, performance.now());
-    updateRustPlanetDesert(rustPlanetDust, performance.now());
+    updateGoPlanetWind(goPlanetWindMaterial, now, windSpeed);
+    updateGoPlanetAtmosphere(goPlanetAtmosphere, now, windSpeed);
+    updateVueLeafWind(vueLeafWind, now, windSpeed);
+    updateTypeScriptPlanetShell(typeScriptPlanetMaterial, now);
+    updateTypeScriptPlanetShell(typeScriptPlanetShell, now);
+    updateJavaScriptPlanetReactivity(javaScriptPlanetMaterial, now);
+    updateRustPlanetDesert(rustPlanetMaterial, now);
+    updateRustPlanetDesert(rustPlanetDust, now);
     controls.update();
     renderer.render(scene, camera);
 }
