@@ -80,7 +80,7 @@ export function registerPageRoutes(app, { rootDirectory, isProduction, systemApi
         res.status(403).send('Forbidden: This card is private.');
     });
 
-    app.get('/sender', (req, res) => {
+    app.get(['/sender', '/en/sender', '/english/sender'], (req, res) => {
         res.sendFile(path.join(rootDirectory, 'sender.html'));
     });
 

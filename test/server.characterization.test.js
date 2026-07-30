@@ -91,7 +91,15 @@ test('serves locale-correct source documents for Japanese and English home route
 });
 
 test('serves public pages and sender with their existing content types', async () => {
-    for (const route of ['/achievements', '/en/achievements', '/settings', '/en/settings', '/sender']) {
+    for (const route of [
+        '/achievements',
+        '/en/achievements',
+        '/settings',
+        '/en/settings',
+        '/sender',
+        '/en/sender',
+        '/english/sender'
+    ]) {
         const response = await fetch(`${baseUrl}${route}`);
         assert.equal(response.status, 200, route);
         assert.match(response.headers.get('content-type') || '', /^text\/html/);
