@@ -4,7 +4,7 @@ body {
     color: #ffffff;
     background-color: #000;
     /* 実績画面と同じ背景画像を使用 */
-    background-image: url('../img/Achievementsimage.jpg');
+    background-image: url('../img/Achievementsimage.webp');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;

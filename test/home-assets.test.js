@@ -17,3 +17,19 @@ test('pins browser dependencies and loads the optimized skybox', () => {
         .reduce((sum, size) => sum + size, 0);
     assert.ok(totalBytes < 3_000_000, `optimized skybox is ${totalBytes} bytes`);
 });
+
+test('uses the optimized shared background and excludes legacy images from Cloud Run', () => {
+    for (const stylesheet of ['achievements.css', 'card.css', 'settings.css']) {
+        const css = fs.readFileSync(`front/css/${stylesheet}`, 'utf8');
+        assert.match(css, /Achievementsimage\.webp/);
+        assert.doesNotMatch(css, /Achievementsimage\.jpg/);
+    }
+
+    const optimizedSize = fs.statSync('front/img/Achievementsimage.webp').size;
+    const originalSize = fs.statSync('front/img/Achievementsimage.jpg').size;
+    assert.ok(optimizedSize < originalSize * 0.2, `${optimizedSize} is not below 20% of ${originalSize}`);
+
+    const dockerIgnore = fs.readFileSync('.dockerignore', 'utf8');
+    assert.match(dockerIgnore, /front\/img\/skybox\/\*\.png/);
+    assert.match(dockerIgnore, /front\/img\/Achievementsimage\.jpg/);
+});

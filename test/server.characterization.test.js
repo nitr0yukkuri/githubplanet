@@ -106,6 +106,22 @@ test('serves public pages and sender with their existing content types', async (
     }
 });
 
+test('compresses JavaScript responses without changing their contents', async () => {
+    const [compressed, identity] = await Promise.all([
+        fetch(`${baseUrl}/front/js/home.js`, {
+            headers: { 'accept-encoding': 'gzip' }
+        }),
+        fetch(`${baseUrl}/front/js/home.js`, {
+            headers: { 'accept-encoding': 'identity' }
+        })
+    ]);
+
+    assert.equal(compressed.status, 200);
+    assert.equal(compressed.headers.get('content-encoding'), 'gzip');
+    assert.equal(identity.headers.get('content-encoding'), null);
+    assert.equal(await compressed.text(), await identity.text());
+});
+
 test('keeps card access rules unchanged', async () => {
     const publicFixCard = await fetch(`${baseUrl}/en/card.html?username=tester&fix=true`);
     const localCard = await fetch(`${baseUrl}/card.html?username=tester`);

@@ -2,3 +2,5 @@
 node_modules
 .git
 .env
+front/img/skybox/*.png
+front/img/Achievementsimage.jpg
