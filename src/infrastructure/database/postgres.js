@@ -7,7 +7,7 @@ export function createPostgresPool(connectionString) {
         || connectionString.includes('@db')
         || connectionString.includes('localhost');
 
-    return new pg.Pool({
+    const pool = new pg.Pool({
         connectionString,
         ssl: isLocalDatabase ? undefined : { rejectUnauthorized: false },
         max: 5,
@@ -18,6 +18,12 @@ export function createPostgresPool(connectionString) {
         query_timeout: 15000,
         statement_timeout: 15000
     });
+
+    pool.on('error', (error) => {
+        console.error(`[DB] Idle client connection error: ${error.message}`);
+    });
+
+    return pool;
 }
 
 export function prepareDatabase(pool) {

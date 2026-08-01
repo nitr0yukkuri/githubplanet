@@ -76,14 +76,13 @@ if (!isScreenshotMode) {
     if (shareSection) shareSection.style.display = 'block';
 
     const encodedUsername = encodeURIComponent(username);
-    const animatedCardUrl = showcaseSlug
-        ? `https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_${encodeURIComponent(showcaseSlug)}.gif`
-        : `https://raw.githubusercontent.com/${encodedUsername}/${encodedUsername}/main/planet-card.gif`;
     const cardQuery = showcaseSlug
         ? `showcase=${encodeURIComponent(showcaseSlug)}`
         : `username=${encodedUsername}`;
     const pageUrl = `${PUBLIC_DEPLOY_URL}${localizedPath('/card.html')}?${cardQuery}`;
-    const mdText = `[![GitHub Planet](${animatedCardUrl})](${pageUrl})`;
+    const captureUrl = `${pageUrl}&fix=true`;
+    const staticCardUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${captureUrl}`;
+    const mdText = `[![GitHub Planet](${staticCardUrl})](${pageUrl})`;
 
     if (markdownCode) markdownCode.textContent = mdText;
     if (copyBtn) {

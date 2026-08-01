@@ -40,8 +40,38 @@ export function registerPageRoutes(app, { rootDirectory, isProduction, systemApi
         return crypto.createHmac('sha256', sessionSecret).update(username).digest('hex');
     }
 
+    function allowPortfolioCardEmbedding(res) {
+        res.removeHeader('X-Frame-Options');
+        const contentSecurityPolicy = res.getHeader('Content-Security-Policy');
+        if (typeof contentSecurityPolicy === 'string') {
+            res.setHeader(
+                'Content-Security-Policy',
+                contentSecurityPolicy.replace(
+                    "frame-ancestors 'none'",
+                    "frame-ancestors 'self' https://wakato.tech https://www.wakato.tech"
+                )
+            );
+        }
+    }
+
     app.get(['/', '/en', '/english'], (req, res) => {
         sendPage(req, res, 'index.html');
+    });
+
+    app.get('/manifest.json', (req, res) => {
+        res.type('application/manifest+json');
+        res.sendFile(path.join(rootDirectory, 'manifest.json'));
+    });
+
+    app.get('/manifest-en.json', (req, res) => {
+        res.type('application/manifest+json');
+        res.sendFile(path.join(rootDirectory, 'manifest-en.json'));
+    });
+
+    app.get('/sw.js', (req, res) => {
+        res.setHeader('Cache-Control', 'no-cache');
+        res.type('application/javascript');
+        res.sendFile(path.join(rootDirectory, 'sw.js'));
     });
 
     app.get('/api/card/:username', (req, res) => {
@@ -68,12 +98,25 @@ export function registerPageRoutes(app, { rootDirectory, isProduction, systemApi
         res.redirect(`https://image.thum.io/get/png/width/800/crop/400/noanimate/wait/3/${targetUrl}`);
     });
 
-    app.get(['/card.html', '/en/card.html', '/english/card.html'], (req, res) => {
+    app.get(['/card', '/card.html', '/en/card', '/en/card.html', '/english/card', '/english/card.html'], (req, res) => {
         const { username, fix } = req.query;
-        if (fix) return sendPage(req, res, 'card.html');
-
         const loggedInUser = req.session.planetData?.user?.login;
+
+        if (!username && !fix) {
+            if (loggedInUser) {
+                return res.redirect(`${req.path}?username=${encodeURIComponent(loggedInUser)}`);
+            }
+            allowPortfolioCardEmbedding(res);
+            return sendPage(req, res, 'card.html');
+        }
+
+        if (fix) {
+            allowPortfolioCardEmbedding(res);
+            return sendPage(req, res, 'card.html');
+        }
+
         if (!isProduction || (loggedInUser && loggedInUser === username)) {
+            allowPortfolioCardEmbedding(res);
             return sendPage(req, res, 'card.html');
         }
 
