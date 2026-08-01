@@ -46,7 +46,7 @@ body::before {
     background-color: #000;
     
     /* 背景画像の設定 */
-    background-image: url('/front/img/Achievementsimage.jpg');
+    background-image: url('/front/img/Achievementsimage.webp');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;

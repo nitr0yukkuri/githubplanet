@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import session from 'express-session';
 import axios from 'axios';
+import compression from 'compression';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import connectPgSimple from 'connect-pg-simple';
@@ -25,6 +26,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 app.disable('x-powered-by');
+app.use(compression({ threshold: 1024 }));
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');

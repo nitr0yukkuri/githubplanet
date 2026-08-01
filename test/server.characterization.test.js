@@ -91,11 +91,35 @@ test('serves locale-correct source documents for Japanese and English home route
 });
 
 test('serves public pages and sender with their existing content types', async () => {
-    for (const route of ['/achievements', '/en/achievements', '/settings', '/en/settings', '/sender']) {
+    for (const route of [
+        '/achievements',
+        '/en/achievements',
+        '/settings',
+        '/en/settings',
+        '/sender',
+        '/en/sender',
+        '/english/sender'
+    ]) {
         const response = await fetch(`${baseUrl}${route}`);
         assert.equal(response.status, 200, route);
         assert.match(response.headers.get('content-type') || '', /^text\/html/);
     }
+});
+
+test('compresses JavaScript responses without changing their contents', async () => {
+    const [compressed, identity] = await Promise.all([
+        fetch(`${baseUrl}/front/js/home.js`, {
+            headers: { 'accept-encoding': 'gzip' }
+        }),
+        fetch(`${baseUrl}/front/js/home.js`, {
+            headers: { 'accept-encoding': 'identity' }
+        })
+    ]);
+
+    assert.equal(compressed.status, 200);
+    assert.equal(compressed.headers.get('content-encoding'), 'gzip');
+    assert.equal(identity.headers.get('content-encoding'), null);
+    assert.equal(await compressed.text(), await identity.text());
 });
 
 test('keeps card access rules unchanged', async () => {
