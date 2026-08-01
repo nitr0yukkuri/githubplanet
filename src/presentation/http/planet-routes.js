@@ -85,8 +85,7 @@ export function registerPlanetRoutes(app, { planetService, planetQueryService, c
         try {
             const row = await planetQueryService.getRandom({
                 loggedInUserId: req.session?.planetData?.user?.id,
-                lastRandomVisitedId: req.session?.lastRandomVisitedId,
-                accessToken: req.session.github_token
+                lastRandomVisitedId: req.session?.lastRandomVisitedId
             });
             if (!row) return res.status(404).json({ error: 'No planets found' });
 

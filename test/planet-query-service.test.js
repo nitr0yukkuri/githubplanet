@@ -72,17 +72,12 @@ test('keeps the previous stale row when the post-refresh read is empty', async (
     assert.equal(reads, 2);
 });
 
-test('refreshes a random planet when last_updated is missing', async () => {
+test('returns a stored random planet without refreshing it', async () => {
     const row = { github_id: 2, username: 'random', last_updated: null };
     const { calls, service } = createHarness({ random: row });
 
     assert.equal(await service.getRandom({ loggedInUserId: 1, accessToken: 'token' }), row);
-    assert.deepEqual(calls, [
-        ['findRandom', [1]],
-        ['getUser', 'random'],
-        ['updateAndSavePlanetData', 'random'],
-        ['findByGithubId', 2]
-    ]);
+    assert.deepEqual(calls, [['findRandom', [1]]]);
 });
 
 test('uses the same random fallback order and delegates title persistence', async () => {

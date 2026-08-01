@@ -98,7 +98,7 @@ export function registerPageRoutes(app, { rootDirectory, isProduction, systemApi
         res.redirect(`https://image.thum.io/get/png/width/800/crop/400/noanimate/wait/3/${targetUrl}`);
     });
 
-    app.get(['/card.html', '/en/card.html', '/english/card.html'], (req, res) => {
+    app.get(['/card', '/card.html', '/en/card', '/en/card.html', '/english/card', '/english/card.html'], (req, res) => {
         const { username, fix } = req.query;
         if (fix) {
             allowPortfolioCardEmbedding(res);

@@ -25,7 +25,7 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         return row;
     }
 
-    async function getRandom({ loggedInUserId, lastRandomVisitedId, accessToken }) {
+    async function getRandom({ loggedInUserId, lastRandomVisitedId }) {
         const excludeIds = [];
         if (loggedInUserId) excludeIds.push(loggedInUserId);
         if (lastRandomVisitedId) excludeIds.push(lastRandomVisitedId);
@@ -33,20 +33,7 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         let row = await repository.findRandom(excludeIds);
         if (!row && loggedInUserId) row = await repository.findRandom([loggedInUserId]);
         if (!row) row = await repository.findRandom();
-        if (!row) return null;
-
-        const shouldUpdate = Boolean(accessToken) && (!row.last_updated || isExpired(row.last_updated));
-        if (shouldUpdate) {
-            try {
-                console.log(`[Random/Update] Updating stale data for: ${row.username}`);
-                await refresh(row.username, accessToken);
-                row = await repository.findByGithubId(row.github_id) || row;
-            } catch (error) {
-                console.warn(`[Random/Update] Update failed: ${error.message}`);
-            }
-        }
-
-        return row;
+        return row || null;
     }
 
     async function saveActiveTitle(githubId, activeTitle) {
