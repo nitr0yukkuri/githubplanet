@@ -100,12 +100,21 @@ export function registerPageRoutes(app, { rootDirectory, isProduction, systemApi
 
     app.get(['/card', '/card.html', '/en/card', '/en/card.html', '/english/card', '/english/card.html'], (req, res) => {
         const { username, fix } = req.query;
+        const loggedInUser = req.session.planetData?.user?.login;
+
+        if (!username && !fix) {
+            if (loggedInUser) {
+                return res.redirect(`${req.path}?username=${encodeURIComponent(loggedInUser)}`);
+            }
+            allowPortfolioCardEmbedding(res);
+            return sendPage(req, res, 'card.html');
+        }
+
         if (fix) {
             allowPortfolioCardEmbedding(res);
             return sendPage(req, res, 'card.html');
         }
 
-        const loggedInUser = req.session.planetData?.user?.login;
         if (!isProduction || (loggedInUser && loggedInUser === username)) {
             allowPortfolioCardEmbedding(res);
             return sendPage(req, res, 'card.html');
