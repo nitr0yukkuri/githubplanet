@@ -107,6 +107,11 @@ test('keeps card access rules unchanged', async () => {
     assert.equal(localCard.status, 200);
     assert.equal(protectedCardApi.status, 403);
     assert.equal(await protectedCardApi.text(), 'Forbidden: Please login first.');
+    assert.equal(publicFixCard.headers.get('x-frame-options'), null);
+    assert.match(
+        publicFixCard.headers.get('content-security-policy') || '',
+        /frame-ancestors 'self' https:\/\/wakato\.tech https:\/\/www\.wakato\.tech/
+    );
 });
 
 test('keeps unauthenticated API responses unchanged', async () => {

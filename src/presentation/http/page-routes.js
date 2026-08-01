@@ -40,6 +40,20 @@ export function registerPageRoutes(app, { rootDirectory, isProduction, systemApi
         return crypto.createHmac('sha256', sessionSecret).update(username).digest('hex');
     }
 
+    function allowPortfolioCardEmbedding(res) {
+        res.removeHeader('X-Frame-Options');
+        const contentSecurityPolicy = res.getHeader('Content-Security-Policy');
+        if (typeof contentSecurityPolicy === 'string') {
+            res.setHeader(
+                'Content-Security-Policy',
+                contentSecurityPolicy.replace(
+                    "frame-ancestors 'none'",
+                    "frame-ancestors 'self' https://wakato.tech https://www.wakato.tech"
+                )
+            );
+        }
+    }
+
     app.get(['/', '/en', '/english'], (req, res) => {
         sendPage(req, res, 'index.html');
     });
@@ -86,10 +100,14 @@ export function registerPageRoutes(app, { rootDirectory, isProduction, systemApi
 
     app.get(['/card.html', '/en/card.html', '/english/card.html'], (req, res) => {
         const { username, fix } = req.query;
-        if (fix) return sendPage(req, res, 'card.html');
+        if (fix) {
+            allowPortfolioCardEmbedding(res);
+            return sendPage(req, res, 'card.html');
+        }
 
         const loggedInUser = req.session.planetData?.user?.login;
         if (!isProduction || (loggedInUser && loggedInUser === username)) {
+            allowPortfolioCardEmbedding(res);
             return sendPage(req, res, 'card.html');
         }
 
