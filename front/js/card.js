@@ -43,7 +43,7 @@ const PUBLIC_DEPLOY_URL = 'https://githubplanet-git-543426763451.asia-northeast2
 const params = new URLSearchParams(window.location.search);
 const showcaseSlug = params.get('showcase');
 const username = params.get('username')
-    || (showcaseSlug ? `SHOWCASE_${showcaseSlug.toUpperCase()}` : 'NITROYUKKURI');
+    || (showcaseSlug ? `SHOWCASE_${showcaseSlug.toUpperCase()}` : 'nitr0yukkuri');
 const isScreenshotMode = params.has('fix');
 
 applyI18n();
