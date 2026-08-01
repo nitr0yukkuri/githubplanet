@@ -1,6 +1,4 @@
 export function createPlanetQueryService({ repository, githubClient, planetService, cacheDuration }) {
-    const randomRefreshes = new Set();
-
     function isExpired(lastUpdated) {
         return Date.now() - new Date(lastUpdated).getTime() > cacheDuration;
     }
@@ -27,7 +25,7 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         return row;
     }
 
-    async function getRandom({ loggedInUserId, lastRandomVisitedId, accessToken }) {
+    async function getRandom({ loggedInUserId, lastRandomVisitedId }) {
         const excludeIds = [];
         if (loggedInUserId) excludeIds.push(loggedInUserId);
         if (lastRandomVisitedId) excludeIds.push(lastRandomVisitedId);
@@ -35,22 +33,7 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         let row = await repository.findRandom(excludeIds);
         if (!row && loggedInUserId) row = await repository.findRandom([loggedInUserId]);
         if (!row) row = await repository.findRandom();
-        if (!row) return null;
-
-        const shouldUpdate = Boolean(accessToken) && (!row.last_updated || isExpired(row.last_updated));
-        if (shouldUpdate && !randomRefreshes.has(row.github_id)) {
-            randomRefreshes.add(row.github_id);
-            console.log(`[Random/Update] Updating stale data for: ${row.username}`);
-            void refresh(row.username, accessToken).then(() => {
-                console.log(`[Random/Update] Update completed for: ${row.username}`);
-            }).catch((error) => {
-                console.warn(`[Random/Update] Update failed: ${error.message}`);
-            }).finally(() => {
-                randomRefreshes.delete(row.github_id);
-            });
-        }
-
-        return row;
+        return row || null;
     }
 
     async function saveActiveTitle(githubId, activeTitle) {

@@ -455,6 +455,7 @@ body {
 /* 惑星オーナーテキスト */
 #planet-owner-display {
     display: none; /* JSで表示するまで非表示 */
+    white-space: nowrap;
     font-weight: bold;
     font-size: 1.1rem;
     color: #f0f0f0;

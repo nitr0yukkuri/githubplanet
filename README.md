@@ -13,6 +13,14 @@
 
 ---
 
+## 🎨 作品内容
+
+GitHub Planetは、開発者のGitHub活動を「宇宙に浮かぶ、自分だけの3D惑星」として表現するインタラクティブWeb作品です。
+
+GitHub OAuthで取得した公開リポジトリ、使用言語、コントリビューション、Star、外部リポジトリへの貢献を集計し、惑星の色・表面・大きさ・回転速度・周囲の星・実績へ反映します。C、CSS、C++、Go、TypeScript、JavaScript、Rustには、鋼鉄、色の流れ、プラズマ、風、大気、外殻、砂塵などの言語固有表現があります。
+
+GitHubのPush Webhookを受信すると、変更されたファイルの言語と変更量から流星の色・大きさを決定し、Socket.IOを通して閲覧中の宇宙へリアルタイムに流星を表示します。生成した惑星は、他ユーザーの訪問、実績・称号、静止画やアニメーションGIFのプロフィールカードとしても楽しめます。
+
 ## 🌟 主な特徴
 
 ### 1. 固有された惑星生成
@@ -159,21 +167,43 @@ DBや実在ユーザーに依存しない固定テストデータから生成し
   </tr>
 </table>
 
-## 🛠️ 技術構成（Tech Stack）
+## 🛠️ 技術構成
 
-このプロジェクトは、フロントエンドからインフラまで一貫して設計された、モダンなWeb技術スタックで構築されています。
+GitHub Planetは、1つのNode.jsアプリケーション内を責務ごとに分けた、レイヤード構成のモジュラーモノリスです。
 
-| カテゴリ | 技術 | 役割 |
+| 領域 | 技術 | 役割 |
 | :-- | :-- | :-- |
-| **Frontend** | Three.js / Anime.js | 惑星・スター・エフェクトのリアルタイム3D描画およびアニメーション制御 |
-| **Backend** | Node.js / Express | APIエンドポイントの提供、データ処理ロジックの実装 |
-| **AI** | Google Gemini API | 言語に応じた色生成、惑星に付与するユニークな二つ名の生成 |
-| **Real-time** | Socket.IO | Webhookと連携したリアルタイムな流星エフェクトの配信 |
-| **Database** | PostgreSQL | ユーザーの惑星データ、実績、情報の永続化 |
-| **Authentication** | GitHub OAuth 2.0 | GitHubアカウントを用いた認証およびユーザーデータ取得 |
-| **deployment** | Render  | アプリケーションのホスティング |
+| **Frontend** | HTML / CSS / JavaScript ES Modules | 画面、操作、日英ローカライズ |
+| **3D / Graphics** | Three.js / WebGL / GLSL / Anime.js | 惑星、言語別シェーダー、星、流星、アニメーション |
+| **Backend** | Node.js / Express | ページ配信、認証、API、アプリケーション処理 |
+| **Real-time** | Socket.IO / GitHub Webhook | Pushイベントを流星としてリアルタイム配信 |
+| **GitHub連携** | GitHub OAuth 2.0 / REST API / GraphQL API | 認証、ユーザー情報、リポジトリ、言語、活動データの取得 |
+| **Generative AI** | Google Gemini API | 未登録言語の色決定と惑星名生成の補助 |
+| **Database / Session** | PostgreSQL / connect-pg-simple | 惑星、実績、称号、ログイン差分、セッションの永続化 |
+| **Infrastructure** | Docker / Google Cloud Run | ローカル環境と本番ホスティング |
+| **Automation** | GitHub Actions / Playwright / FFmpeg | 3Dカードの録画、GIF変換、定期更新 |
+| **Testing** | Node.js Test Runner | ドメイン、API、DB、セキュリティ、シェーダーの回帰テスト |
 
+### バックエンドの構成
 
+```text
+Browser
+  ↓
+Presentation（Expressのルート・HTTP入出力）
+  ↓
+Application（惑星生成・検索・ログイン進捗）
+  ↓
+Domain（実績・称号・惑星のルール）
+  ↓
+Infrastructure（PostgreSQL・GitHub API・Gemini API）
+
+GitHub Webhook → Express → Socket.IO → Browser
+```
+
+- **Presentation:** HTTPリクエストを受け取り、JSONやHTMLを返します。
+- **Application:** GitHubデータ取得から集計・保存まで、ユースケースの流れを組み立てます。
+- **Domain:** 実績解除、コミット数の制限、惑星名など、GitHub Planet固有のルールを持ちます。
+- **Infrastructure:** PostgreSQLと外部APIの具体的な通信処理を担当します。
 
 ## 🛸 開発者
 このプロジェクトを開発しているコア・メンバーの惑星です。

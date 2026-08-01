@@ -125,12 +125,23 @@ test('compresses JavaScript responses without changing their contents', async ()
 test('keeps card access rules unchanged', async () => {
     const publicFixCard = await fetch(`${baseUrl}/en/card.html?username=tester&fix=true`);
     const localCard = await fetch(`${baseUrl}/card.html?username=tester`);
+    const cardWithoutUsername = await fetch(`${baseUrl}/card.html`);
+    const extensionlessCard = await fetch(`${baseUrl}/card?username=tester`);
+    const extensionlessEnglishCard = await fetch(`${baseUrl}/en/card?username=tester`);
     const protectedCardApi = await fetch(`${baseUrl}/api/card/tester`, { redirect: 'manual' });
 
     assert.equal(publicFixCard.status, 200);
     assert.equal(localCard.status, 200);
+    assert.equal(cardWithoutUsername.status, 200);
+    assert.equal(extensionlessCard.status, 200);
+    assert.equal(extensionlessEnglishCard.status, 200);
     assert.equal(protectedCardApi.status, 403);
     assert.equal(await protectedCardApi.text(), 'Forbidden: Please login first.');
+    assert.equal(publicFixCard.headers.get('x-frame-options'), null);
+    assert.match(
+        publicFixCard.headers.get('content-security-policy') || '',
+        /frame-ancestors 'self' https:\/\/wakato\.tech https:\/\/www\.wakato\.tech/
+    );
 });
 
 test('keeps unauthenticated API responses unchanged', async () => {

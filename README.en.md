@@ -10,6 +10,14 @@
 
 ---
 
+## 🎨 About the Project
+
+GitHub Planet is an interactive web experience that transforms a developer's GitHub activity into a personal 3D planet floating in space.
+
+Public repositories, languages, contributions, stars, and contributions to external repositories are collected through GitHub OAuth and reflected in the planet's color, surface, size, rotation speed, surrounding stars, and achievements. C, CSS, C++, Go, TypeScript, JavaScript, and Rust have language-specific visuals such as steel, directional color flow, plasma, wind, atmosphere, defensive shells, and desert dust.
+
+When a GitHub Push Webhook arrives, the application derives a shooting star's color and scale from the changed language and change size, then broadcasts it through Socket.IO to connected visitors in real time. Planets can also be explored through user visits, achievements and titles, and shareable static or animated profile cards.
+
 ## 🌟 Features
 
 ### 1. A unique planet for every developer
@@ -162,17 +170,43 @@ These showcase planets are generated from fixed test data and do not depend on t
   </tr>
 </table>
 
-## 🛠️ Tech Stack
+## 🛠️ Technical Architecture
 
-| Category | Technology | Role |
+GitHub Planet is a layered modular monolith: one Node.js application divided into modules with distinct responsibilities.
+
+| Area | Technology | Responsibility |
 | :-- | :-- | :-- |
-| **Frontend** | Three.js / Anime.js | Real-time 3D rendering and animation for planets, stars, and visual effects |
-| **Backend** | Node.js / Express | API endpoints and application logic |
-| **AI** | Google Gemini API | Language-based color selection and unique planet naming |
-| **Real-time** | Socket.IO | Real-time shooting-star events triggered by webhooks |
-| **Database** | PostgreSQL | Persistence for planets, users, and achievements |
-| **Authentication** | GitHub OAuth 2.0 | Authentication and GitHub activity retrieval |
-| **Deployment** | Google Cloud Run | Application hosting |
+| **Frontend** | HTML / CSS / JavaScript ES Modules | User interface, interactions, and Japanese/English localization |
+| **3D / Graphics** | Three.js / WebGL / GLSL / Anime.js | Planets, language shaders, stars, shooting stars, and animation |
+| **Backend** | Node.js / Express | Page delivery, authentication, APIs, and application workflows |
+| **Real-time** | Socket.IO / GitHub Webhook | Broadcasting Push events as shooting stars |
+| **GitHub Integration** | GitHub OAuth 2.0 / REST API / GraphQL API | Authentication and retrieval of users, repositories, languages, and activity |
+| **Generative AI** | Google Gemini API | Fallback color selection and planet naming for unregistered languages |
+| **Database / Session** | PostgreSQL / connect-pg-simple | Persistence for planets, achievements, titles, login progress, and sessions |
+| **Infrastructure** | Docker / Google Cloud Run | Local environment and production hosting |
+| **Automation** | GitHub Actions / Playwright / FFmpeg | Recording 3D cards, GIF conversion, and scheduled updates |
+| **Testing** | Node.js Test Runner | Regression tests for domain rules, APIs, database behavior, security, and shaders |
+
+### Backend structure
+
+```text
+Browser
+  ↓
+Presentation (Express routes and HTTP input/output)
+  ↓
+Application (planet generation, queries, and login progress)
+  ↓
+Domain (achievement, title, and planet rules)
+  ↓
+Infrastructure (PostgreSQL, GitHub API, and Gemini API)
+
+GitHub Webhook → Express → Socket.IO → Browser
+```
+
+- **Presentation:** Accepts HTTP requests and returns HTML or JSON.
+- **Application:** Orchestrates use cases from GitHub data retrieval through aggregation and persistence.
+- **Domain:** Contains GitHub Planet-specific rules such as achievement unlocking, count limits, and planet naming.
+- **Infrastructure:** Implements PostgreSQL persistence and concrete external API communication.
 
 ## 🛸 Core Team
 
