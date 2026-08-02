@@ -773,8 +773,10 @@ async function init() {
     document.getElementById('canvas-container').appendChild(renderer.domElement);
     controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.autoRotate = false;
 
-    controls.minDistance = 10;
-    controls.maxDistance = 70;
+    controls.enablePan = false;
+    controls.zoomSpeed = 4.0;
+    controls.minDistance = 20;
+    controls.maxDistance = 32;
 
     scene.add(new THREE.AmbientLight(0x888888, 2));
     const pl = new THREE.PointLight(0xffffff, 25, 1000); pl.position.set(20, 10, 5); scene.add(pl);
