@@ -10,7 +10,7 @@ on:
       deploy_url:
         description: Public GitHub Planet deployment
         required: false
-        default: https://githubplanet-git-543426763451.asia-northeast2.run.app
+        default: https://githubplanet.dev
         type: string
 
 jobs:
