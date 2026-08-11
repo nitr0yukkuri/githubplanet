@@ -62,7 +62,7 @@ jobs:
               "generated-card-assets/$output_name"
           }
 
-          base_url="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html"
+          base_url="https://githubplanet.dev/card.html"
           record_card profile_card.gif "$base_url?username=nitr0yukkuri&fix=true" 8000
           record_card showcase_css.gif "$base_url?showcase=css&fix=true"
           record_card showcase_cpp.gif "$base_url?showcase=cpp&fix=true"
