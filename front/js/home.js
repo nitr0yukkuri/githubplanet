@@ -36,6 +36,7 @@ import {
     updateRustPlanetDesert
 } from './rust-planet-desert.js';
 import { applyI18n, localizedPath, localizedPlanetName, localizedTitle, t } from './i18n.js';
+import { DEFAULT_SHOWCASE_SLUG, resolveHomeRoute } from './home-route.js';
 
 const MAX_STAR_COUNT = 120;
 const BASE_PLANET_ROTATION_SPEED = 0.001;
@@ -70,6 +71,10 @@ const textureLoader = new THREE.TextureLoader();
 const socket = io({
     transports: ['websocket']
 });
+
+const homeRoute = resolveHomeRoute(window.location.pathname, window.location.search);
+const isExhibitionRoute = homeRoute.mode === 'exhibition';
+const isShowcaseRoute = homeRoute.mode === 'showcase';
 
 function toggleLoading(show) {
     if (!loadingOverlay) return;
@@ -186,6 +191,60 @@ async function fetchMyPlanetData() {
         return null;
 
     } catch (e) { return null; }
+}
+
+async function fetchShowcasePlanetData(showcaseSlug = homeRoute.showcaseSlug) {
+    try {
+        const res = await fetch(
+            `/api/planets/showcase/${encodeURIComponent(showcaseSlug)}?t=${Date.now()}`,
+            { cache: 'no-store' }
+        );
+        if (res.ok) return await res.json();
+
+        if (showcaseSlug !== DEFAULT_SHOWCASE_SLUG) {
+            const fallback = await fetch(
+                `/api/planets/showcase/${DEFAULT_SHOWCASE_SLUG}?t=${Date.now()}`,
+                { cache: 'no-store' }
+            );
+            return fallback.ok ? await fallback.json() : null;
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function updateShowcaseCta() {
+    if (!isShowcaseRoute) return;
+
+    const message = document.getElementById('not-logged-in-text');
+    const cta = document.getElementById('login-button');
+    const bottomCta = document.getElementById('next-random-planet-btn');
+    if (message) message.style.display = 'none';
+
+    if (cta) {
+        cta.href = '#';
+        cta.textContent = t('home.nextRandom');
+    }
+    if (bottomCta) {
+        bottomCta.href = loggedInUsername ? localizedPath('/') : localizedPath('/login');
+        bottomCta.textContent = t('home.showcaseCta');
+    }
+}
+
+async function resolveShowcaseCtaTarget() {
+    if (!isShowcaseRoute) return;
+
+    updateShowcaseCta();
+    try {
+        const res = await fetch(`/api/me?t=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.user?.login) loggedInUsername = data.user.login;
+        updateShowcaseCta();
+    } catch (e) {
+        // The showcase remains usable even when session probing is unavailable.
+    }
 }
 
 function updatePlanetDetails(data) {
@@ -590,7 +649,10 @@ async function loadPlanet(data) {
     planetGroup.rotation.x = Math.PI * 0.4; planetGroup.rotation.y = Math.PI * 0.1;
 
     const msg = document.getElementById('not-logged-in-container');
-    if (msg) msg.style.display = 'none';
+    if (msg) {
+        msg.style.display = isShowcaseRoute ? 'flex' : 'none';
+        updateShowcaseCta();
+    }
     controls.enabled = true;
 }
 
@@ -802,8 +864,9 @@ async function init() {
     animate();
 
     const hasVisited = localStorage.getItem('githubPlanetVisited');
+    const shouldShowWelcome = isExhibitionRoute || (!isShowcaseRoute && !hasVisited);
 
-    if (!hasVisited) {
+    if (shouldShowWelcome) {
         if (welcomeModal) {
             welcomeModal.style.display = 'block';
             okButton?.focus();
@@ -831,7 +894,9 @@ async function loadMainContent() {
     // toggleLoading(true);
 
     try {
-        const data = await fetchMyPlanetData();
+        const data = isShowcaseRoute
+            ? await fetchShowcasePlanetData()
+            : await fetchMyPlanetData();
         const notLoggedInContainer = document.getElementById('not-logged-in-container');
 
         if (notLoggedInContainer) {
@@ -848,6 +913,7 @@ async function loadMainContent() {
         }
 
         setupUI();
+        if (isShowcaseRoute) void resolveShowcaseCtaTarget();
     } catch (e) {
         console.error('Initial load failed:', e);
     } finally {
@@ -975,7 +1041,11 @@ function setupUI() {
     };
 
     document.getElementById('random-visit-btn')?.addEventListener('click', visitRandomPlanet);
-    document.getElementById('next-random-planet-btn')?.addEventListener('click', visitRandomPlanet);
+    if (isShowcaseRoute) {
+        document.getElementById('login-button')?.addEventListener('click', visitRandomPlanet);
+    } else {
+        document.getElementById('next-random-planet-btn')?.addEventListener('click', visitRandomPlanet);
+    }
 
     // ★追加: 「自分の星に戻る」ボタンの処理
     document.getElementById('return-my-planet-btn')?.addEventListener('click', async (e) => {
