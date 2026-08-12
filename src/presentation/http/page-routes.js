@@ -58,6 +58,20 @@ export function registerPageRoutes(app, { rootDirectory, isProduction, systemApi
         sendPage(req, res, 'index.html');
     });
 
+    app.get([
+        '/exhibition',
+        '/en/exhibition',
+        '/english/exhibition',
+        '/showcase',
+        '/en/showcase',
+        '/english/showcase',
+        '/showcase/:slug',
+        '/en/showcase/:slug',
+        '/english/showcase/:slug'
+    ], (req, res) => {
+        sendPage(req, res, 'index.html');
+    });
+
     app.get('/manifest.json', (req, res) => {
         res.type('application/manifest+json');
         res.sendFile(path.join(rootDirectory, 'manifest.json'));

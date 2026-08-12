@@ -188,6 +188,23 @@ test('serves deterministic showcase planets without a database', async () => {
     assert.deepEqual(await missing.json(), { error: 'Showcase planet not found' });
 });
 
+test('serves the existing home UI through exhibition and showcase entry routes', async () => {
+    const routes = [
+        '/exhibition',
+        '/showcase',
+        '/showcase/typescript',
+        '/en/exhibition',
+        '/en/showcase',
+        '/en/showcase/typescript'
+    ];
+
+    for (const route of routes) {
+        const response = await fetch(`${baseUrl}${route}`);
+        assert.equal(response.status, 200, route);
+        assert.match(await response.text(), /id="canvas-container"/);
+    }
+});
+
 test('preserves the English login route and callback validation', async () => {
     const login = await fetch(`${baseUrl}/en/login`, { redirect: 'manual' });
     assert.equal(login.status, 302);
