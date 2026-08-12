@@ -217,15 +217,9 @@ async function fetchShowcasePlanetData(showcaseSlug = homeRoute.showcaseSlug) {
 function updateShowcaseCta() {
     if (!isShowcaseRoute) return;
 
-    const message = document.getElementById('not-logged-in-text');
-    const cta = document.getElementById('login-button');
+    const showcaseIntro = document.getElementById('not-logged-in-container');
     const bottomCta = document.getElementById('next-random-planet-btn');
-    if (message) message.style.display = 'none';
-
-    if (cta) {
-        cta.href = '#';
-        cta.textContent = t('home.nextRandom');
-    }
+    if (showcaseIntro) showcaseIntro.style.display = 'none';
     if (bottomCta) {
         bottomCta.href = loggedInUsername ? localizedPath('/') : localizedPath('/login');
         bottomCta.textContent = t('home.showcaseCta');
@@ -650,8 +644,8 @@ async function loadPlanet(data) {
 
     const msg = document.getElementById('not-logged-in-container');
     if (msg) {
-        msg.style.display = isShowcaseRoute ? 'flex' : 'none';
-        updateShowcaseCta();
+        msg.style.display = 'none';
+        if (isShowcaseRoute) updateShowcaseCta();
     }
     controls.enabled = true;
 }
@@ -907,7 +901,7 @@ async function loadMainContent() {
                 await loadPlanet(data);
             } else {
                 // 未ログインなら「星を誕生させる」画面を表示
-                notLoggedInContainer.style.display = 'flex';
+                notLoggedInContainer.style.display = isShowcaseRoute ? 'none' : 'flex';
                 const returnButton = document.getElementById('return-my-planet-btn');
                 if (returnButton) returnButton.style.display = 'none';
                 controls.enabled = false;
@@ -1043,9 +1037,7 @@ function setupUI() {
     };
 
     document.getElementById('random-visit-btn')?.addEventListener('click', visitRandomPlanet);
-    if (isShowcaseRoute) {
-        document.getElementById('login-button')?.addEventListener('click', visitRandomPlanet);
-    } else {
+    if (!isShowcaseRoute) {
         document.getElementById('next-random-planet-btn')?.addEventListener('click', visitRandomPlanet);
     }
 
