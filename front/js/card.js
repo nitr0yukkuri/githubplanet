@@ -29,6 +29,13 @@ import {
     updateJavaScriptPlanetReactivity
 } from './javascript-planet-reactivity.js';
 import {
+    createKotlinElectricity,
+    createKotlinPlanetMaterial,
+    isKotlinPlanet,
+    updateKotlinElectricity,
+    updateKotlinPlanetCrystal
+} from './kotlin-planet-crystal.js';
+import {
     createRustPlanetDust,
     createRustPlanetMaterial,
     isRustPlanet,
@@ -177,6 +184,8 @@ let windAnimationMultiplier = 1;
 let typeScriptPlanetMaterial = null;
 let typeScriptPlanetShell = null;
 let javaScriptPlanetMaterial = null;
+let kotlinPlanetMaterial = null;
+let kotlinElectricity = null;
 let rustPlanetMaterial = null;
 let rustPlanetDust = null;
 
@@ -298,6 +307,8 @@ function createPlanet(data) {
     typeScriptPlanetMaterial = null;
     typeScriptPlanetShell = null;
     javaScriptPlanetMaterial = null;
+    kotlinPlanetMaterial = null;
+    kotlinElectricity = null;
     rustPlanetMaterial = null;
     rustPlanetDust = null;
 
@@ -332,6 +343,9 @@ function createPlanet(data) {
     } else if (isJavaScriptPlanet(data)) {
         material = createJavaScriptPlanetMaterial(THREE, planetTexture, data.planetColor);
         javaScriptPlanetMaterial = material;
+    } else if (isKotlinPlanet(data)) {
+        material = createKotlinPlanetMaterial(THREE, planetTexture);
+        kotlinPlanetMaterial = material;
     } else if (isRustPlanet(data)) {
         material = createRustPlanetMaterial(THREE, planetTexture);
         rustPlanetMaterial = material;
@@ -359,6 +373,10 @@ function createPlanet(data) {
     if (isVuePlanet(data)) {
         vueLeafWind = createVueLeafWind(THREE, baseSize);
         planetGroup.add(vueLeafWind);
+    }
+    if (isKotlinPlanet(data)) {
+        kotlinElectricity = createKotlinElectricity(THREE, baseSize);
+        planetGroup.add(kotlinElectricity);
     }
     if (isTypeScriptPlanet(data)) {
         typeScriptPlanetShell = createTypeScriptPlanetShell(THREE, baseSize);
@@ -519,6 +537,8 @@ function animate() {
     updateTypeScriptPlanetShell(typeScriptPlanetMaterial, now);
     updateTypeScriptPlanetShell(typeScriptPlanetShell, now);
     updateJavaScriptPlanetReactivity(javaScriptPlanetMaterial, now);
+    updateKotlinPlanetCrystal(kotlinPlanetMaterial, now);
+    updateKotlinElectricity(kotlinElectricity, now);
     updateRustPlanetDesert(rustPlanetMaterial, now);
     updateRustPlanetDesert(rustPlanetDust, now);
     renderer.render(scene, camera);
