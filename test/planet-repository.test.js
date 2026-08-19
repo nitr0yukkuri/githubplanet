@@ -22,6 +22,30 @@ test('finds a planet by username regardless of case', async () => {
     assert.deepEqual(calls[0][1], ['ALICE']);
 });
 
+test('reports random query timing without changing random selection', async () => {
+    const calls = [];
+    const timings = [];
+    const repository = createPlanetRepository({
+        async query(sql, params) {
+            calls.push([sql, params]);
+            return { rows: [{ github_id: 3, username: 'random' }] };
+        }
+    }, {
+        onRandomQueryTiming: (timing) => timings.push(timing)
+    });
+
+    const row = await repository.findRandom([1, 1, 2]);
+
+    assert.deepEqual(row, { github_id: 3, username: 'random' });
+    assert.deepEqual(calls[0][1], [1, 2]);
+    assert.match(calls[0][0], /ORDER\s+BY\s+RANDOM\(\)/i);
+    assert.equal(timings.length, 1);
+    assert.equal(timings[0].exclusionCount, 2);
+    assert.equal(timings[0].returnedRows, 1);
+    assert.equal(timings[0].error, null);
+    assert.equal(typeof timings[0].durationMs, 'number');
+});
+
 test('records and advances the owner login baseline in one transaction', async () => {
     const calls = [];
     const client = {

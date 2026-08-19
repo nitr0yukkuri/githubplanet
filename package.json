@@ -16,6 +16,7 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "preview:achievement": "node scripts/preview-achievement.mjs",
+    "perf:random-http": "node scripts/measure-random-http.mjs",
     "test": "node --test --test-concurrency=1"
   },
   "license": "MIT",
