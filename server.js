@@ -18,6 +18,7 @@ import { registerAuthRoutes } from './src/presentation/http/auth-routes.js';
 import { registerEventRoutes } from './src/presentation/http/event-routes.js';
 import { registerPageRoutes } from './src/presentation/http/page-routes.js';
 import { registerPlanetRoutes } from './src/presentation/http/planet-routes.js';
+import { createRandomPerformanceReporter } from './src/presentation/http/random-performance.js';
 
 const app = express();
 const port = parseInt(process.env.PORT) || 3000;
@@ -86,7 +87,12 @@ if (isProduction) {
 
 const pool = createPostgresPool(process.env.DATABASE_URL);
 await prepareDatabase(pool);
-const planetRepository = createPlanetRepository(pool);
+const randomPerformance = createRandomPerformanceReporter({
+    enabled: process.env.PERF_TRACE_RANDOM === 'true'
+});
+const planetRepository = createPlanetRepository(pool, {
+    onRandomQueryTiming: randomPerformance.recordRandomQuery
+});
 const geminiClient = createGeminiClient({
     axios,
     apiKey: process.env.GEMINI_API_KEY,
@@ -125,6 +131,7 @@ app.use(session({
     saveUninitialized: false,
     cookie: { secure: isProduction, httpOnly: true, sameSite: 'lax' }
 }));
+app.use(randomPerformance.middleware);
 
 registerPageRoutes(app, {
     rootDirectory: __dirname,

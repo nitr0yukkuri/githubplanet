@@ -1,6 +1,6 @@
 import { calculateLoginProgress } from '../../application/login-progress.js';
 
-export function createPlanetRepository(pool) {
+export function createPlanetRepository(pool, { onRandomQueryTiming } = {}) {
     if (!pool) return undefined;
 
     return {
@@ -15,17 +15,36 @@ export function createPlanetRepository(pool) {
         },
 
         async findRandom(excludeIds = []) {
-            if (excludeIds.length === 0) {
-                const result = await pool.query('SELECT * FROM planets ORDER BY RANDOM() LIMIT 1');
+            const startedAt = process.hrtime.bigint();
+            let result;
+            let queryError;
+            try {
+                if (excludeIds.length === 0) {
+                    result = await pool.query('SELECT * FROM planets ORDER BY RANDOM() LIMIT 1');
+                    return result.rows[0] || null;
+                }
+                const uniqueIds = [...new Set(excludeIds)];
+                const placeholders = uniqueIds.map((_, index) => `$${index + 1}`).join(', ');
+                result = await pool.query(
+                    `SELECT * FROM planets WHERE github_id NOT IN (${placeholders}) ORDER BY RANDOM() LIMIT 1`,
+                    uniqueIds
+                );
                 return result.rows[0] || null;
+            } catch (error) {
+                queryError = error;
+                throw error;
+            } finally {
+                try {
+                    onRandomQueryTiming?.({
+                        durationMs: Number(process.hrtime.bigint() - startedAt) / 1_000_000,
+                        exclusionCount: new Set(excludeIds).size,
+                        returnedRows: result?.rows?.length ?? 0,
+                        error: queryError?.message || null
+                    });
+                } catch {
+                    // Performance logging must never affect the query result.
+                }
             }
-            const uniqueIds = [...new Set(excludeIds)];
-            const placeholders = uniqueIds.map((_, index) => `$${index + 1}`).join(', ');
-            const result = await pool.query(
-                `SELECT * FROM planets WHERE github_id NOT IN (${placeholders}) ORDER BY RANDOM() LIMIT 1`,
-                uniqueIds
-            );
-            return result.rows[0] || null;
         },
 
         async updateActiveTitle(githubId, activeTitle) {
