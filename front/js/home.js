@@ -75,6 +75,8 @@ const socket = io({
 const homeRoute = resolveHomeRoute(window.location.pathname, window.location.search);
 const isExhibitionRoute = homeRoute.mode === 'exhibition';
 const isShowcaseRoute = homeRoute.mode === 'showcase';
+const isDemoRoute = homeRoute.mode === 'demo';
+const isPublicPlanetRoute = isShowcaseRoute || isDemoRoute;
 
 function toggleLoading(show) {
     if (!loadingOverlay) return;
@@ -793,6 +795,10 @@ async function init() {
     welcomeModal = document.getElementById('welcome-modal');
     okButton = document.getElementById('welcome-ok-btn');
     mainUiWrapper = document.getElementById('main-ui-wrapper');
+    if (isDemoRoute) {
+        const languageSwitcher = document.querySelector('.home-language-switcher');
+        if (languageSwitcher) languageSwitcher.style.display = 'none';
+    }
     showLocalAchievementPreview();
 
     const loadingStyle = document.createElement('style');
@@ -860,7 +866,7 @@ async function init() {
     animate();
 
     const hasVisited = localStorage.getItem('githubPlanetVisited');
-    const shouldShowWelcome = isExhibitionRoute || (!isShowcaseRoute && !hasVisited);
+    const shouldShowWelcome = isExhibitionRoute || (!isPublicPlanetRoute && !hasVisited);
 
     if (shouldShowWelcome) {
         if (welcomeModal) {
@@ -884,13 +890,13 @@ async function init() {
 }
 
 async function loadMainContent() {
-    if (mainUiWrapper) mainUiWrapper.style.display = 'block';
+    if (mainUiWrapper) mainUiWrapper.style.display = isDemoRoute ? 'none' : 'block';
 
     // ★変更: 初期ロード時のローディング表示を停止
     // toggleLoading(true);
 
     try {
-        const data = isShowcaseRoute
+        const data = isPublicPlanetRoute
             ? await fetchShowcasePlanetData()
             : await fetchMyPlanetData();
         const notLoggedInContainer = document.getElementById('not-logged-in-container');
@@ -901,7 +907,7 @@ async function loadMainContent() {
                 await loadPlanet(data);
             } else {
                 // 未ログインなら「星を誕生させる」画面を表示
-                notLoggedInContainer.style.display = isShowcaseRoute ? 'none' : 'flex';
+                notLoggedInContainer.style.display = isPublicPlanetRoute ? 'none' : 'flex';
                 const returnButton = document.getElementById('return-my-planet-btn');
                 if (returnButton) returnButton.style.display = 'none';
                 controls.enabled = false;

@@ -191,6 +191,7 @@ test('serves deterministic showcase planets without a database', async () => {
 test('serves the existing home UI through exhibition and showcase entry routes', async () => {
     const routes = [
         '/exhibition',
+        '/demo?showcase=ruby',
         '/showcase',
         '/showcase/typescript',
         '/en/exhibition',

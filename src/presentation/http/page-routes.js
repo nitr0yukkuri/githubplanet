@@ -62,6 +62,7 @@ export function registerPageRoutes(app, { rootDirectory, isProduction, systemApi
         '/exhibition',
         '/en/exhibition',
         '/english/exhibition',
+        '/demo',
         '/showcase',
         '/en/showcase',
         '/english/showcase',

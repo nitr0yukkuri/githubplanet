@@ -14,6 +14,17 @@ test('forces the exhibition welcome flow on Japanese and English paths', () => {
     assert.equal(resolveHomeRoute('/en/exhibition').mode, 'exhibition');
 });
 
+test('resolves the planet-only demo route without changing showcase routes', () => {
+    assert.deepEqual(resolveHomeRoute('/demo', '?showcase=ruby'), {
+        mode: 'demo',
+        showcaseSlug: 'ruby'
+    });
+    assert.deepEqual(resolveHomeRoute('/demo'), {
+        mode: 'demo',
+        showcaseSlug: 'typescript'
+    });
+});
+
 test('resolves showcase routes and defaults to TypeScript', () => {
     assert.deepEqual(resolveHomeRoute('/showcase'), {
         mode: 'showcase',
