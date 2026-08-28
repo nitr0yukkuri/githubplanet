@@ -11,7 +11,7 @@ function readPositiveInteger(name, fallback) {
 }
 
 const targetUrl = process.env.CARD_RECORD_URL
-    ?? 'https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=nitr0yukkuri&fix=true';
+    ?? 'https://githubplanet.dev/card.html?username=nitr0yukkuri&fix=true';
 const outputPath = path.resolve(process.env.CARD_RECORD_OUTPUT ?? 'artifacts/profile-card.webm');
 const videoDir = path.resolve(process.env.CARD_RECORD_VIDEO_DIR ?? 'artifacts/.playwright-video');
 const width = readPositiveInteger('CARD_RECORD_WIDTH', 1200);

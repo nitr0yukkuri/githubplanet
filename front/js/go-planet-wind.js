@@ -12,10 +12,23 @@ export function calculateGoWindSpeedFactor(rotationSpeed, baseRotationSpeed = 0.
 
 export function createGoPlanetWindMaterial(THREE, planetTexture, flowDirection = 1, colorTheme = 'go') {
     const isVueTheme = colorTheme === 'vue';
-    const deepColor = isVueTheme ? 'vec3(0.035, 0.24, 0.17)' : 'vec3(0.0, 0.29, 0.42)';
-    const baseColor = isVueTheme ? 'vec3(0.255, 0.72, 0.51)' : 'vec3(0.0, 0.68, 0.85)';
-    const windColor = isVueTheme ? 'vec3(0.68, 0.98, 0.82)' : 'vec3(0.72, 0.95, 1.0)';
-    const flashColor = isVueTheme ? 'vec3(0.9, 1.0, 0.95)' : 'vec3(0.94, 1.0, 1.0)';
+    const isSwiftTheme = colorTheme === 'swift';
+    const deepColor = isVueTheme
+        ? 'vec3(0.035, 0.24, 0.17)'
+        : isSwiftTheme ? 'vec3(0.3, 0.04, 0.025)' : 'vec3(0.0, 0.29, 0.42)';
+    const baseColor = isVueTheme
+        ? 'vec3(0.255, 0.72, 0.51)'
+        : isSwiftTheme ? 'vec3(0.82, 0.14, 0.09)' : 'vec3(0.0, 0.68, 0.85)';
+    const windColor = isVueTheme
+        ? 'vec3(0.68, 0.98, 0.82)'
+        : isSwiftTheme ? 'vec3(1.0, 0.42, 0.28)' : 'vec3(0.72, 0.95, 1.0)';
+    const flashColor = isVueTheme
+        ? 'vec3(0.9, 1.0, 0.95)'
+        : isSwiftTheme ? 'vec3(1.0, 0.9, 0.78)' : 'vec3(0.94, 1.0, 1.0)';
+    const windStreakBoost = isSwiftTheme ? '1.35' : '1.0';
+    const windColorMix = isSwiftTheme ? '0.11' : '0.035';
+    const windEmission = isSwiftTheme ? '0.022' : '0.008';
+    const rimEmission = isSwiftTheme ? '0.052' : '0.028';
     const material = new THREE.MeshStandardMaterial({
         color: 0xffffff,
         map: planetTexture,
@@ -78,7 +91,7 @@ float goFineStreak = pow(smoothstep(0.74, 1.0, goSecondaryWave), 10.0);
 float goTailWave = sin(goTravel * 4.0 - goLatitude * 13.0 + 0.7) * 0.5 + 0.5;
 float goTailGate = smoothstep(0.42, 0.7, goTailWave)
     * (1.0 - smoothstep(0.83, 0.98, goTailWave));
-float goWindStreak = clamp(goPrimaryStreak * goTailGate + goFineStreak * goTailGate * 0.55, 0.0, 1.0);
+float goWindStreak = clamp((goPrimaryStreak * goTailGate + goFineStreak * goTailGate * 0.55) * ${windStreakBoost}, 0.0, 1.0);
 
 float goRim = pow(1.0 - clamp(dot(vGoWindViewDirection, vGoWindViewNormal), 0.0, 1.0), 3.2);
 float goRimGustWave = sin(goTravel * 7.0 + goLatitude * 8.0) * 0.5 + 0.5;
@@ -91,13 +104,15 @@ vec3 goWindColor = ${windColor};
 vec3 goFlashColor = ${flashColor};
 vec3 goTerrainColor = mix(goDeepColor, goBaseColor, 0.38 + goContrastedRelief * 0.62);
 goTerrainColor *= 0.72 + goContrastedRelief * 0.48;
-vec3 goFlowColor = mix(goTerrainColor, goWindColor, goWindStreak * 0.035);
-goFlowColor = mix(goFlowColor, goFlashColor, goRimGust * 0.04);
+vec3 goFlowColor = mix(goTerrainColor, goWindColor, goWindStreak * ${windColorMix});
+goFlowColor = mix(goFlowColor, goFlashColor, goRimGust * ${rimEmission});
 diffuseColor.rgb = mix(goMappedTexture, goFlowColor, 0.82);`
             )
             .replace(
                 '#include <emissivemap_fragment>',
-                '#include <emissivemap_fragment>\ntotalEmissiveRadiance += goWindColor * goWindStreak * 0.008;\ntotalEmissiveRadiance += goFlashColor * goRimGust * 0.028;'
+                `#include <emissivemap_fragment>
+totalEmissiveRadiance += goWindColor * goWindStreak * ${windEmission};
+totalEmissiveRadiance += goFlashColor * goRimGust * ${rimEmission};`
             );
     };
 
@@ -109,10 +124,22 @@ diffuseColor.rgb = mix(goMappedTexture, goFlowColor, 0.82);`
 
 export function createGoPlanetAtmosphere(THREE, radius, flowDirection = 1, colorTheme = 'go') {
     const isVueTheme = colorTheme === 'vue';
-    const atmosphereDeepColor = isVueTheme ? 'vec3(0.06, 0.42, 0.27)' : 'vec3(0.0, 0.42, 0.62)';
-    const atmosphereBrightColor = isVueTheme ? 'vec3(0.28, 0.76, 0.52)' : 'vec3(0.18, 0.72, 0.84)';
-    const wakeDeepColor = isVueTheme ? 'vec3(0.04, 0.36, 0.23)' : 'vec3(0.0, 0.38, 0.55)';
-    const wakeBrightColor = isVueTheme ? 'vec3(0.2, 0.68, 0.44)' : 'vec3(0.12, 0.65, 0.76)';
+    const isSwiftTheme = colorTheme === 'swift';
+    const atmosphereDeepColor = isVueTheme
+        ? 'vec3(0.06, 0.42, 0.27)'
+        : isSwiftTheme ? 'vec3(0.32, 0.06, 0.035)' : 'vec3(0.0, 0.42, 0.62)';
+    const atmosphereBrightColor = isVueTheme
+        ? 'vec3(0.28, 0.76, 0.52)'
+        : isSwiftTheme ? 'vec3(0.95, 0.22, 0.12)' : 'vec3(0.18, 0.72, 0.84)';
+    const wakeDeepColor = isVueTheme
+        ? 'vec3(0.04, 0.36, 0.23)'
+        : isSwiftTheme ? 'vec3(0.24, 0.04, 0.025)' : 'vec3(0.0, 0.38, 0.55)';
+    const wakeBrightColor = isVueTheme
+        ? 'vec3(0.2, 0.68, 0.44)'
+        : isSwiftTheme ? 'vec3(0.82, 0.12, 0.07)' : 'vec3(0.12, 0.65, 0.76)';
+    const atmosphereBaseOpacity = isSwiftTheme ? '0.07' : '0.045';
+    const atmosphereGustOpacity = isSwiftTheme ? '0.42' : '0.3';
+    const wakeOpacityScale = isSwiftTheme ? 1.35 : 1;
     const atmosphere = new THREE.Group();
     const uniforms = {
         goAtmosphereTime: { value: INITIAL_GO_WIND_PHASE_SECONDS },
@@ -166,7 +193,7 @@ export function createGoPlanetAtmosphere(THREE, radius, flowDirection = 1, color
                 ), 2.1);
                 float gust = streak * latitudeFade;
                 vec3 color = mix(${atmosphereDeepColor}, ${atmosphereBrightColor}, gust);
-                float alpha = rim * (0.045 + gust * 0.3);
+                float alpha = rim * (${atmosphereBaseOpacity} + gust * ${atmosphereGustOpacity});
                 gl_FragColor = vec4(color, alpha);
             }
         `
@@ -179,8 +206,8 @@ export function createGoPlanetAtmosphere(THREE, radius, flowDirection = 1, color
     atmosphere.add(shell);
 
     [
-        { radiusScale: 1.14, opacity: 0.17, phase: 0.0 },
-        { radiusScale: 1.2, opacity: 0.1, phase: 1.8 }
+        { radiusScale: 1.14, opacity: 0.17 * wakeOpacityScale, phase: 0.0 },
+        { radiusScale: 1.2, opacity: 0.1 * wakeOpacityScale, phase: 1.8 }
     ].forEach(({ radiusScale, opacity, phase }) => {
         const wakeMaterial = new THREE.ShaderMaterial({
             uniforms: {

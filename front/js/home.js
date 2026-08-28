@@ -2,57 +2,20 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import anime from 'animejs';
 import { io } from 'socket.io-client';
-import { createCssPlanetFlowMaterial, isCssPlanet, updateCssPlanetFlow } from './css-planet-flow.js';
-import { createCPlanetSteelMaterial, isCPlanet } from './c-planet-steel.js';
-import { createCppPlanetLightningMaterial, isCppPlanet, updateCppPlanetLightning } from './cpp-planet-lightning.js';
-import {
-    createGoPlanetAtmosphere,
-    createGoPlanetWindMaterial,
-    calculateGoWindSpeedFactor,
-    isGoPlanet,
-    updateGoPlanetAtmosphere,
-    updateGoPlanetWind
-} from './go-planet-wind.js';
-import {
-    createVueLeafWind,
-    isVuePlanet,
-    updateVueLeafWind
-} from './vue-planet-circulation.js';
-import {
-    createTypeScriptPlanetMaterial,
-    createTypeScriptPlanetShell,
-    isTypeScriptPlanet,
-    updateTypeScriptPlanetShell
-} from './typescript-planet-shell.js';
-import {
-    createJavaScriptPlanetMaterial,
-    isJavaScriptPlanet,
-    updateJavaScriptPlanetReactivity
-} from './javascript-planet-reactivity.js';
-import {
-    createRustPlanetDust,
-    createRustPlanetMaterial,
-    isRustPlanet,
-    updateRustPlanetDesert
-} from './rust-planet-desert.js';
+import { createPlanetFeatureRuntime } from './planet-features/registry.js';
 import { applyI18n, localizedPath, localizedPlanetName, localizedTitle, t } from './i18n.js';
 import { DEFAULT_SHOWCASE_SLUG, resolveHomeRoute } from './home-route.js';
 
 const MAX_STAR_COUNT = 120;
 const BASE_PLANET_ROTATION_SPEED = 0.001;
+// API停止時に画面を無期限でローディング状態にしないための上限。通常時の表示・動きは変えない。
+const HOME_API_TIMEOUT_MS = 15_000;
 
 let scene, camera, renderer, controls, planetGroup;
-let cssPlanetMaterial = null;
-let cppPlanetMaterial = null;
-let goPlanetWindMaterial = null;
-let goPlanetAtmosphere = null;
-let vueLeafWind = null;
-let windAnimationMultiplier = 1;
-let typeScriptPlanetMaterial = null;
-let typeScriptPlanetShell = null;
-let javaScriptPlanetMaterial = null;
-let rustPlanetMaterial = null;
-let rustPlanetDust = null;
+let planetFeatureRuntime = null;
+let planetLoadGeneration = 0;
+let planetTexturePromise = null;
+let activePlanetReveal = null;
 
 let welcomeModal, okButton, mainUiWrapper;
 let isFetchingRandomPlanet = false;
@@ -68,6 +31,16 @@ let cachedPlanetTexture = null;
 
 const textureLoader = new THREE.TextureLoader();
 
+async function fetchHomeApi(input, options = {}, timeoutMs = HOME_API_TIMEOUT_MS) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(input, { ...options, signal: controller.signal });
+    } finally {
+        window.clearTimeout(timeoutId);
+    }
+}
+
 const socket = io({
     transports: ['websocket']
 });
@@ -75,6 +48,8 @@ const socket = io({
 const homeRoute = resolveHomeRoute(window.location.pathname, window.location.search);
 const isExhibitionRoute = homeRoute.mode === 'exhibition';
 const isShowcaseRoute = homeRoute.mode === 'showcase';
+const isDemoRoute = homeRoute.mode === 'demo';
+const isPublicPlanetRoute = isShowcaseRoute || isDemoRoute;
 
 function toggleLoading(show) {
     if (!loadingOverlay) return;
@@ -169,7 +144,7 @@ function showLocalAchievementPreview() {
 
 async function fetchMyPlanetData() {
     try {
-        const res = await fetch(`/api/me?t=${Date.now()}`, { cache: 'no-store' });
+        const res = await fetchHomeApi(`/api/me?t=${Date.now()}`, { cache: 'no-store' });
 
         if (!res.ok) return null;
         const data = await res.json();
@@ -195,14 +170,14 @@ async function fetchMyPlanetData() {
 
 async function fetchShowcasePlanetData(showcaseSlug = homeRoute.showcaseSlug) {
     try {
-        const res = await fetch(
+        const res = await fetchHomeApi(
             `/api/planets/showcase/${encodeURIComponent(showcaseSlug)}?t=${Date.now()}`,
             { cache: 'no-store' }
         );
         if (res.ok) return await res.json();
 
         if (showcaseSlug !== DEFAULT_SHOWCASE_SLUG) {
-            const fallback = await fetch(
+            const fallback = await fetchHomeApi(
                 `/api/planets/showcase/${DEFAULT_SHOWCASE_SLUG}?t=${Date.now()}`,
                 { cache: 'no-store' }
             );
@@ -218,8 +193,17 @@ function updateShowcaseCta() {
     if (!isShowcaseRoute) return;
 
     const showcaseIntro = document.getElementById('not-logged-in-container');
+    const message = document.getElementById('not-logged-in-text');
+    const cta = document.getElementById('login-button');
     const bottomCta = document.getElementById('next-random-planet-btn');
     if (showcaseIntro) showcaseIntro.style.display = 'none';
+    if (message) message.style.display = 'none';
+
+    if (cta) {
+        cta.style.display = 'none';
+        cta.href = '#';
+        cta.textContent = t('home.nextRandom');
+    }
     if (bottomCta) {
         bottomCta.href = loggedInUsername ? localizedPath('/') : localizedPath('/login');
         bottomCta.textContent = t('home.showcaseCta');
@@ -231,7 +215,7 @@ async function resolveShowcaseCtaTarget() {
 
     updateShowcaseCta();
     try {
-        const res = await fetch(`/api/me?t=${Date.now()}`, { cache: 'no-store' });
+        const res = await fetchHomeApi(`/api/me?t=${Date.now()}`, { cache: 'no-store' });
         if (!res.ok) return;
         const data = await res.json();
         if (data.user?.login) loggedInUsername = data.user.login;
@@ -315,38 +299,73 @@ function calculateStarCount(totalCommits) {
 
 function loadPlanetTexture() {
     if (cachedPlanetTexture) return Promise.resolve(cachedPlanetTexture);
-    return new Promise((resolve) => {
-        textureLoader.load('/front/img/2k_mars.jpg', (tex) => {
-            cachedPlanetTexture = tex;
-            resolve(tex);
-        });
+    if (planetTexturePromise) return planetTexturePromise;
+
+    planetTexturePromise = new Promise((resolve, reject) => {
+        textureLoader.load(
+            '/front/img/2k_mars.jpg',
+            (tex) => {
+                cachedPlanetTexture = tex;
+                resolve(tex);
+            },
+            undefined,
+            reject
+        );
+    }).finally(() => {
+        planetTexturePromise = null;
     });
+
+    return planetTexturePromise;
 }
 
-function disposeObject(obj) {
+function disposeObject(obj, resources = {
+    geometries: new Set(),
+    materials: new Set(),
+    textures: new Set()
+}) {
     if (!obj) return;
 
     if (obj.children) {
         for (let i = obj.children.length - 1; i >= 0; i--) {
-            disposeObject(obj.children[i]);
+            disposeObject(obj.children[i], resources);
             obj.remove(obj.children[i]);
         }
     }
 
-    if (obj.geometry) {
+    if (obj.geometry && !resources.geometries.has(obj.geometry)) {
+        resources.geometries.add(obj.geometry);
         obj.geometry.dispose();
     }
 
     if (obj.material) {
         const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
         materials.forEach((material) => {
-            const textures = new Set([material.map, material.aoMap]);
-            textures.forEach((texture) => {
-                if (texture && texture !== cachedPlanetTexture) texture.dispose();
+            if (!material || resources.materials.has(material)) return;
+            resources.materials.add(material);
+
+            [material.map, material.aoMap].forEach((texture) => {
+                if (
+                    texture
+                    && texture !== cachedPlanetTexture
+                    && !resources.textures.has(texture)
+                ) {
+                    resources.textures.add(texture);
+                    texture.dispose();
+                }
             });
             material.dispose();
         });
     }
+}
+
+function cancelActivePlanetReveal() {
+    if (!activePlanetReveal) return;
+
+    activePlanetReveal.timeline.pause();
+    scene.remove(activePlanetReveal.shockwave);
+    activePlanetReveal.shockwaveGeo.dispose();
+    activePlanetReveal.shockwaveMat.dispose();
+    activePlanetReveal = null;
 }
 
 async function loadPlanet(data) {
@@ -356,6 +375,9 @@ async function loadPlanet(data) {
     if (profileLink) profileLink.style.display = 'none';
 
     if (!data) return;
+
+    const loadGeneration = ++planetLoadGeneration;
+    cancelActivePlanetReveal();
 
     console.log('loadPlanet called with data:', data);
 
@@ -378,9 +400,9 @@ async function loadPlanet(data) {
     }
 
     const rotationCommits = Math.min(Math.max(Number(wCommits) || 0, 0), 100);
-    planetRotationSpeed = (BASE_PLANET_ROTATION_SPEED + (rotationCommits * 0.0001))
-        * (isVuePlanet(data) ? 0.7 : 1);
-    windAnimationMultiplier = isVuePlanet(data) ? 0.5 : 1;
+    const basePlanetRotationSpeed = BASE_PLANET_ROTATION_SPEED
+        + (rotationCommits * 0.0001);
+    planetRotationSpeed = basePlanetRotationSpeed;
 
     if (ownerDisplay && data.username) {
         ownerDisplay.textContent = t('home.ownerPlanet', { username: data.username });
@@ -401,76 +423,35 @@ async function loadPlanet(data) {
         scene.remove(planetGroup);
         planetGroup = undefined;
     }
-    cssPlanetMaterial = null;
-    cppPlanetMaterial = null;
-    goPlanetWindMaterial = null;
-    goPlanetAtmosphere = null;
-    vueLeafWind = null;
-    typeScriptPlanetMaterial = null;
-    typeScriptPlanetShell = null;
-    javaScriptPlanetMaterial = null;
-    rustPlanetMaterial = null;
-    rustPlanetDust = null;
+    planetFeatureRuntime = null;
 
     planetGroup = new THREE.Group();
 
     const tex = await loadPlanetTexture();
+    if (loadGeneration !== planetLoadGeneration) return;
 
     const geo = new THREE.SphereGeometry(4, 32, 32);
-    let mat;
-    if (isCPlanet(data)) {
-        mat = createCPlanetSteelMaterial(THREE, tex);
-    } else if (isCssPlanet(data)) {
-        mat = createCssPlanetFlowMaterial(THREE, tex);
-        cssPlanetMaterial = mat;
-    } else if (isCppPlanet(data)) {
-        mat = createCppPlanetLightningMaterial(THREE, tex, data.planetColor);
-        cppPlanetMaterial = mat;
-    } else if (isGoPlanet(data) || isVuePlanet(data)) {
-        mat = createGoPlanetWindMaterial(THREE, tex, 1, isVuePlanet(data) ? 'vue' : 'go');
-        goPlanetWindMaterial = mat;
-    } else if (isTypeScriptPlanet(data)) {
-        mat = createTypeScriptPlanetMaterial(THREE, tex);
-        typeScriptPlanetMaterial = mat;
-    } else if (isJavaScriptPlanet(data)) {
-        mat = createJavaScriptPlanetMaterial(THREE, tex, data.planetColor);
-        javaScriptPlanetMaterial = mat;
-    } else if (isRustPlanet(data)) {
-        mat = createRustPlanetMaterial(THREE, tex);
-        rustPlanetMaterial = mat;
-    } else {
-        mat = new THREE.MeshStandardMaterial({
+    planetFeatureRuntime = createPlanetFeatureRuntime({
+        THREE,
+        planetTexture: tex,
+        data,
+        radius: 4,
+        direction: 1
+    });
+    planetRotationSpeed = basePlanetRotationSpeed
+        * (planetFeatureRuntime?.rotationMultiplier || 1);
+
+    const mat = planetFeatureRuntime?.material || new THREE.MeshStandardMaterial({
             color: data.planetColor ? new THREE.Color(data.planetColor).getHex() : 0x808080,
             metalness: 0.2, roughness: 0.8, aoMapIntensity: 1.5,
             aoMap: tex
         });
-    }
 
     const planet = new THREE.Mesh(geo, mat);
     planet.geometry.setAttribute('uv2', new THREE.BufferAttribute(geo.attributes.uv.array, 2));
     const s = data.planetSizeFactor || 1.0;
     planetGroup.add(planet);
-    if (isGoPlanet(data) || isVuePlanet(data)) {
-        goPlanetAtmosphere = createGoPlanetAtmosphere(
-            THREE,
-            4,
-            1,
-            isVuePlanet(data) ? 'vue' : 'go'
-        );
-        planetGroup.add(goPlanetAtmosphere);
-    }
-    if (isVuePlanet(data)) {
-        vueLeafWind = createVueLeafWind(THREE, 4);
-        planetGroup.add(vueLeafWind);
-    }
-    if (isTypeScriptPlanet(data)) {
-        typeScriptPlanetShell = createTypeScriptPlanetShell(THREE, 4);
-        planetGroup.add(typeScriptPlanetShell);
-    }
-    if (isRustPlanet(data)) {
-        rustPlanetDust = createRustPlanetDust(THREE, 4);
-        planetGroup.add(rustPlanetDust);
-    }
+    planetFeatureRuntime?.sceneObjects.forEach((object) => planetGroup.add(object));
 
     const starCount = calculateStarCount(data.totalCommits || 0);
 
@@ -600,14 +581,23 @@ async function loadPlanet(data) {
     scene.add(planetGroup);
     scene.add(shockwave);
 
+    const reveal = {
+        timeline: null,
+        shockwave,
+        shockwaveGeo,
+        shockwaveMat
+    };
     const tl = anime.timeline({
         easing: 'easeOutExpo',
         complete: () => {
             scene.remove(shockwave);
             shockwaveGeo.dispose();
             shockwaveMat.dispose();
+            if (activePlanetReveal === reveal) activePlanetReveal = null;
         }
     });
+    reveal.timeline = tl;
+    activePlanetReveal = reveal;
 
     const initialDelay = 500;
 
@@ -619,8 +609,7 @@ async function loadPlanet(data) {
         opacity: [
             { value: 1.0, duration: 0 },
             { value: 0.0, duration: 400, easing: 'easeInExpo' }
-        ],
-        update: () => { shockwave.material.needsUpdate = true; }
+        ]
     }, initialDelay);
 
     tl.add({
@@ -793,6 +782,10 @@ async function init() {
     welcomeModal = document.getElementById('welcome-modal');
     okButton = document.getElementById('welcome-ok-btn');
     mainUiWrapper = document.getElementById('main-ui-wrapper');
+    if (isDemoRoute) {
+        const languageSwitcher = document.querySelector('.home-language-switcher');
+        if (languageSwitcher) languageSwitcher.style.display = 'none';
+    }
     showLocalAchievementPreview();
 
     const loadingStyle = document.createElement('style');
@@ -860,7 +853,7 @@ async function init() {
     animate();
 
     const hasVisited = localStorage.getItem('githubPlanetVisited');
-    const shouldShowWelcome = isExhibitionRoute || (!isShowcaseRoute && !hasVisited);
+    const shouldShowWelcome = isExhibitionRoute || (!isPublicPlanetRoute && !hasVisited);
 
     if (shouldShowWelcome) {
         if (welcomeModal) {
@@ -884,13 +877,13 @@ async function init() {
 }
 
 async function loadMainContent() {
-    if (mainUiWrapper) mainUiWrapper.style.display = 'block';
+    if (mainUiWrapper) mainUiWrapper.style.display = isDemoRoute ? 'none' : 'block';
 
     // ★変更: 初期ロード時のローディング表示を停止
     // toggleLoading(true);
 
     try {
-        const data = isShowcaseRoute
+        const data = isPublicPlanetRoute
             ? await fetchShowcasePlanetData()
             : await fetchMyPlanetData();
         const notLoggedInContainer = document.getElementById('not-logged-in-container');
@@ -901,7 +894,7 @@ async function loadMainContent() {
                 await loadPlanet(data);
             } else {
                 // 未ログインなら「星を誕生させる」画面を表示
-                notLoggedInContainer.style.display = isShowcaseRoute ? 'none' : 'flex';
+                notLoggedInContainer.style.display = isPublicPlanetRoute ? 'none' : 'flex';
                 const returnButton = document.getElementById('return-my-planet-btn');
                 if (returnButton) returnButton.style.display = 'none';
                 controls.enabled = false;
@@ -922,21 +915,11 @@ function animate() {
     requestAnimationFrame(animate);
     if (planetGroup) planetGroup.rotation.z += planetRotationSpeed;
     const now = performance.now();
-    const goWindSpeedFactor = calculateGoWindSpeedFactor(
-        planetRotationSpeed,
-        BASE_PLANET_ROTATION_SPEED
-    );
-    updateCssPlanetFlow(cssPlanetMaterial, now);
-    updateCppPlanetLightning(cppPlanetMaterial, now);
-    const windSpeed = goWindSpeedFactor * windAnimationMultiplier;
-    updateGoPlanetWind(goPlanetWindMaterial, now, windSpeed);
-    updateGoPlanetAtmosphere(goPlanetAtmosphere, now, windSpeed);
-    updateVueLeafWind(vueLeafWind, now, windSpeed);
-    updateTypeScriptPlanetShell(typeScriptPlanetMaterial, now);
-    updateTypeScriptPlanetShell(typeScriptPlanetShell, now);
-    updateJavaScriptPlanetReactivity(javaScriptPlanetMaterial, now);
-    updateRustPlanetDesert(rustPlanetMaterial, now);
-    updateRustPlanetDesert(rustPlanetDust, now);
+    planetFeatureRuntime?.update(now, {
+        rotationSpeed: planetRotationSpeed,
+        baseRotationSpeed: BASE_PLANET_ROTATION_SPEED,
+        camera
+    });
     controls.update();
     renderer.render(scene, camera);
 }
@@ -965,7 +948,7 @@ function setupUI() {
         toggleLoading(true);
 
         try {
-            const res = await fetch(`/api/planets/user/${username.trim()}?t=${Date.now()}`, { cache: 'no-store' });
+            const res = await fetchHomeApi(`/api/planets/user/${username.trim()}?t=${Date.now()}`, { cache: 'no-store' });
             if (res.ok) {
                 const planetData = await res.json();
                 console.log('取得したユーザーデータ:', planetData);
@@ -1008,7 +991,7 @@ function setupUI() {
         toggleLoading(true);
 
         try {
-            const res = await fetch(`/api/planets/random?t=${Date.now()}`, { cache: 'no-store' });
+            const res = await fetchHomeApi(`/api/planets/random?t=${Date.now()}`, { cache: 'no-store' });
             if (res.ok) {
                 const planetData = await res.json();
                 console.log('取得したランダムデータ:', planetData);

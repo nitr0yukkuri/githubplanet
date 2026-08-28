@@ -29,6 +29,43 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci
+
+      - name: Run application tests
+        # 壊れたコードからGIFだけを生成して公開しないため、素材生成より先に検証する。
+        run: npm test
+
+      - name: Smoke test deployed showcase routes
+        # 本番URLの表示/API障害を検知して、異常な公開素材の更新を止める。
+        env:
+          SMOKE_BASE_URL: https://githubplanet.dev
+        run: |
+          node --input-type=module <<'NODE'
+          const baseUrl = process.env.SMOKE_BASE_URL;
+          const checks = [
+            {
+              path: '/demo?showcase=ruby',
+              validate: (text) => text.includes('id="canvas-container"')
+            },
+            {
+              path: '/api/planets/showcase/ruby',
+              validate: (text) => JSON.parse(text).mainLanguage === 'Ruby'
+            }
+          ];
+
+          for (const check of checks) {
+            const response = await fetch(`${baseUrl}${check.path}`, {
+              signal: AbortSignal.timeout(15_000)
+            });
+            const body = await response.text();
+            if (!response.ok || !check.validate(body)) {
+              throw new Error(`Smoke test failed: ${check.path} (${response.status})`);
+            }
+            console.log(`Smoke test passed: ${check.path}`);
+          }
+          NODE
+
+      - name: Install Playwright browser
+        run: |
           npm install --no-save --package-lock=false playwright@1.58.2
           npx playwright install chromium --with-deps
 
