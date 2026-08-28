@@ -2,7 +2,17 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
-export function registerPageRoutes(app, { rootDirectory, isProduction, systemApiKey, sessionSecret }) {
+const DEFAULT_PUBLIC_BASE_URL = 'https://githubplanet-git-543426763451.asia-northeast2.run.app';
+const SOURCE_PUBLIC_BASE_URL = 'https://githubplanet.dev';
+
+export function registerPageRoutes(app, {
+    rootDirectory,
+    isProduction,
+    systemApiKey,
+    sessionSecret,
+    publicBaseUrl = DEFAULT_PUBLIC_BASE_URL
+}) {
+    const normalizedPublicBaseUrl = publicBaseUrl.replace(/\/+$/, '');
     const pageTitles = {
         'index.html': 'GitHub Planet',
         'achievements.html': 'Achievements - GitHub Planet',
@@ -13,12 +23,19 @@ export function registerPageRoutes(app, { rootDirectory, isProduction, systemApi
 
     function sendPage(req, res, fileName) {
         const isEnglish = /^\/(en|english)(\/|$)/.test(req.path);
-        if (!isEnglish) return res.sendFile(path.join(rootDirectory, fileName));
-
         let html = isProduction ? pageCache.get(fileName) : undefined;
         if (!html) {
             html = fs.readFileSync(path.join(rootDirectory, fileName), 'utf8');
-            if (isProduction) pageCache.set(fileName, html);
+            html = html
+                .replaceAll(SOURCE_PUBLIC_BASE_URL, normalizedPublicBaseUrl)
+                .replaceAll(DEFAULT_PUBLIC_BASE_URL, normalizedPublicBaseUrl);
+            if (isProduction) {
+                pageCache.set(fileName, html);
+            }
+        }
+
+        if (!isEnglish) {
+            return res.type('html').send(html);
         }
 
         html = html
@@ -29,8 +46,8 @@ export function registerPageRoutes(app, { rootDirectory, isProduction, systemApi
             html = html
                 .replace('GitHubの活動履歴からあなただけの惑星を生成しよう。', 'Generate your own planet from your GitHub activity.')
                 .replaceAll('あなたのコードが、星になる。GitHubの活動履歴からあなただけの惑星を生成しよう。', 'Your code becomes a star. Generate your own planet from your GitHub activity.')
-                .replace('content="https://githubplanet-git-543426763451.asia-northeast2.run.app/"', 'content="https://githubplanet-git-543426763451.asia-northeast2.run.app/en"')
-                .replace('href="https://githubplanet-git-543426763451.asia-northeast2.run.app/" rel="canonical"', 'href="https://githubplanet-git-543426763451.asia-northeast2.run.app/en" rel="canonical"');
+                .replace(`content="${normalizedPublicBaseUrl}/"`, `content="${normalizedPublicBaseUrl}/en"`)
+                .replace(`href="${normalizedPublicBaseUrl}/" rel="canonical"`, `href="${normalizedPublicBaseUrl}/en" rel="canonical"`);
         }
 
         res.type('html').send(html);
@@ -62,6 +79,7 @@ export function registerPageRoutes(app, { rootDirectory, isProduction, systemApi
         '/exhibition',
         '/en/exhibition',
         '/english/exhibition',
+        '/demo',
         '/showcase',
         '/en/showcase',
         '/english/showcase',

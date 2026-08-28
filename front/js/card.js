@@ -1,51 +1,12 @@
 // front/js/card.js
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { createCssPlanetFlowMaterial, isCssPlanet, updateCssPlanetFlow } from './css-planet-flow.js';
-import { createCPlanetSteelMaterial, isCPlanet } from './c-planet-steel.js';
-import { createCppPlanetLightningMaterial, isCppPlanet, updateCppPlanetLightning } from './cpp-planet-lightning.js';
-import {
-    createGoPlanetAtmosphere,
-    createGoPlanetWindMaterial,
-    calculateGoWindSpeedFactor,
-    isGoPlanet,
-    updateGoPlanetAtmosphere,
-    updateGoPlanetWind
-} from './go-planet-wind.js';
-import {
-    createVueLeafWind,
-    isVuePlanet,
-    updateVueLeafWind
-} from './vue-planet-circulation.js';
-import {
-    createTypeScriptPlanetMaterial,
-    createTypeScriptPlanetShell,
-    isTypeScriptPlanet,
-    updateTypeScriptPlanetShell
-} from './typescript-planet-shell.js';
-import {
-    createJavaScriptPlanetMaterial,
-    isJavaScriptPlanet,
-    updateJavaScriptPlanetReactivity
-} from './javascript-planet-reactivity.js';
-import {
-    createKotlinElectricity,
-    createKotlinPlanetMaterial,
-    isKotlinPlanet,
-    updateKotlinElectricity,
-    updateKotlinPlanetCrystal
-} from './kotlin-planet-crystal.js';
-import {
-    createRustPlanetDust,
-    createRustPlanetMaterial,
-    isRustPlanet,
-    updateRustPlanetDesert
-} from './rust-planet-desert.js';
+import { createPlanetFeatureRuntime } from './planet-features/registry.js';
 import { applyI18n, localizedPath, localizedPlanetName } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
 const CARD_DATA_TIMEOUT_MS = 6000;
-const PUBLIC_DEPLOY_URL = 'https://githubplanet-git-543426763451.asia-northeast2.run.app';
+const PUBLIC_DEPLOY_URL = 'https://githubplanet.dev';
 
 const params = new URLSearchParams(window.location.search);
 const showcaseSlug = params.get('showcase');
@@ -174,20 +135,8 @@ planetGroup.position.set(0, 0, 0);
 scene.add(planetGroup);
 
 let planetMesh;
-let cssPlanetMaterial = null;
-let cppPlanetMaterial = null;
-let goPlanetWindMaterial = null;
-let goPlanetAtmosphere = null;
-let vueLeafWind = null;
+let planetFeatureRuntime = null;
 let cardRotationMultiplier = 1;
-let windAnimationMultiplier = 1;
-let typeScriptPlanetMaterial = null;
-let typeScriptPlanetShell = null;
-let javaScriptPlanetMaterial = null;
-let kotlinPlanetMaterial = null;
-let kotlinElectricity = null;
-let rustPlanetMaterial = null;
-let rustPlanetDust = null;
 
 async function init() {
     const controller = new AbortController();
@@ -272,45 +221,55 @@ function calculateStarCount(totalCommits) {
     return starCount;
 }
 
-function disposeObject(object) {
+function disposeObject(object, resources = {
+    geometries: new Set(),
+    materials: new Set(),
+    textures: new Set()
+}) {
     if (!object) return;
     for (let index = object.children?.length - 1; index >= 0; index--) {
         const child = object.children[index];
-        disposeObject(child);
+        disposeObject(child, resources);
         object.remove(child);
     }
-    object.geometry?.dispose();
+
+    if (object.geometry && !resources.geometries.has(object.geometry)) {
+        resources.geometries.add(object.geometry);
+        object.geometry.dispose();
+    }
+
     const materials = Array.isArray(object.material) ? object.material : [object.material];
     materials.forEach((material) => {
-        if (!material) return;
-        const textures = new Set([material.map, material.aoMap]);
-        textures.forEach((texture) => {
-            if (texture && texture !== planetTexture) texture.dispose();
+        if (!material || resources.materials.has(material)) return;
+        resources.materials.add(material);
+
+        [material.map, material.aoMap].forEach((texture) => {
+            if (
+                texture
+                && texture !== planetTexture
+                && !resources.textures.has(texture)
+            ) {
+                resources.textures.add(texture);
+                texture.dispose();
+            }
         });
         material.dispose();
     });
 }
 
 function createPlanet(data) {
+    const resources = {
+        geometries: new Set(),
+        materials: new Set(),
+        textures: new Set()
+    };
     while (planetGroup.children.length > 0) {
         const child = planetGroup.children[0];
-        disposeObject(child);
+        disposeObject(child, resources);
         planetGroup.remove(child);
     }
-    cssPlanetMaterial = null;
-    cppPlanetMaterial = null;
-    goPlanetWindMaterial = null;
-    goPlanetAtmosphere = null;
-    vueLeafWind = null;
-    cardRotationMultiplier = isVuePlanet(data) ? 0.7 : 1;
-    windAnimationMultiplier = isVuePlanet(data) ? 0.5 : 1;
-    typeScriptPlanetMaterial = null;
-    typeScriptPlanetShell = null;
-    javaScriptPlanetMaterial = null;
-    kotlinPlanetMaterial = null;
-    kotlinElectricity = null;
-    rustPlanetMaterial = null;
-    rustPlanetDust = null;
+    planetFeatureRuntime = null;
+    cardRotationMultiplier = 1;
 
     const baseSize = Math.min(1.3 * (data.planetSizeFactor || 1), 6.0);
 
@@ -320,72 +279,26 @@ function createPlanet(data) {
     const level = Math.floor((data.totalCommits || 0) / 30) + 1;
     const auraIntensity = Math.min(3.0, (level / 5.0) * 0.5);
 
-    let material;
-    if (isCPlanet(data)) {
-        material = createCPlanetSteelMaterial(THREE, planetTexture);
-    } else if (isCssPlanet(data)) {
-        material = createCssPlanetFlowMaterial(THREE, planetTexture);
-        cssPlanetMaterial = material;
-    } else if (isCppPlanet(data)) {
-        material = createCppPlanetLightningMaterial(THREE, planetTexture, data.planetColor);
-        cppPlanetMaterial = material;
-    } else if (isGoPlanet(data) || isVuePlanet(data)) {
-        material = createGoPlanetWindMaterial(
-            THREE,
-            planetTexture,
-            -1,
-            isVuePlanet(data) ? 'vue' : 'go'
-        );
-        goPlanetWindMaterial = material;
-    } else if (isTypeScriptPlanet(data)) {
-        material = createTypeScriptPlanetMaterial(THREE, planetTexture);
-        typeScriptPlanetMaterial = material;
-    } else if (isJavaScriptPlanet(data)) {
-        material = createJavaScriptPlanetMaterial(THREE, planetTexture, data.planetColor);
-        javaScriptPlanetMaterial = material;
-    } else if (isKotlinPlanet(data)) {
-        material = createKotlinPlanetMaterial(THREE, planetTexture);
-        kotlinPlanetMaterial = material;
-    } else if (isRustPlanet(data)) {
-        material = createRustPlanetMaterial(THREE, planetTexture);
-        rustPlanetMaterial = material;
-    } else {
-        material = new THREE.MeshStandardMaterial({
+    planetFeatureRuntime = createPlanetFeatureRuntime({
+        THREE,
+        planetTexture,
+        data,
+        radius: baseSize,
+        direction: -1
+    });
+    cardRotationMultiplier = planetFeatureRuntime?.rotationMultiplier || 1;
+
+    const material = planetFeatureRuntime?.material || new THREE.MeshStandardMaterial({
             color: data.planetColor || 0xffffff,
             aoMap: planetTexture,
             aoMapIntensity: 1.5,
             roughness: 0.8,
             metalness: 0.2
         });
-    }
 
     planetMesh = new THREE.Mesh(geometry, material);
     planetGroup.add(planetMesh);
-    if (isGoPlanet(data) || isVuePlanet(data)) {
-        goPlanetAtmosphere = createGoPlanetAtmosphere(
-            THREE,
-            baseSize,
-            -1,
-            isVuePlanet(data) ? 'vue' : 'go'
-        );
-        planetGroup.add(goPlanetAtmosphere);
-    }
-    if (isVuePlanet(data)) {
-        vueLeafWind = createVueLeafWind(THREE, baseSize);
-        planetGroup.add(vueLeafWind);
-    }
-    if (isKotlinPlanet(data)) {
-        kotlinElectricity = createKotlinElectricity(THREE, baseSize);
-        planetGroup.add(kotlinElectricity);
-    }
-    if (isTypeScriptPlanet(data)) {
-        typeScriptPlanetShell = createTypeScriptPlanetShell(THREE, baseSize);
-        planetGroup.add(typeScriptPlanetShell);
-    }
-    if (isRustPlanet(data)) {
-        rustPlanetDust = createRustPlanetDust(THREE, baseSize);
-        planetGroup.add(rustPlanetDust);
-    }
+    planetFeatureRuntime?.sceneObjects.forEach((object) => planetGroup.add(object));
 
     const starCount = calculateStarCount(data.totalCommits || 0);
 
@@ -490,7 +403,7 @@ function createPlanet(data) {
         const aura = new THREE.Mesh(auraGeo, auraMat);
         planetGroup.add(aura);
     }
-    addParticles(data.planetColor);
+    if (planetFeatureRuntime?.id !== 'java') addParticles(data.planetColor);
 }
 
 function addParticles(color) {
@@ -524,23 +437,11 @@ function animate() {
     const cardRotationSpeed = CARD_PLANET_ROTATION_SPEED * cardRotationMultiplier;
     planetGroup.rotation.y -= cardRotationSpeed;
     const now = performance.now();
-    const goWindSpeedFactor = calculateGoWindSpeedFactor(
-        cardRotationSpeed,
-        BASE_PLANET_ROTATION_SPEED
-    );
-    const windSpeed = goWindSpeedFactor * windAnimationMultiplier;
-    updateCssPlanetFlow(cssPlanetMaterial, now);
-    updateCppPlanetLightning(cppPlanetMaterial, now);
-    updateGoPlanetWind(goPlanetWindMaterial, now, windSpeed);
-    updateGoPlanetAtmosphere(goPlanetAtmosphere, now, windSpeed);
-    updateVueLeafWind(vueLeafWind, now, windSpeed);
-    updateTypeScriptPlanetShell(typeScriptPlanetMaterial, now);
-    updateTypeScriptPlanetShell(typeScriptPlanetShell, now);
-    updateJavaScriptPlanetReactivity(javaScriptPlanetMaterial, now);
-    updateKotlinPlanetCrystal(kotlinPlanetMaterial, now);
-    updateKotlinElectricity(kotlinElectricity, now);
-    updateRustPlanetDesert(rustPlanetMaterial, now);
-    updateRustPlanetDesert(rustPlanetDust, now);
+    planetFeatureRuntime?.update(now, {
+        rotationSpeed: cardRotationSpeed,
+        baseRotationSpeed: BASE_PLANET_ROTATION_SPEED,
+        camera
+    });
     renderer.render(scene, camera);
 }
 
