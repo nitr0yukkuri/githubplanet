@@ -12,8 +12,11 @@ const EXPECTED_SHOWCASES = {
     go: 'Go',
     typescript: 'TypeScript',
     javascript: 'JavaScript',
+    java: 'Java',
+    kotlin: 'Kotlin',
     rust: 'Rust',
-    vue: 'Vue'
+    vue: 'Vue',
+    ruby: 'Ruby'
 };
 
 test('provides deterministic feature planets without database records', () => {

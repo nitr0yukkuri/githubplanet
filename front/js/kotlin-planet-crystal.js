@@ -244,6 +244,7 @@ function createKotlinStaticSparkLines(THREE, radius, uniforms) {
     const pointMasks = [];
     const routeCount = 4;
     const segmentCount = 4;
+    const routeAngleOffsets = [-0.08, 0.12, -0.14, 0.06];
     const addSegment = (
         first,
         second,
@@ -263,21 +264,26 @@ function createKotlinStaticSparkLines(THREE, radius, uniforms) {
         // Stagger the strikes so only one discharge is active at a time.
         const phase = 0.22 + route / routeCount;
         const angle = (route / routeCount) * TAU
+            + routeAngleOffsets[route]
             + (seed - 0.5) * 0.18;
         const normal = [Math.cos(angle), Math.sin(angle)];
         const tangent = [-Math.sin(angle), Math.cos(angle)];
         const length = radius * (0.15 + seed * 0.12);
-        const direction = seed < 0.5 ? -1 : 1;
+        const turnDirection = seed < 0.5 ? -1 : 1;
+        const turnAmount = radius * (0.055 + seed * 0.035);
         let previous = null;
 
         for (let segment = 0; segment <= segmentCount; segment += 1) {
             const progress = segment / segmentCount;
-            const bend = (Math.abs(
+            const baseBend = (Math.abs(
                 kotlinSparkHash(route * 41.9 + segment * 13.1 + 5.0)
-            ) - 0.5) * radius * 0.055
-                + (segment % 2 === 0 ? 1 : -1) * radius * 0.018;
+            ) - 0.5) * radius * 0.025;
+            const turnBend = progress >= 0.5
+                ? turnDirection * turnAmount
+                : 0;
+            const bend = baseBend + turnBend;
             const radialDistance = radius * 1.018 + progress * length;
-        const point = [
+            const point = [
                 normal[0] * radialDistance + tangent[0] * bend,
                 normal[1] * radialDistance + tangent[1] * bend,
                 radius * 0.18
@@ -294,24 +300,28 @@ function createKotlinStaticSparkLines(THREE, radius, uniforms) {
             }
             previous = point;
 
-            if (segment === 1 && route === 0) {
+            if (segment === segmentCount) {
                 const branchStart = point;
-                const branchDirection = [
-                    normal[0] * 0.7 + tangent[0] * direction * 0.68,
-                    normal[1] * 0.7 + tangent[1] * direction * 0.68
-                ];
-                const branchMid = [
-                    branchStart[0] + branchDirection[0] * radius * 0.18,
-                    branchStart[1] + branchDirection[1] * radius * 0.18,
-                    branchStart[2]
-                ];
-                const branchEnd = [
-                    branchMid[0] + tangent[0] * radius * 0.12,
-                    branchMid[1] + tangent[1] * radius * 0.12,
-                    branchMid[2]
-                ];
-                addSegment(branchStart, branchMid, seed, phase);
-                addSegment(branchMid, branchEnd, seed, phase);
+                const branchLength = radius * (0.07 + seed * 0.035);
+                for (let branch = 0; branch < 2; branch += 1) {
+                    const branchSign = branch === 0 ? -1 : 1;
+                    const branchDirection = [
+                        normal[0] * 0.42 + tangent[0] * branchSign * 0.9,
+                        normal[1] * 0.42 + tangent[1] * branchSign * 0.9
+                    ];
+                    const branchMid = [
+                        branchStart[0] + branchDirection[0] * branchLength * 0.5,
+                        branchStart[1] + branchDirection[1] * branchLength * 0.5,
+                        branchStart[2]
+                    ];
+                    const branchEnd = [
+                        branchStart[0] + branchDirection[0] * branchLength,
+                        branchStart[1] + branchDirection[1] * branchLength,
+                        branchStart[2]
+                    ];
+                    addSegment(branchStart, branchMid, seed, phase);
+                    addSegment(branchMid, branchEnd, seed, phase, 0, 1);
+                }
             }
         }
     }
@@ -356,7 +366,7 @@ function createKotlinStaticSparkLines(THREE, radius, uniforms) {
                 vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
                 vKotlinSparkEdge = 1.0;
                 float strikePhase = fract(
-                    kotlinLightningTime * 2.0
+                    kotlinLightningTime * 3.0
                         + kotlinSparkPhase
                 );
                 float attack = 1.0 - smoothstep(0.0, 0.045, strikePhase);
@@ -388,7 +398,7 @@ function createKotlinStaticSparkLines(THREE, radius, uniforms) {
             }
         `
     });
-    material.customProgramCacheKey = () => 'kotlin-static-spark-lines-v5';
+    material.customProgramCacheKey = () => 'kotlin-static-spark-lines-v6';
     const sparks = new THREE.LineSegments(geometry, material);
     sparks.renderOrder = 8;
     return sparks;
@@ -422,7 +432,7 @@ function createKotlinStaticSparkPoints(THREE, geometry, uniforms) {
                 float facing = clamp(dot(viewNormal, viewDirection), 0.0, 1.0);
                 vKotlinPointEdge = 1.0 - smoothstep(0.22, 0.7, facing);
                 float strikePhase = fract(
-                    kotlinLightningTime * 2.0
+                    kotlinLightningTime * 3.0
                         + kotlinSparkPhase
                 );
                         float attack = 1.0 - smoothstep(0.0, 0.08, strikePhase);
@@ -457,7 +467,7 @@ function createKotlinStaticSparkPoints(THREE, geometry, uniforms) {
             }
         `
     });
-    material.customProgramCacheKey = () => 'kotlin-static-spark-points-v4';
+    material.customProgramCacheKey = () => 'kotlin-static-spark-points-v5';
     geometry.setAttribute(
         'kotlinSparkPointMask',
         new THREE.Float32BufferAttribute(

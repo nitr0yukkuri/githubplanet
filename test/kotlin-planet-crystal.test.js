@@ -48,13 +48,20 @@ test('updates on a seamless six-second lightning cycle', () => {
 
 test('routes Kotlin through the shared material on cards', async () => {
     const { readFile } = await import('node:fs/promises');
-    const card = await readFile(new URL('../front/js/card.js', import.meta.url), 'utf8');
+    const [card, home, registry] = await Promise.all([
+        readFile(new URL('../front/js/card.js', import.meta.url), 'utf8'),
+        readFile(new URL('../front/js/home.js', import.meta.url), 'utf8'),
+        readFile(new URL('../front/js/planet-features/registry.js', import.meta.url), 'utf8')
+    ]);
 
-    for (const source of [card]) {
-        assert.match(source, /isKotlinPlanet\(data\)/);
-        assert.match(source, /createKotlinPlanetMaterial\(THREE/);
-        assert.match(source, /createKotlinElectricity\(THREE/);
-        assert.match(source, /updateKotlinPlanetCrystal\(kotlinPlanetMaterial/);
-        assert.match(source, /updateKotlinElectricity\(kotlinElectricity/);
+    for (const source of [card, home]) {
+        assert.match(source, /createPlanetFeatureRuntime/);
+        assert.match(source, /planetFeatureRuntime\?\.sceneObjects/);
+        assert.match(source, /planetFeatureRuntime\?\.update/);
     }
+
+    assert.match(registry, /id: 'kotlin'[\s\S]*createKotlinPlanetMaterial/);
+    assert.match(registry, /id: 'kotlin'[\s\S]*createKotlinElectricity/);
+    assert.match(registry, /id: 'kotlin'[\s\S]*updateKotlinPlanetCrystal/);
+    assert.match(registry, /id: 'kotlin'[\s\S]*updateKotlinElectricity/);
 });

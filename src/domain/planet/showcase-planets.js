@@ -8,8 +8,11 @@ const SHOWCASE_PLANETS = Object.freeze({
     go: createShowcasePlanet('Go', '#00ADD8', 'Atmospheric Wind'),
     typescript: createShowcasePlanet('TypeScript', '#007acc', 'Defensive Typed Shell'),
     javascript: createShowcasePlanet('JavaScript', '#f0db4f', 'Reactive Golden Surface'),
+    java: createShowcasePlanet('Java', '#b07219', 'Java Roast'),
+    kotlin: createShowcasePlanet('Kotlin', '#A97BFF', 'Electric Spark'),
     rust: createShowcasePlanet('Rust', '#dea584', 'Desert Dust World'),
-    vue: createShowcasePlanet('Vue', '#41b883', 'Gentle Reactive Wind')
+    vue: createShowcasePlanet('Vue', '#41b883', 'Gentle Reactive Wind'),
+    ruby: createShowcasePlanet('Ruby', '#CC342D', 'Burning Ruby')
 });
 
 function createShowcasePlanet(mainLanguage, planetColor, planetName) {

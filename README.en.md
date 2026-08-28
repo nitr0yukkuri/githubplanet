@@ -53,7 +53,7 @@ The static card is the recommended default. Replace `YOUR_USERNAME` and paste th
 ### Default (recommended, no GitHub Actions): Static card
 
 ```markdown
-[![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=YOUR_USERNAME&fix=true)](https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=YOUR_USERNAME)
+[![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet.dev/card.html?username=YOUR_USERNAME&fix=true)](https://githubplanet.dev/card.html?username=YOUR_USERNAME)
 ```
 
 ### Optional (uses GitHub Actions): Animated GIF card
@@ -110,7 +110,7 @@ jobs:
 After the workflow creates the GIF, replace `YOUR_USERNAME` and paste this animated card into your profile README. The image will be broken until the first workflow run has successfully created `planet-card.gif`.
 
 ```markdown
-[![GitHub Planet](https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_USERNAME/main/planet-card.gif)](https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=YOUR_USERNAME)
+[![GitHub Planet](https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_USERNAME/main/planet-card.gif)](https://githubplanet.dev/card.html?username=YOUR_USERNAME)
 ```
 
 ## 🪐 Language Feature Showcase
@@ -121,13 +121,13 @@ These showcase planets are generated from fixed test data and do not depend on t
   <tr>
     <td align="center">
       <strong>CSS — Directional Color Flow</strong><br>
-      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=css&amp;fix=true">
+      <a href="https://githubplanet.dev/card.html?showcase=css&amp;fix=true">
         <img width="400" alt="CSS showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_css.gif">
       </a>
     </td>
     <td align="center">
       <strong>C++ — Idle Plasma Globe</strong><br>
-      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=cpp&amp;fix=true">
+      <a href="https://githubplanet.dev/card.html?showcase=cpp&amp;fix=true">
         <img width="400" alt="C++ showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_cpp.gif">
       </a>
     </td>
@@ -135,13 +135,13 @@ These showcase planets are generated from fixed test data and do not depend on t
   <tr>
     <td align="center">
       <strong>Go — Atmospheric Wind</strong><br>
-      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=go&amp;fix=true">
+      <a href="https://githubplanet.dev/card.html?showcase=go&amp;fix=true">
         <img width="400" alt="Go showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_go.gif">
       </a>
     </td>
     <td align="center">
       <strong>TypeScript — Defensive Typed Shell</strong><br>
-      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=typescript&amp;fix=true">
+      <a href="https://githubplanet.dev/card.html?showcase=typescript&amp;fix=true">
         <img width="400" alt="TypeScript showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_typescript.gif">
       </a>
     </td>
@@ -149,22 +149,43 @@ These showcase planets are generated from fixed test data and do not depend on t
   <tr>
     <td align="center">
       <strong>JavaScript — Reactive Golden Surface</strong><br>
-      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=javascript&amp;fix=true">
+      <a href="https://githubplanet.dev/card.html?showcase=javascript&amp;fix=true">
         <img width="400" alt="JavaScript showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_javascript.gif">
       </a>
     </td>
     <td align="center">
-      <strong>Rust — Desert Dust World</strong><br>
-      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=rust&amp;fix=true">
-        <img width="400" alt="Rust showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_rust.gif">
+      <strong>Java — Java Roast</strong><br>
+      <a href="https://githubplanet.dev/card.html?showcase=java&amp;fix=true">
+        <img width="400" alt="Java showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_java.gif">
       </a>
     </td>
   </tr>
   <tr>
-    <td align="center" colspan="2">
+    <td align="center">
+        <strong>Kotlin — Electric Spark</strong><br>
+      <a href="https://githubplanet.dev/card.html?showcase=kotlin&amp;fix=true">
+        <img width="400" alt="Kotlin showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_kotlin.gif">
+      </a>
+    </td>
+    <td align="center">
+      <strong>Rust — Desert Dust World</strong><br>
+      <a href="https://githubplanet.dev/card.html?showcase=rust&amp;fix=true">
+        <img width="400" alt="Rust showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_rust.gif">
+      </a>
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center">
       <strong>Vue — Gentle Reactive Wind</strong><br>
-      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=vue&amp;fix=true">
+      <a href="https://githubplanet.dev/card.html?showcase=vue&amp;fix=true">
         <img width="400" alt="Vue showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_vue.gif">
+      </a>
+    </td>
+    <td align="center">
+      <strong>Ruby — Burning Ruby</strong><br>
+      <a href="https://githubplanet.dev/card.html?showcase=ruby&amp;fix=true">
+        <img width="400" alt="Ruby showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_ruby.gif">
       </a>
     </td>
   </tr>
@@ -216,7 +237,7 @@ GitHub Webhook → Express → Socket.IO → Browser
 
 <div align="center">
   <p><strong>@nitr0yukkuri</strong></p>
-  <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/">
+  <a href="https://githubplanet.dev/">
     <img src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/profile_card.gif" alt="nitr0yukkuri's GitHub Planet" />
   </a>
 </div>
@@ -226,8 +247,8 @@ GitHub Webhook → Express → Socket.IO → Browser
 **[@lenagig](https://github.com/lenagig)**
 
 <div align="center">
-  <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/">
-    <img src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=lenagig&fix=true" alt="lenagig's GitHub Planet" />
+  <a href="https://githubplanet.dev/">
+    <img src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet.dev/card.html?username=lenagig&fix=true" alt="lenagig's GitHub Planet" />
   </a>
 </div>
 

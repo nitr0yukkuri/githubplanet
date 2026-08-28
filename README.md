@@ -50,7 +50,7 @@ GitHubのPush Webhookを受信すると、変更されたファイルの言語�
 #### 標準（おすすめ・GitHub Actions不要）：静止カード
 
 ```markdown
-[![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=ユーザー名&fix=true)](https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=ユーザー名)
+[![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet.dev/card.html?username=ユーザー名&fix=true)](https://githubplanet.dev/card.html?username=ユーザー名)
 ```
 
 #### 任意（GitHub Actions使用）：動くGIFカード
@@ -107,7 +107,7 @@ jobs:
 生成後は `GitHubユーザー名` を置き換え、プロフィールREADMEに次のコードを貼るとアニメーションが表示されます。GIFがまだ生成されていない状態では画像が表示されないため、先にワークフローの完了を確認してください。
 
 ```markdown
-[![GitHub Planet](https://raw.githubusercontent.com/GitHubユーザー名/GitHubユーザー名/main/planet-card.gif)](https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=GitHubユーザー名)
+[![GitHub Planet](https://raw.githubusercontent.com/GitHubユーザー名/GitHubユーザー名/main/planet-card.gif)](https://githubplanet.dev/card.html?username=GitHubユーザー名)
 ```
 
 ## 🪐 Language Feature Showcase
@@ -118,13 +118,13 @@ DBや実在ユーザーに依存しない固定テストデータから生成し
   <tr>
     <td align="center">
       <strong>CSS — Directional Color Flow</strong><br>
-      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=css&amp;fix=true">
+      <a href="https://githubplanet.dev/card.html?showcase=css&amp;fix=true">
         <img width="400" alt="CSS showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_css.gif">
       </a>
     </td>
     <td align="center">
       <strong>C++ — Idle Plasma Globe</strong><br>
-      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=cpp&amp;fix=true">
+      <a href="https://githubplanet.dev/card.html?showcase=cpp&amp;fix=true">
         <img width="400" alt="C++ showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_cpp.gif">
       </a>
     </td>
@@ -132,13 +132,13 @@ DBや実在ユーザーに依存しない固定テストデータから生成し
   <tr>
     <td align="center">
       <strong>Go — Atmospheric Wind</strong><br>
-      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=go&amp;fix=true">
+      <a href="https://githubplanet.dev/card.html?showcase=go&amp;fix=true">
         <img width="400" alt="Go showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_go.gif">
       </a>
     </td>
     <td align="center">
       <strong>TypeScript — Defensive Typed Shell</strong><br>
-      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=typescript&amp;fix=true">
+      <a href="https://githubplanet.dev/card.html?showcase=typescript&amp;fix=true">
         <img width="400" alt="TypeScript showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_typescript.gif">
       </a>
     </td>
@@ -146,7 +146,7 @@ DBや実在ユーザーに依存しない固定テストデータから生成し
   <tr>
     <td align="center">
       <strong>JavaScript — Reactive Golden Surface</strong><br>
-      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=javascript&amp;fix=true">
+      <a href="https://githubplanet.dev/card.html?showcase=javascript&amp;fix=true">
         <img width="400" alt="JavaScript showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_javascript.gif">
       </a>
     </td>
@@ -166,15 +166,16 @@ DBや実在ユーザーに依存しない固定テストデータから生成し
     </td>
     <td align="center">
       <strong>Rust — Desert Dust World</strong><br>
-      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=rust&amp;fix=true">
+      <a href="https://githubplanet.dev/card.html?showcase=rust&amp;fix=true">
         <img width="400" alt="Rust showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_rust.gif">
       </a>
     </td>
   </tr>
+
   <tr>
     <td align="center">
       <strong>Vue — Gentle Reactive Wind</strong><br>
-      <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?showcase=vue&amp;fix=true">
+      <a href="https://githubplanet.dev/card.html?showcase=vue&amp;fix=true">
         <img width="400" alt="Vue showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_vue.gif">
       </a>
     </td>
@@ -233,7 +234,7 @@ GitHub Webhook → Express → Socket.IO → Browser
 
 <div align="center">
   <p><strong>@nitr0yukkuri</strong></p>
-  <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/">
+  <a href="https://githubplanet.dev/">
     <img src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/profile_card.gif" />
   </a>
 </div>
@@ -243,8 +244,8 @@ GitHub Webhook → Express → Socket.IO → Browser
 #### 🪐 フロントエンド & デザイン
 **@lenagig**
 <div align="center">
-  <a href="https://githubplanet-git-543426763451.asia-northeast2.run.app/">
-    <img src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet-git-543426763451.asia-northeast2.run.app/card.html?username=lenagig&fix=true" />
+  <a href="https://githubplanet.dev/">
+    <img src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet.dev/card.html?username=lenagig&fix=true" />
   </a>
 </div>
 

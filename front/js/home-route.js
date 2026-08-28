@@ -18,6 +18,13 @@ export function resolveHomeRoute(pathname, search = '') {
         return { mode: 'exhibition', showcaseSlug: null };
     }
 
+    if (normalizedPath === '/demo') {
+        return {
+            mode: 'demo',
+            showcaseSlug: querySlug || DEFAULT_SHOWCASE_SLUG
+        };
+    }
+
     if (normalizedPath === '/showcase') {
         return {
             mode: 'showcase',
