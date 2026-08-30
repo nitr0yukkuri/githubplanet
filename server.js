@@ -19,14 +19,22 @@ import { registerEventRoutes } from './src/presentation/http/event-routes.js';
 import { registerPageRoutes } from './src/presentation/http/page-routes.js';
 import { registerPlanetRoutes } from './src/presentation/http/planet-routes.js';
 import { createRandomPerformanceReporter } from './src/presentation/http/random-performance.js';
+import { createExternalPerformanceReporter } from './src/infrastructure/observability/external-performance.js';
 
 const app = express();
 const port = parseInt(process.env.PORT) || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
+const randomPerformance = createRandomPerformanceReporter({
+    enabled: process.env.PERF_TRACE_RANDOM === 'true'
+});
+const externalPerformance = createExternalPerformanceReporter({
+    enabled: process.env.PERF_TRACE_EXTERNAL === 'true'
+});
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 app.disable('x-powered-by');
+app.use(randomPerformance.startMiddleware);
 app.use(compression({ threshold: 1024 }));
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -87,22 +95,34 @@ if (isProduction) {
 
 const pool = createPostgresPool(process.env.DATABASE_URL);
 await prepareDatabase(pool);
-const randomPerformance = createRandomPerformanceReporter({
-    enabled: process.env.PERF_TRACE_RANDOM === 'true'
-});
 const planetRepository = createPlanetRepository(pool, {
-    onRandomQueryTiming: randomPerformance.recordRandomQuery
+    onRandomQueryTiming: randomPerformance.recordRandomQuery,
+    randomQueryStrategy: process.env.RANDOM_QUERY_STRATEGY || 'auto',
+    randomSmallTableThreshold: Number.parseInt(
+        process.env.RANDOM_QUERY_SMALL_TABLE_THRESHOLD || '256',
+        10
+    )
 });
+await planetRepository?.initializeRandomQueryStrategy?.();
+const languageColorCache = await planetRepository?.loadLanguageColorCache?.() || {};
 const geminiClient = createGeminiClient({
     axios,
     apiKey: process.env.GEMINI_API_KEY,
-    languageColors: LANGUAGE_COLORS
+    languageColors: LANGUAGE_COLORS,
+    languageColorCache,
+    repository: planetRepository,
+    onRequestTiming: process.env.PERF_TRACE_EXTERNAL === 'true'
+        ? externalPerformance.record
+        : undefined
 });
 const githubClient = createGithubClient({
     axios,
     clientId: githubClientId,
     clientSecret: githubClientSecret,
-    callbackUrl
+    callbackUrl,
+    onRequestTiming: process.env.PERF_TRACE_EXTERNAL === 'true'
+        ? externalPerformance.record
+        : undefined
 });
 const planetService = createPlanetService({
     repository: planetRepository,
@@ -124,6 +144,7 @@ app.use('/vendor/three', express.static(path.join(__dirname, 'node_modules/three
 if (isProduction) app.set('trust proxy', 1);
 
 const PgSession = connectPgSimple(session);
+app.use(randomPerformance.beforeSessionMiddleware);
 app.use(session({
     store: pool ? new PgSession({ pool, createTableIfMissing: false }) : undefined,
     secret: process.env.SESSION_SECRET || 'dev_secret',
@@ -148,7 +169,9 @@ registerAuthRoutes(app, {
 registerPlanetRoutes(app, {
     planetService,
     planetQueryService,
-    cacheDuration: DATA_CACHE_DURATION
+    cacheDuration: DATA_CACHE_DURATION,
+    randomHistoryStorage: process.env.RANDOM_HISTORY_STORAGE || 'cookie',
+    randomPerformance
 });
 
 let io;

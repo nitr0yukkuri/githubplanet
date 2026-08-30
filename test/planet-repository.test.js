@@ -7,7 +7,7 @@ test('finds a planet by username regardless of case', async () => {
     const repository = createPlanetRepository({
         async query(sql, params) {
             calls.push([sql, params]);
-            if (sql.includes('ILIKE')) {
+            if (sql.includes('LOWER(username)')) {
                 return {
                     rows: [{ username: 'Alice' }]
                 };
@@ -20,9 +20,13 @@ test('finds a planet by username regardless of case', async () => {
 
     assert.deepEqual(row, { username: 'Alice' });
     assert.deepEqual(calls[0][1], ['ALICE']);
+    assert.match(calls[0][0], /LOWER\(username\)\s*=\s*LOWER\(\$1\)/i);
+    assert.doesNotMatch(calls[0][0], /ILIKE/i);
+    assert.match(calls[0][0], /last_updated/i);
+    assert.doesNotMatch(calls[0][0], /SELECT\s+\*/i);
 });
 
-test('reports random query timing without changing random selection', async () => {
+test('selects a random planet without sorting the whole table', async () => {
     const calls = [];
     const timings = [];
     const repository = createPlanetRepository({
@@ -37,13 +41,148 @@ test('reports random query timing without changing random selection', async () =
     const row = await repository.findRandom([1, 1, 2]);
 
     assert.deepEqual(row, { github_id: 3, username: 'random' });
-    assert.deepEqual(calls[0][1], [1, 2]);
-    assert.match(calls[0][0], /ORDER\s+BY\s+RANDOM\(\)/i);
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0][1].slice(0, 2), [1, 2]);
+    assert.equal(typeof calls[0][1][2], 'number');
+    assert.ok(calls[0][1][2] >= 0 && calls[0][1][2] < 1);
+    assert.match(calls[0][0], /random_key\s*>=\s*\$3/i);
+    assert.match(calls[0][0], /ORDER\s+BY\s+random_key/i);
+    assert.match(calls[0][0], /github_id\s+NOT\s+IN\s*\(\$1,\s*\$2\)/i);
+    assert.doesNotMatch(calls[0][0], /ORDER\s+BY\s+RANDOM\(\)/i);
+    assert.doesNotMatch(calls[0][0], /OFFSET\s*\(/i);
     assert.equal(timings.length, 1);
     assert.equal(timings[0].exclusionCount, 2);
     assert.equal(timings[0].returnedRows, 1);
+    assert.deepEqual(timings[0].poolBefore, {
+        totalCount: null,
+        idleCount: null,
+        waitingCount: null
+    });
+    assert.deepEqual(timings[0].poolAfter, {
+        totalCount: null,
+        idleCount: null,
+        waitingCount: null
+    });
     assert.equal(timings[0].error, null);
     assert.equal(typeof timings[0].durationMs, 'number');
+});
+
+test('wraps around the indexed random key when the first range is empty', async () => {
+    const calls = [];
+    const repository = createPlanetRepository({
+        async query(sql, params) {
+            calls.push([sql, params]);
+            return calls.length === 1
+                ? { rows: [] }
+                : { rows: [{ github_id: 4, username: 'wrapped' }] };
+        }
+    });
+
+    const row = await repository.findRandom([1]);
+
+    assert.deepEqual(row, { github_id: 4, username: 'wrapped' });
+    assert.equal(calls.length, 2);
+    assert.match(calls[0][0], /random_key\s*>=\s*\$2/i);
+    assert.match(calls[1][0], /random_key\s*<\s*\$2/i);
+    assert.deepEqual(calls[0][1], calls[1][1]);
+});
+
+test('uses the legacy random scan for a small table after one startup count', async () => {
+    const calls = [];
+    const repository = createPlanetRepository({
+        async query(sql, params) {
+            calls.push([sql, params]);
+            if (sql.includes('COUNT(*)')) return { rows: [{ count: '145' }] };
+            return { rows: [{ github_id: 3, username: 'small-table' }] };
+        }
+    }, {
+        randomQueryStrategy: 'auto',
+        randomSmallTableThreshold: 256
+    });
+
+    await repository.initializeRandomQueryStrategy();
+    const row = await repository.findRandom([1, 2]);
+    await repository.findRandom([1, 2]);
+
+    assert.equal(row.github_id, 3);
+    assert.equal(calls.filter(([sql]) => sql.includes('COUNT(*)')).length, 1);
+    assert.equal(calls.filter(([sql]) => /ORDER\s+BY\s+RANDOM\(\)/i.test(sql)).length, 2);
+    assert.deepEqual(calls[1][1], [1, 2]);
+});
+
+test('keeps the indexed random scan for a large table in auto mode', async () => {
+    const calls = [];
+    const repository = createPlanetRepository({
+        async query(sql, params) {
+            calls.push([sql, params]);
+            if (sql.includes('COUNT(*)')) return { rows: [{ count: '100000' }] };
+            return { rows: [{ github_id: 3, username: 'large-table' }] };
+        }
+    }, { randomQueryStrategy: 'auto' });
+
+    await repository.initializeRandomQueryStrategy();
+    await repository.findRandom([1]);
+
+    assert.match(calls[1][0], /random_key\s*>=\s*\$2/i);
+    assert.doesNotMatch(calls[1][0], /ORDER\s+BY\s+RANDOM\(\)/i);
+});
+
+test('refreshes the cached count in the background when the table grows', async () => {
+    const calls = [];
+    let countCalls = 0;
+    let finishRefresh;
+    const repository = createPlanetRepository({
+        async query(sql, params) {
+            calls.push([sql, params]);
+            if (sql.includes('COUNT(*)')) {
+                countCalls += 1;
+                if (countCalls === 1) return { rows: [{ count: '145' }] };
+                return new Promise((resolve) => {
+                    finishRefresh = () => resolve({ rows: [{ count: '100000' }] });
+                });
+            }
+            return { rows: [{ github_id: 3, username: 'still-fast' }] };
+        }
+    }, {
+        randomQueryStrategy: 'auto',
+        randomSmallTableThreshold: 256,
+        randomCountRefreshMs: 1
+    });
+
+    await repository.initializeRandomQueryStrategy();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await repository.findRandom();
+    const firstRandomQuery = calls.find(([sql]) => /ORDER\s+BY\s+RANDOM\(\)/i.test(sql));
+    assert.ok(firstRandomQuery);
+
+    finishRefresh();
+    await new Promise((resolve) => setImmediate(resolve));
+    await repository.findRandom();
+    const indexedRandomQuery = calls.find(([sql]) => /random_key\s*>=\s*\$1/i.test(sql));
+    assert.ok(indexedRandomQuery);
+});
+
+test('loads persisted language colors in one startup query', async () => {
+    const calls = [];
+    const repository = createPlanetRepository({
+        async query(sql) {
+            calls.push(sql);
+            if (sql.includes('language_color_cache')) {
+                return { rows: [
+                    { language: 'NewLanguage', color: '#123456' },
+                    { language: 'OtherLanguage', color: '#abcdef' }
+                ] };
+            }
+            return { rows: [] };
+        }
+    });
+
+    assert.deepEqual(await repository.loadLanguageColorCache(), {
+        NewLanguage: '#123456',
+        OtherLanguage: '#abcdef'
+    });
+    assert.equal(calls.length, 1);
+    assert.match(calls[0], /SELECT language, color FROM language_color_cache/i);
 });
 
 test('records and advances the owner login baseline in one transaction', async () => {

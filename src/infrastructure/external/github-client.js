@@ -57,74 +57,115 @@ const MERGED_PULL_REQUESTS_QUERY = `
   }
 `;
 
-export function createGithubClient({ axios, clientId, clientSecret, callbackUrl }) {
+import { measureExternalOperation } from '../observability/external-performance.js';
+
+const GITHUB_API_TIMEOUT_MS = 10_000;
+
+export function createGithubClient({
+    axios,
+    clientId,
+    clientSecret,
+    callbackUrl,
+    onRequestTiming,
+    parallelPlanetSourceRequests = true
+}) {
     async function requestGraphql(query, variables, accessToken) {
-        const response = await axios.post('https://api.github.com/graphql', {
-            query,
-            variables
-        }, {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
+        const operation = query.match(/query (\w+)/)?.[1] || 'graphql';
+        return measureExternalOperation(onRequestTiming, operation, async () => {
+            const response = await axios.post('https://api.github.com/graphql', {
+                query,
+                variables
+            }, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                timeout: GITHUB_API_TIMEOUT_MS
+            });
+            if (response.data.errors) {
+                console.error('[GraphQL Error]', response.data.errors);
+                throw new Error('GraphQL query failed');
             }
-        });
-        if (response.data.errors) {
-            console.error('[GraphQL Error]', response.data.errors);
-            throw new Error('GraphQL query failed');
-        }
-        return response.data.data.user;
+            return response.data.data.user;
+        }, { provider: 'github' });
     }
 
     return {
         async exchangeCode(code, codeVerifier) {
-            const response = await axios.post('https://github.com/login/oauth/access_token', {
-                client_id: clientId,
-                client_secret: clientSecret,
-                code,
-                redirect_uri: callbackUrl,
-                code_verifier: codeVerifier
-            }, { headers: { Accept: 'application/json' } });
-            return response.data.access_token;
+            return measureExternalOperation(onRequestTiming, 'exchange_code', async () => {
+                const response = await axios.post('https://github.com/login/oauth/access_token', {
+                    client_id: clientId,
+                    client_secret: clientSecret,
+                    code,
+                    redirect_uri: callbackUrl,
+                    code_verifier: codeVerifier
+                }, {
+                    headers: { Accept: 'application/json' },
+                    timeout: GITHUB_API_TIMEOUT_MS
+                });
+                return response.data.access_token;
+            }, { provider: 'github' });
         },
 
         async getAuthenticatedUser(accessToken) {
-            const response = await axios.get('https://api.github.com/user', {
-                headers: { Authorization: `Bearer ${accessToken}` }
-            });
-            return response.data;
+            return measureExternalOperation(onRequestTiming, 'get_authenticated_user', async () => {
+                const response = await axios.get('https://api.github.com/user', {
+                    headers: { Authorization: `Bearer ${accessToken}` },
+                    timeout: GITHUB_API_TIMEOUT_MS
+                });
+                return response.data;
+            }, { provider: 'github' });
         },
 
         async getUser(username, accessToken) {
-            const response = await axios.get(`https://api.github.com/users/${username}`, {
-                headers: { Authorization: `Bearer ${accessToken}` }
-            });
-            return response.data;
+            return measureExternalOperation(onRequestTiming, 'get_user', async () => {
+                const response = await axios.get(`https://api.github.com/users/${username}`, {
+                    headers: { Authorization: `Bearer ${accessToken}` },
+                    timeout: GITHUB_API_TIMEOUT_MS
+                });
+                return response.data;
+            }, { provider: 'github' });
         },
 
         async getPlanetSource(login, accessToken) {
-            const repositoryData = await requestGraphql(REPOSITORY_DATA_QUERY, { login }, accessToken);
-            const annualData = await requestGraphql(ANNUAL_CONTRIBUTIONS_QUERY, { login }, accessToken);
-            const pullRequestData = await requestGraphql(MERGED_PULL_REQUESTS_QUERY, { login }, accessToken);
+            return measureExternalOperation(onRequestTiming, 'get_planet_source', async () => {
+                const repositoryData = await requestGraphql(REPOSITORY_DATA_QUERY, { login }, accessToken);
 
-            const to = new Date();
-            const from = new Date(to);
-            from.setDate(from.getDate() - 8);
-            const recentData = await requestGraphql(RECENT_CONTRIBUTIONS_QUERY, {
-                login,
-                from: from.toISOString(),
-                to: to.toISOString()
-            }, accessToken);
-
-            return {
-                ...repositoryData,
-                mergedPullRequests: pullRequestData.pullRequests?.nodes || [],
-                contributionsCollection: {
-                    contributionCalendar: {
-                        totalContributions: annualData.contributionsCollection?.contributionCalendar?.totalContributions || 0,
-                        weeks: recentData.contributionsCollection?.contributionCalendar?.weeks || []
-                    }
+                const to = new Date();
+                const from = new Date(to);
+                from.setDate(from.getDate() - 8);
+                const recentQuery = () => requestGraphql(RECENT_CONTRIBUTIONS_QUERY, {
+                    login,
+                    from: from.toISOString(),
+                    to: to.toISOString()
+                }, accessToken);
+                let annualData;
+                let pullRequestData;
+                let recentData;
+                if (parallelPlanetSourceRequests) {
+                    // 3つは読み取り専用で互いに依存しないため、直列待ちを避けても結果は同じ。
+                    [annualData, pullRequestData, recentData] = await Promise.all([
+                        requestGraphql(ANNUAL_CONTRIBUTIONS_QUERY, { login }, accessToken),
+                        requestGraphql(MERGED_PULL_REQUESTS_QUERY, { login }, accessToken),
+                        recentQuery()
+                    ]);
+                } else {
+                    annualData = await requestGraphql(ANNUAL_CONTRIBUTIONS_QUERY, { login }, accessToken);
+                    pullRequestData = await requestGraphql(MERGED_PULL_REQUESTS_QUERY, { login }, accessToken);
+                    recentData = await recentQuery();
                 }
-            };
+
+                return {
+                    ...repositoryData,
+                    mergedPullRequests: pullRequestData.pullRequests?.nodes || [],
+                    contributionsCollection: {
+                        contributionCalendar: {
+                            totalContributions: annualData.contributionsCollection?.contributionCalendar?.totalContributions || 0,
+                            weeks: recentData.contributionsCollection?.contributionCalendar?.weeks || []
+                        }
+                    }
+                };
+            }, { provider: 'github' });
         }
     };
 }
