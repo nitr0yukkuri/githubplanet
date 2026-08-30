@@ -151,11 +151,14 @@ test('keeps Vue motion and wind configuration in the shared feature registry', (
 
 test('uses one Vue feature definition for home and card rendering', () => {
     const vue = resolvePlanetFeature({ mainLanguage: 'Vue' });
+    const home = readFileSync(new URL('../front/js/home.js', import.meta.url), 'utf8');
     const card = readFileSync(new URL('../front/js/card.js', import.meta.url), 'utf8');
 
     assert.ok(vue);
     assert.equal(vue.id, 'vue');
     assert.equal(vue.module.isVuePlanet({ mainLanguage: 'Vue' }), true);
+    assert.match(home, /createPlanetFeatureRuntime/);
     assert.match(card, /createPlanetFeatureRuntime/);
+    assert.doesNotMatch(home, /createVuePlanetFlow|createVuePlanetRimWind|updateVuePlanetFlow/);
     assert.doesNotMatch(card, /createVuePlanetFlow|createVuePlanetRimWind|updateVuePlanetFlow/);
 });
