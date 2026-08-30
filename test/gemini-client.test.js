@@ -90,7 +90,7 @@ test('reuses a persisted language color without calling Gemini', async () => {
         axios,
         apiKey: 'key',
         languageColors: {},
-        repository
+        languageColorStore: repository
     });
 
     assert.equal(await client.resolveLanguageColor('NewLanguage'), '#123456');
@@ -114,7 +114,7 @@ test('uses the startup-loaded language color cache before the repository', async
         apiKey: 'key',
         languageColors: {},
         languageColorCache: { NewLanguage: '#654321' },
-        repository: {
+        languageColorStore: {
             async findLanguageColor() {
                 findCalls += 1;
                 return null;
@@ -163,7 +163,7 @@ test('persists one generated language color and shares concurrent first requests
         axios,
         apiKey: 'key',
         languageColors: {},
-        repository
+        languageColorStore: repository
     });
 
     const colors = await Promise.all([
@@ -204,7 +204,7 @@ test('keeps generating a color when the persisted cache is temporarily unavailab
         axios,
         apiKey: 'key',
         languageColors: {},
-        repository
+        languageColorStore: repository
     });
 
     assert.equal(await client.resolveLanguageColor('NewLanguage'), '#fedcba');

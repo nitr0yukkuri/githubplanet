@@ -9,7 +9,7 @@ export function createGeminiClient({
     apiKey,
     languageColors,
     languageColorCache = {},
-    repository,
+    languageColorStore,
     onRequestTiming,
     modelListCacheTtlMs = MODEL_LIST_CACHE_TTL_MS
 }) {
@@ -94,9 +94,9 @@ export function createGeminiClient({
         }
 
         const colorPromise = (async () => {
-            if (repository?.findLanguageColor) {
+            if (languageColorStore?.findLanguageColor) {
                 try {
-                    const persistedColor = await repository.findLanguageColor(language);
+                    const persistedColor = await languageColorStore.findLanguageColor(language);
                     if (/^#[0-9a-fA-F]{6}$/.test(persistedColor || '')) {
                         dynamicColorCache[language] = persistedColor;
                         return persistedColor;
@@ -113,9 +113,9 @@ export function createGeminiClient({
             if (!match) return DEFAULT_LANGUAGE_COLOR;
 
             let resolvedColor = match[0];
-            if (repository?.saveLanguageColor) {
+            if (languageColorStore?.saveLanguageColor) {
                 try {
-                    const persistedColor = await repository.saveLanguageColor(language, resolvedColor);
+                    const persistedColor = await languageColorStore.saveLanguageColor(language, resolvedColor);
                     if (/^#[0-9a-fA-F]{6}$/.test(persistedColor || '')) {
                         resolvedColor = persistedColor;
                     }

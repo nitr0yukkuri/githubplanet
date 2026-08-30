@@ -1,4 +1,4 @@
-import { calculateLoginProgress } from '../../application/login-progress.js';
+import { calculateLoginProgress } from '../../domain/planet/login-progress.js';
 
 const PLANET_COLUMNS = `
     github_id, username, planet_color, planet_size_factor, main_language, language_stats,
