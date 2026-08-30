@@ -31,7 +31,8 @@ export function createPlanetRepository(pool, {
     onRandomQueryTiming,
     randomQueryStrategy = 'auto',
     randomSmallTableThreshold = 256,
-    randomCountRefreshMs = RANDOM_COUNT_REFRESH_MS
+    randomCountRefreshMs = RANDOM_COUNT_REFRESH_MS,
+    random = Math.random
 } = {}) {
     if (!pool) return undefined;
     if (!RANDOM_QUERY_STRATEGIES.has(randomQueryStrategy)) {
@@ -174,25 +175,33 @@ export function createPlanetRepository(pool, {
                     queryCount = 1;
                 } else {
                     strategyUsed = 'indexed';
-                    const randomKeyPlaceholder = `$${uniqueIds.length + 1}`;
-                    const randomKey = Math.random();
-                    const params = [...uniqueIds, randomKey];
-                    const selectFromRandomKey = (operator) => {
-                        queryCount += 1;
-                        return pool.query(
-                            `
-                                SELECT ${RANDOM_PLANET_COLUMNS}
-                                FROM planets
-                                WHERE random_key ${operator} ${randomKeyPlaceholder}${exclusion}
-                                ORDER BY random_key
-                                LIMIT 1
-                            `,
-                            params
-                        );
-                    };
+                    const randomValue = random();
+                    if (!Number.isFinite(randomValue) || randomValue < 0 || randomValue >= 1) {
+                        throw new Error('random must return a number greater than or equal to 0 and less than 1');
+                    }
+                    const randomValuePlaceholder = `$${uniqueIds.length + 1}`;
+                    const params = [...uniqueIds, randomValue];
 
-                    result = await selectFromRandomKey('>=');
-                    if (!result.rows[0]) result = await selectFromRandomKey('<');
+                    // 固定random_keyの隙間で選ぶと惑星ごとの確率が偏るため、除外後の候補番号を等確率で選ぶ。
+                    result = await pool.query(
+                        `
+                            SELECT ${RANDOM_PLANET_COLUMNS}
+                            FROM planets
+                            WHERE TRUE${exclusion}
+                            ORDER BY random_key
+                            OFFSET (
+                                SELECT FLOOR(
+                                    ${randomValuePlaceholder}::double precision
+                                    * COUNT(*)::double precision
+                                )::bigint
+                                FROM planets
+                                WHERE TRUE${exclusion}
+                            )
+                            LIMIT 1
+                        `,
+                        params
+                    );
+                    queryCount = 1;
                 }
                 return result.rows[0] || null;
             } catch (error) {

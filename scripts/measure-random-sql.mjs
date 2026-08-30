@@ -8,7 +8,7 @@ const PLANET_COLUMNS = `
 `;
 const DEFAULT_SIZES = [145, 1_000, 10_000, 100_000];
 const databaseUrl = process.env.RANDOM_PERF_DATABASE_URL;
-const optimizedMode = process.env.RANDOM_PERF_OPTIMIZED_MODE || 'indexed';
+const optimizedMode = process.env.RANDOM_PERF_OPTIMIZED_MODE || 'uniform-offset';
 const smallTableThreshold = Number.parseInt(
     process.env.RANDOM_PERF_SMALL_TABLE_THRESHOLD || '256',
     10
@@ -35,8 +35,10 @@ function parseSizes(value) {
     return [...new Set(sizes)];
 }
 
-if (!['indexed', 'indexed-union', 'adaptive', 'auto'].includes(optimizedMode)) {
-    throw new Error('RANDOM_PERF_OPTIMIZED_MODE must be indexed, indexed-union, adaptive, or auto.');
+if (!['uniform-offset', 'indexed', 'indexed-union', 'adaptive', 'auto'].includes(optimizedMode)) {
+    throw new Error(
+        'RANDOM_PERF_OPTIMIZED_MODE must be uniform-offset, indexed, indexed-union, adaptive, or auto.'
+    );
 }
 if (!Number.isInteger(smallTableThreshold) || smallTableThreshold < 1) {
     throw new Error('RANDOM_PERF_SMALL_TABLE_THRESHOLD must be a positive integer.');
@@ -107,6 +109,29 @@ function buildLegacyQuery(excludeIds) {
             LIMIT 1
         `,
         params: exclusion.params
+    };
+}
+
+function buildUniformOffsetQuery(excludeIds, randomValue) {
+    const exclusion = buildExclusion(excludeIds);
+    const randomValuePlaceholder = `$${excludeIds.length + 1}`;
+    return {
+        sql: `
+            SELECT ${PLANET_COLUMNS}
+            FROM random_planets
+            WHERE TRUE${exclusion.sql}
+            ORDER BY random_key
+            OFFSET (
+                SELECT FLOOR(
+                    ${randomValuePlaceholder}::double precision
+                    * COUNT(*)::double precision
+                )::bigint
+                FROM random_planets
+                WHERE TRUE${exclusion.sql}
+            )
+            LIMIT 1
+        `,
+        params: [...exclusion.params, randomValue]
     };
 }
 
@@ -201,6 +226,16 @@ function buildAdaptiveQuery(excludeIds, randomKey, smallTableThreshold = 1_000) 
     };
 }
 
+function buildOptimizedQueryForExplain(mode, size, excludeIds) {
+    if (mode === 'uniform-offset' || (mode === 'auto' && size > smallTableThreshold)) {
+        return buildUniformOffsetQuery(excludeIds, 0.5);
+    }
+    if (mode === 'auto') return buildLegacyQuery(excludeIds);
+    if (mode === 'indexed-union') return buildIndexedUnionQuery(excludeIds, 0.5);
+    if (mode === 'adaptive') return buildAdaptiveQuery(excludeIds, 0.5, smallTableThreshold);
+    return buildIndexedQuery(excludeIds, '>=', 0.5);
+}
+
 function flattenPlan(node, result = []) {
     if (!node) return result;
     result.push({
@@ -250,6 +285,17 @@ async function measureLegacy(client, excludeIds) {
     };
 }
 
+async function measureUniformOffset(client, excludeIds) {
+    const query = buildUniformOffsetQuery(excludeIds, Math.random());
+    const startedAt = performance.now();
+    const result = await client.query(query.sql, query.params);
+    return {
+        durationMs: performance.now() - startedAt,
+        queryCount: 1,
+        row: result.rows[0] || null
+    };
+}
+
 async function measureIndexed(client, excludeIds) {
     const randomKey = Math.random();
     const firstQuery = buildIndexedQuery(excludeIds, '>=', randomKey);
@@ -282,7 +328,7 @@ async function measureIndexedUnion(client, excludeIds) {
 }
 
 async function measureAdaptive(client, excludeIds) {
-    const query = buildAdaptiveQuery(excludeIds, Math.random());
+    const query = buildAdaptiveQuery(excludeIds, Math.random(), smallTableThreshold);
     const startedAt = performance.now();
     const result = await client.query(query.sql, query.params);
     return {
@@ -295,13 +341,15 @@ async function measureAdaptive(client, excludeIds) {
 async function measureMode(client, mode, excludeIds, warmupCount, sampleCount, size) {
     const measure = mode === 'legacy'
         ? measureLegacy
-        : mode === 'indexed-union'
-            ? measureIndexedUnion
-            : mode === 'adaptive'
-                ? measureAdaptive
-                : mode === 'auto'
-                    ? size <= smallTableThreshold ? measureLegacy : measureIndexed
-                    : measureIndexed;
+        : mode === 'uniform-offset'
+            ? measureUniformOffset
+            : mode === 'indexed-union'
+                ? measureIndexedUnion
+                : mode === 'adaptive'
+                    ? measureAdaptive
+                    : mode === 'auto'
+                        ? size <= smallTableThreshold ? measureLegacy : measureUniformOffset
+                        : measureIndexed;
     for (let index = 0; index < warmupCount; index += 1) {
         const result = await measure(client, excludeIds);
         assertReturnedAllowed(result.row, excludeIds, mode, size);
@@ -330,12 +378,26 @@ function delta(optimized, legacy) {
         : null;
 }
 
-function compare(legacy, indexed) {
+function compare(legacy, optimized) {
     return {
-        p50DeltaMs: delta(indexed.timingsMs?.median, legacy.timingsMs?.median),
-        p95DeltaMs: delta(indexed.timingsMs?.p95, legacy.timingsMs?.p95),
-        p99DeltaMs: delta(indexed.timingsMs?.p99, legacy.timingsMs?.p99)
+        p50DeltaMs: delta(optimized.timingsMs?.median, legacy.timingsMs?.median),
+        p95DeltaMs: delta(optimized.timingsMs?.p95, legacy.timingsMs?.p95),
+        p99DeltaMs: delta(optimized.timingsMs?.p99, legacy.timingsMs?.p99)
     };
+}
+
+function describeOptimizedMode(mode) {
+    if (mode === 'uniform-offset') {
+        return 'uniform random ordinal lookup ordered by indexed random_key';
+    }
+    if (mode === 'indexed-union') {
+        return 'random_key indexed dual-range lookup in one round trip';
+    }
+    if (mode === 'adaptive') return 'estimated row-count adaptive legacy/indexed lookup';
+    if (mode === 'auto') {
+        return `startup-count auto selection (legacy <= ${smallTableThreshold}, uniform offset above)`;
+    }
+    return 'random_key indexed range lookup with wraparound';
 }
 
 async function seed(client, size) {
@@ -412,14 +474,17 @@ async function main() {
             const cases = [];
             for (const excludeIds of [[], [1], [1, 2]]) {
                 const legacyQuery = buildLegacyQuery(excludeIds);
-                const indexedQuery = buildIndexedQuery(excludeIds, '>=', 0.5);
-                const indexedWrapQuery = buildIndexedQuery(excludeIds, '<', 0.5);
+                const optimizedQuery = buildOptimizedQueryForExplain(
+                    optimizedMode,
+                    size,
+                    excludeIds
+                );
                 const rounds = [];
 
-                for (const order of [['legacy', 'indexed'], ['indexed', 'legacy']]) {
+                for (const order of [['legacy', 'optimized'], ['optimized', 'legacy']]) {
                     const measured = {};
                     for (const mode of order) {
-                        const measuredMode = mode === 'indexed' ? optimizedMode : mode;
+                        const measuredMode = mode === 'optimized' ? optimizedMode : mode;
                         measured[mode] = await measureMode(
                             client,
                             measuredMode,
@@ -432,8 +497,8 @@ async function main() {
                     rounds.push({
                         order: order.join(' -> '),
                         legacy: measured.legacy,
-                        indexed: measured.indexed,
-                        comparison: compare(measured.legacy, measured.indexed)
+                        optimized: measured.optimized,
+                        comparison: compare(measured.legacy, measured.optimized)
                     });
                 }
 
@@ -442,8 +507,7 @@ async function main() {
                     rounds,
                     queryPlans: {
                         legacy: await explain(client, legacyQuery),
-                        indexed: await explain(client, indexedQuery),
-                        indexedWraparound: await explain(client, indexedWrapQuery)
+                        optimized: await explain(client, optimizedQuery)
                     }
                 });
             }
@@ -455,19 +519,13 @@ async function main() {
             databaseHost: database.hostname,
             databasePort: database.port || '5432',
             baseline: 'ORDER BY RANDOM() from the previous repository implementation',
-            optimized: optimizedMode === 'indexed-union'
-                ? 'random_key indexed dual-range lookup in one round trip'
-                : optimizedMode === 'adaptive'
-                    ? 'estimated row-count adaptive legacy/indexed lookup'
-                    : optimizedMode === 'auto'
-                        ? `startup-count auto selection (legacy <= ${smallTableThreshold}, indexed above)`
-                        : 'random_key indexed range lookup with wraparound',
+            optimized: describeOptimizedMode(optimizedMode),
             warmup: warmupCount,
             samples: sampleCount,
             datasets
         }, null, 2));
     } finally {
-        await client.query('DROP TABLE IF EXISTS random_planets');
+        // TEMP TABLEは接続終了時に破棄し、同名の永続テーブルを誤って削除する余地をなくす。
         await client.end();
     }
 }

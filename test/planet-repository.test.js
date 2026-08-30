@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createPlanetRepository } from '../src/infrastructure/database/planet-repository.js';
 
+function isStrategyCountQuery(sql) {
+    return /^\s*SELECT COUNT\(\*\)::bigint AS count FROM planets\s*$/i.test(sql);
+}
+
 test('finds a planet by username regardless of case', async () => {
     const calls = [];
     const repository = createPlanetRepository({
@@ -45,11 +49,15 @@ test('selects a random planet without sorting the whole table', async () => {
     assert.deepEqual(calls[0][1].slice(0, 2), [1, 2]);
     assert.equal(typeof calls[0][1][2], 'number');
     assert.ok(calls[0][1][2] >= 0 && calls[0][1][2] < 1);
-    assert.match(calls[0][0], /random_key\s*>=\s*\$3/i);
     assert.match(calls[0][0], /ORDER\s+BY\s+random_key/i);
-    assert.match(calls[0][0], /github_id\s+NOT\s+IN\s*\(\$1,\s*\$2\)/i);
+    assert.equal(
+        calls[0][0].match(/github_id\s+NOT\s+IN\s*\(\$1,\s*\$2\)/gi)?.length,
+        2
+    );
+    assert.match(calls[0][0], /OFFSET\s*\(\s*SELECT\s+FLOOR/i);
+    assert.match(calls[0][0], /\$3::double precision\s*\*\s*COUNT\(\*\)::double precision/i);
     assert.doesNotMatch(calls[0][0], /ORDER\s+BY\s+RANDOM\(\)/i);
-    assert.doesNotMatch(calls[0][0], /OFFSET\s*\(/i);
+    assert.doesNotMatch(calls[0][0], /random_key\s*(?:>=|<)/i);
     assert.equal(timings.length, 1);
     assert.equal(timings[0].exclusionCount, 2);
     assert.equal(timings[0].returnedRows, 1);
@@ -67,24 +75,44 @@ test('selects a random planet without sorting the whole table', async () => {
     assert.equal(typeof timings[0].durationMs, 'number');
 });
 
-test('wraps around the indexed random key when the first range is empty', async () => {
+test('selects eligible ordinals uniformly regardless of random key gaps', async () => {
     const calls = [];
+    const randomValues = [0, 0.34, 0.67, 0.51];
+    const planets = [
+        { github_id: 1, username: 'first', random_key: 0.1 },
+        { github_id: 2, username: 'second', random_key: 0.11 },
+        { github_id: 3, username: 'third', random_key: 0.9 }
+    ];
     const repository = createPlanetRepository({
         async query(sql, params) {
             calls.push([sql, params]);
-            return calls.length === 1
-                ? { rows: [] }
-                : { rows: [{ github_id: 4, username: 'wrapped' }] };
+            const excludedIds = params.slice(0, -1);
+            const randomValue = params.at(-1);
+            const eligible = planets.filter(({ github_id }) => !excludedIds.includes(github_id));
+            const selected = eligible[Math.floor(randomValue * eligible.length)];
+            if (!selected) return { rows: [] };
+            const { random_key, ...row } = selected;
+            return { rows: [row] };
         }
+    }, {
+        random: () => randomValues.shift()
     });
 
-    const row = await repository.findRandom([1]);
+    const rows = [
+        await repository.findRandom(),
+        await repository.findRandom(),
+        await repository.findRandom(),
+        await repository.findRandom([2])
+    ];
 
-    assert.deepEqual(row, { github_id: 4, username: 'wrapped' });
-    assert.equal(calls.length, 2);
-    assert.match(calls[0][0], /random_key\s*>=\s*\$2/i);
-    assert.match(calls[1][0], /random_key\s*<\s*\$2/i);
-    assert.deepEqual(calls[0][1], calls[1][1]);
+    assert.deepEqual(rows.map(({ github_id }) => github_id), [1, 2, 3, 3]);
+    assert.equal(calls.length, 4);
+    assert.ok(calls.every(([sql]) => /OFFSET\s*\(/i.test(sql)));
+    assert.equal(
+        calls[3][0].match(/github_id\s+NOT\s+IN\s*\(\$1\)/gi)?.length,
+        2
+    );
+    assert.deepEqual(calls[3][1], [2, 0.51]);
 });
 
 test('uses the legacy random scan for a small table after one startup count', async () => {
@@ -92,7 +120,7 @@ test('uses the legacy random scan for a small table after one startup count', as
     const repository = createPlanetRepository({
         async query(sql, params) {
             calls.push([sql, params]);
-            if (sql.includes('COUNT(*)')) return { rows: [{ count: '145' }] };
+            if (isStrategyCountQuery(sql)) return { rows: [{ count: '145' }] };
             return { rows: [{ github_id: 3, username: 'small-table' }] };
         }
     }, {
@@ -115,7 +143,7 @@ test('keeps the indexed random scan for a large table in auto mode', async () =>
     const repository = createPlanetRepository({
         async query(sql, params) {
             calls.push([sql, params]);
-            if (sql.includes('COUNT(*)')) return { rows: [{ count: '100000' }] };
+            if (isStrategyCountQuery(sql)) return { rows: [{ count: '100000' }] };
             return { rows: [{ github_id: 3, username: 'large-table' }] };
         }
     }, { randomQueryStrategy: 'auto' });
@@ -123,7 +151,8 @@ test('keeps the indexed random scan for a large table in auto mode', async () =>
     await repository.initializeRandomQueryStrategy();
     await repository.findRandom([1]);
 
-    assert.match(calls[1][0], /random_key\s*>=\s*\$2/i);
+    assert.match(calls[1][0], /ORDER\s+BY\s+random_key/i);
+    assert.match(calls[1][0], /OFFSET\s*\(/i);
     assert.doesNotMatch(calls[1][0], /ORDER\s+BY\s+RANDOM\(\)/i);
 });
 
@@ -134,7 +163,7 @@ test('refreshes the cached count in the background when the table grows', async 
     const repository = createPlanetRepository({
         async query(sql, params) {
             calls.push([sql, params]);
-            if (sql.includes('COUNT(*)')) {
+            if (isStrategyCountQuery(sql)) {
                 countCalls += 1;
                 if (countCalls === 1) return { rows: [{ count: '145' }] };
                 return new Promise((resolve) => {
@@ -158,7 +187,7 @@ test('refreshes the cached count in the background when the table grows', async 
     finishRefresh();
     await new Promise((resolve) => setImmediate(resolve));
     await repository.findRandom();
-    const indexedRandomQuery = calls.find(([sql]) => /random_key\s*>=\s*\$1/i.test(sql));
+    const indexedRandomQuery = calls.find(([sql]) => /ORDER\s+BY\s+random_key[\s\S]*OFFSET\s*\(/i.test(sql));
     assert.ok(indexedRandomQuery);
 });
 
