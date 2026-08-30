@@ -31,6 +31,45 @@ let cachedPlanetTexture = null;
 
 const textureLoader = new THREE.TextureLoader();
 
+function isHomePerformanceEnabled() {
+    return window.__GITHUB_PLANET_PERF__ === true;
+}
+
+// 明示的な計測時だけ記録し、通常表示のフレーム予算と挙動に影響を与えない。
+function recordHomePerformance(event, details = {}) {
+    if (!isHomePerformanceEnabled()) return;
+
+    const trace = window.__githubPlanetPerfEvents || (window.__githubPlanetPerfEvents = []);
+    trace.push({ event, timeMs: performance.now(), ...details });
+}
+
+function recordHomeAnimationFrame(frameStartedAt) {
+    if (!isHomePerformanceEnabled()) return;
+
+    const frameEndedAt = performance.now();
+    const frameMs = frameEndedAt - frameStartedAt;
+    const stats = window.__githubPlanetPerfFrames || (window.__githubPlanetPerfFrames = {
+        count: 0,
+        totalCpuMs: 0,
+        maxCpuMs: 0,
+        samples: []
+    });
+
+    stats.count += 1;
+    stats.totalCpuMs += frameMs;
+    stats.maxCpuMs = Math.max(stats.maxCpuMs, frameMs);
+    if (stats.samples.length < 300 && stats.count % 6 === 0) {
+        stats.samples.push({
+            timeMs: frameEndedAt,
+            cpuMs: frameMs,
+            rotationZ: planetGroup?.rotation.z ?? null,
+            scale: planetGroup?.scale.x ?? null,
+            featureId: planetFeatureRuntime?.id ?? null,
+            sceneChildren: scene?.children.length ?? null
+        });
+    }
+}
+
 async function fetchHomeApi(input, options = {}, timeoutMs = HOME_API_TIMEOUT_MS) {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
@@ -376,6 +415,8 @@ async function loadPlanet(data) {
 
     if (!data) return;
 
+    recordHomePerformance('loadPlanet:start');
+
     const loadGeneration = ++planetLoadGeneration;
     cancelActivePlanetReveal();
 
@@ -417,6 +458,7 @@ async function loadPlanet(data) {
     // (fetchMyPlanetDataで設定した自分のリンクを維持する)
 
     updatePlanetDetails(data);
+    recordHomePerformance('loadPlanet:details-ready');
 
     if (planetGroup) {
         disposeObject(planetGroup);
@@ -428,6 +470,7 @@ async function loadPlanet(data) {
     planetGroup = new THREE.Group();
 
     const tex = await loadPlanetTexture();
+    recordHomePerformance('loadPlanet:texture-ready');
     if (loadGeneration !== planetLoadGeneration) return;
 
     const geo = new THREE.SphereGeometry(4, 32, 32);
@@ -605,6 +648,7 @@ async function loadPlanet(data) {
         targets: shockwave.material,
         begin: function () {
             shockwave.visible = true;
+            recordHomePerformance('loadPlanet:reveal-start');
         },
         opacity: [
             { value: 1.0, duration: 0 },
@@ -637,6 +681,10 @@ async function loadPlanet(data) {
         if (isShowcaseRoute) updateShowcaseCta();
     }
     controls.enabled = true;
+    recordHomePerformance('loadPlanet:scene-ready', {
+        featureId: planetFeatureRuntime?.id ?? null,
+        sceneChildren: scene?.children.length ?? null
+    });
 }
 
 function spawnMeteor(data) {
@@ -912,6 +960,7 @@ async function loadMainContent() {
 }
 
 function animate() {
+    const frameStartedAt = isHomePerformanceEnabled() ? performance.now() : null;
     requestAnimationFrame(animate);
     if (planetGroup) planetGroup.rotation.z += planetRotationSpeed;
     const now = performance.now();
@@ -922,6 +971,7 @@ function animate() {
     });
     controls.update();
     renderer.render(scene, camera);
+    if (frameStartedAt !== null) recordHomeAnimationFrame(frameStartedAt);
 }
 
 function setupUI() {
@@ -987,15 +1037,21 @@ function setupUI() {
 
         if (isFetchingRandomPlanet) return;
         isFetchingRandomPlanet = true;
+        recordHomePerformance('random:click-accepted');
 
         toggleLoading(true);
 
         try {
+            recordHomePerformance('random:fetch-start');
             const res = await fetchHomeApi(`/api/planets/random?t=${Date.now()}`, { cache: 'no-store' });
+            recordHomePerformance('random:response', { status: res.status });
             if (res.ok) {
                 const planetData = await res.json();
+                recordHomePerformance('random:json-ready');
                 console.log('取得したランダムデータ:', planetData);
+                recordHomePerformance('random:load-start');
                 await loadPlanet(planetData);
+                recordHomePerformance('random:load-complete');
 
                 if (typeof gtag === 'function' && planetData.username) {
                     const path = `/planet/${planetData.username}`;
@@ -1016,6 +1072,7 @@ function setupUI() {
         } finally {
             isFetchingRandomPlanet = false;
             toggleLoading(false);
+            recordHomePerformance('random:done');
         }
     };
 
