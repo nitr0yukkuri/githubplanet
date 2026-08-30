@@ -105,12 +105,16 @@ const planetRepository = createPlanetRepository(pool, {
 });
 await planetRepository?.initializeRandomQueryStrategy?.();
 const languageColorCache = await planetRepository?.loadLanguageColorCache?.() || {};
+const languageColorStore = planetRepository ? {
+    findLanguageColor: (...args) => planetRepository.findLanguageColor(...args),
+    saveLanguageColor: (...args) => planetRepository.saveLanguageColor(...args)
+} : undefined;
 const geminiClient = createGeminiClient({
     axios,
     apiKey: process.env.GEMINI_API_KEY,
     languageColors: LANGUAGE_COLORS,
     languageColorCache,
-    repository: planetRepository,
+    languageColorStore,
     onRequestTiming: process.env.PERF_TRACE_EXTERNAL === 'true'
         ? externalPerformance.record
         : undefined

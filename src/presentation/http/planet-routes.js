@@ -1,5 +1,6 @@
-import { normalizePlanetCommitCounts, toPlanetResponse } from '../../domain/planet/planet.js';
+import { normalizePlanetCommitCounts } from '../../domain/planet/planet.js';
 import { getShowcasePlanet } from '../../domain/planet/showcase-planets.js';
+import { toPlanetResponse } from './planet-response.js';
 
 const ANONYMOUS_RANDOM_COOKIE = 'githubplanet_random_planet';
 
