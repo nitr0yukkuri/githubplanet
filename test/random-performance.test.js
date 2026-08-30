@@ -26,6 +26,8 @@ test('reports random SQL, session save, and HTTP timings', async () => {
         }
     };
 
+    reporter.startMiddleware(request, response, () => {});
+    reporter.beforeSessionMiddleware(request, response, () => {});
     reporter.middleware(request, response, () => {});
     request.session.save(() => {});
     reporter.recordRandomQuery({
@@ -43,12 +45,20 @@ test('reports random SQL, session save, and HTTP timings', async () => {
         dbRoundTripMs: 12.5,
         exclusionCount: 2,
         returnedRows: 1,
+        poolBefore: null,
+        poolAfter: null,
+        queryCount: null,
+        strategy: null,
         error: null
     });
     const requestLog = parseLog(logs[1]);
     assert.equal(requestLog.event, 'random_request');
     assert.equal(requestLog.statusCode, 200);
+    assert.equal(requestLog.sessionStoreCookiePresent, false);
+    assert.equal(requestLog.randomHistoryCookiePresent, false);
+    assert.equal(requestLog.authenticated, false);
     assert.equal(requestLog.sessionSave.length, 1);
+    assert.equal(typeof requestLog.sessionLoadMs, 'number');
     assert.equal(requestLog.sessionSave[0].error, null);
     assert.equal(typeof requestLog.sessionSave[0].durationMs, 'number');
     assert.equal(typeof requestLog.httpMs, 'number');
@@ -73,4 +83,16 @@ test('does not instrument random requests when disabled', () => {
 
     assert.equal(nextCalled, true);
     assert.equal(logs.length, 0);
+});
+
+test('keeps the request untouched when random performance tracing is disabled', () => {
+    const reporter = createRandomPerformanceReporter({ enabled: false });
+    const request = { path: '/api/planets/random' };
+    let nextCalls = 0;
+
+    reporter.startMiddleware(request, {}, () => { nextCalls += 1; });
+    reporter.beforeSessionMiddleware(request, {}, () => { nextCalls += 1; });
+
+    assert.equal(nextCalls, 2);
+    assert.equal(request.randomPerformance, undefined);
 });
