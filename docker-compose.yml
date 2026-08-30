@@ -11,9 +11,20 @@ services:
     env_file:
       - .env
     depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: node server.js
+
+  migrate:
+    build: .
+    environment:
+      - DATABASE_URL=postgres://githubplanet:password@db:5432/githubplanet
+    env_file:
+      - .env
+    depends_on:
       db:
         condition: service_healthy
-    command: node server.js
+    command: npm run migrate
 
   db:
     image: postgres:15-alpine

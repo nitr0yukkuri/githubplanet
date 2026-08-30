@@ -311,5 +311,13 @@ GITHUB_WEBHOOK_SECRET=dev_webhook_secret
 docker-compose up --build
 ```
 
+Docker Composeは、`migrate`サービスで未適用のDBマイグレーションを完了してからアプリを起動します。
+Dockerを使わず直接起動する場合や本番デプロイでは、各デプロイでアプリの新しいバージョンを起動する前に次を実行してください。
+
+```bash
+npm run migrate
+npm start
+```
+
 - ブラウザで [http://localhost:3000](http://localhost:3000) にアクセスしてください。
 - 停止するには `Ctrl+C` を押します。

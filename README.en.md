@@ -294,4 +294,11 @@ SYSTEM_API_KEY=dev_system_key
 docker compose up --build
 ```
 
+Docker Compose runs the `migrate` service before starting the application. When running Node.js directly or deploying to production, apply pending database migrations before starting the new application version:
+
+```bash
+npm run migrate
+npm start
+```
+
 Open [http://localhost:3000](http://localhost:3000). Press `Ctrl+C` to stop the application.

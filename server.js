@@ -11,7 +11,8 @@ import { createPlanetQueryService } from './src/application/planet-query-service
 import { createPlanetService } from './src/application/planet-service.js';
 import { DATA_CACHE_DURATION, EXTENSION_MAP, LANGUAGE_COLORS } from './src/domain/planet/constants.js';
 import { createPlanetRepository } from './src/infrastructure/database/planet-repository.js';
-import { createPostgresPool, prepareDatabase } from './src/infrastructure/database/postgres.js';
+import { assertDatabaseMigrationsApplied } from './src/infrastructure/database/migrations.js';
+import { createPostgresPool } from './src/infrastructure/database/postgres.js';
 import { createGeminiClient } from './src/infrastructure/external/gemini-client.js';
 import { createGithubClient } from './src/infrastructure/external/github-client.js';
 import { registerAuthRoutes } from './src/presentation/http/auth-routes.js';
@@ -94,7 +95,8 @@ if (isProduction) {
 }
 
 const pool = createPostgresPool(process.env.DATABASE_URL);
-await prepareDatabase(pool);
+// 複数インスタンスが起動時に同じDDLを実行する事故を防ぐため、ここでは適用確認だけを行う。
+await assertDatabaseMigrationsApplied(pool);
 const planetRepository = createPlanetRepository(pool, {
     onRandomQueryTiming: randomPerformance.recordRandomQuery,
     randomQueryStrategy: process.env.RANDOM_QUERY_STRATEGY || 'auto',
