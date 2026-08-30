@@ -10,6 +10,7 @@ import {
     createGoPlanetAtmosphere,
     createGoPlanetWindMaterial
 } from '../front/js/go-planet-wind.js';
+import { resolvePlanetFeature } from '../front/js/planet-features/registry.js';
 
 class FakeMaterial {
     constructor(options) {
@@ -79,13 +80,29 @@ test('matches only normalized Vue planets', () => {
     assert.equal(isVuePlanet({ mainLanguage: 'Go' }), false);
 });
 
-test('routes Vue planets through the exact Go wind and atmosphere', () => {
-    const home = readFileSync(new URL('../front/js/home.js', import.meta.url), 'utf8');
+test('routes Vue planets through the shared feature boundary', () => {
+    const feature = resolvePlanetFeature({ mainLanguage: 'Vue' });
 
-    assert.match(home, /isGoPlanet\(data\) \|\| isVuePlanet\(data\)/);
-    assert.match(home, /createGoPlanetWindMaterial\(THREE, tex, 1, isVuePlanet\(data\) \? 'vue' : 'go'\)/);
-    assert.match(home, /isVuePlanet\(data\) \? 'vue' : 'go'/);
-    assert.doesNotMatch(home, /createVuePlanetFlow|createVuePlanetRimWind|updateVuePlanetFlow/);
+    assert.ok(feature);
+    assert.equal(feature.id, 'vue');
+    assert.equal(feature.usesWindSpeed, true);
+    assert.equal(feature.rotationMultiplier, 0.7);
+    assert.equal(feature.windAnimationMultiplier, 0.5);
+
+    const material = feature.createMaterial({
+        THREE: MATERIAL_THREE,
+        planetTexture: {},
+        direction: 1
+    });
+    assert.equal(material.customProgramCacheKey(), 'go-planet-oblique-gale-v2-vue');
+
+    const objects = feature.createObjects({
+        THREE: { ...ATMOSPHERE_THREE, ...LEAF_THREE },
+        radius: 4,
+        direction: 1
+    });
+    assert.ok(objects.atmosphere);
+    assert.ok(objects.leaves);
 });
 
 test('changes only the shared Go effect palette for Vue', () => {
@@ -119,22 +136,26 @@ test('creates six non-glowing leaves that follow the Vue wind', () => {
     assert.equal(leaves.userData.vueLeafUniforms.vueLeafTime.value, 0.8);
 });
 
-test('slows only Vue rotation and wind on home', () => {
-    const home = readFileSync(new URL('../front/js/home.js', import.meta.url), 'utf8');
+test('keeps Vue motion and wind configuration in the shared feature registry', () => {
+    const vue = resolvePlanetFeature({ mainLanguage: 'Vue' });
+    const go = resolvePlanetFeature({ mainLanguage: 'Go' });
 
-    assert.match(home, /isVuePlanet\(data\) \? 0\.7 : 1/);
-    assert.match(home, /windAnimationMultiplier = isVuePlanet\(data\) \? 0\.5 : 1/);
-    assert.match(home, /createVueLeafWind\(THREE, 4\)/);
-    assert.match(home, /updateVueLeafWind\(vueLeafWind/);
+    assert.ok(vue);
+    assert.ok(go);
+    assert.equal(vue.rotationMultiplier, 0.7);
+    assert.equal(vue.windAnimationMultiplier, 0.5);
+    assert.equal(vue.usesWindSpeed, true);
+    assert.equal(go.rotationMultiplier, undefined);
+    assert.equal(go.windAnimationMultiplier, undefined);
 });
 
-test('uses the same Vue theme, leaves, and slower motion on cards', () => {
+test('uses one Vue feature definition for home and card rendering', () => {
+    const vue = resolvePlanetFeature({ mainLanguage: 'Vue' });
     const card = readFileSync(new URL('../front/js/card.js', import.meta.url), 'utf8');
 
-    assert.match(card, /isGoPlanet\(data\) \|\| isVuePlanet\(data\)/);
-    assert.match(card, /isVuePlanet\(data\) \? 'vue' : 'go'/);
-    assert.match(card, /cardRotationMultiplier = isVuePlanet\(data\) \? 0\.7 : 1/);
-    assert.match(card, /windAnimationMultiplier = isVuePlanet\(data\) \? 0\.5 : 1/);
-    assert.match(card, /createVueLeafWind\(THREE, baseSize\)/);
-    assert.match(card, /updateVueLeafWind\(vueLeafWind/);
+    assert.ok(vue);
+    assert.equal(vue.id, 'vue');
+    assert.equal(vue.module.isVuePlanet({ mainLanguage: 'Vue' }), true);
+    assert.match(card, /createPlanetFeatureRuntime/);
+    assert.doesNotMatch(card, /createVuePlanetFlow|createVuePlanetRimWind|updateVuePlanetFlow/);
 });
