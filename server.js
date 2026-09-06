@@ -99,13 +99,12 @@ const pool = createPostgresPool(process.env.DATABASE_URL);
 await assertDatabaseMigrationsApplied(pool);
 const planetRepository = createPlanetRepository(pool, {
     onRandomQueryTiming: randomPerformance.recordRandomQuery,
-    randomQueryStrategy: process.env.RANDOM_QUERY_STRATEGY || 'auto',
+    randomQueryStrategy: process.env.RANDOM_QUERY_STRATEGY || 'indexed',
     randomSmallTableThreshold: Number.parseInt(
         process.env.RANDOM_QUERY_SMALL_TABLE_THRESHOLD || '256',
         10
     )
 });
-await planetRepository?.initializeRandomQueryStrategy?.();
 const languageColorCache = await planetRepository?.loadLanguageColorCache?.() || {};
 const languageColorStore = planetRepository ? {
     findLanguageColor: (...args) => planetRepository.findLanguageColor(...args),

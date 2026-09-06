@@ -179,6 +179,8 @@ test('keeps the HTTP server startup free from schema mutations', () => {
 
     assert.match(serverSource, /assertDatabaseMigrationsApplied\(pool\)/);
     assert.doesNotMatch(serverSource, /prepareDatabase|runDatabaseMigrations/);
+    assert.doesNotMatch(serverSource, /initializeRandomQueryStrategy/);
+    assert.match(serverSource, /randomQueryStrategy: process\.env\.RANDOM_QUERY_STRATEGY \|\| 'indexed'/);
 });
 
 test('starts the Docker application only after its migration service succeeds', () => {
