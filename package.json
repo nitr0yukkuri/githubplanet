@@ -15,6 +15,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
+    "migrate": "node scripts/migrate-database.mjs",
     "preview:achievement": "node scripts/preview-achievement.mjs",
     "perf:compare-random": "node scripts/compare-random-http.mjs",
     "perf:random-sql": "node scripts/measure-random-sql.mjs",

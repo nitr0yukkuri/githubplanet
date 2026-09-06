@@ -63,6 +63,7 @@ Webhookは `presentation -> applicationのイベント用ユースケース/ポ�
 具体的な技術との接続を閉じ込める。
 
 - `database/planet-repository.js`、`postgres.js`はDB接続・トランザクション・スキーマを担当する。
+- DBスキーマ変更は連番migrationとして管理し、`npm run migrate`から明示的に適用する。HTTPサーバー起動時は適用確認だけを行い、DDL・backfill・index作成を実行しない。
 - `external/github-client.js`、`gemini-client.js`は外部API通信、リトライ/キャッシュ、外部DTO変換を担当する。
 - アダプターはApplication全体や巨大なRepositoryを受け取らず、`languageColorStore`のような狭いportを注入する。
 - DB row、GitHub GraphQL、Gemini応答をApplication/Domainへそのまま漏らさず、境界で内部入力モデルへ変換する。
@@ -97,7 +98,7 @@ HTTP/WebSocket入口の輸送責務を担当する。
 4. `planet-stats.js`がGitHub GraphQLの生フィールド名を知る。外部アダプターのDTO mapperを境界に置く。ただし、まずは挙動を固定し、必要性が出てから分離する。
 5. `planet-query-service.js`の検索、cache、random fallback、称号保存が膨らんだら、ユースケース単位へ分割する。小規模なfacadeを機械的に分割しない。
 6. `constants.js`の設定値、Webhook入力変換、ドメインルールの混在を整理する。変更頻度と責務が異なるものを同じ定数ファイルに集めない。
-7. `server.js`の起動時migrationやruntime configはComposition Rootの運用課題として扱う。通常リクエストの業務ロジックと混ぜない。
+7. `server.js`のruntime configはComposition Rootの運用課題として扱う。DB migrationは専用コマンドへ分離済みなので、起動時DDLへ戻さない。
 
 ## 守るべき互換性
 
@@ -108,7 +109,8 @@ HTTP/WebSocket入口の輸送責務を担当する。
 - ランダム惑星の検索順、履歴除外、fallback、DBなしのshowcase/preview挙動。
 - Webhookのacknowledge、meteorイベント、Socket.IO通知。
 - `home`と`card`の言語別演出、アニメーション更新、カードの決定的レンダリング。
-- 本番DBをテストのために変更しない。migration/backfill/index作成をテストへ持ち込まない。
+- 本番DBに対して、テスト目的のmigration/backfill/index作成を実行しない。
+- migrationは使い捨てPostgreSQLで冪等性・同時実行・旧schemaからの更新を検証し、本番DBをテスト対象にしない。
 
 特に設定値と公開URLは一箇所で解決する。callback、canonical、OGP、README、デプロイ先の既定値が別ホストを指さないよう、環境変数未設定時の認証経路をテストする。
 
