@@ -10,6 +10,19 @@
 
 ---
 
+## 🎬 Try the one-minute demo first
+
+Use the login-free demo to experience a planet generated from deterministic showcase data.
+
+[Open the login-free demo](https://githubplanet.dev/demo?showcase=typescript)
+
+1. Open the demo
+2. Explore the planet's color, surface, scale, and rotation
+3. Check achievements and language-specific visuals
+4. Switch between showcases such as css, cpp, go, javascript, and rust
+
+The demo does not depend on a real GitHub user or the production database. For reviews, exhibitions, and demo videos, start here to see the core visual experience.
+
 ## 🎨 About the Project
 
 GitHub Planet is an interactive web experience that transforms a developer's GitHub activity into a personal 3D planet floating in space.
