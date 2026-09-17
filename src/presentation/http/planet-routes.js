@@ -1,7 +1,38 @@
 import { normalizePlanetCommitCounts, toPlanetResponse } from '../../domain/planet/planet.js';
 import { getShowcasePlanet } from '../../domain/planet/showcase-planets.js';
 
-export function registerPlanetRoutes(app, { planetService, planetQueryService, cacheDuration }) {
+const ANONYMOUS_RANDOM_COOKIE = 'githubplanet_random_planet';
+
+function readCookie(cookieHeader, name) {
+    const entry = (cookieHeader || '')
+        .split(';')
+        .map((part) => part.trim())
+        .find((part) => part.startsWith(`${name}=`));
+    if (!entry) return undefined;
+
+    try {
+        const value = decodeURIComponent(entry.slice(name.length + 1));
+        return /^-?\d+$/.test(value) ? value : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+function writeAnonymousRandomCookie(res, planetId) {
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    res.append(
+        'Set-Cookie',
+        `${ANONYMOUS_RANDOM_COOKIE}=${encodeURIComponent(String(planetId))}; Path=/; HttpOnly; SameSite=Lax${secure}`
+    );
+}
+
+export function registerPlanetRoutes(app, {
+    planetService,
+    planetQueryService,
+    cacheDuration,
+    randomHistoryStorage = 'cookie',
+    randomPerformance = null
+}) {
     app.get('/api/me', async (req, res) => {
         if (!req.session.planetData) {
             return res.status(401).json({ error: 'Not logged in' });
@@ -83,14 +114,32 @@ export function registerPlanetRoutes(app, { planetService, planetQueryService, c
         if (!planetQueryService) return res.status(503).json({ error: 'DB unavailable' });
 
         try {
+            randomPerformance?.markRandomStage(req, 'route-entered');
+            const loggedInUserId = req.session?.planetData?.user?.id;
+            const useSessionHistory = Boolean(loggedInUserId) || randomHistoryStorage === 'session';
+            const cookieHistoryId = readCookie(
+                req.headers?.cookie,
+                ANONYMOUS_RANDOM_COOKIE
+            );
+            randomPerformance?.markRandomStage(req, 'history-resolved');
+            randomPerformance?.markRandomStage(req, 'query-start');
             const row = await planetQueryService.getRandom({
-                loggedInUserId: req.session?.planetData?.user?.id,
-                lastRandomVisitedId: req.session?.lastRandomVisitedId
+                loggedInUserId,
+                lastRandomVisitedId: useSessionHistory
+                    ? req.session?.lastRandomVisitedId || cookieHistoryId
+                    : cookieHistoryId
             });
+            randomPerformance?.markRandomStage(req, 'query-complete');
             if (!row) return res.status(404).json({ error: 'No planets found' });
 
-            req.session.lastRandomVisitedId = row.github_id;
+            if (useSessionHistory) {
+                req.session.lastRandomVisitedId = row.github_id;
+            } else {
+                writeAnonymousRandomCookie(res, row.github_id);
+            }
+            randomPerformance?.markRandomStage(req, 'history-stored');
             res.json(toPlanetResponse(row));
+            randomPerformance?.markRandomStage(req, 'response-serialized');
         } catch (error) {
             console.error('[API /random Error]', error);
             res.status(500).json({ error: 'Internal Server Error' });
