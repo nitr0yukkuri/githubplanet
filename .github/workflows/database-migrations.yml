@@ -1,0 +1,56 @@
+name: Database migrations and tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  database-migrations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: githubplanet
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: githubplanet
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U githubplanet -d githubplanet"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply database migrations
+        env:
+          DATABASE_URL: postgresql://githubplanet:password@localhost:5432/githubplanet
+        run: npm run migrate
+
+      - name: Verify migrations are idempotent
+        env:
+          DATABASE_URL: postgresql://githubplanet:password@localhost:5432/githubplanet
+        run: npm run migrate
+
+      - name: Run migration-related tests
+        run: node --test --test-concurrency=1 test/database-migrations.test.js test/postgres-pool.test.js test/planet-repository.test.js
