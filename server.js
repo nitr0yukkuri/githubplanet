@@ -150,7 +150,10 @@ if (isProduction) app.set('trust proxy', 1);
 
 const PgSession = connectPgSimple(session);
 app.use(randomPerformance.beforeSessionMiddleware);
+// Firebase Hostingのrewriteでは予約名以外のCookieがCloud Runへ渡らないため、本番OAuthのstateを維持する。
+const sessionCookieName = isProduction ? '__session' : 'connect.sid';
 app.use(session({
+    name: sessionCookieName,
     store: pool ? new PgSession({ pool, createTableIfMissing: false }) : undefined,
     secret: process.env.SESSION_SECRET || 'dev_secret',
     resave: false,
