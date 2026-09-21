@@ -77,7 +77,7 @@ test('keeps Mars map and AO while converting the surface to white relief', () =>
     assert.equal(material.customProgramCacheKey(), 'lua-white-planet-moonlight-v1');
     assert.ok(shader.uniforms.luaMoonlightTime);
     assert.match(shader.fragmentShader, /luaWhiteSurface/);
-    assert.match(shader.fragmentShader, /pow\\(luaTerrainRelief, 0\\.86\\)/);
+    assert.match(shader.fragmentShader, /pow\(luaTerrainRelief, 0\.86\)/);
     assert.match(shader.fragmentShader, /diffuseColor\.rgb = vec3\(luaWhiteSurface\)/);
 });
 
