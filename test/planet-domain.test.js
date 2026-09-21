@@ -100,3 +100,28 @@ test('unlocks first contact only for a merged pull request in an externally owne
     assert.equal(withoutMergedExternalPullRequest.FIRST_CONTACT, undefined);
     assert.ok(withMergedExternalPullRequest.FIRST_CONTACT);
 });
+
+
+test('unlocks the contributor-only achievement only for a merged GitHub Planet pull request', () => {
+    const withoutProjectContribution = checkAchievements({}, {
+        totalCommits: 0,
+        weeklyCommits: 0,
+        languagesCount: 0,
+        hasContributedToOthers: true,
+        hasMergedExternalPullRequest: true,
+        hasMergedGithubPlanetPullRequest: false,
+        totalStars: 0
+    });
+    const withProjectContribution = checkAchievements({}, {
+        totalCommits: 0,
+        weeklyCommits: 0,
+        languagesCount: 0,
+        hasContributedToOthers: true,
+        hasMergedExternalPullRequest: true,
+        hasMergedGithubPlanetPullRequest: true,
+        totalStars: 0
+    });
+
+    assert.equal(withoutProjectContribution.PLANET_ARCHITECT, undefined);
+    assert.equal(withProjectContribution.PLANET_ARCHITECT.id, 'PLANET_ARCHITECT');
+});

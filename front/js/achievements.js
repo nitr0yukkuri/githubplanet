@@ -6,6 +6,7 @@ const MASTER_ACHIEVEMENTS = {
     VELOCITY_STAR: { id: 'VELOCITY_STAR' },
     OS_CONTRIBUTOR: { id: 'OS_CONTRIBUTOR' },
     FIRST_CONTACT: { id: 'FIRST_CONTACT' },
+    PLANET_ARCHITECT: { id: 'PLANET_ARCHITECT' },
     STARGAZER: { id: 'STARGAZER' },
     POLYGLOT_PIONEER: { id: 'POLYGLOT_PIONEER' },
     DUAL_WORLD_BRIDGE: { id: 'DUAL_WORLD_BRIDGE' },
@@ -115,7 +116,7 @@ function renderPage(data) {
         const unlockedDate = (userData?.unlockedAt || '').split('T')[0].replace(/-/g, '/');
 
         const card = document.createElement('div');
-        card.className = `achievement-card ${isUnlocked ? 'unlocked' : 'locked'}`;
+        card.className = `achievement-card ${isUnlocked ? 'unlocked' : 'locked'}${key === 'PLANET_ARCHITECT' ? ' exclusive' : ''}`;
         card.id = key;
 
         const headerIcon = isUnlocked ? TROPHY_SVG : '🔒';

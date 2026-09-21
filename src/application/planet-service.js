@@ -19,6 +19,10 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
             const ownerLogin = pullRequest.repository?.owner?.login;
             return ownerLogin && ownerLogin.toLowerCase() !== user.login.toLowerCase();
         });
+        // 未マージPRやStarだけでは、実際に作品へ採用された開発貢献とは言えないため対象外にする。
+        const hasMergedGithubPlanetPullRequest = (userData.mergedPullRequests || []).some((pullRequest) => (
+            pullRequest.repository?.nameWithOwner?.toLowerCase() === 'nitr0yukkuri/githubplanet'
+        ));
         const repositories = [...ownedRepos, ...contributedRepos];
         const starredCount = userData.starredRepositories ? userData.starredRepositories.totalCount : 0;
         const observedTotalContributions = userData.contributionsCollection?.contributionCalendar?.totalContributions || 0;
@@ -125,6 +129,7 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
                 languageStats,
                 hasContributedToOthers: contributedRepos.length > 0,
                 hasMergedExternalPullRequest,
+                hasMergedGithubPlanetPullRequest,
                 totalStars: starredCount + receivedStars,
                 createdAt: user.created_at
             });
