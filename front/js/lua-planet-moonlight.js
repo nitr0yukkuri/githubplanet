@@ -31,7 +31,7 @@ export function createLuaPlanetMaterial(THREE, planetTexture) {
                 `#include <map_fragment>
 vec3 luaMarsTexture = diffuseColor.rgb;
 float luaTerrainRelief = dot(luaMarsTexture, vec3(0.299, 0.587, 0.114));
-float luaWhiteSurface = 0.62 + luaTerrainRelief * 0.32;
+float luaWhiteSurface = 0.3 + pow(luaTerrainRelief, 0.86) * 0.6;
 diffuseColor.rgb = vec3(luaWhiteSurface);
 diffuseColor.a = 1.0;`
             );
@@ -103,8 +103,8 @@ export function createLuaPlanetMoonlight(THREE, radius, uniforms, intensity = 1)
     const sharedUniforms = uniforms || { luaMoonlightTime: { value: 0 } };
     const safeIntensity = Math.max(0, Math.min(1, intensity));
     const layers = [
-        { radiusScale: 1.045, opacity: 0.32, side: THREE.FrontSide },
-        { radiusScale: 1.1, opacity: 0.14, side: THREE.BackSide }
+        { radiusScale: 1.035, opacity: 0.28, side: THREE.FrontSide },
+        { radiusScale: 1.07, opacity: 0.1, side: THREE.BackSide }
     ];
 
     layers.forEach((layer, index) => {
