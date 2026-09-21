@@ -5,6 +5,7 @@ import * as go from '../go-planet-wind.js';
 import * as java from '../java-planet-soil.js';
 import * as javascript from '../javascript-planet-reactivity.js';
 import * as kotlin from '../kotlin-planet-crystal.js';
+import * as lua from '../lua-planet-moonlight.js';
 import * as ruby from '../ruby-planet-solar.js';
 import * as rust from '../rust-planet-desert.js';
 import * as swift from '../swift-planet-feathers.js';
@@ -194,6 +195,25 @@ const FEATURE_DEFINITIONS = [
         }
     },
     {
+        id: 'lua',
+        language: 'Lua',
+        module: lua,
+        matches: lua.isLuaPlanet,
+        createMaterial: ({ THREE, planetTexture }) => (
+            lua.createLuaPlanetMaterial(THREE, planetTexture)
+        ),
+        createObjects: ({ THREE, radius, material }) => ({
+            moonlight: lua.createLuaPlanetMoonlight(
+                THREE,
+                radius,
+                material.userData.luaMoonlightUniforms
+            )
+        }),
+        update: ({ material, now }) => (
+            lua.updateLuaPlanetMoonlight(material, now)
+        )
+    },
+    {
         id: 'rust',
         language: 'Rust',
         module: rust,
@@ -301,6 +321,7 @@ export * from '../go-planet-wind.js';
 export * from '../java-planet-soil.js';
 export * from '../javascript-planet-reactivity.js';
 export * from '../kotlin-planet-crystal.js';
+export * from '../lua-planet-moonlight.js';
 export * from '../ruby-planet-solar.js';
 export * from '../rust-planet-desert.js';
 export * from '../swift-planet-feathers.js';
