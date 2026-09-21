@@ -17,7 +17,10 @@ function createSource() {
         repositoriesContributedTo: {
             nodes: [{ languages: { edges: [{ size: 30, node: { name: 'CSS' } }] } }]
         },
-        mergedPullRequests: [{ repository: { owner: { login: 'someone-else' } } }],
+        mergedPullRequests: [{ repository: {
+            nameWithOwner: 'nitr0yukkuri/githubplanet',
+            owner: { login: 'someone-else' }
+        } }],
         starredRepositories: { totalCount: 6 },
         contributionsCollection: {
             contributionCalendar: {
@@ -59,8 +62,11 @@ test('orchestrates GitHub aggregation, domain rules, and persistence', async () 
     assert.ok(result.achievements.CONTRIBUTION_10000);
     assert.ok(result.achievements.OS_CONTRIBUTOR);
     assert.ok(result.achievements.FIRST_CONTACT);
+    assert.ok(result.achievements.PLANET_ARCHITECT);
     assert.ok(result.unlockedTitles.prefixes.includes('星間の'));
     assert.ok(result.unlockedTitles.suffixes.includes('交信者'));
+    assert.ok(result.unlockedTitles.prefixes.includes('星を創りし'));
+    assert.ok(result.unlockedTitles.suffixes.includes('設計者'));
     assert.ok(result.unlockedTitles.prefixes.includes('星雲を渡る'));
     assert.ok(result.unlockedTitles.suffixes.includes('航海者'));
     assert.ok(result.unlockedTitles.prefixes.includes('銀河に名を刻む'));

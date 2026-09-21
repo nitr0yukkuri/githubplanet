@@ -50,7 +50,7 @@ const MERGED_PULL_REQUESTS_QUERY = `
     user(login: $login) {
       pullRequests(first: 100, states: MERGED, orderBy: {field: UPDATED_AT, direction: DESC}) {
         nodes {
-          repository { owner { login } }
+          repository { nameWithOwner owner { login } }
         }
       }
     }

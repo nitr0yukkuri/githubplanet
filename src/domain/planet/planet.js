@@ -24,7 +24,8 @@ export function checkAchievements(existingAchievements, stats, now = new Date())
     const unlockedAt = now.toISOString();
     const {
         totalCommits, weeklyCommits, languagesCount, hasContributedToOthers,
-        hasMergedExternalPullRequest, totalStars, createdAt, languageStats
+        hasMergedExternalPullRequest, hasMergedGithubPlanetPullRequest,
+        totalStars, createdAt, languageStats
     } = stats;
 
     const unlock = (achievement) => {
@@ -38,6 +39,7 @@ export function checkAchievements(existingAchievements, stats, now = new Date())
     if (weeklyCommits >= 50) unlock(ACHIEVEMENTS.VELOCITY_STAR);
     if (hasContributedToOthers) unlock(ACHIEVEMENTS.OS_CONTRIBUTOR);
     if (hasMergedExternalPullRequest) unlock(ACHIEVEMENTS.FIRST_CONTACT);
+    if (hasMergedGithubPlanetPullRequest) unlock(ACHIEVEMENTS.PLANET_ARCHITECT);
     if (totalStars >= 10) unlock(ACHIEVEMENTS.STARGAZER);
     if (languagesCount >= 5) unlock(ACHIEVEMENTS.POLYGLOT_PIONEER);
     const substantialLanguages = Object.values(languageStats || {})

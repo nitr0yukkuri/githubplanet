@@ -21,7 +21,10 @@ test('splits planet data into bounded GraphQL requests and preserves the existin
             }
             if (body.query.includes('MergedPullRequests')) {
                 return { data: { data: { user: {
-                    pullRequests: { nodes: [{ repository: { owner: { login: 'someone-else' } } }] }
+                    pullRequests: { nodes: [{ repository: {
+                        nameWithOwner: 'someone-else/project',
+                        owner: { login: 'someone-else' }
+                    } }] }
                 } } } };
             }
             return { data: { data: { user: {
@@ -41,14 +44,17 @@ test('splits planet data into bounded GraphQL requests and preserves the existin
     assert.deepEqual(requests.map(({ config }) => config.timeout), [10_000, 10_000, 10_000, 10_000]);
     assert.deepEqual(requests.map(({ body }) => body.variables.login), ['tester', 'tester', 'tester', 'tester']);
     assert.match(requests[2].body.query, /pullRequests\(first: 100, states: MERGED/);
-    assert.match(requests[2].body.query, /repository \{ owner \{ login \} \}/);
+    assert.match(requests[2].body.query, /repository \{ nameWithOwner owner \{ login \} \}/);
     assert.match(requests[3].body.variables.from, /^\d{4}-\d{2}-\d{2}T/);
     assert.match(requests[3].body.variables.to, /^\d{4}-\d{2}-\d{2}T/);
     assert.deepEqual(source, {
         starredRepositories: { totalCount: 4 },
         repositories: { nodes: [{ name: 'owned' }] },
         repositoriesContributedTo: { nodes: [{ name: 'contributed' }] },
-        mergedPullRequests: [{ repository: { owner: { login: 'someone-else' } } }],
+        mergedPullRequests: [{ repository: {
+            nameWithOwner: 'someone-else/project',
+            owner: { login: 'someone-else' }
+        } }],
         contributionsCollection: {
             contributionCalendar: {
                 totalContributions: 123,
