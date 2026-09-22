@@ -16,7 +16,8 @@ const EXPECTED_SHOWCASES = {
     kotlin: 'Kotlin',
     rust: 'Rust',
     vue: 'Vue',
-    ruby: 'Ruby'
+    ruby: 'Ruby',
+    python: 'Python'
 };
 
 test('provides deterministic feature planets without database records', () => {
@@ -34,10 +35,18 @@ test('provides deterministic feature planets without database records', () => {
     assert.equal(getShowcasePlanet('unknown'), undefined);
 });
 
-test('documents every production showcase card in the README', async () => {
+test('documents every production showcase card in the card gallery', async () => {
     const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8');
     const englishReadme = await readFile(
         new URL('../README.en.md', import.meta.url),
+        'utf8'
+    );
+    const cardReadme = await readFile(
+        new URL('../docs/cards/README.md', import.meta.url),
+        'utf8'
+    );
+    const englishCardReadme = await readFile(
+        new URL('../docs/cards/README.en.md', import.meta.url),
         'utf8'
     );
     const updateWorkflow = await readFile(
@@ -53,13 +62,15 @@ test('documents every production showcase card in the README', async () => {
             `card-assets/showcase_${slug}\\.gif`
         );
 
-        assert.match(readme, cardLink);
-        assert.match(readme, animatedImage);
-        assert.match(englishReadme, cardLink);
-        assert.match(englishReadme, animatedImage);
+        assert.match(cardReadme, cardLink);
+        assert.match(cardReadme, animatedImage);
+        assert.match(englishCardReadme, cardLink);
+        assert.match(englishCardReadme, animatedImage);
         assert.match(updateWorkflow, new RegExp(`showcase_${slug}\\.gif`));
     }
 
+    assert.match(readme, /docs\/cards\/README\.md/);
+    assert.match(englishReadme, /docs\/cards\/README\.en\.md/);
     assert.match(readme, /raw\.githubusercontent\.com\/GitHubユーザー名/);
     assert.match(englishReadme, /raw\.githubusercontent\.com\/YOUR_USERNAME/);
     assert.doesNotMatch(readme, /\\`\\`\\`markdown/);
