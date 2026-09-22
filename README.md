@@ -186,6 +186,14 @@ DBや実在ユーザーに依存しない固定テストデータから生成し
       </a>
     </td>
   </tr>
+  <tr>
+    <td align="center">
+      <strong>Python — Readable Strata</strong><br>
+      <a href="https://githubplanet.dev/card.html?showcase=python&amp;fix=true">
+        <img width="400" alt="Python showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_python.gif">
+      </a>
+    </td>
+  </tr>
 </table>
 
 ## 🛠️ 技術構成

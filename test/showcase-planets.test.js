@@ -16,7 +16,8 @@ const EXPECTED_SHOWCASES = {
     kotlin: 'Kotlin',
     rust: 'Rust',
     vue: 'Vue',
-    ruby: 'Ruby'
+    ruby: 'Ruby',
+    python: 'Python'
 };
 
 test('provides deterministic feature planets without database records', () => {

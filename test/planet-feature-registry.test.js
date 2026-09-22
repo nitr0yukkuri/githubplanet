@@ -10,7 +10,7 @@ test('registers every language feature behind one frontend boundary', () => {
         planetFeatures.map((feature) => feature.id),
         [
             'c', 'css', 'cpp', 'go', 'swift', 'vue',
-            'typescript', 'javascript', 'java', 'kotlin', 'rust', 'ruby'
+            'typescript', 'javascript', 'java', 'kotlin', 'rust', 'ruby', 'python'
         ]
     );
 
@@ -26,6 +26,7 @@ test('resolves exact language features without cross-matching', () => {
     assert.equal(resolvePlanetFeature({ mainLanguage: 'Kotlin' }).id, 'kotlin');
     assert.equal(resolvePlanetFeature({ mainLanguage: 'C++' }).id, 'cpp');
     assert.equal(resolvePlanetFeature({ mainLanguage: 'JavaScript' }).id, 'javascript');
+    assert.equal(resolvePlanetFeature({ mainLanguage: ' Python ' }).id, 'python');
     assert.equal(resolvePlanetFeature({ mainLanguage: 'Unknown' }), null);
 });
 

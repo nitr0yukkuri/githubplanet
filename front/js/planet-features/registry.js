@@ -5,6 +5,7 @@ import * as go from '../go-planet-wind.js';
 import * as java from '../java-planet-soil.js';
 import * as javascript from '../javascript-planet-reactivity.js';
 import * as kotlin from '../kotlin-planet-crystal.js';
+import * as python from '../python-planet-structure.js';
 import * as ruby from '../ruby-planet-solar.js';
 import * as rust from '../rust-planet-desert.js';
 import * as swift from '../swift-planet-feathers.js';
@@ -228,6 +229,28 @@ const FEATURE_DEFINITIONS = [
             ruby.updateRubyPlanetSolar(material, now);
             ruby.updateRubyPlanetSolar(objects.corona, now, camera);
         }
+    },
+    {
+        id: 'python',
+        language: 'Python',
+        module: python,
+        matches: python.isPythonPlanet,
+        rotationMultiplier: 0.4,
+        createMaterial: ({ THREE, planetTexture }) => (
+            python.createPythonPlanetMaterial(THREE, planetTexture)
+        ),
+        createObjects: ({ THREE, radius, direction }) => ({
+            trails: python.createPythonPlanetTrails(
+                THREE,
+                radius,
+                1,
+                'y',
+                direction
+            )
+        }),
+        update: ({ objects, now }) => (
+            python.updatePythonPlanetTrails(objects.trails, now)
+        )
     }
 ];
 
@@ -301,6 +324,7 @@ export * from '../go-planet-wind.js';
 export * from '../java-planet-soil.js';
 export * from '../javascript-planet-reactivity.js';
 export * from '../kotlin-planet-crystal.js';
+export * from '../python-planet-structure.js';
 export * from '../ruby-planet-solar.js';
 export * from '../rust-planet-desert.js';
 export * from '../swift-planet-feathers.js';
