@@ -81,7 +81,7 @@ test('serves locale-correct source documents for Japanese and English home route
     for (const html of [englishHtml, englishAliasHtml]) {
         assert.match(html, /<html lang="en">/);
         assert.match(html, /Generate your own planet from your GitHub activity\./);
-        assert.match(html, /href="https:\/\/githubplanet-git-543426763451\.asia-northeast2\.run\.app\/en" rel="canonical"/);
+        assert.match(html, /href="https:\/\/githubplanet\.dev\/en" rel="canonical"/);
         assert.doesNotMatch(html, /<meta name="description" content="GitHubの/);
     }
 
