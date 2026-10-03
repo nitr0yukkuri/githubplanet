@@ -16,6 +16,7 @@ import { createPostgresPool } from './src/infrastructure/database/postgres.js';
 import { createGeminiClient } from './src/infrastructure/external/gemini-client.js';
 import { createGithubClient } from './src/infrastructure/external/github-client.js';
 import { registerAuthRoutes } from './src/presentation/http/auth-routes.js';
+import { createCanonicalHostRedirect } from './src/presentation/http/canonical-host-redirect.js';
 import { registerEventRoutes } from './src/presentation/http/event-routes.js';
 import { registerPageRoutes } from './src/presentation/http/page-routes.js';
 import { registerPlanetRoutes } from './src/presentation/http/planet-routes.js';
@@ -33,8 +34,13 @@ const externalPerformance = createExternalPerformanceReporter({
 });
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const DEFAULT_PUBLIC_BASE_URL = 'https://githubplanet.dev';
+const publicBaseUrl = (
+    process.env.PUBLIC_BASE_URL || DEFAULT_PUBLIC_BASE_URL
+).replace(/\/+$/, '');
 
 app.disable('x-powered-by');
+if (isProduction) app.set('trust proxy', 1);
 app.use(randomPerformance.startMiddleware);
 app.use(compression({ threshold: 1024 }));
 app.use((req, res, next) => {
@@ -59,13 +65,8 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use((req, res, next) => {
-    const host = req.headers.host || '';
-    if (host.includes('githubplanet.onrender.com')) {
-        return res.redirect(301, 'https://githubplanet-git-543426763451.asia-northeast2.run.app' + req.originalUrl);
-    }
-    next();
-});
+// Firebase Hostingが付ける元ホストを使わないと、rewrite先のrun.appへ戻す転送ループになる。
+app.use(createCanonicalHostRedirect({ publicBaseUrl, isProduction }));
 
 app.use(express.json({
     limit: '50mb',
@@ -79,10 +80,10 @@ let githubClientSecret;
 let callbackUrl;
 
 if (isProduction) {
-    console.log('★ 本番環境(Render)の設定を使用します');
+    console.log('★ 本番環境の設定を使用します');
     githubClientId = process.env.GITHUB_CLIENT_ID;
     githubClientSecret = process.env.GITHUB_CLIENT_SECRET;
-    callbackUrl = process.env.CALLBACK_URL || 'https://githubplanet.onrender.com/callback';
+    callbackUrl = process.env.CALLBACK_URL || `${publicBaseUrl}/callback`;
 } else {
     console.log('★ ローカル環境の設定を使用します');
     githubClientId = process.env.GITHUB_CLIENT_ID_LOCAL;
@@ -146,8 +147,6 @@ app.use('/front/img', express.static(path.join(__dirname, 'front/img'), { maxAge
 app.use('/front', express.static(path.join(__dirname, 'front'), { maxAge: 0 }));
 app.use('/vendor/three', express.static(path.join(__dirname, 'node_modules/three'), { maxAge: '30d' }));
 
-if (isProduction) app.set('trust proxy', 1);
-
 const PgSession = connectPgSimple(session);
 app.use(randomPerformance.beforeSessionMiddleware);
 // Firebase Hostingのrewriteでは予約名以外のCookieがCloud Runへ渡らないため、本番OAuthのstateを維持する。
@@ -166,7 +165,8 @@ registerPageRoutes(app, {
     rootDirectory: __dirname,
     isProduction,
     systemApiKey: process.env.SYSTEM_API_KEY,
-    sessionSecret: process.env.SESSION_SECRET || 'dev_secret'
+    sessionSecret: process.env.SESSION_SECRET || 'dev_secret',
+    publicBaseUrl
 });
 registerAuthRoutes(app, {
     githubClient,

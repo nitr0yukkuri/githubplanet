@@ -12,6 +12,15 @@ function sha256(value) {
     return crypto.createHash('sha256').update(value).digest();
 }
 
+function matchesOAuthState(expectedState, suppliedState) {
+    if (typeof expectedState !== 'string' || typeof suppliedState !== 'string') return false;
+
+    const expectedBuffer = Buffer.from(expectedState);
+    const suppliedBuffer = Buffer.from(suppliedState);
+    return expectedBuffer.length === suppliedBuffer.length
+        && crypto.timingSafeEqual(expectedBuffer, suppliedBuffer);
+}
+
 export function registerAuthRoutes(app, {
     githubClient,
     planetService,
@@ -26,11 +35,13 @@ export function registerAuthRoutes(app, {
             : '/';
 
         const codeChallenge = base64URLEncode(sha256(codeVerifier));
+        const state = crypto.randomBytes(16).toString('hex');
+        req.session.oauth_state = state;
         const authUrl = new URL('https://github.com/login/oauth/authorize');
         authUrl.searchParams.set('client_id', clientId);
         authUrl.searchParams.set('redirect_uri', callbackUrl);
         authUrl.searchParams.set('scope', 'read:user');
-        authUrl.searchParams.set('state', crypto.randomBytes(16).toString('hex'));
+        authUrl.searchParams.set('state', state);
         authUrl.searchParams.set('code_challenge', codeChallenge);
         authUrl.searchParams.set('code_challenge_method', 'S256');
 
@@ -44,10 +55,15 @@ export function registerAuthRoutes(app, {
     });
 
     app.get('/callback', async (req, res) => {
-        const { code } = req.query;
+        const { code, state } = req.query;
         const { code_verifier: codeVerifier } = req.session;
         const loginReturnTo = req.session.login_return_to === '/en' ? '/en' : '/';
-        if (!code || !codeVerifier) return res.status(400).send('不正なリクエストです');
+        if (!code || !codeVerifier || !matchesOAuthState(req.session.oauth_state, state)) {
+            return res.status(400).send('不正なリクエストです');
+        }
+
+        // OAuthのstateは一度だけ使い、callbackの再送で同じ認可コードを交換しない。
+        delete req.session.oauth_state;
 
         try {
             const accessToken = await githubClient.exchangeCode(code, codeVerifier);

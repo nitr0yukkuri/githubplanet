@@ -31,6 +31,10 @@ function createResponse() {
             this.statusCode = code;
             return this;
         },
+        send(body) {
+            this.body = body;
+            return this;
+        },
         json(body) {
             this.body = body;
             return this;
@@ -66,8 +70,8 @@ test('stores login progress once after a successful login', async () => {
     });
 
     const req = {
-        query: { code: 'code' },
-        session: { code_verifier: 'verifier', login_return_to: '/en' }
+        query: { code: 'code', state: 'state' },
+        session: { code_verifier: 'verifier', oauth_state: 'state', login_return_to: '/en' }
     };
     const res = createResponse();
     await routes.get('GET /callback')(req, res);
@@ -79,6 +83,78 @@ test('stores login progress once after a successful login', async () => {
     assert.equal('observedTotalContributions' in req.session.planetData.planetData, false);
     assert.equal('isNewPlanet' in req.session.planetData.planetData, false);
     assert.equal(res.redirectTarget, '/en');
+    assert.equal('oauth_state' in req.session, false);
+});
+
+test('rejects missing, mismatched, and replayed OAuth states before token exchange', async () => {
+    const { app, routes } = createRouteHarness();
+    let exchangeCalls = 0;
+    registerAuthRoutes(app, {
+        githubClient: {
+            async exchangeCode() {
+                exchangeCalls += 1;
+                return 'token';
+            },
+            async getAuthenticatedUser() { return { id: 1, login: 'tester' }; }
+        },
+        planetService: {
+            async updateAndSavePlanetData() { return {}; },
+            async recordLoginProgress() { return {}; }
+        },
+        clientId: 'client',
+        callbackUrl: 'http://localhost/callback'
+    });
+
+    const req = {
+        query: { code: 'code', state: 'expected-state' },
+        session: { code_verifier: 'verifier', oauth_state: 'expected-state' }
+    };
+    const firstResponse = createResponse();
+    await routes.get('GET /callback')(req, firstResponse);
+    assert.equal(firstResponse.redirectTarget, '/');
+    assert.equal(exchangeCalls, 1);
+    assert.equal('oauth_state' in req.session, false);
+
+    const replayResponse = createResponse();
+    await routes.get('GET /callback')(req, replayResponse);
+    assert.equal(replayResponse.statusCode, 400);
+    assert.equal(exchangeCalls, 1);
+
+    for (const state of [undefined, 'invalid--state']) {
+        const invalidRequest = {
+            query: { code: 'code', ...(state ? { state } : {}) },
+            session: { code_verifier: 'verifier', oauth_state: 'expected-state' }
+        };
+        const invalidResponse = createResponse();
+        await routes.get('GET /callback')(invalidRequest, invalidResponse);
+        assert.equal(invalidResponse.statusCode, 400);
+        assert.equal(invalidRequest.session.oauth_state, 'expected-state');
+    }
+    assert.equal(exchangeCalls, 1);
+});
+
+test('stores the generated OAuth state in the session before redirecting', async () => {
+    const { app, routes } = createRouteHarness();
+    registerAuthRoutes(app, {
+        githubClient: {},
+        planetService: {},
+        clientId: 'client',
+        callbackUrl: 'https://githubplanet.dev/callback'
+    });
+
+    const req = {
+        path: '/login',
+        session: {
+            save(callback) { callback(null); }
+        }
+    };
+    const res = createResponse();
+    await routes.get('GET /login')(req, res);
+
+    const authorizationUrl = new URL(res.redirectTarget);
+    assert.equal(authorizationUrl.searchParams.get('state'), req.session.oauth_state);
+    assert.match(req.session.oauth_state, /^[a-f0-9]{32}$/);
+    assert.equal(authorizationUrl.searchParams.get('redirect_uri'), 'https://githubplanet.dev/callback');
 });
 
 test('returns pending login progress once and consumes it', async () => {
