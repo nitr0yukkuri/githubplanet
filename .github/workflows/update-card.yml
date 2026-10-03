@@ -111,12 +111,13 @@ jobs:
           record_card showcase_rust.gif "$base_url?showcase=rust&fix=true"
           record_card showcase_vue.gif "$base_url?showcase=vue&fix=true"
           record_card showcase_ruby.gif "$base_url?showcase=ruby&fix=true"
+          record_card showcase_python.gif "$base_url?showcase=python&fix=true"
 
       - name: Validate GIF
         run: |
           set -euo pipefail
 
-          test "$(find generated-card-assets -maxdepth 1 -name '*.gif' | wc -l)" -eq 11
+          test "$(find generated-card-assets -maxdepth 1 -name '*.gif' | wc -l)" -eq 12
 
           for gif in generated-card-assets/*.gif; do
             file "$gif" | grep -q "GIF image data"

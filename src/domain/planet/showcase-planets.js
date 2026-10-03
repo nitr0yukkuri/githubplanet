@@ -12,7 +12,8 @@ const SHOWCASE_PLANETS = Object.freeze({
     kotlin: createShowcasePlanet('Kotlin', '#A97BFF', 'Electric Spark'),
     rust: createShowcasePlanet('Rust', '#dea584', 'Desert Dust World'),
     vue: createShowcasePlanet('Vue', '#41b883', 'Gentle Reactive Wind'),
-    ruby: createShowcasePlanet('Ruby', '#CC342D', 'Burning Ruby')
+    ruby: createShowcasePlanet('Ruby', '#CC342D', 'Burning Ruby'),
+    python: createShowcasePlanet('Python', '#306998', 'Readable Strata')
 });
 
 function createShowcasePlanet(mainLanguage, planetColor, planetName) {
