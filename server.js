@@ -172,7 +172,8 @@ registerAuthRoutes(app, {
     githubClient,
     planetService,
     clientId: githubClientId,
-    callbackUrl
+    callbackUrl,
+    sessionCookieName
 });
 registerPlanetRoutes(app, {
     planetService,

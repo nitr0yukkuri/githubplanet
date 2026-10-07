@@ -157,6 +157,157 @@ test('stores the generated OAuth state in the session before redirecting', async
     assert.equal(authorizationUrl.searchParams.get('redirect_uri'), 'https://githubplanet.dev/callback');
 });
 
+test('logs OAuth rejection diagnostics without callback or cookie values', async () => {
+    const { app, routes } = createRouteHarness();
+    const logs = [];
+    registerAuthRoutes(app, {
+        githubClient: {},
+        planetService: {},
+        clientId: 'client',
+        callbackUrl: 'https://githubplanet.dev/callback',
+        sessionCookieName: '__session',
+        logger: {
+            warn(message) { logs.push(message); },
+            error(message) { logs.push(message); }
+        }
+    });
+
+    const req = {
+        query: { code: 'secret-code-value', state: 'secret-state-value' },
+        headers: { cookie: '__session=secret-cookie-value' },
+        session: {}
+    };
+    const res = createResponse();
+    await routes.get('GET /callback')(req, res);
+
+    assert.equal(res.statusCode, 400);
+    assert.deepEqual(JSON.parse(logs[0]), {
+        event: 'oauth.callback.rejected',
+        reason: 'missing_code_verifier',
+        sessionCookiePresent: true,
+        codeVerifierPresent: false,
+        expectedStatePresent: false,
+        suppliedStatePresent: true
+    });
+    assert.equal(logs.length, 1);
+    assert.doesNotMatch(logs[0], /secret-code-value|secret-state-value|secret-cookie-value/);
+});
+
+test('reports a repeated state parameter as supplied while rejecting it', async () => {
+    const { app, routes } = createRouteHarness();
+    const logs = [];
+    registerAuthRoutes(app, {
+        githubClient: {},
+        planetService: {},
+        clientId: 'client',
+        callbackUrl: 'https://githubplanet.dev/callback',
+        sessionCookieName: '__session',
+        logger: {
+            warn(message) { logs.push(message); },
+            error(message) { logs.push(message); }
+        }
+    });
+
+    const req = {
+        query: { code: 'secret-code-value', state: ['one', 'two'] },
+        session: { code_verifier: 'verifier', oauth_state: 'expected-state' }
+    };
+    const res = createResponse();
+    await routes.get('GET /callback')(req, res);
+
+    assert.equal(res.statusCode, 400);
+    assert.deepEqual(JSON.parse(logs[0]), {
+        event: 'oauth.callback.rejected',
+        reason: 'state_mismatch',
+        sessionCookiePresent: false,
+        codeVerifierPresent: true,
+        expectedStatePresent: true,
+        suppliedStatePresent: true
+    });
+    assert.doesNotMatch(logs[0], /secret-code-value|one|two|expected-state/);
+});
+
+test('records session persistence failures without logging error messages', () => {
+    const { app, routes } = createRouteHarness();
+    const logs = [];
+    registerAuthRoutes(app, {
+        githubClient: {},
+        planetService: {},
+        clientId: 'client',
+        callbackUrl: 'https://githubplanet.dev/callback',
+        logger: {
+            warn(message) { logs.push(message); },
+            error(message) { logs.push(message); }
+        }
+    });
+
+    const req = {
+        path: '/login',
+        session: {
+            save(callback) {
+                const error = new Error('connection string contains secret-password');
+                error.code = '42P01';
+                callback(error);
+            }
+        }
+    };
+    const res = createResponse();
+    routes.get('GET /login')(req, res);
+
+    assert.equal(res.redirectTarget, '/');
+    assert.deepEqual(JSON.parse(logs[0]), {
+        event: 'oauth.session.save_failed',
+        errorName: 'Error',
+        errorCode: '42P01'
+    });
+    assert.equal(logs.length, 1);
+    assert.doesNotMatch(logs[0], /secret-password/);
+});
+
+test('records callback processing failures without exposing error messages', async () => {
+    const { app, routes } = createRouteHarness();
+    const logs = [];
+    registerAuthRoutes(app, {
+        githubClient: {
+            async exchangeCode() { return 'access-token'; },
+            async getAuthenticatedUser() { return { id: 1, login: 'tester' }; }
+        },
+        planetService: {
+            async updateAndSavePlanetData() {
+                const error = new Error('database response included secret-token');
+                error.code = 'ERR_DATABASE';
+                throw error;
+            }
+        },
+        clientId: 'client',
+        callbackUrl: 'https://githubplanet.dev/callback',
+        logger: {
+            warn(message) { logs.push(message); },
+            error(message) { logs.push(message); }
+        }
+    });
+
+    const req = {
+        query: { code: 'secret-code-value', state: 'expected-state' },
+        session: {
+            code_verifier: 'secret-verifier',
+            oauth_state: 'expected-state',
+            login_return_to: '/en'
+        }
+    };
+    const res = createResponse();
+    await routes.get('GET /callback')(req, res);
+
+    assert.equal(res.redirectTarget, '/en');
+    assert.deepEqual(JSON.parse(logs[0]), {
+        event: 'oauth.callback.processing_failed',
+        errorName: 'Error',
+        errorCode: 'ERR_DATABASE'
+    });
+    assert.equal(logs.length, 1);
+    assert.doesNotMatch(logs[0], /secret-code-value|secret-verifier|expected-state|secret-token/);
+});
+
 test('returns pending login progress once and consumes it', async () => {
     const { app, routes } = createRouteHarness();
     registerPlanetRoutes(app, {
