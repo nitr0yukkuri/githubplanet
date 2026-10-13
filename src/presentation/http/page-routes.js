@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
-const DEFAULT_PUBLIC_BASE_URL = 'https://githubplanet-git-543426763451.asia-northeast2.run.app';
+const DEFAULT_PUBLIC_BASE_URL = 'https://githubplanet.dev';
 const SOURCE_PUBLIC_BASE_URL = 'https://githubplanet.dev';
 
 export function registerPageRoutes(app, {
