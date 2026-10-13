@@ -13,7 +13,7 @@ const SHOWCASE_PLANETS = Object.freeze({
     rust: createShowcasePlanet('Rust', '#dea584', 'Desert Dust World'),
     vue: createShowcasePlanet('Vue', '#41b883', 'Gentle Reactive Wind'),
     ruby: createShowcasePlanet('Ruby', '#CC342D', 'Burning Ruby'),
-    python: createShowcasePlanet('Python', '#306998', 'Readable Strata')
+    python: createShowcasePlanet('Python', '#306998', 'Paired Orbital Trails')
 });
 
 function createShowcasePlanet(mainLanguage, planetColor, planetName) {
