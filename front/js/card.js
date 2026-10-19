@@ -177,16 +177,21 @@ function applyCardLanguageTheme(data) {
             '--planet-card-atmosphere',
             '--planet-card-highlight',
             '--planet-card-border',
-            '--planet-card-glow'
+            '--planet-card-glow',
+            '--planet-card-atmosphere-position',
+            '--planet-card-highlight-position'
         ].forEach((property) => containerElement.style.removeProperty(property));
         return;
     }
 
     containerElement.dataset.cardTheme = theme.id;
-    containerElement.style.setProperty('--planet-card-atmosphere', colorWithAlpha(theme.atmosphere, 0.24));
+    const planetColor = /^#[\\da-f]{6}$/i.test(data.planetColor || '') ? data.planetColor : theme.atmosphere;
+    containerElement.style.setProperty('--planet-card-atmosphere', colorWithAlpha(planetColor, 0.24));
     containerElement.style.setProperty('--planet-card-highlight', colorWithAlpha(theme.highlight, 0.12));
     containerElement.style.setProperty('--planet-card-border', colorWithAlpha(theme.accent, 0.32));
     containerElement.style.setProperty('--planet-card-glow', colorWithAlpha(theme.atmosphere, 0.18));
+    containerElement.style.setProperty('--planet-card-atmosphere-position', theme.atmospherePosition);
+    containerElement.style.setProperty('--planet-card-highlight-position', theme.highlightPosition);
 }
 
 function colorWithAlpha(hexColor, alpha) {
