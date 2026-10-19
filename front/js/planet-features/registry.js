@@ -15,21 +15,21 @@ import * as typescript from '../typescript-planet-shell.js';
 import * as vue from '../vue-planet-circulation.js';
 
 const CARD_THEMES = Object.freeze({
-    c: Object.freeze({ id: 'c-steel', accent: '#c3d0d7', atmosphere: '#728491', highlight: '#b6c3ca, atmospherePosition: '25% 50%', highlightPosition: '75% 32%' }) }),
-    css: Object.freeze({ id: 'css-spectrum', accent: '#d7bcff', atmosphere: '#7040b3', highlight: '#f4d2ff, atmospherePosition: '72% 28%', highlightPosition: '34% 62%' }) }),
-    cpp: Object.freeze({ id: 'cpp-plasma', accent: '#ff9bb9', atmosphere: '#b62f67', highlight: '#ffcae0, atmospherePosition: '48% 72%', highlightPosition: '65% 28%' }) }),
-    go: Object.freeze({ id: 'go-wind', accent: '#79e1f6', atmosphere: '#008cae', highlight: '#c2fbff, atmospherePosition: '22% 42%', highlightPosition: '74% 66%' }) }),
-    swift: Object.freeze({ id: 'swift-feathers', accent: '#ffc2c0', atmosphere: '#bd4b4b', highlight: '#ffe1d4, atmospherePosition: '32% 72%', highlightPosition: '76% 30%' }) }),
-    vue: Object.freeze({ id: 'vue-leaves', accent: '#83e7b2', atmosphere: '#268a63', highlight: '#d2ffbb, atmospherePosition: '24% 64%', highlightPosition: '72% 34%' }) }),
-    typescript: Object.freeze({ id: 'typescript-shell', accent: '#78c8ff', atmosphere: '#007acc', highlight: '#d1edff, atmospherePosition: '30% 46%', highlightPosition: '76% 58%' }) }),
-    javascript: Object.freeze({ id: 'javascript-gold', accent: '#f3df75', atmosphere: '#9d8428', highlight: '#ffefb2, atmospherePosition: '62% 40%', highlightPosition: '26% 76%' }) }),
-    java: Object.freeze({ id: 'java-soil', accent: '#e5ae71', atmosphere: '#88521d', highlight: '#f9d6a3, atmospherePosition: '30% 72%', highlightPosition: '72% 30%' }) }),
-    kotlin: Object.freeze({ id: 'kotlin-crystal', accent: '#d1b9ff', atmosphere: '#754db4', highlight: '#eee1ff, atmospherePosition: '52% 44%', highlightPosition: '86% 52%' }) }),
-    lua: Object.freeze({ id: 'lua-moonlight', accent: '#c1d3ff', atmosphere: '#536ba8', highlight: '#e5ebff, atmospherePosition: '72% 20%', highlightPosition: '26% 58%' }) }),
-    perl: Object.freeze({ id: 'perl-ocean', accent: '#7ee0ec', atmosphere: '#087d96', highlight: '#c9ffff, atmospherePosition: '20% 44%', highlightPosition: '78% 62%' }) }),
-    rust: Object.freeze({ id: 'rust-desert', accent: '#dea584', atmosphere: '#a95433', highlight: '#ffcf9b, atmospherePosition: '30% 72%', highlightPosition: '75% 42%' }) }),
-    ruby: Object.freeze({ id: 'ruby-hearth', accent: '#ff9386', atmosphere: '#9f3028', highlight: '#ffc0a7, atmospherePosition: '24% 38%', highlightPosition: '68% 62%' }) }),
-    python: Object.freeze({ id: 'python-trails', accent: '#ffd43b', atmosphere: '#306998', highlight: '#ffe389, atmospherePosition: '30% 56%', highlightPosition: '74% 36%' }) })
+    c: Object.freeze({ id: 'c-steel', accent: '#c3d0d7', atmosphere: '#728491', highlight: '#b6c3ca', atmospherePosition: '25% 50%', highlightPosition: '75% 32%' }),
+    css: Object.freeze({ id: 'css-spectrum', accent: '#d7bcff', atmosphere: '#7040b3', highlight: '#f4d2ff', atmospherePosition: '72% 28%', highlightPosition: '34% 62%' }),
+    cpp: Object.freeze({ id: 'cpp-plasma', accent: '#ff9bb9', atmosphere: '#b62f67', highlight: '#ffcae0', atmospherePosition: '48% 72%', highlightPosition: '65% 28%' }),
+    go: Object.freeze({ id: 'go-wind', accent: '#79e1f6', atmosphere: '#008cae', highlight: '#c2fbff', atmospherePosition: '22% 42%', highlightPosition: '74% 66%' }),
+    swift: Object.freeze({ id: 'swift-feathers', accent: '#ffc2c0', atmosphere: '#bd4b4b', highlight: '#ffe1d4', atmospherePosition: '32% 72%', highlightPosition: '76% 30%' }),
+    vue: Object.freeze({ id: 'vue-leaves', accent: '#83e7b2', atmosphere: '#268a63', highlight: '#d2ffbb', atmospherePosition: '24% 64%', highlightPosition: '72% 34%' }),
+    typescript: Object.freeze({ id: 'typescript-shell', accent: '#78c8ff', atmosphere: '#007acc', highlight: '#d1edff', atmospherePosition: '30% 46%', highlightPosition: '76% 58%' }),
+    javascript: Object.freeze({ id: 'javascript-gold', accent: '#f3df75', atmosphere: '#9d8428', highlight: '#ffefb2', atmospherePosition: '62% 40%', highlightPosition: '26% 76%' }),
+    java: Object.freeze({ id: 'java-soil', accent: '#e5ae71', atmosphere: '#88521d', highlight: '#f9d6a3', atmospherePosition: '30% 72%', highlightPosition: '72% 30%' }),
+    kotlin: Object.freeze({ id: 'kotlin-crystal', accent: '#d1b9ff', atmosphere: '#754db4', highlight: '#eee1ff', atmospherePosition: '52% 44%', highlightPosition: '86% 52%' }),
+    lua: Object.freeze({ id: 'lua-moonlight', accent: '#c1d3ff', atmosphere: '#536ba8', highlight: '#e5ebff', atmospherePosition: '72% 20%', highlightPosition: '26% 58%' }),
+    perl: Object.freeze({ id: 'perl-ocean', accent: '#7ee0ec', atmosphere: '#087d96', highlight: '#c9ffff', atmospherePosition: '20% 44%', highlightPosition: '78% 62%' }),
+    rust: Object.freeze({ id: 'rust-desert', accent: '#dea584', atmosphere: '#a95433', highlight: '#ffcf9b', atmospherePosition: '30% 72%', highlightPosition: '75% 42%' }),
+    ruby: Object.freeze({ id: 'ruby-hearth', accent: '#ff9386', atmosphere: '#9f3028', highlight: '#ffc0a7', atmospherePosition: '24% 38%', highlightPosition: '68% 62%' }),
+    python: Object.freeze({ id: 'python-trails', accent: '#ffd43b', atmosphere: '#306998', highlight: '#ffe389', atmospherePosition: '30% 56%', highlightPosition: '74% 36%' })
 });
 
 const FEATURE_DEFINITIONS = [
