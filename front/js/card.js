@@ -185,7 +185,7 @@ function applyCardLanguageTheme(data) {
     }
 
     containerElement.dataset.cardTheme = theme.id;
-    const planetColor = /^#[\\da-f]{6}$/i.test(data.planetColor || '') ? data.planetColor : theme.atmosphere;
+    const planetColor = /^#[\da-f]{6}$/i.test(data.planetColor || '') ? data.planetColor : theme.atmosphere;
     containerElement.style.setProperty('--planet-card-atmosphere', colorWithAlpha(planetColor, 0.24));
     containerElement.style.setProperty('--planet-card-highlight', colorWithAlpha(theme.highlight, 0.12));
     containerElement.style.setProperty('--planet-card-border', colorWithAlpha(theme.accent, 0.32));
