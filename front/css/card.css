@@ -116,6 +116,10 @@ body::after {
     height: 400px;
     margin: 0 auto; 
     background-color: var(--card-bg-inner);
+    background-image:
+        radial-gradient(ellipse at 24% 52%, var(--planet-card-atmosphere, transparent) 0%, transparent 58%),
+        radial-gradient(ellipse at 68% 36%, var(--planet-card-highlight, transparent) 0%, transparent 48%),
+        radial-gradient(circle at 30% 50%, #161b2e 0%, #0d1117 100%);
     overflow: hidden;
     flex-shrink: 0;
     border-radius: 16px;
@@ -134,10 +138,7 @@ canvas {
 .bg-gradient {
     position: absolute;
     width: 100%; height: 100%;
-    background:
-        radial-gradient(ellipse at 24% 52%, var(--planet-card-atmosphere, transparent) 0%, transparent 58%),
-        radial-gradient(ellipse at 68% 36%, var(--planet-card-highlight, transparent) 0%, transparent 48%),
-        radial-gradient(circle at 30% 50%, #161b2e 0%, #0d1117 100%);
+    background: transparent;
     z-index: 0;
 }
 
