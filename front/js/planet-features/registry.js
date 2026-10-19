@@ -14,10 +14,29 @@ import * as swift from '../swift-planet-feathers.js';
 import * as typescript from '../typescript-planet-shell.js';
 import * as vue from '../vue-planet-circulation.js';
 
+const CARD_THEMES = Object.freeze({
+    c: Object.freeze({ id: 'c-steel', accent: '#c3d0d7', atmosphere: '#728491', highlight: '#b6c3ca' }),
+    css: Object.freeze({ id: 'css-spectrum', accent: '#d7bcff', atmosphere: '#7040b3', highlight: '#f4d2ff' }),
+    cpp: Object.freeze({ id: 'cpp-plasma', accent: '#ff9bb9', atmosphere: '#b62f67', highlight: '#ffcae0' }),
+    go: Object.freeze({ id: 'go-wind', accent: '#79e1f6', atmosphere: '#008cae', highlight: '#c2fbff' }),
+    swift: Object.freeze({ id: 'swift-feathers', accent: '#ffc2c0', atmosphere: '#bd4b4b', highlight: '#ffe1d4' }),
+    vue: Object.freeze({ id: 'vue-leaves', accent: '#83e7b2', atmosphere: '#268a63', highlight: '#d2ffbb' }),
+    typescript: Object.freeze({ id: 'typescript-shell', accent: '#78c8ff', atmosphere: '#007acc', highlight: '#d1edff' }),
+    javascript: Object.freeze({ id: 'javascript-gold', accent: '#f3df75', atmosphere: '#9d8428', highlight: '#ffefb2' }),
+    java: Object.freeze({ id: 'java-soil', accent: '#e5ae71', atmosphere: '#88521d', highlight: '#f9d6a3' }),
+    kotlin: Object.freeze({ id: 'kotlin-crystal', accent: '#d1b9ff', atmosphere: '#754db4', highlight: '#eee1ff' }),
+    lua: Object.freeze({ id: 'lua-moonlight', accent: '#c1d3ff', atmosphere: '#536ba8', highlight: '#e5ebff' }),
+    perl: Object.freeze({ id: 'perl-ocean', accent: '#7ee0ec', atmosphere: '#087d96', highlight: '#c9ffff' }),
+    rust: Object.freeze({ id: 'rust-desert', accent: '#dea584', atmosphere: '#a95433', highlight: '#ffcf9b' }),
+    ruby: Object.freeze({ id: 'ruby-hearth', accent: '#ff9386', atmosphere: '#9f3028', highlight: '#ffc0a7' }),
+    python: Object.freeze({ id: 'python-trails', accent: '#ffd43b', atmosphere: '#306998', highlight: '#ffe389' })
+});
+
 const FEATURE_DEFINITIONS = [
     {
         id: 'c',
         language: 'C',
+        cardTheme: CARD_THEMES.c,
         module: c,
         matches: c.isCPlanet,
         createMaterial: ({ THREE, planetTexture }) => (
@@ -27,6 +46,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'css',
         language: 'CSS',
+        cardTheme: CARD_THEMES.css,
         module: css,
         matches: css.isCssPlanet,
         createMaterial: ({ THREE, planetTexture }) => (
@@ -37,6 +57,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'cpp',
         language: 'C++',
+        cardTheme: CARD_THEMES.cpp,
         module: cpp,
         matches: cpp.isCppPlanet,
         createMaterial: ({ THREE, planetTexture, data }) => (
@@ -51,6 +72,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'go',
         language: 'Go',
+        cardTheme: CARD_THEMES.go,
         module: go,
         matches: go.isGoPlanet,
         usesWindSpeed: true,
@@ -78,6 +100,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'swift',
         language: 'Swift',
+        cardTheme: CARD_THEMES.swift,
         module: swift,
         matches: swift.isSwiftPlanet,
         usesWindSpeed: true,
@@ -107,6 +130,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'vue',
         language: 'Vue',
+        cardTheme: CARD_THEMES.vue,
         module: vue,
         matches: vue.isVuePlanet,
         rotationMultiplier: 0.7,
@@ -138,6 +162,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'typescript',
         language: 'TypeScript',
+        cardTheme: CARD_THEMES.typescript,
         module: typescript,
         matches: typescript.isTypeScriptPlanet,
         createMaterial: ({ THREE, planetTexture }) => (
@@ -154,6 +179,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'javascript',
         language: 'JavaScript',
+        cardTheme: CARD_THEMES.javascript,
         module: javascript,
         matches: javascript.isJavaScriptPlanet,
         createMaterial: ({ THREE, planetTexture, data }) => (
@@ -170,6 +196,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'java',
         language: 'Java',
+        cardTheme: CARD_THEMES.java,
         module: java,
         matches: java.isJavaPlanet,
         createMaterial: ({ THREE, planetTexture }) => (
@@ -183,6 +210,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'kotlin',
         language: 'Kotlin',
+        cardTheme: CARD_THEMES.kotlin,
         module: kotlin,
         matches: kotlin.isKotlinPlanet,
         createMaterial: ({ THREE, planetTexture }) => (
@@ -199,6 +227,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'lua',
         language: 'Lua',
+        cardTheme: CARD_THEMES.lua,
         module: lua,
         matches: lua.isLuaPlanet,
         createMaterial: ({ THREE, planetTexture }) => (
@@ -218,6 +247,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'perl',
         language: 'Perl',
+        cardTheme: CARD_THEMES.perl,
         module: perl,
         matches: perl.isPerlPlanet,
         createMaterial: ({ THREE, planetTexture }) => (
@@ -230,6 +260,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'rust',
         language: 'Rust',
+        cardTheme: CARD_THEMES.rust,
         module: rust,
         matches: rust.isRustPlanet,
         createMaterial: ({ THREE, planetTexture }) => (
@@ -246,6 +277,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'ruby',
         language: 'Ruby',
+        cardTheme: CARD_THEMES.ruby,
         module: ruby,
         matches: ruby.isRubyPlanet,
         createMaterial: ({ THREE, planetTexture }) => (
@@ -266,6 +298,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'python',
         language: 'Python',
+        cardTheme: CARD_THEMES.python,
         module: python,
         matches: python.isPythonPlanet,
         rotationMultiplier: 0.4,
