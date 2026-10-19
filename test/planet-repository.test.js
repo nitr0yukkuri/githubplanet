@@ -214,6 +214,28 @@ test('loads persisted language colors in one startup query', async () => {
     assert.match(calls[0], /SELECT language, color FROM language_color_cache/i);
 });
 
+test('loads language history in chronological order for one GitHub account', async () => {
+    const calls = [];
+    const rows = [{
+        captured_at: '2025-01-01T00:00:00.000Z',
+        main_language: 'JavaScript',
+        planet_color: '#f1e05a',
+        language_percentages: { JavaScript: 100 }
+    }];
+    const repository = createPlanetRepository({
+        async query(sql, params) {
+            calls.push([sql, params]);
+            return { rows };
+        }
+    });
+
+    assert.deepEqual(await repository.findLanguageHistoryByGithubId(42), rows);
+    assert.deepEqual(calls[0][1], [42]);
+    assert.match(calls[0][0], /FROM planet_language_snapshots/);
+    assert.match(calls[0][0], /WHERE github_id = \$1/);
+    assert.match(calls[0][0], /ORDER BY captured_at ASC/);
+});
+
 test('records and advances the owner login baseline in one transaction', async () => {
     const calls = [];
     const client = {

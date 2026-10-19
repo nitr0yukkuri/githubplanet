@@ -116,6 +116,16 @@ export function createPlanetRepository(pool, {
             return result.rows[0] || null;
         },
 
+        async findLanguageHistoryByGithubId(githubId) {
+            const result = await pool.query(`
+                SELECT captured_at, main_language, planet_color, language_percentages
+                FROM planet_language_snapshots
+                WHERE github_id = $1
+                ORDER BY captured_at ASC
+            `, [githubId]);
+            return result.rows;
+        },
+
         async findLanguageColor(language) {
             const result = await pool.query(
                 `SELECT color FROM language_color_cache WHERE language = $1`,

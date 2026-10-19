@@ -39,6 +39,11 @@ function createResponse() {
             this.body = body;
             return this;
         },
+        set(name, value) {
+            this.headers ||= {};
+            this.headers[name] = value;
+            return this;
+        },
         redirect(target) {
             this.redirectTarget = target;
             return this;
@@ -344,4 +349,44 @@ test('returns pending login progress once and consumes it', async () => {
         contributionDelta: 0,
         newlyUnlockedAchievementIds: []
     });
+});
+
+test('returns language history only for the authenticated account', async () => {
+    const { app, routes } = createRouteHarness();
+    const requestedIds = [];
+    registerPlanetRoutes(app, {
+        planetService: {},
+        planetQueryService: {
+            async getLanguageHistoryByGithubId(githubId) {
+                requestedIds.push(githubId);
+                return [{
+                    captured_at: '2025-01-01T00:00:00.000Z',
+                    main_language: 'JavaScript',
+                    planet_color: '#f1e05a',
+                    language_percentages: { JavaScript: 100 }
+                }];
+            }
+        },
+        cacheDuration: 60_000
+    });
+
+    const unauthorizedResponse = createResponse();
+    await routes.get('GET /api/me/language-history')({ session: {} }, unauthorizedResponse);
+    assert.equal(unauthorizedResponse.statusCode, 401);
+    assert.deepEqual(requestedIds, []);
+
+    const response = createResponse();
+    await routes.get('GET /api/me/language-history')({
+        session: { planetData: { user: { id: 42 } } }
+    }, response);
+    assert.deepEqual(response.body, {
+        history: [{
+            capturedAt: '2025-01-01T00:00:00.000Z',
+            mainLanguage: 'JavaScript',
+            planetColor: '#f1e05a',
+            languagePercentages: { JavaScript: 100 }
+        }]
+    });
+    assert.equal(response.headers['Cache-Control'], 'private, no-store');
+    assert.deepEqual(requestedIds, [42]);
 });
