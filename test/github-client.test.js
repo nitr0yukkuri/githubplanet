@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createGithubClient } from '../src/infrastructure/external/github-client.js';
 
-test('splits planet data into bounded GraphQL requests and preserves the existing source shape', async () => {
+test('maps the GraphQL response into the application planet-source model', async () => {
     const requests = [];
     const axios = {
         async post(url, body, config) {
@@ -10,8 +10,15 @@ test('splits planet data into bounded GraphQL requests and preserves the existin
             if (body.query.includes('RepositoryData')) {
                 return { data: { data: { user: {
                     starredRepositories: { totalCount: 4 },
-                    repositories: { nodes: [{ name: 'owned' }] },
-                    repositoriesContributedTo: { nodes: [{ name: 'contributed' }] }
+                    repositories: { nodes: [{
+                        name: 'owned',
+                        stargazerCount: 3,
+                        languages: { edges: [{ size: 70, node: { name: 'TypeScript' } }] }
+                    }] },
+                    repositoriesContributedTo: { nodes: [{
+                        name: 'contributed',
+                        languages: { edges: [{ size: 20, node: { name: 'CSS' } }] }
+                    }] }
                 } } } };
             }
             if (body.query.includes('AnnualContributions')) {
@@ -48,19 +55,15 @@ test('splits planet data into bounded GraphQL requests and preserves the existin
     assert.match(requests[3].body.variables.from, /^\d{4}-\d{2}-\d{2}T/);
     assert.match(requests[3].body.variables.to, /^\d{4}-\d{2}-\d{2}T/);
     assert.deepEqual(source, {
-        starredRepositories: { totalCount: 4 },
-        repositories: { nodes: [{ name: 'owned' }] },
-        repositoriesContributedTo: { nodes: [{ name: 'contributed' }] },
-        mergedPullRequests: [{ repository: {
-            nameWithOwner: 'someone-else/project',
-            owner: { login: 'someone-else' }
-        } }],
-        contributionsCollection: {
-            contributionCalendar: {
-                totalContributions: 123,
-                weeks: [{ contributionDays: [{ contributionCount: 7, date: '2026-07-18' }] }]
-            }
-        }
+        ownedRepositories: [{ receivedStars: 3, languages: [{ language: 'TypeScript', bytes: 70 }] }],
+        contributedRepositories: [{ languages: [{ language: 'CSS', bytes: 20 }] }],
+        starredRepositoryCount: 4,
+        mergedPullRequests: [{
+            repositoryOwnerLogin: 'someone-else',
+            repositoryNameWithOwner: 'someone-else/project'
+        }],
+        totalContributions: 123,
+        dailyContributions: [{ count: 7, date: '2026-07-18' }]
     });
 });
 

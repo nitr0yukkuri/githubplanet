@@ -9,6 +9,7 @@ import connectPgSimple from 'connect-pg-simple';
 import { Server } from 'socket.io';
 import { createPlanetQueryService } from './src/application/planet-query-service.js';
 import { createPlanetService } from './src/application/planet-service.js';
+import { createMeteorService } from './src/application/meteor-service.js';
 import { DATA_CACHE_DURATION, EXTENSION_MAP, LANGUAGE_COLORS } from './src/domain/planet/constants.js';
 import { createPlanetRepository } from './src/infrastructure/database/planet-repository.js';
 import { assertDatabaseMigrationsApplied } from './src/infrastructure/database/migrations.js';
@@ -136,6 +137,11 @@ const planetService = createPlanetService({
     geminiClient,
     geminiApiKey: process.env.GEMINI_API_KEY
 });
+const meteorService = createMeteorService({
+    geminiClient,
+    extensionMap: EXTENSION_MAP,
+    emitMeteor: (payload) => io.emit('meteor', payload)
+});
 const planetQueryService = planetRepository ? createPlanetQueryService({
     repository: planetRepository,
     githubClient,
@@ -190,8 +196,7 @@ if (isProduction && !webhookSecret) {
 }
 registerEventRoutes(app, {
     geminiClient,
-    extensionMap: EXTENSION_MAP,
-    emitMeteor: (payload) => io.emit('meteor', payload),
+    meteorService,
     systemApiKey: process.env.SYSTEM_API_KEY,
     webhookSecret,
     requireInternalAuth: isProduction,

@@ -5,29 +5,21 @@ import { createPlanetService } from '../src/application/planet-service.js';
 function createSource() {
     const today = new Date().toISOString().slice(0, 10);
     return {
-        repositories: {
-            nodes: [{
-                stargazerCount: 4,
-                languages: { edges: [
-                    { size: 70, node: { name: 'TypeScript' } },
-                    { size: 20, node: { name: 'Sass' } }
-                ] }
-            }]
-        },
-        repositoriesContributedTo: {
-            nodes: [{ languages: { edges: [{ size: 30, node: { name: 'CSS' } }] } }]
-        },
-        mergedPullRequests: [{ repository: {
-            nameWithOwner: 'nitr0yukkuri/githubplanet',
-            owner: { login: 'someone-else' }
-        } }],
-        starredRepositories: { totalCount: 6 },
-        contributionsCollection: {
-            contributionCalendar: {
-                totalContributions: 120000,
-                weeks: [{ contributionDays: [{ date: today, contributionCount: 150 }] }]
-            }
-        }
+        ownedRepositories: [{
+            receivedStars: 4,
+            languages: [
+                { bytes: 70, language: 'TypeScript' },
+                { bytes: 20, language: 'Sass' }
+            ]
+        }],
+        contributedRepositories: [{ languages: [{ bytes: 30, language: 'CSS' }] }],
+        mergedPullRequests: [{
+            repositoryNameWithOwner: 'nitr0yukkuri/githubplanet',
+            repositoryOwnerLogin: 'someone-else'
+        }],
+        starredRepositoryCount: 6,
+        totalContributions: 120000,
+        dailyContributions: [{ date: today, count: 150 }]
     };
 }
 
@@ -93,12 +85,12 @@ test('reuses the existing color, name, title, and achievements for the same lang
     const existingAchievement = { id: 'FIRST_PLANET', unlockedAt: 'existing' };
     const repository = {
         findByGithubId: async () => ({
-            main_language: 'TypeScript',
-            planet_color: '#123456',
-            planet_name: '既存の惑星名',
+            mainLanguage: 'TypeScript',
+            planetColor: '#123456',
+            planetName: '既存の惑星名',
             achievements: { FIRST_PLANET: existingAchievement },
-            unlocked_titles: { prefixes: ['名もなき'], suffixes: ['旅人'] },
-            active_title: { prefix: '記念すべき', suffix: '職人' }
+            unlockedTitles: { prefixes: ['名もなき'], suffixes: ['旅人'] },
+            activeTitle: { prefix: '記念すべき', suffix: '職人' }
         }),
         save: async (planet) => { saved = planet; }
     };

@@ -11,11 +11,11 @@ function createHarness(rows = {}) {
         },
         async findByGithubId(id) {
             calls.push(['findByGithubId', id]);
-            return Object.values(rows).find((row) => row.github_id === id) || null;
+            return Object.values(rows).find((row) => row.githubId === id) || null;
         },
         async findRandom(excludeIds = []) {
             calls.push(['findRandom', excludeIds]);
-            return Object.values(rows).find((row) => !excludeIds.includes(row.github_id)) || null;
+            return Object.values(rows).find((row) => !excludeIds.includes(row.githubId)) || null;
         },
         async updateActiveTitle(id, title) {
             calls.push(['updateActiveTitle', id, title]);
@@ -45,7 +45,7 @@ function createHarness(rows = {}) {
 }
 
 test('keeps a stored user with no last_updated without refreshing it', async () => {
-    const row = { github_id: 1, username: 'tester', last_updated: null };
+    const row = { githubId: 1, username: 'tester', lastUpdated: null };
     const { calls, service } = createHarness({ tester: row });
 
     assert.equal(await service.getByUsername('tester', 'token'), row);
@@ -53,7 +53,7 @@ test('keeps a stored user with no last_updated without refreshing it', async () 
 });
 
 test('keeps the previous stale row when the post-refresh read is empty', async () => {
-    const staleRow = { github_id: 1, username: 'tester', last_updated: '2000-01-01T00:00:00.000Z' };
+    const staleRow = { githubId: 1, username: 'tester', lastUpdated: '2000-01-01T00:00:00.000Z' };
     let reads = 0;
     const repository = {
         async findByUsername() {
@@ -73,7 +73,7 @@ test('keeps the previous stale row when the post-refresh read is empty', async (
 });
 
 test('returns a stored random planet without refreshing it', async () => {
-    const row = { github_id: 2, username: 'random', last_updated: null };
+    const row = { githubId: 2, username: 'random', lastUpdated: null };
     const { calls, service } = createHarness({ random: row });
 
     assert.equal(await service.getRandom({ loggedInUserId: 1, accessToken: 'token' }), row);

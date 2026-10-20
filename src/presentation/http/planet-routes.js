@@ -134,9 +134,9 @@ export function registerPlanetRoutes(app, {
             if (!row) return res.status(404).json({ error: 'No planets found' });
 
             if (useSessionHistory) {
-                req.session.lastRandomVisitedId = row.github_id;
+                req.session.lastRandomVisitedId = row.githubId;
             } else {
-                writeAnonymousRandomCookie(res, row.github_id);
+                writeAnonymousRandomCookie(res, row.githubId);
             }
             randomPerformance?.markRandomStage(req, 'history-stored');
             res.json(toPlanetResponse(row));
