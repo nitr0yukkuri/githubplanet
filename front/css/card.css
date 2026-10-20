@@ -129,18 +129,6 @@ body::after {
 }
 
 
-/* 白い地表を縁取る月光をカードの背景にも広げる。 */
-#card-container[data-card-theme="lua-moonlight"] {
-    background-image:
-        radial-gradient(ellipse 38% 72% at 27% 50%, rgba(88, 136, 223, 0.2) 0%, transparent 72%),
-        radial-gradient(ellipse 21% 47% at 27% 50%, transparent 68%, rgba(214, 232, 255, 0.3) 70%, rgba(143, 181, 241, 0.12) 74%, transparent 79%),
-        radial-gradient(ellipse at var(--planet-card-atmosphere-position, 28% 48%), var(--planet-card-atmosphere, transparent) 0%, transparent 58%),
-        radial-gradient(ellipse at var(--planet-card-highlight-position, 18% 30%), var(--planet-card-highlight, transparent) 0%, transparent 48%),
-        radial-gradient(circle at 30% 50%, #161b2e 0%, #0d1117 100%);
-    border-color: rgba(194, 220, 255, 0.42);
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), 0 0 38px rgba(91, 138, 222, 0.22);
-}
-
 canvas {
     display: block;
     width: 100%;
