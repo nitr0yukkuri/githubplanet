@@ -19,6 +19,27 @@ const RANDOM_PLANET_COLUMNS = `
 const RANDOM_QUERY_STRATEGIES = new Set(['auto', 'indexed', 'legacy']);
 const RANDOM_COUNT_REFRESH_MS = 5 * 60 * 1_000;
 
+function mapPlanetRow(row) {
+    if (!row) return null;
+
+    // DB列名はこのアダプターで吸収し、利用側にはアプリ用の名前だけを渡す。
+    return {
+        githubId: row.github_id,
+        username: row.username,
+        planetColor: row.planet_color,
+        planetSizeFactor: row.planet_size_factor,
+        mainLanguage: row.main_language,
+        languageStats: row.language_stats,
+        totalCommits: row.total_commits,
+        weeklyCommits: row.weekly_commits,
+        lastUpdated: row.last_updated,
+        planetName: row.planet_name,
+        achievements: row.achievements,
+        unlockedTitles: row.unlocked_titles,
+        activeTitle: row.active_title
+    };
+}
+
 function snapshotPool(pool) {
     return {
         totalCount: Number.isInteger(pool.totalCount) ? pool.totalCount : null,
@@ -103,7 +124,7 @@ export function createPlanetRepository(pool, {
                 `SELECT ${PLANET_COLUMNS} FROM planets WHERE github_id = $1`,
                 [githubId]
             );
-            return result.rows[0] || null;
+            return mapPlanetRow(result.rows[0]);
         },
 
         async findByUsername(username) {
@@ -113,7 +134,7 @@ export function createPlanetRepository(pool, {
                  WHERE LOWER(username) = LOWER($1)`,
                 [username]
             );
-            return result.rows[0] || null;
+            return mapPlanetRow(result.rows[0]);
         },
 
         async findLanguageColor(language) {
@@ -203,7 +224,7 @@ export function createPlanetRepository(pool, {
                     );
                     queryCount = 1;
                 }
-                return result.rows[0] || null;
+                return mapPlanetRow(result.rows[0]);
             } catch (error) {
                 queryError = error;
                 throw error;

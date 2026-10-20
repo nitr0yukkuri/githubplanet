@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
 import express from 'express';
+import { createMeteorService } from '../src/application/meteor-service.js';
 import { registerEventRoutes } from '../src/presentation/http/event-routes.js';
 
 test('protects internal event tools and verifies GitHub webhook signatures', async (t) => {
@@ -18,13 +19,17 @@ test('protects internal event tools and verifies GitHub webhook signatures', asy
         next();
     });
 
+    const geminiClient = {
+        ask: async () => 'ok',
+        resolveLanguageColor: async () => '#f0db4f'
+    };
     registerEventRoutes(app, {
-        geminiClient: {
-            ask: async () => 'ok',
-            resolveLanguageColor: async () => '#f0db4f'
-        },
-        extensionMap: { js: 'JavaScript' },
-        emitMeteor: () => {},
+        geminiClient,
+        meteorService: createMeteorService({
+            geminiClient,
+            extensionMap: { js: 'JavaScript' },
+            emitMeteor: () => {}
+        }),
         systemApiKey: 'system-secret',
         webhookSecret: 'webhook-secret',
         requireInternalAuth: true,

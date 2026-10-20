@@ -10,7 +10,7 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
 
     async function getByUsername(username, accessToken) {
         let row = await repository.findByUsername(username);
-        const shouldUpdate = Boolean(accessToken) && (!row || (row.last_updated && isExpired(row.last_updated)));
+        const shouldUpdate = Boolean(accessToken) && (!row || (row.lastUpdated && isExpired(row.lastUpdated)));
 
         if (shouldUpdate) {
             try {

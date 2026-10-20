@@ -2,8 +2,7 @@ import crypto from 'crypto';
 
 export function registerEventRoutes(app, {
     geminiClient,
-    extensionMap,
-    emitMeteor,
+    meteorService,
     systemApiKey,
     webhookSecret,
     requireInternalAuth = false,
@@ -34,14 +33,8 @@ export function registerEventRoutes(app, {
 
     app.post('/api/meteor', requireAuthorization, async (req, res) => {
         try {
-            const { language, color, scale } = req.body;
-            const finalColor = color || await geminiClient.resolveLanguageColor(language || 'Unknown');
-            let finalScale = scale || 1.0;
-            if (finalScale > 1.5) finalScale = 1.5;
-
-            console.log(`[Manual Meteor] Language: ${language}, Color: ${finalColor}, Scale: ${finalScale}`);
-            emitMeteor({ color: finalColor, language: language || 'Manual', scale: finalScale });
-            res.json({ success: true, color: finalColor });
+            const result = await meteorService.emitManualMeteor(req.body);
+            res.json({ success: true, color: result.color });
         } catch (error) {
             console.error('[Manual Meteor Error]', error);
             res.status(500).json({ error: 'Failed' });
@@ -60,33 +53,9 @@ export function registerEventRoutes(app, {
             const payload = req.body;
             res.status(200).send('OK');
 
-            (async () => {
-                if (!payload || !payload.repository || !payload.commits || !Array.isArray(payload.commits)) return;
-                const repositoryLanguage = payload.repository.language || 'Unknown';
-
-                for (const commit of payload.commits) {
-                    let targetLanguage = repositoryLanguage;
-                    const files = [...(commit.added || []), ...(commit.modified || [])];
-                    const totalLines = parseInt(commit.total_lines || 0, 10);
-                    const changeCount = files.length;
-                    let meteorScale = totalLines > 0
-                        ? 1.0 + (Math.log10(totalLines + 1) * 0.25)
-                        : 1.0 + (changeCount / 10) * 0.5;
-                    if (meteorScale > 2.0) meteorScale = 2.0;
-
-                    for (const file of files) {
-                        const extension = file.split('.').pop().toLowerCase();
-                        if (extensionMap[extension]) {
-                            targetLanguage = extensionMap[extension];
-                            break;
-                        }
-                    }
-
-                    const resolvedColor = await geminiClient.resolveLanguageColor(targetLanguage);
-                    console.log(`[Webhook] Commit: ${commit.id.substring(0, 7)} -> Scale: ${meteorScale.toFixed(2)}, Lines: ${totalLines}`);
-                    emitMeteor({ color: resolvedColor, language: targetLanguage, scale: meteorScale });
-                }
-            })().catch((error) => console.error('[Webhook Async Error]', error));
+            // GitHubへのACK速度は維持しつつ、業務処理はApplicationのユースケースに委譲する。
+            meteorService.processWebhook(payload)
+                .catch((error) => console.error('[Webhook Async Error]', error));
         } catch (error) {
             console.error('[Webhook Error]', error);
             if (!res.headersSent) res.status(500).send('Error');

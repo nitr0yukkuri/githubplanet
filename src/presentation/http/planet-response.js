@@ -1,12 +1,12 @@
 import { MAX_TOTAL_COMMITS, MAX_WEEKLY_COMMITS } from '../../domain/planet/constants.js';
 import { clampCommitCount, generatePlanetName } from '../../domain/planet/planet.js';
 
-export function toPlanetResponse(row) {
-    const totalCommits = clampCommitCount(row.total_commits, MAX_TOTAL_COMMITS);
-    const languageStats = row.language_stats || {};
+export function toPlanetResponse(planet) {
+    const totalCommits = clampCommitCount(planet.totalCommits, MAX_TOTAL_COMMITS);
+    const languageStats = planet.languageStats || {};
     const hasStats = Object.keys(languageStats).length > 0;
-    let mainLanguage = row.main_language;
-    let planetColor = row.planet_color;
+    let mainLanguage = planet.mainLanguage;
+    let planetColor = planet.planetColor;
 
     if (!hasStats && mainLanguage !== 'Unknown') {
         mainLanguage = 'Unknown';
@@ -14,15 +14,15 @@ export function toPlanetResponse(row) {
     }
 
     return {
-        username: row.username,
+        username: planet.username,
         planetColor,
-        planetSizeFactor: parseFloat(row.planet_size_factor),
+        planetSizeFactor: parseFloat(planet.planetSizeFactor),
         mainLanguage,
         languageStats,
         totalCommits,
-        weeklyCommits: clampCommitCount(row.weekly_commits, MAX_WEEKLY_COMMITS),
-        planetName: row.planet_name || generatePlanetName(mainLanguage, planetColor, totalCommits),
-        achievements: row.achievements || {},
-        activeTitle: row.active_title || { prefix: '名もなき', suffix: '旅人' }
+        weeklyCommits: clampCommitCount(planet.weeklyCommits, MAX_WEEKLY_COMMITS),
+        planetName: planet.planetName || generatePlanetName(mainLanguage, planetColor, totalCommits),
+        achievements: planet.achievements || {},
+        activeTitle: planet.activeTitle || { prefix: '名もなき', suffix: '旅人' }
     };
 }
