@@ -25,7 +25,7 @@ const CARD_THEMES = Object.freeze({
     javascript: Object.freeze({ id: 'javascript-gold', accent: '#f3df75', atmosphere: '#9d8428', highlight: '#ffefb2', atmospherePosition: '62% 40%', highlightPosition: '26% 76%' }),
     java: Object.freeze({ id: 'java-soil', accent: '#e5ae71', atmosphere: '#88521d', highlight: '#f9d6a3', atmospherePosition: '30% 72%', highlightPosition: '72% 30%' }),
     kotlin: Object.freeze({ id: 'kotlin-crystal', accent: '#d1b9ff', atmosphere: '#754db4', highlight: '#eee1ff', atmospherePosition: '52% 44%', highlightPosition: '86% 52%' }),
-    lua: Object.freeze({ id: 'lua-moonlight', accent: '#c1d3ff', atmosphere: '#536ba8', highlight: '#e5ebff', atmospherePosition: '72% 20%', highlightPosition: '26% 58%' }),
+    lua: Object.freeze({ id: 'lua-moonlight', accent: '#d9e7ff', atmosphere: '#6e9ddf', highlight: '#f2f7ff', atmospherePosition: '28% 48%', highlightPosition: '18% 30%' }),
     perl: Object.freeze({ id: 'perl-ocean', accent: '#7ee0ec', atmosphere: '#087d96', highlight: '#c9ffff', atmospherePosition: '20% 44%', highlightPosition: '78% 62%' }),
     rust: Object.freeze({ id: 'rust-desert', accent: '#dea584', atmosphere: '#a95433', highlight: '#ffcf9b', atmospherePosition: '30% 72%', highlightPosition: '75% 42%' }),
     ruby: Object.freeze({ id: 'ruby-hearth', accent: '#ff9386', atmosphere: '#9f3028', highlight: '#ffc0a7', atmospherePosition: '24% 38%', highlightPosition: '68% 62%' }),
