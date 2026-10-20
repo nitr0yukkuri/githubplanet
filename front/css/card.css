@@ -116,13 +116,18 @@ body::after {
     height: 400px;
     margin: 0 auto; 
     background-color: var(--card-bg-inner);
+    background-image:
+        radial-gradient(ellipse at var(--planet-card-atmosphere-position, 24% 52%), var(--planet-card-atmosphere, transparent) 0%, transparent 58%),
+        radial-gradient(ellipse at var(--planet-card-highlight-position, 68% 36%), var(--planet-card-highlight, transparent) 0%, transparent 48%),
+        radial-gradient(circle at 30% 50%, #161b2e 0%, #0d1117 100%);
     overflow: hidden;
     flex-shrink: 0;
     border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--planet-card-border, rgba(255, 255, 255, 0.15));
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), 0 0 34px var(--planet-card-glow, transparent);
     box-sizing: border-box;
 }
+
 
 canvas {
     display: block;
@@ -134,7 +139,7 @@ canvas {
 .bg-gradient {
     position: absolute;
     width: 100%; height: 100%;
-    background: radial-gradient(circle at 30% 50%, #161b2e 0%, #0d1117 100%);
+    background: transparent;
     z-index: 0;
 }
 

@@ -5,7 +5,6 @@ import * as go from '../go-planet-wind.js';
 import * as java from '../java-planet-soil.js';
 import * as javascript from '../javascript-planet-reactivity.js';
 import * as kotlin from '../kotlin-planet-crystal.js';
-import * as lua from '../lua-planet-moonlight.js';
 import * as perl from '../perl-planet-ocean.js';
 import * as python from '../python-planet-structure.js';
 import * as ruby from '../ruby-planet-solar.js';
@@ -14,10 +13,28 @@ import * as swift from '../swift-planet-feathers.js';
 import * as typescript from '../typescript-planet-shell.js';
 import * as vue from '../vue-planet-circulation.js';
 
+const CARD_THEMES = Object.freeze({
+    c: Object.freeze({ id: 'c-steel', accent: '#c3d0d7', atmosphere: '#728491', highlight: '#b6c3ca', atmospherePosition: '25% 50%', highlightPosition: '75% 32%' }),
+    css: Object.freeze({ id: 'css-spectrum', accent: '#d7bcff', atmosphere: '#7040b3', highlight: '#f4d2ff', atmospherePosition: '72% 28%', highlightPosition: '34% 62%' }),
+    cpp: Object.freeze({ id: 'cpp-plasma', accent: '#ff9bb9', atmosphere: '#b62f67', highlight: '#ffcae0', atmospherePosition: '48% 72%', highlightPosition: '65% 28%' }),
+    go: Object.freeze({ id: 'go-wind', accent: '#79e1f6', atmosphere: '#008cae', highlight: '#c2fbff', atmospherePosition: '22% 42%', highlightPosition: '74% 66%' }),
+    swift: Object.freeze({ id: 'swift-feathers', accent: '#ffc2c0', atmosphere: '#bd4b4b', highlight: '#ffe1d4', atmospherePosition: '32% 72%', highlightPosition: '76% 30%' }),
+    vue: Object.freeze({ id: 'vue-leaves', accent: '#83e7b2', atmosphere: '#268a63', highlight: '#d2ffbb', atmospherePosition: '24% 64%', highlightPosition: '72% 34%' }),
+    typescript: Object.freeze({ id: 'typescript-shell', accent: '#78c8ff', atmosphere: '#007acc', highlight: '#d1edff', atmospherePosition: '30% 46%', highlightPosition: '76% 58%' }),
+    javascript: Object.freeze({ id: 'javascript-gold', accent: '#f3df75', atmosphere: '#9d8428', highlight: '#ffefb2', atmospherePosition: '62% 40%', highlightPosition: '26% 76%' }),
+    java: Object.freeze({ id: 'java-soil', accent: '#e5ae71', atmosphere: '#88521d', highlight: '#f9d6a3', atmospherePosition: '30% 72%', highlightPosition: '72% 30%' }),
+    kotlin: Object.freeze({ id: 'kotlin-crystal', accent: '#d1b9ff', atmosphere: '#754db4', highlight: '#eee1ff', atmospherePosition: '52% 44%', highlightPosition: '86% 52%' }),
+    perl: Object.freeze({ id: 'perl-ocean', accent: '#7ee0ec', atmosphere: '#087d96', highlight: '#c9ffff', atmospherePosition: '20% 44%', highlightPosition: '78% 62%' }),
+    rust: Object.freeze({ id: 'rust-desert', accent: '#dea584', atmosphere: '#a95433', highlight: '#ffcf9b', atmospherePosition: '30% 72%', highlightPosition: '75% 42%' }),
+    ruby: Object.freeze({ id: 'ruby-hearth', accent: '#ff9386', atmosphere: '#9f3028', highlight: '#ffc0a7', atmospherePosition: '24% 38%', highlightPosition: '68% 62%' }),
+    python: Object.freeze({ id: 'python-trails', accent: '#ffd43b', atmosphere: '#306998', highlight: '#ffe389', atmospherePosition: '30% 56%', highlightPosition: '74% 36%' })
+});
+
 const FEATURE_DEFINITIONS = [
     {
         id: 'c',
         language: 'C',
+        cardTheme: CARD_THEMES.c,
         module: c,
         matches: c.isCPlanet,
         createMaterial: ({ THREE, planetTexture }) => (
@@ -27,6 +44,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'css',
         language: 'CSS',
+        cardTheme: CARD_THEMES.css,
         module: css,
         matches: css.isCssPlanet,
         createMaterial: ({ THREE, planetTexture }) => (
@@ -37,6 +55,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'cpp',
         language: 'C++',
+        cardTheme: CARD_THEMES.cpp,
         module: cpp,
         matches: cpp.isCppPlanet,
         createMaterial: ({ THREE, planetTexture, data }) => (
@@ -51,6 +70,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'go',
         language: 'Go',
+        cardTheme: CARD_THEMES.go,
         module: go,
         matches: go.isGoPlanet,
         usesWindSpeed: true,
@@ -78,6 +98,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'swift',
         language: 'Swift',
+        cardTheme: CARD_THEMES.swift,
         module: swift,
         matches: swift.isSwiftPlanet,
         usesWindSpeed: true,
@@ -107,6 +128,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'vue',
         language: 'Vue',
+        cardTheme: CARD_THEMES.vue,
         module: vue,
         matches: vue.isVuePlanet,
         rotationMultiplier: 0.7,
@@ -138,6 +160,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'typescript',
         language: 'TypeScript',
+        cardTheme: CARD_THEMES.typescript,
         module: typescript,
         matches: typescript.isTypeScriptPlanet,
         createMaterial: ({ THREE, planetTexture }) => (
@@ -154,6 +177,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'javascript',
         language: 'JavaScript',
+        cardTheme: CARD_THEMES.javascript,
         module: javascript,
         matches: javascript.isJavaScriptPlanet,
         createMaterial: ({ THREE, planetTexture, data }) => (
@@ -170,6 +194,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'java',
         language: 'Java',
+        cardTheme: CARD_THEMES.java,
         module: java,
         matches: java.isJavaPlanet,
         createMaterial: ({ THREE, planetTexture }) => (
@@ -183,6 +208,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'kotlin',
         language: 'Kotlin',
+        cardTheme: CARD_THEMES.kotlin,
         module: kotlin,
         matches: kotlin.isKotlinPlanet,
         createMaterial: ({ THREE, planetTexture }) => (
@@ -196,28 +222,11 @@ const FEATURE_DEFINITIONS = [
             kotlin.updateKotlinElectricity(objects.electricity, now);
         }
     },
-    {
-        id: 'lua',
-        language: 'Lua',
-        module: lua,
-        matches: lua.isLuaPlanet,
-        createMaterial: ({ THREE, planetTexture }) => (
-            lua.createLuaPlanetMaterial(THREE, planetTexture)
-        ),
-        createObjects: ({ THREE, radius, material }) => ({
-            moonlight: lua.createLuaPlanetMoonlight(
-                THREE,
-                radius,
-                material.userData.luaMoonlightUniforms
-            )
-        }),
-        update: ({ material, now }) => (
-            lua.updateLuaPlanetMoonlight(material, now)
-        )
-    },
+
     {
         id: 'perl',
         language: 'Perl',
+        cardTheme: CARD_THEMES.perl,
         module: perl,
         matches: perl.isPerlPlanet,
         createMaterial: ({ THREE, planetTexture }) => (
@@ -230,6 +239,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'rust',
         language: 'Rust',
+        cardTheme: CARD_THEMES.rust,
         module: rust,
         matches: rust.isRustPlanet,
         createMaterial: ({ THREE, planetTexture }) => (
@@ -246,6 +256,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'ruby',
         language: 'Ruby',
+        cardTheme: CARD_THEMES.ruby,
         module: ruby,
         matches: ruby.isRubyPlanet,
         createMaterial: ({ THREE, planetTexture }) => (
@@ -266,6 +277,7 @@ const FEATURE_DEFINITIONS = [
     {
         id: 'python',
         language: 'Python',
+        cardTheme: CARD_THEMES.python,
         module: python,
         matches: python.isPythonPlanet,
         rotationMultiplier: 0.4,
@@ -357,7 +369,6 @@ export * from '../go-planet-wind.js';
 export * from '../java-planet-soil.js';
 export * from '../javascript-planet-reactivity.js';
 export * from '../kotlin-planet-crystal.js';
-export * from '../lua-planet-moonlight.js';
 export * from '../perl-planet-ocean.js';
 export * from '../python-planet-structure.js';
 export * from '../ruby-planet-solar.js';
