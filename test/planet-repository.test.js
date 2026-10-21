@@ -222,6 +222,12 @@ test('loads language history in chronological order for one GitHub account', asy
         planet_color: '#f1e05a',
         language_percentages: { JavaScript: 100 }
     }];
+    const expected = [{
+        capturedAt: '2025-01-01T00:00:00.000Z',
+        mainLanguage: 'JavaScript',
+        planetColor: '#f1e05a',
+        languagePercentages: { JavaScript: 100 }
+    }];
     const repository = createPlanetRepository({
         async query(sql, params) {
             calls.push([sql, params]);
