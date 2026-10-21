@@ -1,6 +1,7 @@
 import * as c from '../c-planet-steel.js';
 import * as cpp from '../cpp-planet-lightning.js';
 import * as css from '../css-planet-flow.js';
+import * as elm from '../elm-planet-vegetation.js';
 import * as go from '../go-planet-wind.js';
 import * as java from '../java-planet-soil.js';
 import * as javascript from '../javascript-planet-reactivity.js';
@@ -66,6 +67,18 @@ const FEATURE_DEFINITIONS = [
             )
         ),
         update: ({ material, now }) => cpp.updateCppPlanetLightning(material, now)
+    },
+    {
+        id: 'elm',
+        language: 'Elm',
+        module: elm,
+        matches: elm.isElmPlanet,
+        createMaterial: ({ THREE, planetTexture, data }) => (
+            elm.createElmPlanetMaterial(THREE, planetTexture, data.planetColor)
+        ),
+        update: ({ material, now }) => (
+            elm.updateElmPlanetVegetation(material, now)
+        )
     },
     {
         id: 'go',
