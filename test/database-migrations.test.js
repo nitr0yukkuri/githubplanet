@@ -84,7 +84,7 @@ function createFakePool(client) {
 test('loads ordered immutable migrations and keeps concurrent indexes outside transactions', () => {
     const migrations = loadDatabaseMigrations();
 
-    assert.deepEqual(migrations.map(({ version }) => version), ['001', '002', '003', '004']);
+    assert.deepEqual(migrations.map(({ version }) => version), ['001', '002', '003', '009']);
     assert.equal(migrations[0].transactional, true);
     assert.equal(migrations[1].transactional, false);
     assert.equal(migrations[1].verifiedIndex, 'idx_planets_username_lower');
@@ -130,7 +130,7 @@ test('applies each migration once under a lock and repairs an invalid concurrent
         || sql.includes('CREATE INDEX CONCURRENTLY')
     )).length;
 
-    assert.deepEqual(firstAppliedVersions, ['001', '002', '003', '004']);
+    assert.deepEqual(firstAppliedVersions, ['001', '002', '003', '009']);
     assert.equal(client.appliedMigrations.size, 4);
     assert.ok(client.queries.some(({ sql }) => (
         sql === 'DROP INDEX CONCURRENTLY IF EXISTS "idx_planets_username_lower"'
