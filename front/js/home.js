@@ -85,7 +85,11 @@ async function fetchHomeApi(input, options = {}, timeoutMs = HOME_API_TIMEOUT_MS
 }
 
 // WebSocketを先に試し、失敗時はPollingへ切り替えて通知を維持する。
-const socket = io({
+// Firebase HostingのCloud Run rewriteではUpgradeヘッダーが届かないため、流星接続だけCloud Run直URLへ送る。
+const realtimeSocketOrigin = window.location.hostname === 'githubplanet.dev'
+    ? 'https://githubplanet-git-e7ranic5ja-dt.a.run.app'
+    : window.location.origin;
+const socket = io(realtimeSocketOrigin, {
     transports: ['websocket', 'polling']
 });
 

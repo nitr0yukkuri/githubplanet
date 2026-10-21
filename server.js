@@ -55,7 +55,7 @@ app.use((req, res, next) => {
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com data:",
         "img-src 'self' data: https://image.thum.io",
-        "connect-src 'self' ws: wss: https://www.google-analytics.com https://region1.google-analytics.com",
+        "connect-src 'self' ws: wss: https://githubplanet-git-e7ranic5ja-dt.a.run.app https://www.google-analytics.com https://region1.google-analytics.com",
         "object-src 'none'",
         "base-uri 'self'",
         "frame-ancestors 'none'"
@@ -212,7 +212,8 @@ const server = app.listen(port, '0.0.0.0', () => {
     console.log(`Server running on port ${port}`);
 });
 
-io = new Server(server);
+// Cloud Run直URLへ切り替えたPollingフォールバックは、公開サイトのOriginだけ許可する。
+io = new Server(server, { cors: { origin: publicBaseUrl } });
 // HTTPログの400だけでは拒否理由が分からないため、WebSocket失敗の必要項目だけ記録する。
 io.engine.on('connection_error', (error) => {
     const request = error.req;
