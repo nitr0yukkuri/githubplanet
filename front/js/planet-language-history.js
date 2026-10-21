@@ -69,11 +69,32 @@ export function buildPlanetLanguageHistory(history, current) {
     return entries.length > 1 ? entries : [];
 }
 
+export function buildPlanetLanguageYearStops(entries, now = Date.now()) {
+    const stopsByYear = new Map();
+    entries.forEach((entry, entryIndex) => {
+        const capturedAt = Date.parse(entry.capturedAt);
+        if (Number.isFinite(capturedAt)) {
+            const capturedYear = new Date(capturedAt).getUTCFullYear();
+            // 現在状態と同じでも、保存された過去年の停止位置は残しておく。
+            stopsByYear.set(capturedYear, { year: capturedYear, entryIndex });
+        }
+        if (entry.isCurrent) {
+            const currentYear = new Date(now).getUTCFullYear();
+            stopsByYear.set(currentYear, { year: currentYear, entryIndex });
+        }
+    });
+    return [...stopsByYear.values()];
+}
+
 export function createPlanetLanguageHistory({ element, onSelect, translate }) {
     const slider = element.querySelector('#planet-language-history-slider');
     const dateOutput = element.querySelector('#planet-language-history-date');
+    const yearsElement = element.querySelector('#planet-language-history-years');
     let entries = [];
+    let yearStops = [];
+    let yearMarkers = [];
     let selectedIndex = -1;
+    let selectedYearStopIndex = -1;
     let dispatchedIndex = -1;
     let pendingTimer = null;
 
@@ -82,11 +103,35 @@ export function createPlanetLanguageHistory({ element, onSelect, translate }) {
         pendingTimer = null;
     }
 
+    function renderYearMarkers() {
+        yearMarkers = [];
+        yearsElement?.replaceChildren();
+        if (!yearsElement || yearStops.length === 0) return;
+
+        yearStops.forEach((stop, index) => {
+            const marker = document.createElement('span');
+            marker.className = 'planet-language-history-year';
+            marker.dataset.year = String(stop.year);
+            marker.dataset.selected = 'false';
+            marker.style.left = `${yearStops.length > 1 ? index / (yearStops.length - 1) * 100 : 50}%`;
+            marker.textContent = String(stop.year);
+            yearsElement.append(marker);
+            yearMarkers.push(marker);
+        });
+    }
+
     function updateSelection(value) {
-        if (entries.length === 0) return;
-        selectedIndex = Math.max(0, Math.min(entries.length - 1, Number(value) || 0));
-        slider.value = String(selectedIndex);
-        element.style.setProperty('--language-history-progress', `${selectedIndex / (entries.length - 1) * 100}%`);
+        if (yearStops.length === 0) return;
+        selectedYearStopIndex = Math.max(0, Math.min(yearStops.length - 1, Number(value) || 0));
+        selectedIndex = yearStops[selectedYearStopIndex].entryIndex;
+        slider.value = String(selectedYearStopIndex);
+        const progress = yearStops.length > 1
+            ? selectedYearStopIndex / (yearStops.length - 1) * 100
+            : 0;
+        element.style.setProperty('--language-history-progress', `${progress}%`);
+        yearMarkers.forEach((marker) => {
+            marker.dataset.selected = String(Number(marker.dataset.year) === yearStops[selectedYearStopIndex].year);
+        });
         const selected = entries[selectedIndex];
         const description = selected.isCurrent
             ? translate('home.languageHistoryNow')
@@ -119,21 +164,27 @@ export function createPlanetLanguageHistory({ element, onSelect, translate }) {
         hide() {
             clearPending();
             entries = [];
-            selectedIndex = dispatchedIndex = -1;
+            yearStops = [];
+            yearMarkers = [];
+            selectedIndex = selectedYearStopIndex = dispatchedIndex = -1;
+            yearsElement?.replaceChildren();
             element.hidden = true;
         },
         show(history, current) {
             clearPending();
             entries = buildPlanetLanguageHistory(history, current);
-            if (entries.length < 2) {
+            yearStops = buildPlanetLanguageYearStops(entries);
+            if (entries.length < 2 || yearStops.length < 2) {
                 this.hide();
                 return;
             }
             slider.min = '0';
-            slider.max = String(entries.length - 1);
+            slider.max = String(yearStops.length - 1);
             slider.step = '1';
-            selectedIndex = dispatchedIndex = entries.length - 1;
-            updateSelection(selectedIndex);
+            selectedYearStopIndex = yearStops.length - 1;
+            selectedIndex = dispatchedIndex = yearStops[selectedYearStopIndex].entryIndex;
+            renderYearMarkers();
+            updateSelection(selectedYearStopIndex);
             element.hidden = false;
         }
     };

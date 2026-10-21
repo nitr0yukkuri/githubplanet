@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildPlanetLanguageHistory } from '../front/js/planet-language-history.js';
+import {
+    buildPlanetLanguageHistory,
+    buildPlanetLanguageYearStops
+} from '../front/js/planet-language-history.js';
 
 test('builds chronological language states and adds the current state when it changed', () => {
     const entries = buildPlanetLanguageHistory([
@@ -66,4 +69,22 @@ test('ignores snapshots with invalid dates or colors', () => {
     });
 
     assert.deepEqual(entries, []);
+});
+
+test('creates one chronological stop per year at that year’s latest state', () => {
+    const entries = [
+        { capturedAt: '2024-02-01T00:00:00.000Z' },
+        { capturedAt: '2024-11-01T00:00:00.000Z' },
+        { capturedAt: '2025-06-01T00:00:00.000Z' },
+        { capturedAt: '2025-07-01T00:00:00.000Z', isCurrent: true }
+    ];
+
+    assert.deepEqual(
+        buildPlanetLanguageYearStops(entries, Date.parse('2026-10-21T00:00:00.000Z')),
+        [
+            { year: 2024, entryIndex: 1 },
+            { year: 2025, entryIndex: 3 },
+            { year: 2026, entryIndex: 3 }
+        ]
+    );
 });
