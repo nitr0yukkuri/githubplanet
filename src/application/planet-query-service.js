@@ -40,5 +40,9 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         await repository.updateActiveTitle(githubId, activeTitle);
     }
 
-    return { getByUsername, getRandom, saveActiveTitle };
+    async function getLanguageHistoryByGithubId(githubId) {
+        return repository.findLanguageHistoryByGithubId(githubId);
+    }
+
+    return { getByUsername, getLanguageHistoryByGithubId, getRandom, saveActiveTitle };
 }

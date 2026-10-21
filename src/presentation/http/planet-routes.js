@@ -92,6 +92,28 @@ export function registerPlanetRoutes(app, {
         }
     });
 
+    app.get('/api/me/language-history', async (req, res) => {
+        const githubId = req.session?.planetData?.user?.id;
+        if (!githubId) return res.status(401).json({ error: 'Not logged in' });
+        if (!planetQueryService) return res.status(503).json({ error: 'DB unavailable' });
+        res.set('Cache-Control', 'private, no-store');
+
+        try {
+            const rows = await planetQueryService.getLanguageHistoryByGithubId(githubId);
+            res.json({
+                history: rows.map((row) => ({
+                    capturedAt: row.capturedAt,
+                    mainLanguage: row.mainLanguage,
+                    planetColor: row.planetColor,
+                    languagePercentages: row.languagePercentages || {}
+                }))
+            });
+        } catch (error) {
+            console.error('[API /me/language-history Error]', error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    });
+
     app.get('/api/planets/showcase/:slug', (req, res) => {
         const planet = getShowcasePlanet(req.params.slug);
         if (!planet) return res.status(404).json({ error: 'Showcase planet not found' });

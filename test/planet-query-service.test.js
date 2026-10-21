@@ -93,3 +93,27 @@ test('uses the same random fallback order and delegates title persistence', asyn
         ['updateActiveTitle', 1, { prefix: 'x', suffix: 'y' }]
     ]);
 });
+
+test('delegates language history reads to the repository by GitHub account id', async () => {
+    const expected = [{
+        capturedAt: '2025-01-01T00:00:00.000Z',
+        mainLanguage: 'Rust',
+        planetColor: '#dea584',
+        languagePercentages: { Rust: 100 }
+    }];
+    const calls = [];
+    const service = createPlanetQueryService({
+        repository: {
+            async findLanguageHistoryByGithubId(githubId) {
+                calls.push(githubId);
+                return expected;
+            }
+        },
+        githubClient: {},
+        planetService: {},
+        cacheDuration: 60_000
+    });
+
+    assert.equal(await service.getLanguageHistoryByGithubId(42), expected);
+    assert.deepEqual(calls, [42]);
+});

@@ -137,6 +137,22 @@ export function createPlanetRepository(pool, {
             return mapPlanetRow(result.rows[0]);
         },
 
+        async findLanguageHistoryByGithubId(githubId) {
+            const result = await pool.query(`
+                SELECT captured_at, main_language, planet_color, language_percentages
+                FROM planet_language_snapshots
+                WHERE github_id = $1
+                ORDER BY captured_at ASC
+            `, [githubId]);
+            // DB列名はRepositoryで変換し、Application層へSQLスキーマを漏らさない。
+            return result.rows.map((row) => ({
+                capturedAt: row.captured_at,
+                mainLanguage: row.main_language,
+                planetColor: row.planet_color,
+                languagePercentages: row.language_percentages
+            }));
+        },
+
         async findLanguageColor(language) {
             const result = await pool.query(
                 `SELECT color FROM language_color_cache WHERE language = $1`,

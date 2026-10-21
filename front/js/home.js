@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import anime from 'animejs';
 import { io } from 'socket.io-client';
 import { createPlanetFeatureRuntime } from './planet-features/registry.js';
+import { createPlanetLanguageHistory } from './planet-language-history.js';
 import { applyI18n, localizedPath, localizedPlanetName, localizedTitle, t } from './i18n.js';
 import { DEFAULT_SHOWCASE_SLUG, resolveHomeRoute } from './home-route.js';
 
@@ -16,6 +17,9 @@ let planetFeatureRuntime = null;
 let planetLoadGeneration = 0;
 let planetTexturePromise = null;
 let activePlanetReveal = null;
+let currentPlanetData = null;
+let planetLanguageHistory = null;
+let planetLanguageHistoryRequest = 0;
 
 let welcomeModal, okButton, mainUiWrapper;
 let isFetchingRandomPlanet = false;
@@ -329,6 +333,55 @@ function updatePlanetDetails(data) {
     }
 }
 
+async function updatePlanetLanguageHistory(data) {
+    const requestId = ++planetLanguageHistoryRequest;
+    const element = document.getElementById('planet-language-history');
+    if (!element) return;
+    if (!planetLanguageHistory) {
+        planetLanguageHistory = createPlanetLanguageHistory({
+            element,
+            translate: t,
+            onSelect: (selection) => {
+                if (!currentPlanetData) return;
+                // 履歴として保存した言語構成だけ差し替え、現在の活動量や称号は保つ。
+                void loadPlanet({
+                    ...currentPlanetData,
+                    mainLanguage: selection.mainLanguage,
+                    planetColor: selection.planetColor,
+                    languageStats: selection.languagePercentages
+                }, { historySelection: true }).catch((error) => {
+                    console.warn('[Planet language history] Failed to load selection:', error.message);
+                });
+            }
+        });
+    }
+
+    const isOwnPlanet = Boolean(
+        loggedInUsername
+        && data?.username
+        && loggedInUsername.toLowerCase() === data.username.toLowerCase()
+    );
+    if (!isOwnPlanet || isPublicPlanetRoute) {
+        planetLanguageHistory.hide();
+        return;
+    }
+
+    try {
+        const response = await fetchHomeApi('/api/me/language-history', { cache: 'no-store' });
+        if (requestId !== planetLanguageHistoryRequest) return;
+        if (!response.ok) {
+            planetLanguageHistory.hide();
+            return;
+        }
+        const payload = await response.json();
+        if (requestId !== planetLanguageHistoryRequest || currentPlanetData !== data) return;
+        planetLanguageHistory.show(payload.history, data);
+    } catch {
+        // 履歴が取得できない時も現在の惑星表示を維持する。
+        if (requestId === planetLanguageHistoryRequest) planetLanguageHistory.hide();
+    }
+}
+
 function calculateStarCount(totalCommits) {
     let starCount = 0;
     let commitsUsed = 0;
@@ -419,13 +472,18 @@ function cancelActivePlanetReveal() {
     activePlanetReveal = null;
 }
 
-async function loadPlanet(data) {
+async function loadPlanet(data, { historySelection = false } = {}) {
     const ownerDisplay = document.getElementById('planet-owner-display');
     const profileLink = document.getElementById('github-profile-link');
     if (ownerDisplay) ownerDisplay.style.display = 'none';
     if (profileLink) profileLink.style.display = 'none';
 
     if (!data) return;
+
+    if (!historySelection) {
+        currentPlanetData = data;
+        void updatePlanetLanguageHistory(data);
+    }
 
     recordHomePerformance('loadPlanet:start');
 
