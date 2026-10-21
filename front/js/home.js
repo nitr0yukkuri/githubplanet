@@ -80,9 +80,20 @@ async function fetchHomeApi(input, options = {}, timeoutMs = HOME_API_TIMEOUT_MS
     }
 }
 
-// WebSocketを通さないプロキシでも接続できるよう、Pollingから開始してWebSocketへ昇格する。
+// WebSocketを先に試し、失敗時はPollingへ切り替えて通知を維持する。
 const socket = io({
-    transports: ['polling', 'websocket']
+    transports: ['websocket', 'polling']
+});
+
+socket.on('connect', () => {
+    console.info(`Realtime meteor connected (${socket.io.engine?.transport?.name || 'unknown'})`);
+});
+socket.on('connect_error', (error) => {
+    console.warn('Realtime meteor connection failed:', error.message);
+    if (socket.io.opts.transports[0] === 'websocket') {
+        // Socket.IOの再接続をPollingから始め、利用可能なら後からWebSocketへ昇格する。
+        socket.io.opts.transports = ['polling', 'websocket'];
+    }
 });
 
 const homeRoute = resolveHomeRoute(window.location.pathname, window.location.search);

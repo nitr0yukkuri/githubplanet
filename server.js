@@ -213,6 +213,23 @@ const server = app.listen(port, '0.0.0.0', () => {
 });
 
 io = new Server(server);
-io.on('connection', () => {
-    console.log('Client connected to socket');
+// HTTPログの400だけでは拒否理由が分からないため、WebSocket失敗の必要項目だけ記録する。
+io.engine.on('connection_error', (error) => {
+    const request = error.req;
+    const requestUrl = new URL(request?.url || '/', 'http://localhost');
+    if (requestUrl.searchParams.get('transport') !== 'websocket') return;
+
+    console.warn('[Socket.IO] WebSocket connection rejected', {
+        code: error.code,
+        message: error.message,
+        method: request?.method,
+        path: requestUrl.pathname,
+        origin: request?.headers?.origin,
+        upgrade: request?.headers?.upgrade
+    });
+});
+io.on('connection', (socket) => {
+    console.log('[Socket.IO] Client connected', {
+        transport: socket.conn.transport.name
+    });
 });
