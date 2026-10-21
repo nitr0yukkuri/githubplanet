@@ -54,3 +54,6 @@ jobs:
 
       - name: Run migration-related tests
         run: node --test --test-concurrency=1 test/database-migrations.test.js test/postgres-pool.test.js test/planet-repository.test.js
+
+      - name: Build Docker image
+        run: docker build --pull --tag githubplanet:ci .
