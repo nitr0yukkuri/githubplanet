@@ -1,0 +1,5 @@
+project_id   = "replace-with-your-google-cloud-project-id"
+service_name = "githubplanet-git"
+region       = "asia-northeast2"
+domains      = ["githubplanet.dev"]
+
