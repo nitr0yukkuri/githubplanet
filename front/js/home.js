@@ -80,8 +80,9 @@ async function fetchHomeApi(input, options = {}, timeoutMs = HOME_API_TIMEOUT_MS
     }
 }
 
+// WebSocketを通さないプロキシでも接続できるよう、Pollingから開始してWebSocketへ昇格する。
 const socket = io({
-    transports: ['websocket']
+    transports: ['polling', 'websocket']
 });
 
 const homeRoute = resolveHomeRoute(window.location.pathname, window.location.search);
