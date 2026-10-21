@@ -212,6 +212,7 @@ const server = app.listen(port, '0.0.0.0', () => {
     console.log(`Server running on port ${port}`);
 });
 
+// Cloud Run直URLへ切り替えたPollingフォールバックは、公開サイトのOriginだけ許可する。
 io = new Server(server, { cors: { origin: publicBaseUrl } });
 // HTTPログの400だけでは拒否理由が分からないため、WebSocket失敗の必要項目だけ記録する。
 io.engine.on('connection_error', (error) => {
