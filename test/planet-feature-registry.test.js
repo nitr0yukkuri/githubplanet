@@ -17,6 +17,7 @@ test('registers every language feature behind one frontend boundary', () => {
     for (const feature of planetFeatures) {
         assert.equal(typeof feature.matches, 'function', feature.id);
         assert.equal(typeof feature.createMaterial, 'function', feature.id);
+        assert.equal(typeof feature.cardTheme?.id, 'string', feature.id);
         if (feature.update) assert.equal(typeof feature.update, 'function', feature.id);
     }
 });
