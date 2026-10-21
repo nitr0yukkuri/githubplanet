@@ -229,7 +229,7 @@ test('loads language history in chronological order for one GitHub account', asy
         }
     });
 
-    assert.deepEqual(await repository.findLanguageHistoryByGithubId(42), rows);
+    assert.deepEqual(await repository.findLanguageHistoryByGithubId(42), expected);
     assert.deepEqual(calls[0][1], [42]);
     assert.match(calls[0][0], /FROM planet_language_snapshots/);
     assert.match(calls[0][0], /WHERE github_id = \$1/);

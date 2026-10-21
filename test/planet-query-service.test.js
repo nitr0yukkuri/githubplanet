@@ -95,7 +95,12 @@ test('uses the same random fallback order and delegates title persistence', asyn
 });
 
 test('delegates language history reads to the repository by GitHub account id', async () => {
-    const expected = [{ main_language: 'Rust', planet_color: '#dea584' }];
+    const expected = [{
+        capturedAt: '2025-01-01T00:00:00.000Z',
+        mainLanguage: 'Rust',
+        planetColor: '#dea584',
+        languagePercentages: { Rust: 100 }
+    }];
     const calls = [];
     const service = createPlanetQueryService({
         repository: {

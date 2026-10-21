@@ -360,10 +360,10 @@ test('returns language history only for the authenticated account', async () => 
             async getLanguageHistoryByGithubId(githubId) {
                 requestedIds.push(githubId);
                 return [{
-                    captured_at: '2025-01-01T00:00:00.000Z',
-                    main_language: 'JavaScript',
-                    planet_color: '#f1e05a',
-                    language_percentages: { JavaScript: 100 }
+                    capturedAt: '2025-01-01T00:00:00.000Z',
+                    mainLanguage: 'JavaScript',
+                    planetColor: '#f1e05a',
+                    languagePercentages: { JavaScript: 100 }
                 }];
             }
         },

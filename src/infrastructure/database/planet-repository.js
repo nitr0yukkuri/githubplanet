@@ -123,7 +123,13 @@ export function createPlanetRepository(pool, {
                 WHERE github_id = $1
                 ORDER BY captured_at ASC
             `, [githubId]);
-            return result.rows;
+            // DB列名はRepositoryで変換し、Application層へSQLスキーマを漏らさない。
+            return result.rows.map((row) => ({
+                capturedAt: row.captured_at,
+                mainLanguage: row.main_language,
+                planetColor: row.planet_color,
+                languagePercentages: row.language_percentages
+            }));
         },
 
         async findLanguageColor(language) {

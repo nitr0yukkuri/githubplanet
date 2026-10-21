@@ -102,10 +102,10 @@ export function registerPlanetRoutes(app, {
             const rows = await planetQueryService.getLanguageHistoryByGithubId(githubId);
             res.json({
                 history: rows.map((row) => ({
-                    capturedAt: row.captured_at,
-                    mainLanguage: row.main_language,
-                    planetColor: row.planet_color,
-                    languagePercentages: row.language_percentages || {}
+                    capturedAt: row.capturedAt,
+                    mainLanguage: row.mainLanguage,
+                    planetColor: row.planetColor,
+                    languagePercentages: row.languagePercentages || {}
                 }))
             });
         } catch (error) {
