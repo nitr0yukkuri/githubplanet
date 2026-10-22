@@ -15,9 +15,9 @@
 
 ## GitHub Planetとは
 
-GitHub Planetは、開発者のGitHub活動を宇宙空間の3D惑星へ変換します。所有する公開リポジトリの言語構成、コントリビューション、Star、外部リポジトリへの貢献などを集計し、惑星の色・表面・大きさ・回転・周囲の星・実績へ反映します。GitHubでピン留めした代表作品は惑星の言語集計と分け、作品ごとの構成言語を表示します。言語比率はリポジトリ全体の構成を表し、本人が追加したコードだけの比率ではありません。
+GitHub Planetは、開発者のGitHub活動を、宇宙空間に浮かぶ3D惑星として表現します。所有する公開リポジトリの言語構成、コントリビューション、Star、外部リポジトリへの貢献などを集計し、その結果を惑星の色、表面、大きさ、回転、周囲の星、実績に反映します。GitHubでピン留めした代表作品は惑星全体の言語集計から分け、作品ごとの構成言語を表示します。言語比率はリポジトリ全体の構成を表し、本人が追加したコードだけの比率ではありません。
 
-この作品の中心は、数字を一覧で見ることではありません。自分の開発履歴を直接回転させ、表面の質感や言語固有のエフェクトを観測し、他の開発者の惑星と見比べられることにあります。
+この作品の中心は、数字の一覧ではなく、自分の開発履歴を反映した惑星を回転させて表面の質感や言語ごとの表現を観察し、他の開発者の惑星と見比べられることにあります。
 
 ## 🎬 まずは1分で体験
 
@@ -28,18 +28,18 @@ GitHub Planetは、開発者のGitHub活動を宇宙空間の3D惑星へ変換�
 3. 実績や言語ごとの表現を確認する
 4. 言語別ショーケースを切り替えて比較する
 
-このデモは実在のGitHubユーザーや本番データベースに依存しない固定データです。
+このデモでは固定データを使っており、実在のGitHubユーザーや本番データベースに依存しません。
 
 ## 主な体験
 
-- **自分だけの惑星:** GitHub OAuth後に取得した活動データから、惑星の個性を生成します。
-- **3D観測:** Three.js / WebGLの惑星を回転させ、ステータスドロワーで言語構成・コントリビューション・称号を確認できます。
-- **言語固有の表現:** 同じ色違いの球体ではなく、言語ごとに表面マテリアル、シェーダー、外殻、風、砂塵、結晶などを切り替えます。
-- **宇宙の探索:** ユーザー名検索やランダム訪問で、保存済みの他ユーザーの惑星を観測できます。
-- **リアルタイム流星:** GitHub Push WebhookをSocket.IOで配信し、変更された言語と変更量を流星の色・大きさとして表示します。
-- **実績と称号:** 初めての惑星、コントリビューション数、Star、外部リポジトリへの貢献、使用言語数などの条件で実績と称号を解除できます。
-- **プロフィールカード:** 惑星を横長の静止画カードまたはアニメーションGIFとしてGitHubプロフィールに貼れます。
-- **日英対応:** ホーム、カード、実績、設定、認証の主要導線を日本語・英語で提供します。
+- **自分だけの惑星:** GitHub OAuthで取得した活動データをもとに、個性のある惑星を生成します。
+- **3D観測:** Three.js / WebGLで惑星を3D表示して回転させ、ステータスドロワーで言語構成、コントリビューション、称号を確認できます。
+- **言語固有の表現:** 言語ごとに球体の色だけでなく、表面マテリアル、シェーダー、外殻、風、砂塵、結晶なども切り替えます。
+- **宇宙の探索:** ユーザー名で検索したりランダムに訪問したりして、保存済みの他のユーザーの惑星を観測できます。
+- **リアルタイム流星:** GitHub Push WebhookのイベントをSocket.IOで配信し、変更された言語と変更量に応じて流星の色と大きさを表示します。
+- **実績と称号:** 初めての惑星、コントリビューション数、Star、外部リポジトリへの貢献、使用言語数などを条件に、実績と称号を解除できます。
+- **プロフィールカード:** 惑星を横長の静止画カードやアニメーションGIFにして、GitHubプロフィールに掲載できます。
+- **日英対応:** ホーム、カード、実績、設定、認証の主要な導線は日本語と英語に対応しています。
 
 ## データが惑星になるまで
 
@@ -72,18 +72,18 @@ GitHub Push Webhook → Express → Socket.IO → 閲覧中のブラウザに流
 | 外部所有リポジトリへの貢献・マージ済みPR | 外部貢献・ファーストコンタクト系実績 |
 | Pushされたファイルの拡張子・変更量 | リアルタイム流星の言語色・大きさ |
 
-集計値にはドメイン上限があります。累計コントリビューションは最大`99,999`、週間コントリビューションは最大`100`として扱います。未登録言語は、設定されている場合のみGeminiを使って色と惑星名のフォールバックを生成します。
+集計値にはドメイン上限があり、累計コントリビューションは最大`99,999`、週間コントリビューションは最大`100`までです。未登録言語の色と惑星名のフォールバックは、Geminiが設定されている場合に限り生成します。
 
 ## 惑星レンダリングの構成
 
-惑星は一枚のエフェクトではなく、複数のレイヤーを組み合わせて描画します。
+惑星はひとつのエフェクトだけで描画するのではなく、複数のレイヤーを組み合わせて描画します。
 
-1. **宇宙背景:** `front/img/skybox/` の空間テクスチャ。
-2. **惑星表面:** `front/img/2k_mars.jpg` をベースにした球体、法線・照明・AO。
-3. **言語別表現:** 主言語に応じたマテリアルや外殻、風、葉、結晶、砂塵、構造表現。
-4. **大気・オーラ:** 言語や活動量に応じた縁取り、発光、風のウェイク。
-5. **活動の星:** 累計コントリビューションから計算した周囲の星。
-6. **流星:** Webhookから配信される一時的なイベント表現。
+1. **宇宙背景:** `front/img/skybox/`の空間テクスチャを使います。
+2. **惑星表面:** `front/img/2k_mars.jpg`をベースにした球体に、法線、照明、AOを適用します。
+3. **言語別表現:** 主言語に応じて、マテリアル、外殻、風、葉、結晶、砂塵、構造を表現します。
+4. **大気・オーラ:** 言語や活動量に応じて縁取りや発光を加え、風のウェイクを表現します。
+5. **活動の星:** 累計コントリビューションから計算した星を惑星の周囲に表示します。
+6. **流星:** Webhookから配信される一時的なイベントを流星として表示します。
 
 ### 現在の言語別ビジュアル
 
@@ -108,11 +108,11 @@ GitHub Push Webhook → Express → Socket.IO → 閲覧中のブラウザに流
 
 対応言語のカタログと色定義は、専用レンダラーの一覧とは別に `src/domain/planet/constants.js` で管理しています。未登録言語でも、色と名前のフォールバックによって惑星データを保持できます。
 
-Pythonには構造的な地表と、対をなす軌跡を表示する言語別表現があります。
+Python向けの表現では、構造的な地表とそれに対応する軌跡を表示します。
 
 ## 言語別ショーケース
 
-ショーケースは実在ユーザーやデータベースに依存しない固定データです。すべて累計`2,000`、週間`24`、サイズ係数`2`の同じ条件で、言語固有の違いを比較できます。
+各ショーケースでは、実在ユーザーやデータベースに依存しない固定データを使います。累計コントリビューションを`2,000`、週間コントリビューションを`24`、サイズ係数を`2`に固定し、言語ごとの表現を比較できます。
 
 <table>
   <tr>
@@ -197,7 +197,7 @@ Pythonには構造的な地表と、対をなす軌跡を表示する言語別�
 
 カードを画像付きでまとめた一覧は[カードギャラリー](docs/cards/README.md)（[English](docs/cards/README.en.md)）を参照してください。
 
-ローカルでは、DBなしでも次のURLで確認できます。
+ローカル環境ではDBなしでも、次のURLから確認できます。
 
 ```text
 http://localhost:3000/showcase/typescript
@@ -217,7 +217,7 @@ http://localhost:3000/demo?showcase=ruby
 | 実績 | `/achievements` | 実績と達成率の確認 |
 | 設定 | `/settings` | 解放済み称号の組み合わせを保存 |
 
-英語画面は `/en` または `/english` プレフィックスで利用できます。
+英語版の画面は`/en`または`/english`のプレフィックスで利用できます。
 
 ### 主なAPI
 
@@ -236,15 +236,15 @@ http://localhost:3000/demo?showcase=ruby
 
 ### 静止カード（標準）
 
-GitHubプロフィールのREADMEには、まず静止カードを使うのが簡単です。追加のリポジトリファイルやActionsは必要ありません。
+GitHubプロフィールのREADMEには、静止カードをそのまま貼り付けられます。リポジトリへのファイル追加やGitHub Actionsの設定は不要です。
 
 ```markdown
 [![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet.dev/card.html?username=ユーザー名&fix=true)](https://githubplanet.dev/card.html?username=ユーザー名)
 ```
 
-### 任意（GitHub Actions使用）：動くGIFカード
+### アニメーションGIFカード（任意、GitHub Actionsを使用）
 
-惑星の動きも表示したい場合は、プロフィールREADMEリポジトリから再利用可能ワークフローを呼び出します。GitHub **Actions** の **Update Planet Card** を一度手動実行すると、以降はスケジュールで更新できます。
+惑星の動きを表示する場合は、プロフィールREADMEのリポジトリから再利用可能ワークフローを呼び出します。GitHub **Actions** の **Update Planet Card** を一度手動で実行すると、以降はスケジュールに沿って更新できます。
 
 ```yaml
 name: Update Planet Card
@@ -283,21 +283,21 @@ jobs:
           git push
 ```
 
-生成物の検証には、次のチェックも含めます。
+生成物がGIF画像であることを、次のコマンドで確認できます。
 
 ```bash
 file planet-card.gif | grep -q "GIF image data"
 ```
 
-より完全な公開用ワークフローは `.github/workflows/generate-profile-card-gif.yml` と `.github/workflows/update-card.yml` を参照してください。公式リポジトリの定期ワークフローでは、プロフィールカードと11種類のショーケースGIFをPlaywrightとFFmpegで生成し、`card-assets` ブランチへ公開します。
+公開時の詳しい処理は`.github/workflows/generate-profile-card-gif.yml`と`.github/workflows/update-card.yml`を参照してください。公式リポジトリの定期実行ワークフローでは、プロフィールカードと11種類のショーケースGIFをPlaywrightとFFmpegで生成し、`card-assets`ブランチへ公開します。
 
-生成されたGIFを貼る場合は、次の形式です。
+生成したGIFをプロフィールREADMEに表示する場合は、次の形式を使います。
 
 ```markdown
 [![GitHub Planet](https://raw.githubusercontent.com/GitHubユーザー名/GitHubユーザー名/main/planet-card.gif)](https://githubplanet.dev/card.html?username=GitHubユーザー名)
 ```
 
-公式プロフィールカードの生成物は、次のURL形式でも参照できます。
+公式プロフィールカードのGIFは、次のURLから取得できます。
 
 ```text
 https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/profile_card.gif
@@ -305,7 +305,7 @@ https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/profile_
 
 ## 技術構成
 
-GitHub Planetは、Node.jsアプリケーションの中を責務ごとに分けたレイヤードなモジュラーモノリスです。
+GitHub Planetは、Node.jsアプリケーションを責務ごとのレイヤーに分けたモジュラーモノリスです。
 
 | レイヤー | 技術 | 主な責務 |
 | --- | --- | --- |
@@ -337,7 +337,7 @@ scripts/                          カード録画、性能計測、DB補助
 test/                             Node.jsテスト
 ```
 
-依存方向は `Presentation → Application → Domain` を基本とし、外部サービスの具体的な通信は `Infrastructure` に閉じ込めます。起動時はDBが存在する場合に適用済みマイグレーションを検証し、マイグレーションの実行自体は `npm run migrate` に分離しています。
+依存方向は`Presentation → Application → Domain`を基本とし、外部サービスの具体的な通信は`Infrastructure`に閉じ込めます。起動時はDBがある場合に適用済みマイグレーションを検証し、実行は`npm run migrate`で別に行います。
 
 ## セットアップ
 
@@ -372,7 +372,7 @@ SYSTEM_API_KEY=local-system-key
 GITHUB_WEBHOOK_SECRET=local-webhook-secret
 ```
 
-ローカル環境のOAuth callback URLは、実行ポートから`http://localhost:<PORT>/callback`として組み立てられます。本番環境では`GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`、`CALLBACK_URL`を使います。
+ローカル環境のOAuth callback URLは、実行ポートに応じて`http://localhost:<PORT>/callback`になります。本番環境では`GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`、`CALLBACK_URL`を使います。
 
 ### 2. Docker Composeで起動（推奨）
 
@@ -380,13 +380,13 @@ GITHUB_WEBHOOK_SECRET=local-webhook-secret
 docker compose up --build
 ```
 
-ComposeはPostgreSQL、マイグレーション、Node.jsアプリを起動します。マイグレーションが成功してからアプリが起動する構成です。
+Docker ComposeはPostgreSQL、マイグレーション、Node.jsアプリを起動します。マイグレーションが成功してからアプリが起動します。
 
-ブラウザで <http://localhost:3000/> を開きます。停止は`Ctrl+C`です。
+ブラウザで <http://localhost:3000/> を開きます。アプリの停止には`Ctrl+C`を使います。
 
 ### 3. ホスト上で起動する場合
 
-PostgreSQLを用意し、`DATABASE_URL`をその接続先にしたうえで実行します。
+PostgreSQLを用意し、`DATABASE_URL`に接続先を設定してから、次のコマンドを実行します。
 
 ```bash
 npm ci
@@ -402,7 +402,7 @@ npm run dev
 
 ### DBなしでショーケースだけ確認する場合
 
-開発環境では`DATABASE_URL`を設定しない状態でもアプリを起動できます。この場合、DB保存・ログイン後の惑星・ユーザー検索・ランダム検索は利用できませんが、固定ショーケースAPIとショーケース画面は確認できます。
+開発環境では`DATABASE_URL`を設定しなくてもアプリを起動できます。DBへの保存、ログイン後の惑星表示、ユーザー検索、ランダム検索は利用できませんが、固定ショーケースAPIと画面は確認できます。
 
 ```bash
 $env:PORT=3000
@@ -417,7 +417,7 @@ http://localhost:3000/api/planets/showcase/ruby
 
 ### テスト用シード惑星
 
-CSSの固定データをPostgreSQLへ投入するCompose profileがあります。
+CSSの固定データをPostgreSQLに投入するCompose profileを利用できます。
 
 ```bash
 docker compose --profile css-test up --build
@@ -454,7 +454,7 @@ npm run migrate         # 未適用DBマイグレーションを適用
 npm test                # 直列実行の全テスト
 ```
 
-性能調査用のスクリプトも用意しています。
+性能を調査するスクリプトも用意しています。
 
 ```bash
 npm run perf:compare-random
@@ -464,10 +464,9 @@ npm run perf:random-http
 
 ### マイグレーションの運用
 
-- migrationは未使用の次の3桁番号で追加し、適用済みファイルの内容は変更・再利用しません。
-- 適用済みマイグレーションの内容は変更せず、新しい番号を追加します。
+- migrationは未使用の次の3桁番号で追加し、適用後はファイルの内容を変更・再利用しません。
 - 起動時は`schema_migrations`のchecksumを検証します。
-- `002`と`003`は、ユーザー名検索とランダム検索用のPostgreSQL indexを`CONCURRENTLY`で作成します。
+- `002`と`003`はユーザー名検索とランダム検索用のPostgreSQL indexを`CONCURRENTLY`で作成します。
 - 本番起動前に、必ず`npm run migrate`を実行します。
 
 ## 自動化
@@ -476,16 +475,16 @@ npm run perf:random-http
 - `generate-profile-card-gif.yml`: 他リポジトリから呼び出せるプロフィール用GIF生成ワークフロー。
 - `update-card.yml`: テスト、デプロイ済みショーケースのSmoke test、Playwright録画、FFmpeg変換、`card-assets`ブランチへの公開。
 
-GIF生成では、Playwrightでカードを録画し、FFmpegで`800x266`のGIFへ変換します。生成物は10 MiB以下であることを検証してから公開します。
+GIF生成ではPlaywrightでカードを録画し、FFmpegで`800x266`のGIFへ変換します。生成物が10 MiB以下であることを確認してから公開します。
 
 ## セキュリティと運用上の注意
 
 - `.env`、OAuth client secret、Gemini API key、Webhook secretはコミットしないでください。
 - 本番環境では`DATABASE_URL`がない場合、起動を失敗させます。
-- GitHub OAuth callbackにはstateとPKCE verifierを使い、callback時に照合します。
+- GitHub OAuthではstateとPKCE verifierを使い、callback時に照合します。
 - 本番のPush Webhookでは`GITHUB_WEBHOOK_SECRET`を設定し、署名検証を有効にしてください。
 - カードページは共有用途のため、通常ページと異なる埋め込みポリシーを使います。カードへ渡すユーザー名や署名付きURLの扱いを変更する場合は、`src/presentation/http/page-routes.js`を確認してください。
-- 外部APIにはタイムアウトを設定しています。タイムアウト時は既存データやフォールバックを使える箇所がありますが、実データ取得に失敗した場合は無理に新しい惑星を保存しません。
+- 外部APIにはタイムアウトを設定しています。タイムアウト時に既存データやフォールバックを使える箇所があります。実データの取得に失敗した場合は、新しい惑星を無理に保存しません。
 
 ## ライセンス
 
@@ -505,4 +504,5 @@ GIF生成では、Playwrightでカードを録画し、FFmpegで`800x266`のGIF�
     <img width="720" alt="lenagig's planet card" src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet.dev/card.html?username=lenagig&amp;fix=true">
   </a>
 </div>
+
 

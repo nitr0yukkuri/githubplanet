@@ -1,6 +1,25 @@
 name: Update Animated Planet Card
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/update-card.yml
+      - card.html
+      - front/css/card.css
+      - front/img/2k_mars.jpg
+      - front/js/card.js
+      - front/js/card-feature-presentation.js
+      - front/js/i18n.js
+      - front/js/language-composition-trails.js
+      - front/js/perl-ocean-preview.js
+      - front/js/planet-activity.js
+      - front/js/planet-features/**
+      - front/js/rust-planet-preview.js
+      - front/js/visible-animation-loop.js
+      - front/js/*-planet-*.js
+      - scripts/record-profile-card.mjs
   schedule:
     # Daily at 00:00 UTC.
     - cron: '0 0 * * *'
@@ -22,6 +41,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          # マージ前後の差分から、本番反映を待つカード用ファイルを特定する。
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Node.js
@@ -66,6 +87,71 @@ jobs:
             console.log(`Smoke test passed: ${check.path}`);
           }
           NODE
+
+      - name: Wait for merged card assets to reach production
+        if: github.event_name == 'push'
+        env:
+          BASE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+          CARD_BASE_URL: https://githubplanet.dev
+        run: |
+          set -euo pipefail
+
+          mapfile -t card_files < <(
+            git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- \
+              card.html \
+              front/css/card.css \
+              front/img/2k_mars.jpg \
+              front/js/card.js \
+              front/js/card-feature-presentation.js \
+              front/js/i18n.js \
+              front/js/language-composition-trails.js \
+              front/js/perl-ocean-preview.js \
+              front/js/planet-activity.js \
+              front/js/planet-features \
+              front/js/rust-planet-preview.js \
+              front/js/visible-animation-loop.js \
+              ':(glob)front/js/*-planet-*.js'
+          )
+
+          if [ "${#card_files[@]}" -eq 0 ]; then
+            echo "No public card assets changed in this push."
+            exit 0
+          fi
+
+          deadline=$((SECONDS + 900))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            all_assets_current=true
+
+            for file in "${card_files[@]}"; do
+              # 削除された言語モジュールは、残るカード本体の一致確認で判定する。
+              [ -f "$file" ] || continue
+
+              expected="$(sha256sum "$file" | cut -d' ' -f1)"
+              if ! actual="$(curl --fail --silent --show-error --max-time 20 \
+                --header 'Cache-Control: no-cache' \
+                "$CARD_BASE_URL/$file?card_deploy_check=$HEAD_SHA" | sha256sum | cut -d' ' -f1)"; then
+                all_assets_current=false
+                break
+              fi
+
+              if [ "$actual" != "$expected" ]; then
+                all_assets_current=false
+                break
+              fi
+            done
+
+            if [ "$all_assets_current" = true ]; then
+              echo "Production is serving the merged card assets."
+              exit 0
+            fi
+
+            echo "Production card assets are not updated yet; checking again in 20 seconds."
+            sleep 20
+          done
+
+          echo "Timed out before the merged card assets reached production; generated GIFs were not published."
+          exit 1
 
       - name: Install Playwright browser
         run: npx --no-install playwright install chromium --with-deps
