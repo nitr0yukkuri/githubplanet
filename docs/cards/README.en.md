@@ -1,5 +1,7 @@
 # GitHub Planet Card Gallery
 
+Cards without descriptions: [view the cards only](README.cards-only.en.md)
+
 This is the gallery of language showcase planet cards. Every card uses fixed data and the production read-only showcase API. Each card includes a short description of its visual identity.
 
 <table>
