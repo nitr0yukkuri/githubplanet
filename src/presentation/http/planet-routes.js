@@ -30,6 +30,7 @@ function writeAnonymousRandomCookie(res, planetId) {
 export function registerPlanetRoutes(app, {
     planetService,
     planetQueryService,
+    authoredLanguageHistoryService,
     cacheDuration,
     randomHistoryStorage = 'cookie',
     randomPerformance = null
@@ -110,6 +111,47 @@ export function registerPlanetRoutes(app, {
             });
         } catch (error) {
             console.error('[API /me/language-history Error]', error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    });
+
+    app.get('/api/me/authored-language-history', async (req, res) => {
+        const user = req.session?.planetData?.user;
+        if (!user?.id) return res.status(401).json({ error: 'Not logged in' });
+        if (!authoredLanguageHistoryService) {
+            return res.status(503).json({ error: 'History unavailable' });
+        }
+        res.set('Cache-Control', 'private, no-store');
+
+        try {
+            res.json(await authoredLanguageHistoryService.getHistory(user.id));
+        } catch (error) {
+            console.error('[API /me/authored-language-history Error]', error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    });
+
+    app.post('/api/me/authored-language-history/scan', async (req, res) => {
+        const user = req.session?.planetData?.user;
+        if (!user?.id || !req.session.github_token) {
+            return res.status(401).json({ error: 'Not logged in' });
+        }
+        if (!authoredLanguageHistoryService) {
+            return res.status(503).json({ error: 'History unavailable' });
+        }
+        res.set('Cache-Control', 'private, no-store');
+
+        try {
+            const scanStarted = await authoredLanguageHistoryService.startScan({
+                githubId: user.id,
+                login: user.login,
+                accessToken: req.session.github_token,
+                accountCreatedAt: user.created_at
+            });
+            const result = await authoredLanguageHistoryService.getHistory(user.id);
+            res.json({ ...result, scanStarted });
+        } catch (error) {
+            console.error('[API /me/authored-language-history/scan Error]', error);
             res.status(500).json({ error: 'Internal Server Error' });
         }
     });
