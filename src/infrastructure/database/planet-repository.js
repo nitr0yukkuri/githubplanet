@@ -108,6 +108,7 @@ export function createPlanetRepository(pool, {
     let initializedPlanetCount = null;
     let planetCountUpdatedAt = 0;
     let countRefreshPromise = null;
+    let lastWebhookDeliveryCleanupAt = 0;
 
     async function readPlanetCount() {
         const result = await pool.query('SELECT COUNT(*)::bigint AS count FROM planets');
@@ -157,6 +158,32 @@ export function createPlanetRepository(pool, {
 
     return {
         initializeRandomQueryStrategy,
+
+        async claimGithubWebhookDelivery(deliveryId, payloadHash) {
+            if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(deliveryId || '')) {
+                throw new Error('Invalid GitHub webhook delivery ID');
+            }
+            if (!/^[0-9a-f]{64}$/.test(payloadHash || '')) {
+                throw new Error('Invalid GitHub webhook payload hash');
+            }
+
+            const now = Date.now();
+            if (now - lastWebhookDeliveryCleanupAt >= 60 * 60 * 1_000) {
+                await pool.query(`
+                    DELETE FROM github_webhook_deliveries
+                    WHERE received_at < NOW() - INTERVAL '30 days'
+                `);
+                lastWebhookDeliveryCleanupAt = now;
+            }
+
+            const result = await pool.query(`
+                INSERT INTO github_webhook_deliveries (delivery_id, payload_sha256)
+                VALUES ($1::uuid, $2)
+                ON CONFLICT DO NOTHING
+                RETURNING delivery_id
+            `, [deliveryId, payloadHash]);
+            return result.rowCount === 1;
+        },
 
         async findByGithubId(githubId) {
             const result = await pool.query(

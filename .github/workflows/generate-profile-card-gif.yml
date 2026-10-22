@@ -21,14 +21,15 @@ jobs:
 
     steps:
       - name: Checkout GIF generator
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: nitr0yukkuri/githubplanet
           ref: 4ced8657ee24c3cb257e2fb41517a53765ca1a0d
           path: .githubplanet-generator
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24.22.1'
           cache: npm
@@ -37,8 +38,8 @@ jobs:
       - name: Install generator dependencies
         working-directory: .githubplanet-generator
         run: |
-          npm ci
-          npm install --no-save --package-lock=false playwright@1.58.2
+          npm ci --ignore-scripts
+          npm install --ignore-scripts --no-save --package-lock=false playwright@1.58.2
           npx playwright install chromium --with-deps
 
       - name: Install FFmpeg
@@ -83,7 +84,7 @@ jobs:
           test "$size_bytes" -le 10485760
 
       - name: Upload GIF
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: planet-card
           path: planet-card.gif

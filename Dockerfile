@@ -4,7 +4,7 @@ RUN node -e 'const [major, minor, patch] = process.versions.node.split(".").map(
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts
 
 COPY . .
 

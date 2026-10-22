@@ -10,9 +10,11 @@ export function registerPageRoutes(app, {
     isProduction,
     systemApiKey,
     sessionSecret,
-    publicBaseUrl = DEFAULT_PUBLIC_BASE_URL
+    publicBaseUrl = DEFAULT_PUBLIC_BASE_URL,
+    cardCaptureBaseUrl = isProduction ? publicBaseUrl : undefined
 }) {
     const normalizedPublicBaseUrl = publicBaseUrl.replace(/\/+$/, '');
+    const normalizedCardCaptureBaseUrl = cardCaptureBaseUrl?.replace(/\/+$/, '');
     const pageTitles = {
         'index.html': 'GitHub Planet',
         'achievements.html': 'Achievements - GitHub Planet',
@@ -118,13 +120,17 @@ export function registerPageRoutes(app, {
         }
 
         const targetUsername = (systemApiKey && apiKey === systemApiKey) ? username : loggedInUser;
-        let protocol = req.headers['x-forwarded-proto'] || req.protocol;
-        if (req.get('host') && req.get('host').includes('onrender.com')) protocol = 'https';
-
-        const host = req.headers['x-forwarded-host'] || req.get('host');
         const timestamp = Date.now();
         const signature = generateSignature(targetUsername);
-        const targetUrl = `${protocol}://${host}/card.html?username=${targetUsername}&fix=true&ts=${timestamp}&sig=${signature}`;
+        if (!normalizedCardCaptureBaseUrl) {
+            return res.status(503).send('Card capture base URL is not configured');
+        }
+        const canonicalCardUrl = new URL('/card.html', normalizedCardCaptureBaseUrl);
+        canonicalCardUrl.searchParams.set('username', targetUsername);
+        canonicalCardUrl.searchParams.set('fix', 'true');
+        canonicalCardUrl.searchParams.set('ts', String(timestamp));
+        canonicalCardUrl.searchParams.set('sig', signature);
+        const targetUrl = canonicalCardUrl.href;
 
         console.log(`[Card] Redirecting generation for: ${targetUrl}`);
         res.redirect(`https://image.thum.io/get/png/width/800/crop/400/noanimate/wait/3/${targetUrl}`);
