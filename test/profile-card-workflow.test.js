@@ -23,6 +23,8 @@ test('keeps caller write access out of the reusable GIF generator', async () => 
     assert.match(updateWorkflow, /publish-card-assets:[\s\S]*?contents: write/);
     assert.match(updateWorkflow, /if: github\.ref == format\('refs\/heads\/\{0\}', github\.event\.repository\.default_branch\)/);
     assert.match(updateWorkflow, /actions\/download-artifact@[0-9a-f]{40}/);
+    assert.match(updateWorkflow, /push:[\s\S]*?branches:[\s\S]*?- main[\s\S]*?paths:/);
+    assert.match(updateWorkflow, /Wait for merged card assets to reach production/);
     assert.doesNotMatch(updateWorkflow, /uses:\s+[^\s]+@(v\d+|main|master)\b/);
 });
 
@@ -58,8 +60,8 @@ test('documents static cards as the default and animated cards as optional', asy
     ]);
 
     assert.match(readme, /静止カード（標準）/);
-    assert.match(readme, /任意（GitHub Actions使用）：動くGIFカード/);
-    assert.match(readme, /Actions.+Update Planet Card.+手動実行/s);
+    assert.match(readme, /アニメーションGIFカード（任意、GitHub Actionsを使用）/);
+    assert.match(readme, /Actions.+Update Planet Card.+手動で実行/s);
     assert.match(englishReadme, /Static card \(default\)/);
     assert.match(englishReadme, /Optional \(uses GitHub Actions\): Animated GIF card/);
     assert.match(englishReadme, /Actions.+manually run.+Update Planet Card/s);

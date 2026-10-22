@@ -182,7 +182,8 @@ registerPageRoutes(app, {
     isProduction,
     systemApiKey: process.env.SYSTEM_API_KEY,
     sessionSecret: effectiveSessionSecret,
-    publicBaseUrl
+    publicBaseUrl,
+    cardCaptureBaseUrl: process.env.PUBLIC_BASE_URL
 });
 registerAuthRoutes(app, {
     githubClient,
