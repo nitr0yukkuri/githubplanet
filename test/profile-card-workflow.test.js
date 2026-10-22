@@ -25,6 +25,16 @@ test('keeps caller write access out of the reusable GIF generator', async () => 
     assert.match(updateWorkflow, /actions\/download-artifact@[0-9a-f]{40}/);
     assert.match(updateWorkflow, /push:[\s\S]*?branches:[\s\S]*?- main[\s\S]*?paths:/);
     assert.match(updateWorkflow, /Wait for merged card assets to reach production/);
+    const productionAssetWait = updateWorkflow.indexOf(
+        '      - name: Wait for merged card assets to reach production'
+    );
+    const deployedShowcaseSmokeTest = updateWorkflow.indexOf(
+        '      - name: Smoke test deployed showcase routes'
+    );
+    assert.ok(
+        productionAssetWait >= 0 && deployedShowcaseSmokeTest > productionAssetWait,
+        'deployed showcase smoke tests must wait until merged card assets reach production'
+    );
     assert.doesNotMatch(updateWorkflow, /uses:\s+[^\s]+@(v\d+|main|master)\b/);
 });
 
