@@ -31,10 +31,18 @@ export function registerPlanetRoutes(app, {
     planetService,
     planetQueryService,
     authoredLanguageHistoryService,
+    historyDisabledUsernames = [],
     cacheDuration,
     randomHistoryStorage = 'cookie',
     randomPerformance = null
 }) {
+    const disabledHistoryUsernames = new Set(
+        historyDisabledUsernames.map((username) => String(username).trim().toLowerCase()).filter(Boolean)
+    );
+    const isHistoryDisabled = (username) => disabledHistoryUsernames.has(
+        String(username || '').trim().toLowerCase()
+    );
+
     app.get('/api/me', async (req, res) => {
         if (!req.session.planetData) {
             return res.status(401).json({ error: 'Not logged in' });
@@ -96,8 +104,11 @@ export function registerPlanetRoutes(app, {
     app.get('/api/me/language-history', async (req, res) => {
         const githubId = req.session?.planetData?.user?.id;
         if (!githubId) return res.status(401).json({ error: 'Not logged in' });
-        if (!planetQueryService) return res.status(503).json({ error: 'DB unavailable' });
         res.set('Cache-Control', 'private, no-store');
+        if (isHistoryDisabled(req.session?.planetData?.user?.login)) {
+            return res.json({ history: [] });
+        }
+        if (!planetQueryService) return res.status(503).json({ error: 'DB unavailable' });
 
         try {
             const rows = await planetQueryService.getLanguageHistoryByGithubId(githubId);
@@ -118,6 +129,13 @@ export function registerPlanetRoutes(app, {
     app.get('/api/me/authored-language-history', async (req, res) => {
         const user = req.session?.planetData?.user;
         if (!user?.id) return res.status(401).json({ error: 'Not logged in' });
+        if (isHistoryDisabled(user.login)) {
+            res.set('Cache-Control', 'private, no-store');
+            return res.json({
+                history: [],
+                status: { state: 'disabled', ready: false, partial: false }
+            });
+        }
         if (!authoredLanguageHistoryService) {
             return res.status(503).json({ error: 'History unavailable' });
         }
@@ -135,6 +153,14 @@ export function registerPlanetRoutes(app, {
         const user = req.session?.planetData?.user;
         if (!user?.id || !req.session.github_token) {
             return res.status(401).json({ error: 'Not logged in' });
+        }
+        if (isHistoryDisabled(user.login)) {
+            res.set('Cache-Control', 'private, no-store');
+            return res.json({
+                history: [],
+                status: { state: 'disabled', ready: false, partial: false },
+                scanStarted: false
+            });
         }
         if (!authoredLanguageHistoryService) {
             return res.status(503).json({ error: 'History unavailable' });
