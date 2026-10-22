@@ -190,6 +190,11 @@ registerPlanetRoutes(app, {
     planetService,
     planetQueryService,
     authoredLanguageHistoryService,
+    // 一時停止する利用者を限定でき、DBの保存済み履歴は保持する。
+    historyDisabledUsernames: (process.env.PLANET_HISTORY_DISABLED_USERNAMES || '')
+        .split(',')
+        .map((username) => username.trim().toLowerCase())
+        .filter(Boolean),
     cacheDuration: DATA_CACHE_DURATION,
     randomHistoryStorage: process.env.RANDOM_HISTORY_STORAGE || 'cookie',
     randomPerformance
