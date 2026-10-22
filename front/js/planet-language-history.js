@@ -42,7 +42,7 @@ function normalizeSnapshot(snapshot) {
 }
 
 export function buildPlanetLanguageHistory(history, current) {
-    if (!Array.isArray(history) || !current) return [];
+    if (!Array.isArray(history)) return [];
 
     const snapshots = history.map(normalizeSnapshot).filter(Boolean)
         .sort((left, right) => Date.parse(left.capturedAt) - Date.parse(right.capturedAt));
@@ -52,18 +52,20 @@ export function buildPlanetLanguageHistory(history, current) {
         entries.push(snapshot);
     }
 
-    const currentState = {
-        capturedAt: null,
-        mainLanguage: current.mainLanguage || 'Unknown',
-        planetColor: current.planetColor,
-        languagePercentages: percentagesFromPlanet(current),
-        isCurrent: true
-    };
-    if (!/^#[\da-f]{6}$/i.test(currentState.planetColor || '')) return [];
-    if (entries.length && stateSignature(entries.at(-1)) === stateSignature(currentState)) {
-        entries[entries.length - 1] = { ...entries.at(-1), isCurrent: true };
-    } else {
-        entries.push(currentState);
+    if (current) {
+        const currentState = {
+            capturedAt: null,
+            mainLanguage: current.mainLanguage || 'Unknown',
+            planetColor: current.planetColor,
+            languagePercentages: percentagesFromPlanet(current),
+            isCurrent: true
+        };
+        if (!/^#[\da-f]{6}$/i.test(currentState.planetColor || '')) return [];
+        if (entries.length && stateSignature(entries.at(-1)) === stateSignature(currentState)) {
+            entries[entries.length - 1] = { ...entries.at(-1), isCurrent: true };
+        } else {
+            entries.push(currentState);
+        }
     }
 
     return entries.length > 1 ? entries : [];
@@ -94,26 +96,22 @@ export function createPlanetLanguageHistory({ element, onSelect, translate }) {
     let yearStops = [];
     let yearMarkers = [];
     let selectedIndex = -1;
-    let selectedYearStopIndex = -1;
     let dispatchedIndex = -1;
-    let pendingTimer = null;
-
-    function clearPending() {
-        if (pendingTimer !== null) window.clearTimeout(pendingTimer);
-        pendingTimer = null;
-    }
+    let partialHistory = false;
 
     function renderYearMarkers() {
         yearMarkers = [];
         yearsElement?.replaceChildren();
         if (!yearsElement || yearStops.length === 0) return;
 
-        yearStops.forEach((stop, index) => {
+        yearStops.forEach((stop) => {
             const marker = document.createElement('span');
             marker.className = 'planet-language-history-year';
             marker.dataset.year = String(stop.year);
             marker.dataset.selected = 'false';
-            marker.style.left = `${yearStops.length > 1 ? index / (yearStops.length - 1) * 100 : 50}%`;
+            marker.style.left = `${entries.length > 1
+                ? stop.entryIndex / (entries.length - 1) * 100
+                : 50}%`;
             marker.textContent = String(stop.year);
             yearsElement.append(marker);
             yearMarkers.push(marker);
@@ -121,30 +119,34 @@ export function createPlanetLanguageHistory({ element, onSelect, translate }) {
     }
 
     function updateSelection(value) {
-        if (yearStops.length === 0) return;
-        selectedYearStopIndex = Math.max(0, Math.min(yearStops.length - 1, Number(value) || 0));
-        selectedIndex = yearStops[selectedYearStopIndex].entryIndex;
-        slider.value = String(selectedYearStopIndex);
-        const progress = yearStops.length > 1
-            ? selectedYearStopIndex / (yearStops.length - 1) * 100
+        if (entries.length === 0) return;
+        selectedIndex = Math.max(0, Math.min(entries.length - 1, Math.round(Number(value) || 0)));
+        slider.value = String(selectedIndex);
+        const progress = entries.length > 1
+            ? selectedIndex / (entries.length - 1) * 100
             : 0;
         element.style.setProperty('--language-history-progress', `${progress}%`);
-        yearMarkers.forEach((marker) => {
-            marker.dataset.selected = String(Number(marker.dataset.year) === yearStops[selectedYearStopIndex].year);
-        });
         const selected = entries[selectedIndex];
+        const selectedYear = selected.isCurrent
+            ? new Date().getUTCFullYear()
+            : new Date(selected.capturedAt).getUTCFullYear();
+        yearMarkers.forEach((marker) => {
+            marker.dataset.selected = String(Number(marker.dataset.year) === selectedYear);
+        });
         const description = selected.isCurrent
             ? translate('home.languageHistoryNow')
             : new Intl.DateTimeFormat(document.documentElement.lang || 'ja', {
                 year: 'numeric', month: '2-digit', day: '2-digit'
             }).format(new Date(selected.capturedAt));
-        dateOutput.textContent = description;
-        slider.title = description;
-        slider.setAttribute('aria-valuetext', description);
+        const accessibleDescription = partialHistory
+            ? `${description} · ${translate('home.languageHistoryPartial')}`
+            : description;
+        dateOutput.textContent = accessibleDescription;
+        slider.title = accessibleDescription;
+        slider.setAttribute('aria-valuetext', accessibleDescription);
     }
 
     function dispatchSelection() {
-        clearPending();
         if (selectedIndex < 0 || selectedIndex === dispatchedIndex) return;
         dispatchedIndex = selectedIndex;
         onSelect(entries[selectedIndex]);
@@ -152,9 +154,8 @@ export function createPlanetLanguageHistory({ element, onSelect, translate }) {
 
     slider.addEventListener('input', () => {
         updateSelection(slider.value);
-        clearPending();
-        // 言語別シェーダーの再生成を連続させないよう、ドラッグ中はまとめて反映する。
-        pendingTimer = window.setTimeout(dispatchSelection, 180);
+        // 履歴スクラブではGPU資源を作り直さずuniformだけ変えるため、入力へ即時追従させる。
+        dispatchSelection();
     });
     slider.addEventListener('change', dispatchSelection);
     slider.addEventListener('pointerup', dispatchSelection);
@@ -162,30 +163,33 @@ export function createPlanetLanguageHistory({ element, onSelect, translate }) {
 
     return {
         hide() {
-            clearPending();
             entries = [];
             yearStops = [];
             yearMarkers = [];
-            selectedIndex = selectedYearStopIndex = dispatchedIndex = -1;
+            selectedIndex = dispatchedIndex = -1;
+            partialHistory = false;
             yearsElement?.replaceChildren();
+            slider.disabled = true;
             element.hidden = true;
         },
-        show(history, current) {
-            clearPending();
+        show(history, current, { partial = false } = {}) {
             entries = buildPlanetLanguageHistory(history, current);
             yearStops = buildPlanetLanguageYearStops(entries);
-            if (entries.length < 2 || yearStops.length < 2) {
+            if (entries.length < 2 || yearStops.length === 0) {
                 this.hide();
                 return;
             }
             slider.min = '0';
-            slider.max = String(yearStops.length - 1);
+            slider.max = String(entries.length - 1);
             slider.step = '1';
-            selectedYearStopIndex = yearStops.length - 1;
-            selectedIndex = dispatchedIndex = yearStops[selectedYearStopIndex].entryIndex;
+            slider.disabled = false;
+            partialHistory = partial;
+            selectedIndex = entries.length - 1;
+            dispatchedIndex = -1;
             renderYearMarkers();
-            updateSelection(selectedYearStopIndex);
+            updateSelection(selectedIndex);
             element.hidden = false;
+            dispatchSelection();
         }
     };
 }

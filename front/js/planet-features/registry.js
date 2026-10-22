@@ -12,6 +12,7 @@ import * as rust from '../rust-planet-desert.js';
 import * as swift from '../swift-planet-feathers.js';
 import * as typescript from '../typescript-planet-shell.js';
 import * as vue from '../vue-planet-circulation.js';
+import { createLanguageCompositionTrails } from '../language-composition-trails.js';
 
 const CARD_THEMES = Object.freeze({
     c: Object.freeze({ id: 'c-steel', accent: '#c3d0d7', atmosphere: '#728491', highlight: '#b6c3ca', atmospherePosition: '25% 50%', highlightPosition: '75% 32%' }),
@@ -283,18 +284,6 @@ const FEATURE_DEFINITIONS = [
         rotationMultiplier: 0.4,
         createMaterial: ({ THREE, planetTexture }) => (
             python.createPythonPlanetMaterial(THREE, planetTexture)
-        ),
-        createObjects: ({ THREE, radius, direction }) => ({
-            trails: python.createPythonPlanetTrails(
-                THREE,
-                radius,
-                1,
-                'y',
-                direction
-            )
-        }),
-        update: ({ objects, now }) => (
-            python.updatePythonPlanetTrails(objects.trails, now)
         )
     }
 ];
@@ -330,12 +319,24 @@ export function createPlanetFeatureRuntime({
         direction,
         material
     }) || {};
+    const languageTrails = createLanguageCompositionTrails({
+        THREE,
+        data,
+        radius,
+        direction
+    });
     const runtime = {
         id: feature.id,
         language: feature.language,
         material,
         objects,
-        sceneObjects: Object.values(objects).filter(Boolean),
+        sceneObjects: [
+            ...Object.values(objects).filter(Boolean),
+            ...(languageTrails ? [languageTrails.group] : [])
+        ],
+        setLanguageComposition(nextData) {
+            languageTrails?.setLanguageComposition(nextData);
+        },
         rotationMultiplier: feature.rotationMultiplier || 1,
         windAnimationMultiplier: feature.windAnimationMultiplier || 1,
         update(now, context = {}) {
@@ -354,6 +355,7 @@ export function createPlanetFeatureRuntime({
                 ) * runtime.windAnimationMultiplier;
             }
             feature.update?.(updateContext);
+            languageTrails?.update(now);
         },
         dispose() {
             feature.dispose?.({ material, objects });

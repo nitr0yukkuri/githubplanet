@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     buildPlanetLanguageHistory,
-    buildPlanetLanguageYearStops
+    buildPlanetLanguageYearStops,
+    createPlanetLanguageHistory
 } from '../front/js/planet-language-history.js';
 
 test('builds chronological language states and adds the current state when it changed', () => {
@@ -46,6 +47,83 @@ test('does not show a slider when history contains no composition change', () =>
     }], current);
 
     assert.deepEqual(entries, []);
+});
+
+test('keeps contribution history independently of the current planet snapshot', () => {
+    const entries = buildPlanetLanguageHistory([
+        {
+            capturedAt: '2023-03-01T00:00:00.000Z',
+            mainLanguage: 'Python',
+            planetColor: '#306998',
+            languageStats: { Python: 80 }
+        },
+        {
+            capturedAt: '2024-07-01T00:00:00.000Z',
+            mainLanguage: 'Python',
+            planetColor: '#306998',
+            languageStats: { Python: 80, TypeScript: 20 }
+        }
+    ], null);
+
+    assert.equal(entries.length, 2);
+    assert.deepEqual(entries[0].languagePercentages, { Python: 100 });
+    assert.deepEqual(entries[1].languagePercentages, { Python: 80, TypeScript: 20 });
+    assert.deepEqual(buildPlanetLanguageYearStops(entries), [
+        { year: 2023, entryIndex: 0 },
+        { year: 2024, entryIndex: 1 }
+    ]);
+});
+
+test('uses daily history points for slider motion and dispatches the latest state immediately', () => {
+    const listeners = {};
+    const attributes = {};
+    const slider = {
+        addEventListener: (name, handler) => { listeners[name] = handler; },
+        setAttribute: (name, value) => { attributes[name] = value; },
+        value: '0',
+        clientWidth: 400
+    };
+    const dateOutput = { textContent: '' };
+    const years = {
+        children: [],
+        append(marker) { this.children.push(marker); },
+        replaceChildren() { this.children = []; }
+    };
+    const element = {
+        hidden: true,
+        dataset: {},
+        style: { setProperty() {} },
+        querySelector: (selector) => ({
+            '#planet-language-history-slider': slider,
+            '#planet-language-history-date': dateOutput,
+            '#planet-language-history-years': years
+        })[selector]
+    };
+    const selected = [];
+    globalThis.document = {
+        documentElement: { lang: 'en' },
+        createElement: () => {
+            return { dataset: {}, style: {} };
+        }
+    };
+    const timeline = createPlanetLanguageHistory({ element, onSelect: (entry) => selected.push(entry) });
+
+    timeline.show([
+        { capturedAt: '2024-02-01T00:00:00.000Z', mainLanguage: 'Python', planetColor: '#306998', languageStats: { Python: 80 } },
+        { capturedAt: '2024-10-01T00:00:00.000Z', mainLanguage: 'Python', planetColor: '#306998', languageStats: { Python: 70, Rust: 30 } },
+        { capturedAt: '2025-05-01T00:00:00.000Z', mainLanguage: 'Rust', planetColor: '#306998', languageStats: { Python: 60, Rust: 40 } }
+    ], null);
+
+    assert.equal(element.hidden, false);
+    assert.equal(slider.max, '2');
+    assert.equal(slider.value, '2');
+    assert.equal(selected.at(-1).mainLanguage, 'Rust');
+    assert.equal(years.children[1].style.left, '100%');
+    slider.value = '0';
+    listeners.input();
+    assert.equal(selected.at(-1).mainLanguage, 'Python');
+    assert.match(attributes['aria-valuetext'], /2024/);
+    delete globalThis.document;
 });
 
 test('ignores snapshots with invalid dates or colors', () => {
