@@ -722,6 +722,50 @@ html[lang="en"] .planet-title {
     border-radius: 8px;
 }
 
+/* 年ラベルと丸をスライダーの停止位置に合わせる。 */
+.planet-language-history-years {
+    position: relative;
+    width: calc(100% - 12px);
+    height: 16px;
+    margin: 0 6px;
+    pointer-events: none;
+}
+
+.planet-language-history-year {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 0.62rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 14px;
+    white-space: nowrap;
+}
+
+.planet-language-history-year::before {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    width: 12px;
+    height: 12px;
+    box-sizing: border-box;
+    transform: translateX(-50%);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 50%;
+    background: var(--language-history-accent);
+    content: "";
+}
+
+.planet-language-history-year[data-selected="true"] {
+    color: #fff;
+    font-weight: 700;
+}
+
+.planet-language-history-year[data-selected="true"]::before {
+    border: 2px solid #fff;
+    background: #fff;
+}
+
 /* 矢印SVGのスタイル */
 .arrow-icon {
     width: 24px;
