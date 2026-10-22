@@ -27,7 +27,7 @@ The demo does not depend on a real GitHub user or the production database. For r
 
 GitHub Planet is an interactive web experience that transforms a developer's GitHub activity into a personal 3D planet floating in space.
 
-Public repositories, languages, contributions, stars, and contributions to external repositories are collected through GitHub OAuth and reflected in the planet's color, surface, size, rotation speed, surrounding stars, and achievements. C, CSS, C++, Go, TypeScript, JavaScript, and Rust have language-specific visuals such as steel, directional color flow, plasma, wind, atmosphere, defensive shells, and desert dust.
+Public repositories, languages, contributions, stars, and contributions to external repositories are collected through GitHub OAuth and reflected in the planet's color, surface, size, rotation speed, surrounding stars, and achievements. C, CSS, C++, Elm, Go, Perl, TypeScript, JavaScript, and Rust have language-specific visuals such as steel, directional color flow, plasma, wind-shaped vegetation, atmosphere, ocean currents, defensive shells, and desert dust.
 
 When a GitHub Push Webhook arrives, the application derives a shooting star's color and scale from the changed language and change size, then broadcasts it through Socket.IO to connected visitors in real time. Planets can also be explored through user visits, achievements and titles, and shareable static or animated profile cards.
 

@@ -94,6 +94,7 @@ GitHub Push Webhook → Express → Socket.IO → 閲覧中のブラウザに流
 | C | 鋼鉄の表面と控えめなリム | `c-planet-steel.js` |
 | CSS | 一方向に流れる色の地形 | `css-planet-flow.js` |
 | C++ | 安定したプラズマ／稲妻 | `cpp-planet-lightning.js` |
+| Elm | 森と草地がつながる地表の植生 | `elm-planet-vegetation.js` |
 | Go | 風の流れと大気ウェイク | `go-planet-wind.js` |
 | Swift | Go系の風と羽根状パーティクル | `swift-planet-feathers.js` |
 | Vue | 穏やかな風と葉のレイヤー | `vue-planet-circulation.js` |

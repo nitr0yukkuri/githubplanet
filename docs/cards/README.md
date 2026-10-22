@@ -23,6 +23,22 @@
   </tr>
   <tr>
     <td align="center">
+      <strong>Elm — Wind Meadow</strong><br>
+      <sub>森と草地がつながる地表が、風にわずかに揺れる。</sub><br>
+      <a href="https://githubplanet.dev/card.html?showcase=elm&amp;fix=true">
+        <img width="400" alt="Elm showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_elm.gif">
+      </a>
+    </td>
+    <td align="center">
+      <strong>Perl — Ocean Current</strong><br>
+      <sub>深い青の海に、ゆるやかな潮流と控えめな反射が広がる。</sub><br>
+      <a href="https://githubplanet.dev/card.html?showcase=perl&amp;fix=true">
+        <img width="400" alt="Perl showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_perl.gif">
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
       <strong>Go — 風をまとう大気</strong><br>
       <sub>Atmospheric Wind — 風に沿う大気の層が惑星を包み込む。</sub><br>
       <a href="https://githubplanet.dev/card.html?showcase=go&amp;fix=true">
