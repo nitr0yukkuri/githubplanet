@@ -1,0 +1,63 @@
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+import { Rate, Trend } from 'k6/metrics';
+
+const baseUrl = (__ENV.BASE_URL || 'http://127.0.0.1:3000').replace(/\/+$/, '');
+const endpoint = `${baseUrl}/api/planets/random`;
+const errors = new Rate('random_planet_capacity_errors');
+const duration = new Trend('random_planet_capacity_duration', true);
+
+if (!isLocalUrl(baseUrl)) {
+  throw new Error(`ローカルURLだけを指定できます: ${baseUrl}`);
+}
+
+export const options = {
+  scenarios: {
+    random_planet_capacity: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        { duration: '15s', target: 30 },
+        { duration: '30s', target: 50 },
+        { duration: '30s', target: 100 },
+        { duration: '15s', target: 0 },
+      ],
+      gracefulRampDown: '20s',
+    },
+  },
+  thresholds: {
+    http_req_failed: ['rate<0.01'],
+    http_req_duration: ['p(95)<800', 'p(99)<1500'],
+    checks: ['rate>0.99'],
+    random_planet_capacity_errors: ['rate<0.01'],
+  },
+};
+
+export default function capacityTest() {
+  const response = http.get(endpoint, {
+    tags: { endpoint: 'random-planet', scenario: 'capacity' },
+  });
+  const isExpected = response.status === 200;
+
+  errors.add(!isExpected);
+  duration.add(response.timings.duration);
+
+  check(response, {
+    'status is 200': (res) => res.status === 200,
+    'response contains a planet username': (res) => {
+      if (res.status !== 200) return false;
+      try {
+        const body = res.json();
+        return typeof body?.username === 'string';
+      } catch {
+        return false;
+      }
+    },
+  });
+
+  sleep(0.5);
+}
+
+function isLocalUrl(url) {
+  return /^https?:\/\/(localhost|host\.docker\.internal|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(url);
+}
