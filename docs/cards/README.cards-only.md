@@ -10,6 +10,12 @@
     <td align="center"><strong>C++</strong><br><a href="https://githubplanet.dev/card.html?showcase=cpp&amp;fix=true"><img width="800" alt="C++ showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_cpp.gif"></a></td>
   </tr>
   <tr>
+    <td align="center"><strong>Elm</strong><br><a href="https://githubplanet.dev/card.html?showcase=elm&amp;fix=true"><img width="800" alt="Elm showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_elm.gif"></a></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Perl</strong><br><a href="https://githubplanet.dev/card.html?showcase=perl&amp;fix=true"><img width="800" alt="Perl showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_perl.gif"></a></td>
+  </tr>
+  <tr>
     <td align="center"><strong>Go</strong><br><a href="https://githubplanet.dev/card.html?showcase=go&amp;fix=true"><img width="800" alt="Go showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_go.gif"></a></td>
   </tr>
   <tr>
