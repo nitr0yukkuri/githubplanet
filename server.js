@@ -28,6 +28,11 @@ import { createExternalPerformanceReporter } from './src/infrastructure/observab
 const app = express();
 const port = parseInt(process.env.PORT) || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
+const sessionSecret = process.env.SESSION_SECRET;
+if (isProduction && (!sessionSecret || sessionSecret === 'dev_secret')) {
+    throw new Error('SESSION_SECRET must be configured in production and must not use the development placeholder');
+}
+const effectiveSessionSecret = sessionSecret || 'dev_secret';
 const randomPerformance = createRandomPerformanceReporter({
     enabled: process.env.PERF_TRACE_RANDOM === 'true'
 });
@@ -165,7 +170,7 @@ const sessionCookieName = isProduction ? '__session' : 'connect.sid';
 app.use(session({
     name: sessionCookieName,
     store: pool ? new PgSession({ pool, createTableIfMissing: false }) : undefined,
-    secret: process.env.SESSION_SECRET || 'dev_secret',
+    secret: effectiveSessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: { secure: isProduction, httpOnly: true, sameSite: 'lax' }
@@ -176,7 +181,7 @@ registerPageRoutes(app, {
     rootDirectory: __dirname,
     isProduction,
     systemApiKey: process.env.SYSTEM_API_KEY,
-    sessionSecret: process.env.SESSION_SECRET || 'dev_secret',
+    sessionSecret: effectiveSessionSecret,
     publicBaseUrl
 });
 registerAuthRoutes(app, {
@@ -203,15 +208,16 @@ registerPlanetRoutes(app, {
 let io;
 const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
 if (isProduction && !webhookSecret) {
-    console.warn('[Webhook] GITHUB_WEBHOOK_SECRET is not configured; signature verification is disabled.');
+    console.error('[Webhook] GITHUB_WEBHOOK_SECRET is not configured; incoming webhooks will be rejected.');
 }
 registerEventRoutes(app, {
     geminiClient,
     meteorService,
     systemApiKey: process.env.SYSTEM_API_KEY,
     webhookSecret,
+    webhookDeliveryStore: planetRepository,
     requireInternalAuth: isProduction,
-    requireWebhookSignature: isProduction && Boolean(webhookSecret)
+    requireWebhookSignature: isProduction
 });
 
 // 404 handler

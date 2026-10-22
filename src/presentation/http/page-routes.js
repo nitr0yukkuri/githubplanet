@@ -118,13 +118,22 @@ export function registerPageRoutes(app, {
         }
 
         const targetUsername = (systemApiKey && apiKey === systemApiKey) ? username : loggedInUser;
-        let protocol = req.headers['x-forwarded-proto'] || req.protocol;
-        if (req.get('host') && req.get('host').includes('onrender.com')) protocol = 'https';
-
-        const host = req.headers['x-forwarded-host'] || req.get('host');
         const timestamp = Date.now();
         const signature = generateSignature(targetUsername);
-        const targetUrl = `${protocol}://${host}/card.html?username=${targetUsername}&fix=true&ts=${timestamp}&sig=${signature}`;
+        let targetUrl;
+        if (isProduction) {
+            const canonicalCardUrl = new URL('/card.html', normalizedPublicBaseUrl);
+            canonicalCardUrl.searchParams.set('username', targetUsername);
+            canonicalCardUrl.searchParams.set('fix', 'true');
+            canonicalCardUrl.searchParams.set('ts', String(timestamp));
+            canonicalCardUrl.searchParams.set('sig', signature);
+            targetUrl = canonicalCardUrl.href;
+        } else {
+            let protocol = req.headers['x-forwarded-proto'] || req.protocol;
+            if (req.get('host') && req.get('host').includes('onrender.com')) protocol = 'https';
+            const host = req.headers['x-forwarded-host'] || req.get('host');
+            targetUrl = `${protocol}://${host}/card.html?username=${encodeURIComponent(targetUsername)}&fix=true&ts=${timestamp}&sig=${signature}`;
+        }
 
         console.log(`[Card] Redirecting generation for: ${targetUrl}`);
         res.redirect(`https://image.thum.io/get/png/width/800/crop/400/noanimate/wait/3/${targetUrl}`);
