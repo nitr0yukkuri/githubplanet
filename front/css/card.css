@@ -455,3 +455,11 @@ body.is-screenshot #card-container {
     max-width: none !important;
     aspect-ratio: auto !important;
 }
+
+/* CSSカードのプロフィール画像にも通常表示と同じ背景色を残す。 */
+html.is-screenshot #card-container[data-card-theme="css-spectrum"] .bg-gradient,
+body.is-screenshot #card-container[data-card-theme="css-spectrum"] .bg-gradient,
+html.is-screenshot #card-container[data-card-theme="css-spectrum"] .stars,
+body.is-screenshot #card-container[data-card-theme="css-spectrum"] .stars {
+    display: block !important;
+}
