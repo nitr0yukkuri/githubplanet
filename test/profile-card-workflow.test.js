@@ -3,21 +3,39 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 test('keeps caller write access out of the reusable GIF generator', async () => {
-    const [workflow, readme] = await Promise.all([
+    const [workflow, updateWorkflow, readme] = await Promise.all([
         readFile(
             new URL('../.github/workflows/generate-profile-card-gif.yml', import.meta.url),
             'utf8'
         ),
+        readFile(new URL('../.github/workflows/update-card.yml', import.meta.url), 'utf8'),
         readFile(new URL('../README.md', import.meta.url), 'utf8')
     ]);
 
     assert.match(workflow, /contents: read/);
     assert.match(workflow, /ref: [0-9a-f]{40}/);
-    assert.match(workflow, /actions\/upload-artifact@v4/);
+    assert.match(workflow, /actions\/upload-artifact@[0-9a-f]{40}/);
     assert.doesNotMatch(workflow, /contents: write/);
     assert.doesNotMatch(workflow, /git push/);
     assert.match(readme, /needs: generate/);
     assert.match(readme, /file planet-card\.gif \| grep -q "GIF image data"/);
+    assert.match(updateWorkflow, /build-card-assets:[\s\S]*?contents: read/);
+    assert.match(updateWorkflow, /publish-card-assets:[\s\S]*?contents: write/);
+    assert.match(updateWorkflow, /if: github\.ref == format\('refs\/heads\/\{0\}', github\.event\.repository\.default_branch\)/);
+    assert.match(updateWorkflow, /actions\/download-artifact@[0-9a-f]{40}/);
+    assert.match(updateWorkflow, /push:[\s\S]*?branches:[\s\S]*?- main[\s\S]*?paths:/);
+    assert.match(updateWorkflow, /Wait for merged card assets to reach production/);
+    const productionAssetWait = updateWorkflow.indexOf(
+        '      - name: Wait for merged card assets to reach production'
+    );
+    const deployedShowcaseSmokeTest = updateWorkflow.indexOf(
+        '      - name: Smoke test deployed showcase routes'
+    );
+    assert.ok(
+        productionAssetWait >= 0 && deployedShowcaseSmokeTest > productionAssetWait,
+        'deployed showcase smoke tests must wait until merged card assets reach production'
+    );
+    assert.doesNotMatch(updateWorkflow, /uses:\s+[^\s]+@(v\d+|main|master)\b/);
 });
 
 test('copies static public card URLs without requiring a generated GIF', async () => {
@@ -52,8 +70,8 @@ test('documents static cards as the default and animated cards as optional', asy
     ]);
 
     assert.match(readme, /静止カード（標準）/);
-    assert.match(readme, /任意（GitHub Actions使用）：動くGIFカード/);
-    assert.match(readme, /Actions.+Update Planet Card.+手動実行/s);
+    assert.match(readme, /アニメーションGIFカード（任意、GitHub Actionsを使用）/);
+    assert.match(readme, /Actions.+Update Planet Card.+手動で実行/s);
     assert.match(englishReadme, /Static card \(default\)/);
     assert.match(englishReadme, /Optional \(uses GitHub Actions\): Animated GIF card/);
     assert.match(englishReadme, /Actions.+manually run.+Update Planet Card/s);

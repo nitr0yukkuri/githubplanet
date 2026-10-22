@@ -4,10 +4,10 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - PORT=3000
-      - DATABASE_URL=postgres://githubplanet:password@db:5432/githubplanet
-      - NODE_ENV=development
-      - CALLBACK_URL=http://localhost:3000/callback
+      PORT: 3000
+      DATABASE_URL: postgres://githubplanet:${POSTGRES_PASSWORD:?Set a unique URL-safe POSTGRES_PASSWORD in .env}@db:5432/githubplanet
+      NODE_ENV: development
+      CALLBACK_URL: http://localhost:3000/callback
     env_file:
       - .env
     depends_on:
@@ -18,7 +18,7 @@ services:
   migrate:
     build: .
     environment:
-      - DATABASE_URL=postgres://githubplanet:password@db:5432/githubplanet
+      DATABASE_URL: postgres://githubplanet:${POSTGRES_PASSWORD:?Set a unique URL-safe POSTGRES_PASSWORD in .env}@db:5432/githubplanet
     env_file:
       - .env
     depends_on:
@@ -31,7 +31,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: githubplanet
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a unique URL-safe POSTGRES_PASSWORD in .env}
       POSTGRES_DB: githubplanet
     volumes:
       - db_data:/var/lib/postgresql/data
@@ -78,7 +78,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      PGPASSWORD: password
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set a unique URL-safe POSTGRES_PASSWORD in .env}
     volumes:
       - ./docker/seed-css-test-planet.sql:/seed-css-test-planet.sql:ro
     command: >

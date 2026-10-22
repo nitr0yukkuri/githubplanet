@@ -311,7 +311,10 @@ function updatePlanetDetails(data) {
                             const percentage = rawPercentage <= 1
                                 ? rawPercentage.toFixed(1)
                                 : Math.round(rawPercentage);
-                            p.innerHTML = `${lang}<span>${percentage}%</span>`;
+                            p.append(document.createTextNode(lang));
+                            const percentageLabel = document.createElement('span');
+                            percentageLabel.textContent = `${percentage}%`;
+                            p.appendChild(percentageLabel);
                             stats.appendChild(p);
                         });
                 }

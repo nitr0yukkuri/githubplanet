@@ -23,13 +23,30 @@ test('protects internal event tools and verifies GitHub webhook signatures', asy
         ask: async () => 'ok',
         resolveLanguageColor: async () => '#f0db4f'
     };
+    let processedWebhookDeliveries = 0;
+    const meteorService = createMeteorService({
+        geminiClient,
+        extensionMap: { js: 'JavaScript' },
+        emitMeteor: () => {}
+    });
+    const processWebhook = meteorService.processWebhook;
+    meteorService.processWebhook = async (...args) => {
+        processedWebhookDeliveries += 1;
+        return processWebhook(...args);
+    };
     registerEventRoutes(app, {
         geminiClient,
-        meteorService: createMeteorService({
-            geminiClient,
-            extensionMap: { js: 'JavaScript' },
-            emitMeteor: () => {}
-        }),
+        meteorService,
+        webhookDeliveryStore: {
+            deliveries: new Set(),
+            payloads: new Set(),
+            async claimGithubWebhookDelivery(deliveryId, payloadHash) {
+                if (this.deliveries.has(deliveryId) || this.payloads.has(payloadHash)) return false;
+                this.deliveries.add(deliveryId);
+                this.payloads.add(payloadHash);
+                return true;
+            }
+        },
         systemApiKey: 'system-secret',
         webhookSecret: 'webhook-secret',
         requireInternalAuth: true,
@@ -75,9 +92,26 @@ test('protects internal event tools and verifies GitHub webhook signatures', asy
     const signature = `sha256=${crypto.createHmac('sha256', 'webhook-secret').update(body).digest('hex')}`;
     const signedWebhook = await fetch(`${baseUrl}/webhook`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-hub-signature-256': signature },
+      headers: {
+        'content-type': 'application/json',
+        'x-hub-signature-256': signature,
+        'x-github-delivery': '123e4567-e89b-12d3-a456-426614174000'
+      },
         body
     });
     assert.equal(signedWebhook.status, 200);
     assert.equal(await signedWebhook.text(), 'OK');
+
+    const replayedWebhook = await fetch(`${baseUrl}/webhook`, {
+        method: 'POST',
+        headers: {
+            'content-type': 'application/json',
+            'x-hub-signature-256': signature,
+            'x-github-delivery': '123e4567-e89b-12d3-a456-426614174001'
+        },
+        body
+    });
+    assert.equal(replayedWebhook.status, 200);
+    assert.equal(await replayedWebhook.text(), 'OK');
+    assert.equal(processedWebhookDeliveries, 1);
 });

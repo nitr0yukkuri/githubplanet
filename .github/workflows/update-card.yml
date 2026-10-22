@@ -26,65 +26,37 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: update-animated-planet-card
   cancel-in-progress: true
 
 jobs:
-  update-card:
+  build-card-assets:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           # マージ前後の差分から、本番反映を待つカード用ファイルを特定する。
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24.22.1'
           cache: npm
 
       - name: Install dependencies
-        run: |
-          npm ci
+        run: npm ci --ignore-scripts
 
       - name: Run application tests
         # 壊れたコードからGIFだけを生成して公開しないため、素材生成より先に検証する。
         run: npm test
-
-      - name: Smoke test deployed showcase routes
-        # 本番URLの表示/API障害を検知して、異常な公開素材の更新を止める。
-        env:
-          SMOKE_BASE_URL: https://githubplanet.dev
-        run: |
-          node --input-type=module <<'NODE'
-          const baseUrl = process.env.SMOKE_BASE_URL;
-          const checks = [
-            {
-              path: '/demo?showcase=ruby',
-              validate: (text) => text.includes('id="canvas-container"')
-            },
-            {
-              path: '/api/planets/showcase/ruby',
-              validate: (text) => JSON.parse(text).mainLanguage === 'Ruby'
-            }
-          ];
-
-          for (const check of checks) {
-            const response = await fetch(`${baseUrl}${check.path}`, {
-              signal: AbortSignal.timeout(15_000)
-            });
-            const body = await response.text();
-            if (!response.ok || !check.validate(body)) {
-              throw new Error(`Smoke test failed: ${check.path} (${response.status})`);
-            }
-            console.log(`Smoke test passed: ${check.path}`);
-          }
-          NODE
 
       - name: Wait for merged card assets to reach production
         if: github.event_name == 'push'
@@ -151,10 +123,46 @@ jobs:
           echo "Timed out before the merged card assets reached production; generated GIFs were not published."
           exit 1
 
-      - name: Install Playwright browser
+      - name: Smoke test deployed showcase routes
+        # 本番URLの表示/API障害を検知して、異常な公開素材の更新を止める。
+        env:
+          SMOKE_BASE_URL: https://githubplanet.dev
         run: |
-          npm install --no-save --package-lock=false playwright@1.58.2
-          npx playwright install chromium --with-deps
+          node --input-type=module <<'NODE'
+          const baseUrl = process.env.SMOKE_BASE_URL;
+          const checks = [
+            {
+              path: '/demo?showcase=ruby',
+              validate: (text) => text.includes('id="canvas-container"')
+            },
+            {
+              path: '/api/planets/showcase/ruby',
+              validate: (text) => JSON.parse(text).mainLanguage === 'Ruby'
+            },
+            {
+              path: '/api/planets/showcase/elm',
+              validate: (text) => JSON.parse(text).mainLanguage === 'Elm'
+            },
+            {
+              path: '/api/planets/showcase/perl',
+              validate: (text) => JSON.parse(text).mainLanguage === 'Perl'
+            }
+          ];
+
+          for (const check of checks) {
+            const response = await fetch(`${baseUrl}${check.path}`, {
+              signal: AbortSignal.timeout(15_000)
+            });
+            const body = await response.text();
+            if (!response.ok || !check.validate(body)) {
+              throw new Error(`Smoke test failed: ${check.path} (${response.status})`);
+            }
+            console.log(`Smoke test passed: ${check.path}`);
+          }
+          NODE
+
+      - name: Install Playwright browser
+        run: npx --no-install playwright install chromium --with-deps
 
       - name: Install FFmpeg
         run: |
@@ -190,11 +198,13 @@ jobs:
           record_card profile_card.gif "$base_url?username=nitr0yukkuri&fix=true" 8000
           record_card showcase_css.gif "$base_url?showcase=css&fix=true"
           record_card showcase_cpp.gif "$base_url?showcase=cpp&fix=true"
+          record_card showcase_elm.gif "$base_url?showcase=elm&fix=true"
           record_card showcase_go.gif "$base_url?showcase=go&fix=true"
           record_card showcase_typescript.gif "$base_url?showcase=typescript&fix=true"
           record_card showcase_javascript.gif "$base_url?showcase=javascript&fix=true"
           record_card showcase_java.gif "$base_url?showcase=java&fix=true"
           record_card showcase_kotlin.gif "$base_url?showcase=kotlin&fix=true"
+          record_card showcase_perl.gif "$base_url?showcase=perl&fix=true"
           record_card showcase_rust.gif "$base_url?showcase=rust&fix=true"
           record_card showcase_vue.gif "$base_url?showcase=vue&fix=true"
           record_card showcase_ruby.gif "$base_url?showcase=ruby&fix=true"
@@ -204,7 +214,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          test "$(find generated-card-assets -maxdepth 1 -name '*.gif' | wc -l)" -eq 12
+          test "$(find generated-card-assets -maxdepth 1 -name '*.gif' | wc -l)" -eq 14
 
           for gif in generated-card-assets/*.gif; do
             file "$gif" | grep -q "GIF image data"
@@ -224,23 +234,46 @@ jobs:
             echo "Validated $gif ($dimensions, $size_bytes bytes)."
           done
 
-      - name: Publish GIF to asset branch
+      - name: Upload validated GIFs
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: generated-card-assets
+          path: generated-card-assets/*.gif
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-card-assets:
+    needs: build-card-assets
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Download validated GIFs
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: generated-card-assets
+          path: generated-card-assets
+
+      - name: Publish GIFs to asset branch
         run: |
           set -euo pipefail
-
-          asset_branch="card-assets"
-          asset_dir="$(mktemp -d)"
-          cp generated-card-assets/*.gif "$asset_dir/"
+          test "$(find generated-card-assets -maxdepth 1 -name '*.gif' | wc -l)" -eq 12
+          for gif in generated-card-assets/*.gif; do
+            file "$gif" | grep -q "GIF image data"
+          done
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch --orphan generated-card-assets
           git rm --recursive --force . || true
-          cp "$asset_dir"/*.gif .
+          cp generated-card-assets/*.gif .
           git add -- *.gif
           git commit -m "Update animated planet cards [skip ci]"
-          git push --force origin "HEAD:$asset_branch"
+          git push --force origin HEAD:card-assets
 
       - name: Summary
-        run: |
-          echo "Animated profile and showcase cards published to card-assets."
+        run: echo "Animated profile and showcase cards published to card-assets."

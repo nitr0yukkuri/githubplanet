@@ -23,6 +23,22 @@ This is the gallery of language showcase planet cards. Every card uses fixed dat
   </tr>
   <tr>
     <td align="center">
+      <strong>Elm — Wind Meadow</strong><br>
+      <sub>Connected forest and meadow regions shift gently in the wind.</sub><br>
+      <a href="https://githubplanet.dev/card.html?showcase=elm&amp;fix=true">
+        <img width="400" alt="Elm showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_elm.gif">
+      </a>
+    </td>
+    <td align="center">
+      <strong>Perl — Ocean Current</strong><br>
+      <sub>A deep blue ocean carries gentle currents and restrained reflections.</sub><br>
+      <a href="https://githubplanet.dev/card.html?showcase=perl&amp;fix=true">
+        <img width="400" alt="Perl showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_perl.gif">
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
       <strong>Go — Atmospheric Wind</strong><br>
       <sub>Wind-shaped atmospheric layers wrap around the planet.</sub><br>
       <a href="https://githubplanet.dev/card.html?showcase=go&amp;fix=true">
