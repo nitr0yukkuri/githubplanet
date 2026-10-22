@@ -114,19 +114,86 @@ Pythonには構造的な地表と、対をなす軌跡を表示する言語別�
 
 ショーケースは実在ユーザーやデータベースに依存しない固定データです。すべて累計`2,000`、週間`24`、サイズ係数`2`の同じ条件で、言語固有の違いを比較できます。
 
-| URL slug | 言語 | 表現 | アニメーションGIF |
-| --- | --- | --- | --- |
-| [`css`](https://githubplanet.dev/card.html?showcase=css&fix=true) | CSS | Directional Color Flow | [`showcase_css.gif`](https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_css.gif) |
-| [`cpp`](https://githubplanet.dev/card.html?showcase=cpp&fix=true) | C++ | Idle Plasma Globe | [`showcase_cpp.gif`](https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_cpp.gif) |
-| [`go`](https://githubplanet.dev/card.html?showcase=go&fix=true) | Go | Atmospheric Wind | [`showcase_go.gif`](https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_go.gif) |
-| [`typescript`](https://githubplanet.dev/card.html?showcase=typescript&fix=true) | TypeScript | Defensive Typed Shell | [`showcase_typescript.gif`](https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_typescript.gif) |
-| [`javascript`](https://githubplanet.dev/card.html?showcase=javascript&fix=true) | JavaScript | Reactive Golden Surface | [`showcase_javascript.gif`](https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_javascript.gif) |
-| [`java`](https://githubplanet.dev/card.html?showcase=java&fix=true) | Java | Java Roast | [`showcase_java.gif`](https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_java.gif) |
-| [`kotlin`](https://githubplanet.dev/card.html?showcase=kotlin&fix=true) | Kotlin | Electric Spark | [`showcase_kotlin.gif`](https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_kotlin.gif) |
-| [`rust`](https://githubplanet.dev/card.html?showcase=rust&fix=true) | Rust | Desert Dust World | [`showcase_rust.gif`](https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_rust.gif) |
-| [`vue`](https://githubplanet.dev/card.html?showcase=vue&fix=true) | Vue | Gentle Reactive Wind | [`showcase_vue.gif`](https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_vue.gif) |
-| [`ruby`](https://githubplanet.dev/card.html?showcase=ruby&fix=true) | Ruby | Burning Ruby | [`showcase_ruby.gif`](https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_ruby.gif) |
-| [`python`](https://githubplanet.dev/card.html?showcase=python&fix=true) | Python | Paired Orbital Trails | [`showcase_python.gif`](https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_python.gif) |
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <strong>CSS — Directional Color Flow</strong><br>
+      <a href="https://githubplanet.dev/card.html?showcase=css&amp;fix=true">
+        <img width="400" alt="CSS showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_css.gif">
+      </a>
+    </td>
+    <td align="center" width="50%">
+      <strong>C++ — Idle Plasma Globe</strong><br>
+      <a href="https://githubplanet.dev/card.html?showcase=cpp&amp;fix=true">
+        <img width="400" alt="C++ showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_cpp.gif">
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <strong>Go — Atmospheric Wind</strong><br>
+      <a href="https://githubplanet.dev/card.html?showcase=go&amp;fix=true">
+        <img width="400" alt="Go showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_go.gif">
+      </a>
+    </td>
+    <td align="center" width="50%">
+      <strong>TypeScript — Defensive Typed Shell</strong><br>
+      <a href="https://githubplanet.dev/card.html?showcase=typescript&amp;fix=true">
+        <img width="400" alt="TypeScript showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_typescript.gif">
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <strong>JavaScript — Reactive Golden Surface</strong><br>
+      <a href="https://githubplanet.dev/card.html?showcase=javascript&amp;fix=true">
+        <img width="400" alt="JavaScript showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_javascript.gif">
+      </a>
+    </td>
+    <td align="center" width="50%">
+      <strong>Java — Java Roast</strong><br>
+      <a href="https://githubplanet.dev/card.html?showcase=java&amp;fix=true">
+        <img width="400" alt="Java showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_java.gif">
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <strong>Kotlin — Electric Spark</strong><br>
+      <a href="https://githubplanet.dev/card.html?showcase=kotlin&amp;fix=true">
+        <img width="400" alt="Kotlin showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_kotlin.gif">
+      </a>
+    </td>
+    <td align="center" width="50%">
+      <strong>Rust — Desert Dust World</strong><br>
+      <a href="https://githubplanet.dev/card.html?showcase=rust&amp;fix=true">
+        <img width="400" alt="Rust showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_rust.gif">
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <strong>Vue — Gentle Reactive Wind</strong><br>
+      <a href="https://githubplanet.dev/card.html?showcase=vue&amp;fix=true">
+        <img width="400" alt="Vue showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_vue.gif">
+      </a>
+    </td>
+    <td align="center" width="50%">
+      <strong>Ruby — Burning Ruby</strong><br>
+      <a href="https://githubplanet.dev/card.html?showcase=ruby&amp;fix=true">
+        <img width="400" alt="Ruby showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_ruby.gif">
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%" colspan="2">
+      <strong>Python — Paired Orbital Trails</strong><br>
+      <a href="https://githubplanet.dev/card.html?showcase=python&amp;fix=true">
+        <img width="400" alt="Python showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_python.gif">
+      </a>
+    </td>
+  </tr>
+</table>
 
 カードを画像付きでまとめた一覧は[カードギャラリー](docs/cards/README.md)（[English](docs/cards/README.en.md)）を参照してください。
 
