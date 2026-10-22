@@ -9,11 +9,13 @@ import {
 const EXPECTED_SHOWCASES = {
     css: 'CSS',
     cpp: 'C++',
+    elm: 'Elm',
     go: 'Go',
     typescript: 'TypeScript',
     javascript: 'JavaScript',
     java: 'Java',
     kotlin: 'Kotlin',
+    perl: 'Perl',
     rust: 'Rust',
     vue: 'Vue',
     ruby: 'Ruby',
@@ -28,6 +30,10 @@ const EXPECTED_CARD_CAPTIONS = {
     cpp: {
         ja: '球体の周囲でプラズマ状の光が脈打つ。',
         en: 'Plasma-like light pulses around the globe.'
+    },
+    elm: {
+        ja: '森と草地がつながる地表が、風にわずかに揺れる。',
+        en: 'Connected forest and meadow regions shift gently in the wind.'
     },
     go: {
         ja: '風に沿う大気の層が惑星を包み込む。',
@@ -48,6 +54,10 @@ const EXPECTED_CARD_CAPTIONS = {
     kotlin: {
         ja: '結晶の核を縁の電気的な光が彩る。',
         en: 'A crystal-like core glows as electric filaments crackle along the rim.'
+    },
+    perl: {
+        ja: '深い青の海に、ゆるやかな潮流と控えめな反射が広がる。',
+        en: 'A deep blue ocean carries gentle currents and restrained reflections.'
     },
     rust: {
         ja: '赤褐色の砂漠地形に細かな砂塵が漂う。',
