@@ -13,31 +13,26 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
             throw error;
         }
 
-        const ownedRepos = userData.repositories.nodes || [];
-        const contributedRepos = userData.repositoriesContributedTo.nodes || [];
+        const ownedRepos = userData.ownedRepositories || [];
+        const contributedRepos = userData.contributedRepositories || [];
         const hasMergedExternalPullRequest = (userData.mergedPullRequests || []).some((pullRequest) => {
-            const ownerLogin = pullRequest.repository?.owner?.login;
+            const ownerLogin = pullRequest.repositoryOwnerLogin;
             return ownerLogin && ownerLogin.toLowerCase() !== user.login.toLowerCase();
         });
         // 未マージPRやStarだけでは、実際に作品へ採用された開発貢献とは言えないため対象外にする。
         const hasMergedGithubPlanetPullRequest = (userData.mergedPullRequests || []).some((pullRequest) => (
-            pullRequest.repository?.nameWithOwner?.toLowerCase() === 'nitr0yukkuri/githubplanet'
+            pullRequest.repositoryNameWithOwner?.toLowerCase() === 'nitr0yukkuri/githubplanet'
         ));
         const repositories = [...ownedRepos, ...contributedRepos];
-        const starredCount = userData.starredRepositories ? userData.starredRepositories.totalCount : 0;
-        const observedTotalContributions = userData.contributionsCollection?.contributionCalendar?.totalContributions || 0;
+        const starredCount = userData.starredRepositoryCount || 0;
+        const observedTotalContributions = userData.totalContributions || 0;
         let totalCommits = observedTotalContributions;
         let weeklyCommits = 0;
-        const calendar = userData.contributionsCollection?.contributionCalendar;
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-        if (calendar?.weeks) {
-            for (const week of calendar.weeks) {
-                for (const day of week.contributionDays) {
-                    if (new Date(day.date) >= oneWeekAgo) weeklyCommits += day.contributionCount;
-                }
-            }
+        for (const contribution of userData.dailyContributions || []) {
+            if (new Date(contribution.date) >= oneWeekAgo) weeklyCommits += contribution.count;
         }
 
         totalCommits = clampCommitCount(totalCommits, MAX_TOTAL_COMMITS);
@@ -46,11 +41,11 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
         const languageStats = {};
         let receivedStars = 0;
         for (const repo of repositories) {
-            for (const edge of repo.languages?.edges || []) {
-                const language = edge.node.name === 'Sass' ? 'CSS' : edge.node.name;
-                languageStats[language] = (languageStats[language] || 0) + edge.size;
+            for (const languageEntry of repo.languages || []) {
+                const language = languageEntry.language === 'Sass' ? 'CSS' : languageEntry.language;
+                languageStats[language] = (languageStats[language] || 0) + languageEntry.bytes;
             }
-            if (repo.stargazerCount) receivedStars += repo.stargazerCount;
+            if (repo.receivedStars) receivedStars += repo.receivedStars;
         }
 
         let mainLanguage = 'Unknown';
@@ -71,8 +66,8 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
                 existingData = await repository.findByGithubId(user.id);
                 if (existingData) {
                     existingAchievements = existingData.achievements || {};
-                    unlockedTitles = existingData.unlocked_titles || unlockedTitles;
-                    activeTitle = existingData.active_title || activeTitle;
+                    unlockedTitles = existingData.unlockedTitles || unlockedTitles;
+                    activeTitle = existingData.activeTitle || activeTitle;
                 }
             } catch (error) {
                 console.error('[DB] 既存データ取得エラー:', error.message);
@@ -84,12 +79,12 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
         let shouldAskGeminiColor = true;
         let shouldAskGeminiName = true;
         if (existingData) {
-            if (existingData.main_language === mainLanguage && existingData.planet_color) {
-                planetColor = existingData.planet_color;
+            if (existingData.mainLanguage === mainLanguage && existingData.planetColor) {
+                planetColor = existingData.planetColor;
                 shouldAskGeminiColor = false;
             }
-            if (existingData.main_language === mainLanguage && existingData.planet_name) {
-                const oldName = existingData.planet_name;
+            if (existingData.mainLanguage === mainLanguage && existingData.planetName) {
+                const oldName = existingData.planetName;
                 if (!oldName.includes('未知の') && !oldName.includes('神秘')) {
                     planetName = oldName;
                     shouldAskGeminiName = false;

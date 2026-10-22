@@ -8,7 +8,9 @@ import { fileURLToPath } from 'url';
 import connectPgSimple from 'connect-pg-simple';
 import { Server } from 'socket.io';
 import { createPlanetQueryService } from './src/application/planet-query-service.js';
+import { createAuthoredLanguageHistoryService } from './src/application/authored-language-history-service.js';
 import { createPlanetService } from './src/application/planet-service.js';
+import { createMeteorService } from './src/application/meteor-service.js';
 import { DATA_CACHE_DURATION, EXTENSION_MAP, LANGUAGE_COLORS } from './src/domain/planet/constants.js';
 import { createPlanetRepository } from './src/infrastructure/database/planet-repository.js';
 import { assertDatabaseMigrationsApplied } from './src/infrastructure/database/migrations.js';
@@ -54,7 +56,7 @@ app.use((req, res, next) => {
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com data:",
         "img-src 'self' data: https://image.thum.io",
-        "connect-src 'self' ws: wss: https://www.google-analytics.com https://region1.google-analytics.com",
+        "connect-src 'self' ws: wss: https://githubplanet-git-e7ranic5ja-dt.a.run.app https://www.google-analytics.com https://region1.google-analytics.com",
         "object-src 'none'",
         "base-uri 'self'",
         "frame-ancestors 'none'"
@@ -136,11 +138,20 @@ const planetService = createPlanetService({
     geminiClient,
     geminiApiKey: process.env.GEMINI_API_KEY
 });
+const meteorService = createMeteorService({
+    geminiClient,
+    extensionMap: EXTENSION_MAP,
+    emitMeteor: (payload) => io.emit('meteor', payload)
+});
 const planetQueryService = planetRepository ? createPlanetQueryService({
     repository: planetRepository,
     githubClient,
     planetService,
     cacheDuration: DATA_CACHE_DURATION
+}) : undefined;
+const authoredLanguageHistoryService = planetRepository ? createAuthoredLanguageHistoryService({
+    repository: planetRepository,
+    githubClient
 }) : undefined;
 
 app.use('/front/img', express.static(path.join(__dirname, 'front/img'), { maxAge: '30d' }));
@@ -178,6 +189,7 @@ registerAuthRoutes(app, {
 registerPlanetRoutes(app, {
     planetService,
     planetQueryService,
+    authoredLanguageHistoryService,
     cacheDuration: DATA_CACHE_DURATION,
     randomHistoryStorage: process.env.RANDOM_HISTORY_STORAGE || 'cookie',
     randomPerformance
@@ -190,8 +202,7 @@ if (isProduction && !webhookSecret) {
 }
 registerEventRoutes(app, {
     geminiClient,
-    extensionMap: EXTENSION_MAP,
-    emitMeteor: (payload) => io.emit('meteor', payload),
+    meteorService,
     systemApiKey: process.env.SYSTEM_API_KEY,
     webhookSecret,
     requireInternalAuth: isProduction,
@@ -207,7 +218,25 @@ const server = app.listen(port, '0.0.0.0', () => {
     console.log(`Server running on port ${port}`);
 });
 
-io = new Server(server);
-io.on('connection', () => {
-    console.log('Client connected to socket');
+// Cloud Run直URLへ切り替えたPollingフォールバックは、公開サイトのOriginだけ許可する。
+io = new Server(server, { cors: { origin: publicBaseUrl } });
+// HTTPログの400だけでは拒否理由が分からないため、WebSocket失敗の必要項目だけ記録する。
+io.engine.on('connection_error', (error) => {
+    const request = error.req;
+    const requestUrl = new URL(request?.url || '/', 'http://localhost');
+    if (requestUrl.searchParams.get('transport') !== 'websocket') return;
+
+    console.warn('[Socket.IO] WebSocket connection rejected', {
+        code: error.code,
+        message: error.message,
+        method: request?.method,
+        path: requestUrl.pathname,
+        origin: request?.headers?.origin,
+        upgrade: request?.headers?.upgrade
+    });
+});
+io.on('connection', (socket) => {
+    console.log('[Socket.IO] Client connected', {
+        transport: socket.conn.transport.name
+    });
 });

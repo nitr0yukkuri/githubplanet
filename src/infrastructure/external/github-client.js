@@ -58,8 +58,41 @@ const MERGED_PULL_REQUESTS_QUERY = `
 `;
 
 import { measureExternalOperation } from '../observability/external-performance.js';
+import { createGithubAuthoredLanguageHistoryClient } from './github-authored-language-history.js';
+import { EXTENSION_MAP } from '../../domain/planet/constants.js';
 
 const GITHUB_API_TIMEOUT_MS = 10_000;
+
+function mapRepositories(connection, { includeStars = false } = {}) {
+    return (connection?.nodes || []).map((repository) => ({
+        languages: (repository.languages?.edges || []).map((edge) => ({
+            language: edge.node?.name || 'Unknown',
+            bytes: edge.size || 0
+        })),
+        ...(includeStars ? { receivedStars: repository.stargazerCount || 0 } : {})
+    }));
+}
+
+function mapPlanetSource(repositoryData, annualData, pullRequestData, recentData) {
+    const calendar = annualData.contributionsCollection?.contributionCalendar;
+    const recentCalendar = recentData.contributionsCollection?.contributionCalendar;
+    const dailyContributions = (recentCalendar?.weeks || []).flatMap((week) => (
+        (week.contributionDays || []).map((day) => ({ date: day.date, count: day.contributionCount }))
+    ));
+
+    // GraphQL connection/edge構造は外部境界で平坦化し、集計側をAPIスキーマ変更から分離する。
+    return {
+        ownedRepositories: mapRepositories(repositoryData.repositories, { includeStars: true }),
+        contributedRepositories: mapRepositories(repositoryData.repositoriesContributedTo),
+        starredRepositoryCount: repositoryData.starredRepositories?.totalCount || 0,
+        mergedPullRequests: (pullRequestData.pullRequests?.nodes || []).map(({ repository }) => ({
+            repositoryOwnerLogin: repository?.owner?.login || null,
+            repositoryNameWithOwner: repository?.nameWithOwner || null
+        })),
+        totalContributions: calendar?.totalContributions || 0,
+        dailyContributions
+    };
+}
 
 export function createGithubClient({
     axios,
@@ -69,6 +102,12 @@ export function createGithubClient({
     onRequestTiming,
     parallelPlanetSourceRequests = true
 }) {
+    const authoredLanguageHistoryClient = createGithubAuthoredLanguageHistoryClient({
+        axios,
+        extensionMap: EXTENSION_MAP,
+        onRequestTiming
+    });
+
     async function requestGraphql(query, variables, accessToken) {
         const operation = query.match(/query (\w+)/)?.[1] || 'graphql';
         return measureExternalOperation(onRequestTiming, operation, async () => {
@@ -91,6 +130,7 @@ export function createGithubClient({
     }
 
     return {
+        scanHistoricalAuthoredLanguageCommits: authoredLanguageHistoryClient.scanHistoricalAuthoredLanguageCommits,
         async exchangeCode(code, codeVerifier) {
             return measureExternalOperation(onRequestTiming, 'exchange_code', async () => {
                 const response = await axios.post('https://github.com/login/oauth/access_token', {
@@ -155,16 +195,7 @@ export function createGithubClient({
                     recentData = await recentQuery();
                 }
 
-                return {
-                    ...repositoryData,
-                    mergedPullRequests: pullRequestData.pullRequests?.nodes || [],
-                    contributionsCollection: {
-                        contributionCalendar: {
-                            totalContributions: annualData.contributionsCollection?.contributionCalendar?.totalContributions || 0,
-                            weeks: recentData.contributionsCollection?.contributionCalendar?.weeks || []
-                        }
-                    }
-                };
+                return mapPlanetSource(repositoryData, annualData, pullRequestData, recentData);
             }, { provider: 'github' });
         }
     };

@@ -30,6 +30,7 @@ function writeAnonymousRandomCookie(res, planetId) {
 export function registerPlanetRoutes(app, {
     planetService,
     planetQueryService,
+    authoredLanguageHistoryService,
     cacheDuration,
     randomHistoryStorage = 'cookie',
     randomPerformance = null
@@ -102,14 +103,55 @@ export function registerPlanetRoutes(app, {
             const rows = await planetQueryService.getLanguageHistoryByGithubId(githubId);
             res.json({
                 history: rows.map((row) => ({
-                    capturedAt: row.captured_at,
-                    mainLanguage: row.main_language,
-                    planetColor: row.planet_color,
-                    languagePercentages: row.language_percentages || {}
+                    capturedAt: row.capturedAt,
+                    mainLanguage: row.mainLanguage,
+                    planetColor: row.planetColor,
+                    languagePercentages: row.languagePercentages || {}
                 }))
             });
         } catch (error) {
             console.error('[API /me/language-history Error]', error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    });
+
+    app.get('/api/me/authored-language-history', async (req, res) => {
+        const user = req.session?.planetData?.user;
+        if (!user?.id) return res.status(401).json({ error: 'Not logged in' });
+        if (!authoredLanguageHistoryService) {
+            return res.status(503).json({ error: 'History unavailable' });
+        }
+        res.set('Cache-Control', 'private, no-store');
+
+        try {
+            res.json(await authoredLanguageHistoryService.getHistory(user.id));
+        } catch (error) {
+            console.error('[API /me/authored-language-history Error]', error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    });
+
+    app.post('/api/me/authored-language-history/scan', async (req, res) => {
+        const user = req.session?.planetData?.user;
+        if (!user?.id || !req.session.github_token) {
+            return res.status(401).json({ error: 'Not logged in' });
+        }
+        if (!authoredLanguageHistoryService) {
+            return res.status(503).json({ error: 'History unavailable' });
+        }
+        res.set('Cache-Control', 'private, no-store');
+
+        try {
+            const scanStarted = await authoredLanguageHistoryService.startScan({
+                githubId: user.id,
+                login: user.login,
+                accessToken: req.session.github_token,
+                accountCreatedAt: user.created_at
+            });
+            const result = await authoredLanguageHistoryService.getHistory(user.id);
+            res.json({ ...result, scanStarted });
+        } catch (error) {
+            console.error('[API /me/authored-language-history/scan Error]', error);
             res.status(500).json({ error: 'Internal Server Error' });
         }
     });
@@ -156,9 +198,9 @@ export function registerPlanetRoutes(app, {
             if (!row) return res.status(404).json({ error: 'No planets found' });
 
             if (useSessionHistory) {
-                req.session.lastRandomVisitedId = row.github_id;
+                req.session.lastRandomVisitedId = row.githubId;
             } else {
-                writeAnonymousRandomCookie(res, row.github_id);
+                writeAnonymousRandomCookie(res, row.githubId);
             }
             randomPerformance?.markRandomStage(req, 'history-stored');
             res.json(toPlanetResponse(row));

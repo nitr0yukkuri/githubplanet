@@ -22,12 +22,51 @@ test('finds a planet by username regardless of case', async () => {
 
     const row = await repository.findByUsername('ALICE');
 
-    assert.deepEqual(row, { username: 'Alice' });
+    assert.equal(row.username, 'Alice');
+    assert.equal(row.githubId, undefined);
+    assert.equal('github_id' in row, false);
     assert.deepEqual(calls[0][1], ['ALICE']);
     assert.match(calls[0][0], /LOWER\(username\)\s*=\s*LOWER\(\$1\)/i);
     assert.doesNotMatch(calls[0][0], /ILIKE/i);
     assert.match(calls[0][0], /last_updated/i);
     assert.doesNotMatch(calls[0][0], /SELECT\s+\*/i);
+});
+
+test('maps persisted planet columns into the application model', async () => {
+    const databaseRow = {
+        github_id: 42,
+        username: 'Alice',
+        planet_color: '#123456',
+        planet_size_factor: '1.5',
+        main_language: 'Go',
+        language_stats: { Go: 12 },
+        total_commits: 120,
+        weekly_commits: 8,
+        last_updated: '2026-10-20T00:00:00.000Z',
+        planet_name: '星',
+        achievements: { FIRST_PLANET: true },
+        unlocked_titles: { prefixes: ['名もなき'], suffixes: ['旅人'] },
+        active_title: { prefix: '名もなき', suffix: '旅人' }
+    };
+    const repository = createPlanetRepository({
+        async query() { return { rows: [databaseRow] }; }
+    });
+
+    assert.deepEqual(await repository.findByGithubId(42), {
+        githubId: 42,
+        username: 'Alice',
+        planetColor: '#123456',
+        planetSizeFactor: '1.5',
+        mainLanguage: 'Go',
+        languageStats: { Go: 12 },
+        totalCommits: 120,
+        weeklyCommits: 8,
+        lastUpdated: '2026-10-20T00:00:00.000Z',
+        planetName: '星',
+        achievements: { FIRST_PLANET: true },
+        unlockedTitles: { prefixes: ['名もなき'], suffixes: ['旅人'] },
+        activeTitle: { prefix: '名もなき', suffix: '旅人' }
+    });
 });
 
 test('selects a random planet without sorting the whole table', async () => {
@@ -44,7 +83,9 @@ test('selects a random planet without sorting the whole table', async () => {
 
     const row = await repository.findRandom([1, 1, 2]);
 
-    assert.deepEqual(row, { github_id: 3, username: 'random' });
+    assert.equal(row.githubId, 3);
+    assert.equal(row.username, 'random');
+    assert.equal('github_id' in row, false);
     assert.equal(calls.length, 1);
     assert.deepEqual(calls[0][1].slice(0, 2), [1, 2]);
     assert.equal(typeof calls[0][1][2], 'number');
@@ -105,7 +146,7 @@ test('selects eligible ordinals uniformly regardless of random key gaps', async 
         await repository.findRandom([2])
     ];
 
-    assert.deepEqual(rows.map(({ github_id }) => github_id), [1, 2, 3, 3]);
+    assert.deepEqual(rows.map(({ githubId }) => githubId), [1, 2, 3, 3]);
     assert.equal(calls.length, 4);
     assert.ok(calls.every(([sql]) => /OFFSET\s*\(/i.test(sql)));
     assert.equal(
@@ -132,7 +173,7 @@ test('uses the legacy random scan for a small table after one startup count', as
     const row = await repository.findRandom([1, 2]);
     await repository.findRandom([1, 2]);
 
-    assert.equal(row.github_id, 3);
+    assert.equal(row.githubId, 3);
     assert.equal(calls.filter(([sql]) => sql.includes('COUNT(*)')).length, 1);
     assert.equal(calls.filter(([sql]) => /ORDER\s+BY\s+RANDOM\(\)/i.test(sql)).length, 2);
     assert.deepEqual(calls[1][1], [1, 2]);
@@ -222,6 +263,12 @@ test('loads language history in chronological order for one GitHub account', asy
         planet_color: '#f1e05a',
         language_percentages: { JavaScript: 100 }
     }];
+    const expected = [{
+        capturedAt: '2025-01-01T00:00:00.000Z',
+        mainLanguage: 'JavaScript',
+        planetColor: '#f1e05a',
+        languagePercentages: { JavaScript: 100 }
+    }];
     const repository = createPlanetRepository({
         async query(sql, params) {
             calls.push([sql, params]);
@@ -229,7 +276,7 @@ test('loads language history in chronological order for one GitHub account', asy
         }
     });
 
-    assert.deepEqual(await repository.findLanguageHistoryByGithubId(42), rows);
+    assert.deepEqual(await repository.findLanguageHistoryByGithubId(42), expected);
     assert.deepEqual(calls[0][1], [42]);
     assert.match(calls[0][0], /FROM planet_language_snapshots/);
     assert.match(calls[0][0], /WHERE github_id = \$1/);

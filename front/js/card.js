@@ -1,7 +1,7 @@
 // front/js/card.js
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { createPlanetFeatureRuntime } from './planet-features/registry.js';
+import { createPlanetFeatureRuntime, resolvePlanetFeature } from './planet-features/registry.js';
 import { applyI18n, localizedPath, localizedPlanetName } from './i18n.js';
 
 const MAX_STAR_COUNT = 120;
@@ -167,7 +167,46 @@ async function init() {
     }
 }
 
+// Featureの静的テーマをカード要素に反映し、通常表示と画像出力で同じ配色を保つ。
+function applyCardLanguageTheme(data) {
+    if (!containerElement) return;
+    const theme = resolvePlanetFeature(data)?.cardTheme;
+    if (!theme) {
+        containerElement.removeAttribute('data-card-theme');
+        [
+            '--planet-card-atmosphere',
+            '--planet-card-highlight',
+            '--planet-card-border',
+            '--planet-card-glow',
+            '--planet-card-atmosphere-position',
+            '--planet-card-highlight-position'
+        ].forEach((property) => containerElement.style.removeProperty(property));
+        return;
+    }
+
+    containerElement.dataset.cardTheme = theme.id;
+    const planetColor = /^#[\da-f]{6}$/i.test(data.planetColor || '') ? data.planetColor : theme.atmosphere;
+    containerElement.style.setProperty('--planet-card-atmosphere', colorWithAlpha(planetColor, 0.24));
+    containerElement.style.setProperty('--planet-card-highlight', colorWithAlpha(theme.highlight, 0.12));
+    containerElement.style.setProperty('--planet-card-border', colorWithAlpha(theme.accent, 0.32));
+    containerElement.style.setProperty('--planet-card-glow', colorWithAlpha(theme.atmosphere, 0.18));
+    containerElement.style.setProperty('--planet-card-atmosphere-position', theme.atmospherePosition);
+    containerElement.style.setProperty('--planet-card-highlight-position', theme.highlightPosition);
+}
+
+function colorWithAlpha(hexColor, alpha) {
+    const match = /^#([\da-f]{6})$/i.exec(hexColor);
+    if (!match) return 'transparent';
+
+    const value = Number.parseInt(match[1], 16);
+    const red = (value >> 16) & 255;
+    const green = (value >> 8) & 255;
+    const blue = value & 255;
+    return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
 function updateUI(data) {
+    applyCardLanguageTheme(data);
     usernameDisplay.textContent = data.username || username;
     planetNameSub.textContent = localizedPlanetName(data).toUpperCase();
 
