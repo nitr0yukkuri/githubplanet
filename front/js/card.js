@@ -170,7 +170,8 @@ async function init() {
 // Featureの静的テーマをカード要素に反映し、通常表示と画像出力で同じ配色を保つ。
 function applyCardLanguageTheme(data) {
     if (!containerElement) return;
-    const theme = resolvePlanetFeature(data)?.cardTheme;
+    const feature = resolvePlanetFeature(data);
+    const theme = feature?.cardTheme;
     if (!theme) {
         containerElement.removeAttribute('data-card-theme');
         [
@@ -186,7 +187,8 @@ function applyCardLanguageTheme(data) {
 
     containerElement.dataset.cardTheme = theme.id;
     const planetColor = /^#[\da-f]{6}$/i.test(data.planetColor || '') ? data.planetColor : theme.atmosphere;
-    containerElement.style.setProperty('--planet-card-atmosphere', colorWithAlpha(planetColor, 0.24));
+    const atmosphereColor = feature.id === 'css' ? theme.atmosphere : planetColor;
+    containerElement.style.setProperty('--planet-card-atmosphere', colorWithAlpha(atmosphereColor, 0.24));
     containerElement.style.setProperty('--planet-card-highlight', colorWithAlpha(theme.highlight, 0.12));
     containerElement.style.setProperty('--planet-card-border', colorWithAlpha(theme.accent, 0.32));
     containerElement.style.setProperty('--planet-card-glow', colorWithAlpha(theme.atmosphere, 0.18));
@@ -205,6 +207,14 @@ function colorWithAlpha(hexColor, alpha) {
     return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
+function getCardAccentColor(data) {
+    const feature = resolvePlanetFeature(data);
+    const featureAccent = feature?.id === 'css' ? feature.cardTheme?.accent : null;
+
+    // CSS惑星は色相が巡るため、カードUIは固定テーマ色にして色揺れを防ぐ。
+    return /^#[\da-f]{6}$/i.test(featureAccent || '') ? featureAccent : data.planetColor;
+}
+
 function updateUI(data) {
     applyCardLanguageTheme(data);
     usernameDisplay.textContent = data.username || username;
@@ -215,11 +225,12 @@ function updateUI(data) {
 
     mainLangStat.textContent = (data.mainLanguage || 'UNKNOWN').toUpperCase();
 
-    if (data.planetColor) {
-        langBar.style.background = data.planetColor;
-        langBar.style.boxShadow = `0 0 10px ${data.planetColor}`;
-        if (sysStatus) sysStatus.style.color = data.planetColor;
-        if (idLabel) idLabel.style.color = data.planetColor;
+    const cardAccentColor = getCardAccentColor(data);
+    if (cardAccentColor) {
+        langBar.style.background = cardAccentColor;
+        langBar.style.boxShadow = `0 0 10px ${cardAccentColor}`;
+        if (sysStatus) sysStatus.style.color = cardAccentColor;
+        if (idLabel) idLabel.style.color = cardAccentColor;
     }
     setTimeout(() => { langBar.style.width = '100%'; }, isScreenshotMode ? 0 : 100);
 }
@@ -311,6 +322,7 @@ function createPlanet(data) {
     cardRotationMultiplier = 1;
 
     const baseSize = Math.min(1.3 * (data.planetSizeFactor || 1), 6.0);
+    const cardAccentColor = getCardAccentColor(data);
 
     const geometry = new THREE.SphereGeometry(baseSize, 64, 64);
     geometry.setAttribute('uv2', new THREE.BufferAttribute(geometry.attributes.uv.array, 2));
@@ -328,7 +340,7 @@ function createPlanet(data) {
     cardRotationMultiplier = planetFeatureRuntime?.rotationMultiplier || 1;
 
     const material = planetFeatureRuntime?.material || new THREE.MeshStandardMaterial({
-            color: data.planetColor || 0xffffff,
+            color: cardAccentColor || 0xffffff,
             aoMap: planetTexture,
             aoMapIntensity: 1.5,
             roughness: 0.8,
@@ -429,7 +441,7 @@ function createPlanet(data) {
         `;
         const auraMat = new THREE.ShaderMaterial({
             uniforms: {
-                glowColor: { value: new THREE.Color(data.planetColor || 0xffffff) },
+                glowColor: { value: new THREE.Color(cardAccentColor || 0xffffff) },
                 intensity: { value: auraIntensity + 1.0 }
             },
             vertexShader: auraVertexShader,
@@ -442,7 +454,7 @@ function createPlanet(data) {
         const aura = new THREE.Mesh(auraGeo, auraMat);
         planetGroup.add(aura);
     }
-    if (planetFeatureRuntime?.id !== 'java') addParticles(data.planetColor);
+    if (planetFeatureRuntime?.id !== 'java') addParticles(cardAccentColor);
 }
 
 function addParticles(color) {

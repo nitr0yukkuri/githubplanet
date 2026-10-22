@@ -53,7 +53,7 @@ test('documents static cards as the default and animated cards as optional', asy
 
     assert.match(readme, /静止カード（標準）/);
     assert.match(readme, /アニメーションGIFカード（任意、GitHub Actionsを使用）/);
-    assert.match(readme, /Actions.+Update Planet Card.+手動実行/s);
+    assert.match(readme, /Actions.+Update Planet Card.+手動で実行/s);
     assert.match(englishReadme, /Static card \(default\)/);
     assert.match(englishReadme, /Optional \(uses GitHub Actions\): Animated GIF card/);
     assert.match(englishReadme, /Actions.+manually run.+Update Planet Card/s);
