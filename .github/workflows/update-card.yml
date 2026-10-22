@@ -261,7 +261,7 @@ jobs:
       - name: Publish GIFs to asset branch
         run: |
           set -euo pipefail
-          test "$(find generated-card-assets -maxdepth 1 -name '*.gif' | wc -l)" -eq 12
+          test "$(find generated-card-assets -maxdepth 1 -name '*.gif' | wc -l)" -eq 14
           for gif in generated-card-assets/*.gif; do
             file "$gif" | grep -q "GIF image data"
           done
