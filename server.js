@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import connectPgSimple from 'connect-pg-simple';
 import { Server } from 'socket.io';
 import { createPlanetQueryService } from './src/application/planet-query-service.js';
+import { createAuthoredLanguageHistoryService } from './src/application/authored-language-history-service.js';
 import { createPlanetService } from './src/application/planet-service.js';
 import { createMeteorService } from './src/application/meteor-service.js';
 import { DATA_CACHE_DURATION, EXTENSION_MAP, LANGUAGE_COLORS } from './src/domain/planet/constants.js';
@@ -148,6 +149,10 @@ const planetQueryService = planetRepository ? createPlanetQueryService({
     planetService,
     cacheDuration: DATA_CACHE_DURATION
 }) : undefined;
+const authoredLanguageHistoryService = planetRepository ? createAuthoredLanguageHistoryService({
+    repository: planetRepository,
+    githubClient
+}) : undefined;
 
 app.use('/front/img', express.static(path.join(__dirname, 'front/img'), { maxAge: '30d' }));
 app.use('/front', express.static(path.join(__dirname, 'front'), { maxAge: 0 }));
@@ -184,6 +189,7 @@ registerAuthRoutes(app, {
 registerPlanetRoutes(app, {
     planetService,
     planetQueryService,
+    authoredLanguageHistoryService,
     cacheDuration: DATA_CACHE_DURATION,
     randomHistoryStorage: process.env.RANDOM_HISTORY_STORAGE || 'cookie',
     randomPerformance
