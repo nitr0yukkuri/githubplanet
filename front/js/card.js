@@ -454,7 +454,7 @@ function createPlanet(data) {
         const aura = new THREE.Mesh(auraGeo, auraMat);
         planetGroup.add(aura);
     }
-    if (planetFeatureRuntime?.id !== 'java') addParticles(cardAccentColor);
+    if (planetFeatureRuntime?.id !== 'java') addParticles(data.planetColor);
 }
 
 function addParticles(color) {
