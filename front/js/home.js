@@ -20,9 +20,6 @@ let activePlanetReveal = null;
 let currentPlanetData = null;
 let planetLanguageHistory = null;
 let planetLanguageHistoryRequest = 0;
-let selectedHistoricalLanguageComposition = null;
-let authoredLanguageHistoryPollTimer = null;
-let authoredLanguageHistoryPollStartedAt = 0;
 
 let welcomeModal, okButton, mainUiWrapper;
 let isFetchingRandomPlanet = false;
@@ -314,7 +311,10 @@ function updatePlanetDetails(data) {
                             const percentage = rawPercentage <= 1
                                 ? rawPercentage.toFixed(1)
                                 : Math.round(rawPercentage);
-                            p.innerHTML = `${lang}<span>${percentage}%</span>`;
+                            p.append(document.createTextNode(lang));
+                            const percentageLabel = document.createElement('span');
+                            percentageLabel.textContent = `${percentage}%`;
+                            p.appendChild(percentageLabel);
                             stats.appendChild(p);
                         });
                 }
@@ -340,28 +340,7 @@ function updatePlanetDetails(data) {
     }
 }
 
-function scheduleAuthoredLanguageHistoryRefresh(data, requestId, retryAfter = null) {
-    if (authoredLanguageHistoryPollTimer !== null) {
-        window.clearTimeout(authoredLanguageHistoryPollTimer);
-        authoredLanguageHistoryPollTimer = null;
-    }
-    if (Date.now() - authoredLanguageHistoryPollStartedAt > 60 * 60 * 1_000) return;
-    const retryAt = retryAfter ? Date.parse(retryAfter) : Number.NaN;
-    const delay = Number.isFinite(retryAt)
-        ? Math.min(6 * 60 * 60 * 1_000, Math.max(15_000, retryAt - Date.now()))
-        : 30_000;
-    authoredLanguageHistoryPollTimer = window.setTimeout(() => {
-        authoredLanguageHistoryPollTimer = null;
-        if (requestId !== planetLanguageHistoryRequest || currentPlanetData !== data) return;
-        void updatePlanetLanguageHistory(data, { resumeScan: true });
-    }, delay);
-}
-
-async function updatePlanetLanguageHistory(data, { resumeScan = false } = {}) {
-    if (authoredLanguageHistoryPollTimer !== null) {
-        window.clearTimeout(authoredLanguageHistoryPollTimer);
-        authoredLanguageHistoryPollTimer = null;
-    }
+async function updatePlanetLanguageHistory(data) {
     const requestId = ++planetLanguageHistoryRequest;
     const element = document.getElementById('planet-language-history');
     if (!element) return;
@@ -371,12 +350,15 @@ async function updatePlanetLanguageHistory(data, { resumeScan = false } = {}) {
             translate: t,
             onSelect: (selection) => {
                 if (!currentPlanetData) return;
-                selectedHistoricalLanguageComposition = {
+                // 履歴として保存した言語構成だけ差し替え、現在の活動量や称号は保つ。
+                void loadPlanet({
+                    ...currentPlanetData,
                     mainLanguage: selection.mainLanguage,
+                    planetColor: selection.planetColor,
                     languageStats: selection.languagePercentages
-                };
-                // 順位だけをuniformへ反映し、惑星・GPU資源をスライダー操作ごとに作り直さない。
-                planetFeatureRuntime?.setLanguageComposition(selectedHistoricalLanguageComposition);
+                }, { historySelection: true }).catch((error) => {
+                    console.warn('[Planet language history] Failed to load selection:', error.message);
+                });
             }
         });
     }
@@ -387,78 +369,23 @@ async function updatePlanetLanguageHistory(data, { resumeScan = false } = {}) {
         && loggedInUsername.toLowerCase() === data.username.toLowerCase()
     );
     if (!isOwnPlanet || isPublicPlanetRoute) {
-        authoredLanguageHistoryPollStartedAt = 0;
         planetLanguageHistory.hide();
         return;
     }
 
-    let scanRequested = false;
     try {
-        const response = await fetchHomeApi(
-            `/api/me/authored-language-history?t=${Date.now()}`,
-            { cache: 'no-store' }
-        );
+        const response = await fetchHomeApi('/api/me/language-history', { cache: 'no-store' });
         if (requestId !== planetLanguageHistoryRequest) return;
         if (!response.ok) {
-            authoredLanguageHistoryPollStartedAt = 0;
             planetLanguageHistory.hide();
             return;
         }
-        let payload = await response.json();
-        if (payload.status?.state === 'idle' || (resumeScan
-            && ['partial', 'failed'].includes(payload.status?.state)
-            && !payload.status?.scanCompletedAt)) {
-            authoredLanguageHistoryPollStartedAt ||= Date.now();
-            scanRequested = true;
-            const scanResponse = await fetchHomeApi(
-                `/api/me/authored-language-history/scan?t=${Date.now()}`,
-                { method: 'POST', cache: 'no-store' },
-                90_000
-            );
-            if (requestId !== planetLanguageHistoryRequest) return;
-            if (!scanResponse.ok) {
-                if (scanResponse.status === 429 || scanResponse.status >= 500) {
-                    scheduleAuthoredLanguageHistoryRefresh(data, requestId);
-                } else {
-                    authoredLanguageHistoryPollStartedAt = 0;
-                    planetLanguageHistory.hide();
-                }
-                return;
-            }
-            payload = await scanResponse.json();
-        }
+        const payload = await response.json();
         if (requestId !== planetLanguageHistoryRequest || currentPlanetData !== data) return;
-        const history = Array.isArray(payload.history)
-            ? payload.history.map((entry) => ({
-                ...entry,
-                // 軌跡だけを再生するため色は固定し、過去のコントリビューション構成を別状態として保持する。
-                planetColor: data.planetColor || '#ffffff'
-            }))
-            : [];
-        planetLanguageHistory.show(history, null, {
-            partial: Boolean(payload.status?.partial)
-        });
-        if (['running', 'partial', 'failed'].includes(payload.status?.state)
-            && !payload.status?.scanCompletedAt) {
-            authoredLanguageHistoryPollStartedAt ||= Date.now();
-            scheduleAuthoredLanguageHistoryRefresh(
-                data,
-                requestId,
-                payload.status?.retryAfter
-            );
-        } else {
-            authoredLanguageHistoryPollStartedAt = 0;
-        }
+        planetLanguageHistory.show(payload.history, data);
     } catch {
-        // 履歴取得中の一時エラーは惑星表示へ波及させず、初回スキャン後なら後で再確認する。
-        if (requestId === planetLanguageHistoryRequest) {
-            if (resumeScan || scanRequested) {
-                scheduleAuthoredLanguageHistoryRefresh(data, requestId);
-            } else {
-                authoredLanguageHistoryPollStartedAt = 0;
-                planetLanguageHistory.hide();
-            }
-        }
+        // 履歴が取得できない時も現在の惑星表示を維持する。
+        if (requestId === planetLanguageHistoryRequest) planetLanguageHistory.hide();
     }
 }
 
@@ -562,7 +489,6 @@ async function loadPlanet(data, { historySelection = false } = {}) {
 
     if (!historySelection) {
         currentPlanetData = data;
-        selectedHistoricalLanguageComposition = null;
         void updatePlanetLanguageHistory(data);
     }
 
@@ -632,9 +558,6 @@ async function loadPlanet(data, { historySelection = false } = {}) {
         radius: 4,
         direction: 1
     });
-    if (selectedHistoricalLanguageComposition) {
-        planetFeatureRuntime?.setLanguageComposition(selectedHistoricalLanguageComposition);
-    }
     planetRotationSpeed = basePlanetRotationSpeed
         * (planetFeatureRuntime?.rotationMultiplier || 1);
 
