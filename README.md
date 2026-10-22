@@ -105,7 +105,7 @@ GitHub Push Webhook → Express → Socket.IO → 閲覧中のブラウザに流
 | Python | 構造的な地表と軌跡 | `python-planet-structure.js` |
 | Rust | 砂漠地形と砂塵 | `rust-planet-desert.js` |
 | Ruby | 太陽熱・コロナ・エンバー | `ruby-planet-solar.js` |
- 
+
 対応言語のカタログと色定義は、専用レンダラーの一覧とは別に `src/domain/planet/constants.js` で管理しています。未登録言語でも、色と名前のフォールバックによって惑星データを保持できます。
 
 Pythonには構造的な地表と、対をなす軌跡を表示する言語別表現があります。
@@ -428,4 +428,14 @@ GIF生成では、Playwrightでカードを録画し、FFmpegで`800x266`のGIF�
 
 - Backend / deployment: [@nitr0yukkuri](https://github.com/nitr0yukkuri)
 - Frontend / design: [@lenagig](https://github.com/lenagig)
+
+<div align="center">
+  <a href="https://githubplanet.dev/">
+    <img width="720" alt="nitr0yukkuri's planet card" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/profile_card.gif">
+  </a>
+  <br>
+  <a href="https://githubplanet.dev/">
+    <img width="720" alt="lenagig's planet card" src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet.dev/card.html?username=lenagig&amp;fix=true">
+  </a>
+</div>
 
