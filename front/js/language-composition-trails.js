@@ -31,7 +31,7 @@ const LANGUAGE_COLORS = Object.freeze({
     batchfile: '#c1f12e',
     powershell: '#012456',
     markdown: '#083fa1',
-    json: '#a3a3a3',
+    json: '#292929',
     yaml: '#cb171e',
     sql: '#e38c00',
     graphql: '#e10098',
