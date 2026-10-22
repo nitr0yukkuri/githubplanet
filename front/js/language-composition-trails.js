@@ -109,10 +109,10 @@ function createTrailCurve(THREE, radius, path) {
 }
 
 function calculateTubeRadius(radius, entry) {
-    return Math.max(
-        radius * TRAIL_MIN_WIDTH_SCALE,
-        radius * TRAIL_SHARE_WIDTH_SCALE * Math.sqrt(entry.share)
-    );
+    const share = Math.sqrt(Math.max(0, Math.min(1, entry.share)));
+    const minimumRadius = radius * TRAIL_MIN_WIDTH_SCALE;
+    const maximumRadius = radius * TRAIL_SHARE_WIDTH_SCALE;
+    return minimumRadius + (maximumRadius - minimumRadius) * share;
 }
 
 function createTrail(THREE, entry, path, radius, index, direction, timeUniform) {
@@ -233,7 +233,8 @@ export function createLanguageCompositionTrails({ THREE, data, radius, direction
                 Math.max(0, now - lastMilliseconds) / 1000
             );
             lastMilliseconds = now;
-            trailTime.value += elapsedSeconds / TRAIL_CYCLE_SECONDS;
+            // シェーダーの位相は1周期で繰り返すため、長時間表示でfloat精度が落ちないよう折り返す。
+            trailTime.value = (trailTime.value + elapsedSeconds / TRAIL_CYCLE_SECONDS) % 1;
         }
     };
 }

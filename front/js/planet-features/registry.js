@@ -302,16 +302,14 @@ export function createPlanetFeatureRuntime({
     direction = 1
 }) {
     const feature = resolvePlanetFeature(data);
-    if (!feature) return null;
-
-    const material = feature.createMaterial({
+    const material = feature?.createMaterial({
         THREE,
         planetTexture,
         data,
         radius,
         direction
-    });
-    const objects = feature.createObjects?.({
+    }) || null;
+    const objects = feature?.createObjects?.({
         THREE,
         planetTexture,
         data,
@@ -325,9 +323,11 @@ export function createPlanetFeatureRuntime({
         radius,
         direction
     });
+    if (!feature && !languageTrails) return null;
+
     const runtime = {
-        id: feature.id,
-        language: feature.language,
+        id: feature?.id || null,
+        language: feature?.language || data?.mainLanguage || null,
         material,
         objects,
         sceneObjects: [
@@ -337,8 +337,8 @@ export function createPlanetFeatureRuntime({
         setLanguageComposition(nextData) {
             languageTrails?.setLanguageComposition(nextData);
         },
-        rotationMultiplier: feature.rotationMultiplier || 1,
-        windAnimationMultiplier: feature.windAnimationMultiplier || 1,
+        rotationMultiplier: feature?.rotationMultiplier || 1,
+        windAnimationMultiplier: feature?.windAnimationMultiplier || 1,
         update(now, context = {}) {
             const updateContext = {
                 material,
@@ -346,7 +346,7 @@ export function createPlanetFeatureRuntime({
                 now,
                 camera: context.camera
             };
-            if (feature.usesWindSpeed) {
+            if (feature?.usesWindSpeed) {
                 const rotationSpeed = context.rotationSpeed || 0;
                 const baseRotationSpeed = context.baseRotationSpeed || 0.001;
                 updateContext.windSpeed = go.calculateGoWindSpeedFactor(
@@ -354,11 +354,11 @@ export function createPlanetFeatureRuntime({
                     baseRotationSpeed
                 ) * runtime.windAnimationMultiplier;
             }
-            feature.update?.(updateContext);
+            feature?.update?.(updateContext);
             languageTrails?.update(now);
         },
         dispose() {
-            feature.dispose?.({ material, objects });
+            feature?.dispose?.({ material, objects });
         }
     };
     return runtime;
