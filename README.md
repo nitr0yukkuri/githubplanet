@@ -19,6 +19,17 @@ GitHub Planetは、開発者のGitHub活動を宇宙空間の3D惑星へ変換�
 
 この作品の中心は、数字を一覧で見ることではありません。自分の開発履歴を直接回転させ、表面の質感や言語固有のエフェクトを観測し、他の開発者の惑星と見比べられることにあります。
 
+## 🎬 まずは1分で体験
+
+[ログイン不要のデモを開く](https://githubplanet.dev/demo?showcase=typescript)
+
+1. デモを開く
+2. 惑星の色・表面・大きさ・回転を見る
+3. 実績や言語ごとの表現を確認する
+4. 言語別ショーケースを切り替えて比較する
+
+このデモは実在のGitHubユーザーや本番データベースに依存しない固定データです。
+
 ## 主な体験
 
 - **自分だけの惑星:** GitHub OAuth後に取得した活動データから、惑星の個性を生成します。
@@ -53,7 +64,7 @@ GitHub Push Webhook → Express → Socket.IO → 閲覧中のブラウザに流
 | データ | 反映先 |
 | --- | --- |
 | 所有する公開リポジトリの最大構成言語 | 主言語、基本色、言語固有の惑星表現 |
-| 所有する公開リポジトリごとの言語バイト数 | `languageStats`、主言語判定、2位・3位言語の軌跡 |
+| 所有する公開リポジトリごとの言語バイト数 | `languageStats`と主言語判定 |
 | GitHubでピン留めしたリポジトリ | 代表作品欄と作品ごとの言語構成。Fork作品はFork元も表示 |
 | 年間コントリビューション | 惑星の累計値、実績、周囲の星の密度 |
 | 直近約8日間の活動 | 回転速度、週間コントリビューション、速度系実績 |
@@ -67,13 +78,12 @@ GitHub Push Webhook → Express → Socket.IO → 閲覧中のブラウザに流
 
 惑星は一枚のエフェクトではなく、複数のレイヤーを組み合わせて描画します。
 
-1. **宇宙背景:** `front/img/skybox/` の実際の空間テクスチャ。
-2. **惑星表面:** `front/img/2k_mars.jpg` をベースにした球体、法線・照明・AO・言語別マテリアル。
-3. **言語レイヤー:** 1位言語の表面シェーダー、外殻、風、葉、結晶、砂塵、文書構造など。
-4. **言語構成の軌跡:** 2位・3位言語を色付きの短い周回軌跡として重ね、構成比の平方根に応じて強さを抑える。
-5. **大気・オーラ:** 言語や活動量に応じた縁取り、発光、風のウェイク。
-6. **活動の星:** 累計コントリビューションから計算した周囲の星。
-7. **流星:** Webhookやデバッグイベントから追加される一時的なイベントレイヤー。
+1. **宇宙背景:** `front/img/skybox/` の空間テクスチャ。
+2. **惑星表面:** `front/img/2k_mars.jpg` をベースにした球体、法線・照明・AO。
+3. **言語別表現:** 主言語に応じたマテリアルや外殻、風、葉、結晶、砂塵、構造表現。
+4. **大気・オーラ:** 言語や活動量に応じた縁取り、発光、風のウェイク。
+5. **活動の星:** 累計コントリビューションから計算した周囲の星。
+6. **流星:** Webhookから配信される一時的なイベント表現。
 
 ### 現在の言語別ビジュアル
 
@@ -91,14 +101,14 @@ GitHub Push Webhook → Express → Socket.IO → 閲覧中のブラウザに流
 | JavaScript | 局所反応とゴールド系サーフェス | `javascript-planet-reactivity.js` |
 | Java | 土壌と地表ダスト | `java-planet-soil.js` |
 | Kotlin | 結晶・コア・電気的な線 | `kotlin-planet-crystal.js` |
+| Perl | 海洋を思わせる地表表現 | `perl-planet-ocean.js` |
+| Python | 構造的な地表と軌跡 | `python-planet-structure.js` |
 | Rust | 砂漠地形と砂塵 | `rust-planet-desert.js` |
 | Ruby | 太陽熱・コロナ・エンバー | `ruby-planet-solar.js` |
-| Shell | 白い地形と冷たい雲層 | `shell-planet-clouds.js` |
-| XML | 入れ子構造のサーフェス | `xml-planet-nesting.js` |
-
+ 
 対応言語のカタログと色定義は、専用レンダラーの一覧とは別に `src/domain/planet/constants.js` で管理しています。未登録言語でも、色と名前のフォールバックによって惑星データを保持できます。
 
-Python専用の惑星演出はありません。Pythonを含むどの言語も、2位・3位になったときは共通の軌跡レイヤーで表示します。
+Pythonには構造的な地表と、対をなす軌跡を表示する言語別表現があります。
 
 ## 言語別ショーケース
 
@@ -116,13 +126,9 @@ Python専用の惑星演出はありません。Pythonを含むどの言語も�
 | [`rust`](https://githubplanet.dev/card.html?showcase=rust&fix=true) | Rust | Desert Dust World | [`showcase_rust.gif`](https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_rust.gif) |
 | [`vue`](https://githubplanet.dev/card.html?showcase=vue&fix=true) | Vue | Gentle Reactive Wind | [`showcase_vue.gif`](https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_vue.gif) |
 | [`ruby`](https://githubplanet.dev/card.html?showcase=ruby&fix=true) | Ruby | Burning Ruby | [`showcase_ruby.gif`](https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_ruby.gif) |
+| [`python`](https://githubplanet.dev/card.html?showcase=python&fix=true) | Python | Paired Orbital Trails | [`showcase_python.gif`](https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_python.gif) |
 
-issue由来の追加演出も、カード素材をまだ公開していないプレビュー惑星として同じ画面で確認できます。
-
-| プレビュー | 言語 | 表現 |
-| --- | --- | --- |
-| [`shell`](https://githubplanet.dev/showcase/shell) | Shell | Cold Cloud Layers |
-| [`xml`](https://githubplanet.dev/showcase/xml) | XML | Nested Surface |
+カードを画像付きでまとめた一覧は[カードギャラリー](docs/cards/README.md)（[English](docs/cards/README.en.md)）を参照してください。
 
 ローカルでは、DBなしでも次のURLで確認できます。
 
@@ -270,7 +276,7 @@ test/                             Node.jsテスト
 
 ### 必要なもの
 
-- Docker Desktop（推奨）またはNode.js 18以上とPostgreSQL 15以上
+- Docker Desktop（推奨）またはNode.js 24.22.1（25未満）とPostgreSQL 15以上
 - GitHub OAuth App
 - GitHub Personal Access Tokenは不要です。ログイン後のOAuthアクセストークンをサーバーが利用します。
 - Gemini APIキーは任意です。未登録言語の色・名前フォールバックを使う場合だけ必要です。
@@ -344,11 +350,10 @@ http://localhost:3000/api/planets/showcase/ruby
 
 ### テスト用シード惑星
 
-CSSとJavaの固定データをPostgreSQLへ投入するCompose profileがあります。
+CSSの固定データをPostgreSQLへ投入するCompose profileがあります。
 
 ```bash
 docker compose --profile css-test up --build
-docker compose --profile java-test up --build
 ```
 
 ## 環境変数
@@ -392,7 +397,7 @@ npm run perf:random-http
 
 ### マイグレーションの運用
 
-- migrationは未使用の次の3桁番号で追加します（現在の次番号は`016`）。本番には別内容の旧`004`があるため、再利用しません。
+- migrationは未使用の次の3桁番号で追加し、適用済みファイルの内容は変更・再利用しません。
 - 適用済みマイグレーションの内容は変更せず、新しい番号を追加します。
 - 起動時は`schema_migrations`のchecksumを検証します。
 - `002`と`003`は、ユーザー名検索とランダム検索用のPostgreSQL indexを`CONCURRENTLY`で作成します。
