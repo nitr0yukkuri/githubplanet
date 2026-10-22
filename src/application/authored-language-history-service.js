@@ -15,19 +15,20 @@ export function createAuthoredLanguageHistoryService({ repository, githubClient 
         if (inFlightScans.has(key)) return false;
 
         const previousScan = await repository.getAuthoredLanguageHistoryScan(githubId);
-        const resumeProgress = previousScan?.scanStatus === 'partial' && !previousScan.requestBudgetReached
-            ? {
-                repositoriesScanned: previousScan.repositoriesScanned,
-                privateRepositoriesSkipped: previousScan.privateRepositoriesSkipped,
-                commitsFound: previousScan.commitsFound,
-                commitsScanned: previousScan.commitsScanned,
-                unavailableCommits: previousScan.unavailableCommits,
-                incompleteFileCommits: previousScan.incompleteFileCommits,
-                unclassifiedAddedLines: previousScan.unclassifiedAddedLines,
-                repositoryCapReached: previousScan.repositoryCapReached,
-                apiRequests: previousScan.apiRequests
-            }
-            : {};
+        const resumable = ['partial', 'failed', 'running'].includes(previousScan?.scanStatus);
+        const continueCurrentBudget = resumable && !previousScan.requestBudgetReached;
+        const resumeProgress = {
+            repositoriesScanned: continueCurrentBudget ? previousScan.repositoriesScanned : 0,
+            privateRepositoriesSkipped: continueCurrentBudget ? previousScan.privateRepositoriesSkipped : 0,
+            commitsFound: continueCurrentBudget ? previousScan.commitsFound : 0,
+            commitsScanned: continueCurrentBudget ? previousScan.commitsScanned : 0,
+            unavailableCommits: continueCurrentBudget ? previousScan.unavailableCommits : 0,
+            incompleteFileCommits: continueCurrentBudget ? previousScan.incompleteFileCommits : 0,
+            unclassifiedAddedLines: continueCurrentBudget ? previousScan.unclassifiedAddedLines : 0,
+            repositoryCapReached: continueCurrentBudget && previousScan.repositoryCapReached,
+            apiRequests: continueCurrentBudget ? previousScan.apiRequests : 0,
+            scanCursor: resumable ? previousScan.scanCursor || {} : {}
+        };
         const claimed = await repository.tryStartAuthoredLanguageHistoryScan(githubId, SCAN_TTL_MS);
         if (!claimed) return false;
 
@@ -59,7 +60,8 @@ export function createAuthoredLanguageHistoryService({ repository, githubClient 
             await repository.failAuthoredLanguageHistoryScan(
                 githubId,
                 error.message,
-                error.retryAfterMs || DEFAULT_RETRY_MS
+                error.retryAfterMs || DEFAULT_RETRY_MS,
+                error.scanProgress || error.progress || null
             ).catch((saveError) => console.warn('[Language History] Could not save scan failure:', saveError.message));
             console.warn(`[Language History] Scan failed for ${login}:`, error.message);
         } finally {
@@ -106,3 +108,4 @@ export function createAuthoredLanguageHistoryService({ repository, githubClient 
 
     return { startScan, getHistory };
 }
+

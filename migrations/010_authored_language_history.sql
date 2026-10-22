@@ -32,5 +32,7 @@ CREATE TABLE IF NOT EXISTS authored_language_history_scans (
     unclassified_added_lines BIGINT NOT NULL DEFAULT 0,
     repository_cap_reached BOOLEAN NOT NULL DEFAULT FALSE,
     api_requests INTEGER NOT NULL DEFAULT 0,
-    request_budget_reached BOOLEAN NOT NULL DEFAULT FALSE
+    request_budget_reached BOOLEAN NOT NULL DEFAULT FALSE,
+    scan_cursor JSONB NOT NULL DEFAULT '{}'::jsonb
 );
+

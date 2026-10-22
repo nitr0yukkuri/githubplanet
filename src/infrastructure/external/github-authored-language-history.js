@@ -143,6 +143,9 @@ export function createGithubAuthoredLanguageHistoryClient({ axios, extensionMap,
                 unclassifiedAddedLines: Number(initialProgress.unclassifiedAddedLines) || 0,
                 repositoryCapReached: Boolean(initialProgress.repositoryCapReached),
                 apiRequests: Number(initialProgress.apiRequests) || 0,
+                scanCursor: initialProgress.scanCursor && typeof initialProgress.scanCursor === 'object'
+                    ? { ...initialProgress.scanCursor }
+                    : {},
                 requestBudgetReached: false,
                 yielded: false
             };
@@ -179,12 +182,26 @@ export function createGithubAuthoredLanguageHistoryClient({ axios, extensionMap,
                 }
                 progress.apiRequests += 1;
                 requestsThisInvocation += 1;
-                return operation();
+                try {
+                    return await operation();
+                } catch (error) {
+                    error.scanProgress = { ...progress, scanCursor: { ...progress.scanCursor } };
+                    throw error;
+                }
             };
 
-            for (let year = createdAt.getUTCFullYear(); year <= through.getUTCFullYear(); year += 1) {
+            const firstYear = createdAt.getUTCFullYear();
+            const lastYear = through.getUTCFullYear();
+            const resumeCursor = { ...progress.scanCursor };
+            const requestedYear = Number(resumeCursor.year);
+            const startYear = Number.isInteger(requestedYear)
+                ? Math.min(lastYear + 1, Math.max(firstYear, requestedYear))
+                : firstYear;
+
+            for (let year = startYear; year <= lastYear; year += 1) {
                 const from = new Date(Math.max(Date.UTC(year, 0, 1), createdAt.getTime()));
                 const to = new Date(Math.min(Date.UTC(year + 1, 0, 1) - 1, through.getTime()));
+                progress.scanCursor = { year, repositoryFullName: null, page: 1 };
                 if (!canRequest('graphql')) {
                     await onProgress({ ...progress });
                     return progress;
@@ -198,7 +215,18 @@ export function createGithubAuthoredLanguageHistoryClient({ axios, extensionMap,
                 const repositories = queryUser?.contributionsCollection?.commitContributionsByRepository || [];
                 if (repositories.length >= MAX_REPOSITORIES_PER_YEAR) progress.repositoryCapReached = true;
 
-                for (const item of repositories) {
+                const cursorRepository = year === requestedYear
+                    ? String(resumeCursor.repositoryFullName || '').toLowerCase()
+                    : '';
+                const matchingRepositoryIndex = cursorRepository
+                    ? repositories.findIndex((item) => (
+                        String(item?.repository?.nameWithOwner || '').toLowerCase() === cursorRepository
+                    ))
+                    : 0;
+                const startRepositoryIndex = matchingRepositoryIndex >= 0 ? matchingRepositoryIndex : 0;
+
+                for (let repositoryIndex = startRepositoryIndex; repositoryIndex < repositories.length; repositoryIndex += 1) {
+                    const item = repositories[repositoryIndex];
                     const repository = item?.repository;
                     const fullName = repository?.nameWithOwner;
                     if (!fullName) continue;
@@ -208,10 +236,14 @@ export function createGithubAuthoredLanguageHistoryClient({ axios, extensionMap,
                     }
                     const [owner, name] = fullName.split('/');
                     if (!owner || !name) continue;
-                    progress.repositoriesScanned += 1;
-                    let page = 1;
+                    const resumeThisRepository = year === requestedYear
+                        && matchingRepositoryIndex === repositoryIndex;
+                    let page = resumeThisRepository
+                        ? Math.max(1, Math.trunc(Number(resumeCursor.page) || 1))
+                        : 1;
                     const seen = new Set();
                     while (true) {
+                        progress.scanCursor = { year, repositoryFullName: fullName, page };
                         if (!canRequest('rest')) {
                             await onProgress({ ...progress });
                             return progress;
@@ -223,8 +255,20 @@ export function createGithubAuthoredLanguageHistoryClient({ axios, extensionMap,
                             'list_authored_commits',
                             updateRemaining('rest')
                         ));
-                        if (!Array.isArray(commits) || commits.length === 0) break;
-                        const references = commits.filter((commit) => {
+                        const commitList = Array.isArray(commits) ? commits : [];
+                        if (commitList.length === 0) {
+                            progress.repositoriesScanned += 1;
+                            const nextRepository = repositories
+                                .slice(repositoryIndex + 1)
+                                .map((nextItem) => nextItem?.repository?.nameWithOwner)
+                                .find(Boolean) || null;
+                            progress.scanCursor = repositoryIndex + 1 < repositories.length
+                                ? { year, repositoryFullName: nextRepository, page: 1 }
+                                : { year: year + 1, repositoryFullName: null, page: 1 };
+                            await onProgress({ ...progress });
+                            break;
+                        }
+                        const references = commitList.filter((commit) => {
                             const sha = commit?.sha;
                             if (!sha) return false;
                             const key = `${fullName.toLowerCase()}:${sha.toLowerCase()}`;
@@ -286,18 +330,39 @@ export function createGithubAuthoredLanguageHistoryClient({ axios, extensionMap,
                             progress.incompleteFileCommits += batch.filter((row) => !row.filesComplete).length;
                             progress.unclassifiedAddedLines += batch.reduce((sum, row) => sum + row.unclassifiedAddedLines, 0);
                         }
-                        await onProgress({ ...progress });
                         if (failure) {
                             failure.progress = { ...progress };
+                            failure.scanProgress = { ...progress, scanCursor: { ...progress.scanCursor } };
+                            await onProgress({ ...progress });
                             throw failure;
                         }
-                        if (progress.requestBudgetReached) return progress;
-                        if (commits.length < 100) break;
+                        if (progress.yielded || progress.requestBudgetReached) {
+                            await onProgress({ ...progress });
+                            return progress;
+                        }
+                        if (commitList.length < 100) {
+                            progress.repositoriesScanned += 1;
+                            const nextRepository = repositories
+                                .slice(repositoryIndex + 1)
+                                .map((nextItem) => nextItem?.repository?.nameWithOwner)
+                                .find(Boolean) || null;
+                            progress.scanCursor = repositoryIndex + 1 < repositories.length
+                                ? { year, repositoryFullName: nextRepository, page: 1 }
+                                : { year: year + 1, repositoryFullName: null, page: 1 };
+                            await onProgress({ ...progress });
+                            break;
+                        }
                         page += 1;
+                        progress.scanCursor = { year, repositoryFullName: fullName, page };
+                        await onProgress({ ...progress });
                     }
                 }
+                progress.scanCursor = { year: year + 1, repositoryFullName: null, page: 1 };
+                await onProgress({ ...progress });
             }
+            progress.scanCursor = {};
             return progress;
         }
     };
 }
+

@@ -58,7 +58,8 @@ function mapAuthoredLanguageScan(row) {
         unclassifiedAddedLines: row.unclassified_added_lines,
         repositoryCapReached: row.repository_cap_reached,
         apiRequests: row.api_requests,
-        requestBudgetReached: row.request_budget_reached
+        requestBudgetReached: row.request_budget_reached,
+        scanCursor: row.scan_cursor || {}
     };
 }
 
@@ -73,7 +74,8 @@ function progressValues(progress) {
         progress.unclassifiedAddedLines,
         progress.repositoryCapReached,
         progress.apiRequests,
-        progress.requestBudgetReached
+        progress.requestBudgetReached,
+        progress.scanCursor || {}
     ];
 }
 
@@ -260,24 +262,26 @@ export function createPlanetRepository(pool, {
                     updated_at = NOW(),
                     retry_after = NULL,
                     last_error = NULL,
-                    repositories_scanned = CASE WHEN authored_language_history_scans.scan_status = 'partial'
+                    repositories_scanned = CASE WHEN authored_language_history_scans.scan_status IN ('partial', 'failed', 'running')
                         AND NOT authored_language_history_scans.request_budget_reached THEN authored_language_history_scans.repositories_scanned ELSE 0 END,
-                    private_repositories_skipped = CASE WHEN authored_language_history_scans.scan_status = 'partial'
+                    private_repositories_skipped = CASE WHEN authored_language_history_scans.scan_status IN ('partial', 'failed', 'running')
                         AND NOT authored_language_history_scans.request_budget_reached THEN authored_language_history_scans.private_repositories_skipped ELSE 0 END,
-                    commits_found = CASE WHEN authored_language_history_scans.scan_status = 'partial'
+                    commits_found = CASE WHEN authored_language_history_scans.scan_status IN ('partial', 'failed', 'running')
                         AND NOT authored_language_history_scans.request_budget_reached THEN authored_language_history_scans.commits_found ELSE 0 END,
-                    commits_scanned = CASE WHEN authored_language_history_scans.scan_status = 'partial'
+                    commits_scanned = CASE WHEN authored_language_history_scans.scan_status IN ('partial', 'failed', 'running')
                         AND NOT authored_language_history_scans.request_budget_reached THEN authored_language_history_scans.commits_scanned ELSE 0 END,
-                    unavailable_commits = CASE WHEN authored_language_history_scans.scan_status = 'partial'
+                    unavailable_commits = CASE WHEN authored_language_history_scans.scan_status IN ('partial', 'failed', 'running')
                         AND NOT authored_language_history_scans.request_budget_reached THEN authored_language_history_scans.unavailable_commits ELSE 0 END,
-                    incomplete_file_commits = CASE WHEN authored_language_history_scans.scan_status = 'partial'
+                    incomplete_file_commits = CASE WHEN authored_language_history_scans.scan_status IN ('partial', 'failed', 'running')
                         AND NOT authored_language_history_scans.request_budget_reached THEN authored_language_history_scans.incomplete_file_commits ELSE 0 END,
-                    unclassified_added_lines = CASE WHEN authored_language_history_scans.scan_status = 'partial'
+                    unclassified_added_lines = CASE WHEN authored_language_history_scans.scan_status IN ('partial', 'failed', 'running')
                         AND NOT authored_language_history_scans.request_budget_reached THEN authored_language_history_scans.unclassified_added_lines ELSE 0 END,
-                    repository_cap_reached = CASE WHEN authored_language_history_scans.scan_status = 'partial'
+                    repository_cap_reached = CASE WHEN authored_language_history_scans.scan_status IN ('partial', 'failed', 'running')
                         AND NOT authored_language_history_scans.request_budget_reached THEN authored_language_history_scans.repository_cap_reached ELSE FALSE END,
-                    api_requests = CASE WHEN authored_language_history_scans.scan_status = 'partial'
+                    api_requests = CASE WHEN authored_language_history_scans.scan_status IN ('partial', 'failed', 'running')
                         AND NOT authored_language_history_scans.request_budget_reached THEN authored_language_history_scans.api_requests ELSE 0 END,
+                    scan_cursor = CASE WHEN authored_language_history_scans.scan_status IN ('partial', 'failed', 'running')
+                        THEN authored_language_history_scans.scan_cursor ELSE '{}'::jsonb END,
                     request_budget_reached = FALSE
                 WHERE authored_language_history_scans.scan_status = 'idle'
                     OR (authored_language_history_scans.scan_status = 'complete'
@@ -305,7 +309,8 @@ export function createPlanetRepository(pool, {
                     unclassified_added_lines = $8,
                     repository_cap_reached = $9,
                     api_requests = $10,
-                    request_budget_reached = $11
+                    request_budget_reached = $11,
+                    scan_cursor = $12
                 WHERE github_id = $1 AND scan_status = 'running'
             `, [githubId, ...progressValues(progress)]);
         },
@@ -318,7 +323,8 @@ export function createPlanetRepository(pool, {
                     repositories_scanned = $2, private_repositories_skipped = $3,
                     commits_found = $4, commits_scanned = $5, unavailable_commits = $6,
                     incomplete_file_commits = $7, unclassified_added_lines = $8,
-                    repository_cap_reached = $9, api_requests = $10, request_budget_reached = $11
+                    repository_cap_reached = $9, api_requests = $10, request_budget_reached = $11,
+                    scan_cursor = $12
                 WHERE github_id = $1 AND scan_status = 'running'
                 RETURNING *
             `, [githubId, ...progressValues(progress)]);
@@ -329,32 +335,50 @@ export function createPlanetRepository(pool, {
             const result = await pool.query(`
                 UPDATE authored_language_history_scans
                 SET scan_status = 'partial', updated_at = NOW(),
-                    retry_after = NOW() + (LEAST($11::bigint, 21600000) * INTERVAL '1 millisecond'),
-                    last_error = CASE WHEN $12 THEN 'GitHub history request budget reached; scan will resume after cooldown' ELSE NULL END,
+                    retry_after = NOW() + (LEAST($12::bigint, 21600000) * INTERVAL '1 millisecond'),
+                    last_error = CASE WHEN $13 THEN 'GitHub history request budget reached; scan will resume after cooldown' ELSE NULL END,
                     repositories_scanned = $2, private_repositories_skipped = $3,
                     commits_found = $4, commits_scanned = $5, unavailable_commits = $6,
                     incomplete_file_commits = $7, unclassified_added_lines = $8,
-                    repository_cap_reached = $9, api_requests = $10, request_budget_reached = $12
+                    repository_cap_reached = $9, api_requests = $10, scan_cursor = $11,
+                    request_budget_reached = $13
                 WHERE github_id = $1 AND scan_status = 'running'
                 RETURNING *
             `, [
                 githubId,
                 ...progressValues(progress).slice(0, 9),
+                progress.scanCursor || {},
                 Math.max(0, Math.trunc(Number(retryAfterMs) || 0)),
                 Boolean(progress.requestBudgetReached)
             ]);
             return mapAuthoredLanguageScan(result.rows[0]);
         },
 
-        async failAuthoredLanguageHistoryScan(githubId, message, retryAfterMs = 0) {
+        async failAuthoredLanguageHistoryScan(githubId, message, retryAfterMs = 0, progress = null) {
             const result = await pool.query(`
                 UPDATE authored_language_history_scans
                 SET scan_status = 'failed', updated_at = NOW(),
                     retry_after = NOW() + (LEAST(GREATEST($3::bigint, 30000), 3600000) * INTERVAL '1 millisecond'),
-                    last_error = $2
+                    last_error = $2,
+                    repositories_scanned = COALESCE($4, repositories_scanned),
+                    private_repositories_skipped = COALESCE($5, private_repositories_skipped),
+                    commits_found = COALESCE($6, commits_found),
+                    commits_scanned = COALESCE($7, commits_scanned),
+                    unavailable_commits = COALESCE($8, unavailable_commits),
+                    incomplete_file_commits = COALESCE($9, incomplete_file_commits),
+                    unclassified_added_lines = COALESCE($10, unclassified_added_lines),
+                    repository_cap_reached = COALESCE($11, repository_cap_reached),
+                    api_requests = COALESCE($12, api_requests),
+                    request_budget_reached = COALESCE($13, request_budget_reached),
+                    scan_cursor = COALESCE($14, scan_cursor)
                 WHERE github_id = $1 AND scan_status = 'running'
                 RETURNING *
-            `, [githubId, String(message || 'GitHub history scan failed').slice(0, 500), retryAfterMs]);
+            `, [
+                githubId,
+                String(message || 'GitHub history scan failed').slice(0, 500),
+                retryAfterMs,
+                ...(progress ? progressValues(progress) : Array(11).fill(null))
+            ]);
             return mapAuthoredLanguageScan(result.rows[0]);
         },
 
@@ -538,3 +562,4 @@ export function createPlanetRepository(pool, {
         }
     };
 }
+

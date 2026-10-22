@@ -43,7 +43,6 @@ test('classifies commit additions from public repository file extensions', async
 
 test('never exceeds the hard 800 request cap, including parallel detail requests', async () => {
     let calls = 0;
-    let serial = 0;
     const axios = {
         async post() {
             calls += 1;
@@ -53,12 +52,12 @@ test('never exceeds the hard 800 request cap, including parallel detail requests
                 } }] }
             } } } };
         },
-        async get(url) {
+        async get(url, config) {
             calls += 1;
             if (url.endsWith('/commits')) {
-                const n = serial++ * 100;
+                const page = Number(config.params.page);
                 return { headers: { 'x-ratelimit-remaining': String(5000 - calls) }, data: Array.from({ length: 100 }, (_, i) => ({
-                    sha: `sha-${n + i}`, commit: { author: { date: '2025-01-02T03:00:00Z' } }
+                    sha: `sha-${page}-${i}`, commit: { author: { date: '2025-01-02T03:00:00Z' } }
                 })) };
             }
             return { headers: { 'x-ratelimit-remaining': String(5000 - calls) }, data: {
@@ -92,6 +91,51 @@ test('never exceeds the hard 800 request cap, including parallel detail requests
     assert.ok(iterations > 1);
 });
 
+test('resumes at the saved commit page instead of replaying earlier pages', async () => {
+    const requestedPages = [];
+    const axios = {
+        async post() {
+            return { headers: { 'x-ratelimit-remaining': '5000' }, data: { data: { user: {
+                contributionsCollection: { commitContributionsByRepository: [{ repository: {
+                    nameWithOwner: 'alice/project', isPrivate: false
+                } }] }
+            } } } };
+        },
+        async get(url, config) {
+            const page = Number(config.params.page);
+            requestedPages.push(page);
+            if (page > 20) return { headers: { 'x-ratelimit-remaining': '4000' }, data: [] };
+            return { headers: { 'x-ratelimit-remaining': '4000' }, data: Array.from({ length: 100 }, (_, i) => ({
+                sha: `sha-${page}-${i}`, commit: { author: { date: '2025-01-02T03:00:00Z' } }
+            })) };
+        }
+    };
+    const knownCommits = new Set(Array.from({ length: 20 * 100 }, (_, index) => (
+        `alice/project:sha-${Math.floor(index / 100) + 1}-${index % 100}`
+    )));
+    const client = createClient({ axios });
+    const input = {
+        login: 'alice', accessToken: 'token', accountCreatedAt: '2025-01-01T00:00:00Z',
+        now: '2025-12-31T00:00:00Z', knownCommits
+    };
+
+    const firstChunk = await client.scanHistoricalAuthoredLanguageCommits(input);
+    assert.equal(firstChunk.yielded, true);
+    assert.deepEqual(firstChunk.scanCursor, {
+        year: 2025, repositoryFullName: 'alice/project', page: 15
+    });
+    assert.deepEqual(requestedPages, Array.from({ length: 14 }, (_, index) => index + 1));
+
+    const secondChunk = await client.scanHistoricalAuthoredLanguageCommits({
+        ...input,
+        initialProgress: firstChunk
+    });
+
+    assert.deepEqual(requestedPages.slice(14), [15, 16, 17, 18, 19, 20, 21]);
+    assert.equal(secondChunk.yielded, false);
+    assert.deepEqual(secondChunk.scanCursor, {});
+});
+
 test('stops before the REST reserve is exhausted', async () => {
     let restCalls = 0;
     const axios = {
@@ -117,3 +161,4 @@ test('stops before the REST reserve is exhausted', async () => {
     assert.equal(progress.apiRequests, 2);
     assert.equal(progress.requestBudgetReached, true);
 });
+

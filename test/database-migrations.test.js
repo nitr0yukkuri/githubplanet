@@ -99,6 +99,7 @@ test('loads ordered immutable migrations and keeps concurrent indexes outside tr
     assert.match(migrations[4].sql, /CREATE TABLE IF NOT EXISTS authored_language_commits/);
     assert.match(migrations[4].sql, /api_requests INTEGER NOT NULL DEFAULT 0/);
     assert.match(migrations[4].sql, /request_budget_reached BOOLEAN NOT NULL DEFAULT FALSE/);
+    assert.match(migrations[4].sql, /scan_cursor JSONB NOT NULL DEFAULT/);
 });
 
 test('keeps migration checksums stable across operating-system line endings', () => {
@@ -197,3 +198,4 @@ test('starts the Docker application only after its migration service succeeds', 
     assert.match(composeSource, /migrate:[\s\S]*?depends_on:\s+\s*db:\s+\s*condition: service_healthy/);
     assert.match(composeSource, /command: npm run migrate/);
 });
+

@@ -44,7 +44,8 @@ test('records budget-limited scans as partial and schedules their next scan', as
     const progress = {
         repositoriesScanned: 5, privateRepositoriesSkipped: 1, commitsFound: 900, commitsScanned: 790,
         unavailableCommits: 2, incompleteFileCommits: 0, unclassifiedAddedLines: 0,
-        repositoryCapReached: false, apiRequests: 800, requestBudgetReached: true
+        repositoryCapReached: false, apiRequests: 800, requestBudgetReached: true,
+        scanCursor: { year: 2025, repositoryFullName: 'alice/project', page: 9 }
     };
 
     const result = await repository.pauseAuthoredLanguageHistoryScan(41, progress, 6 * 60 * 60 * 1_000);
@@ -52,8 +53,13 @@ test('records budget-limited scans as partial and schedules their next scan', as
     assert.equal(result.scanStatus, 'partial');
     assert.equal(result.requestBudgetReached, true);
     assert.match(queries[0].sql, /scan_status = 'partial'/);
-    assert.match(queries[0].sql, /LEAST\(\$11::bigint, 21600000\)/);
-    assert.match(queries[0].sql, /request_budget_reached = \$12/);
+    assert.match(queries[0].sql, /LEAST\(\$12::bigint, 21600000\)/);
+    assert.match(queries[0].sql, /request_budget_reached = \$13/);
     assert.deepEqual(queries[0].params.slice(0, 10), [41, 5, 1, 900, 790, 2, 0, 0, false, 800]);
-    assert.deepEqual(queries[0].params.slice(10), [6 * 60 * 60 * 1_000, true]);
+    assert.deepEqual(queries[0].params.slice(10), [
+        progress.scanCursor,
+        6 * 60 * 60 * 1_000,
+        true
+    ]);
 });
+
