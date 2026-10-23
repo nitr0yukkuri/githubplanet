@@ -127,7 +127,13 @@ const FEATURE_DEFINITIONS = [
                 material?.userData?.shellCloudUniforms
             )
         }),
-        update: ({ objects, now }) => shell.updateShellPlanetClouds(objects.clouds, now)
+        update: ({ objects, now }) => shell.updateShellPlanetClouds(objects.clouds, now),
+        dispose: ({ objects }) => {
+            for (const cloud of objects.clouds?.children || []) {
+                cloud.geometry?.dispose?.();
+                cloud.material?.dispose?.();
+            }
+        }
     },
     {
         id: 'swift',
