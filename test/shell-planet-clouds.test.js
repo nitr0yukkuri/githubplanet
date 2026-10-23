@@ -105,7 +105,7 @@ test('builds one fluffy cloud shell with transparent gaps and sun-facing shading
     assert.match(clouds.children[0].material.fragmentShader, /vec3\(0\.96, 0\.98, 1\.0\)/);
     assert.equal(
         clouds.children[0].material.customProgramCacheKey(),
-        'shell-planet-clouds-v17-optical-depth-wind'
+        'shell-planet-clouds-v18-coordinate-consistent-lighting'
     );
 });
 
