@@ -73,7 +73,10 @@ export function rankPlanetLanguages(languageStats, mainLanguage = '') {
     const mainIndex = entries.findIndex(({ language }) => (
         normalizedName(language) === normalizedName(mainLanguage)
     ));
-    if (mainIndex > 0) entries.unshift(entries.splice(mainIndex, 1)[0]);
+    if (mainIndex > 0) {
+        entries.unshift(entries.splice(mainIndex, 1)[0]);
+    }
+    // 保存済み主言語が統計に含まれない履歴では、最大構成比を主言語として扱う。
 
     const totalBytes = entries.reduce((sum, { bytes }) => sum + bytes, 0);
     return entries.map((entry) => ({
@@ -84,8 +87,8 @@ export function rankPlanetLanguages(languageStats, mainLanguage = '') {
 
 export function resolveLanguageTrailColor(THREE, language) {
     const normalized = normalizedName(language);
-    const knownColor = LANGUAGE_COLORS[normalized];
-    if (knownColor) return knownColor;
+    const hasKnownColor = Object.prototype.hasOwnProperty.call(LANGUAGE_COLORS, normalized);
+    if (hasKnownColor) return LANGUAGE_COLORS[normalized];
 
     // 未登録言語も決定的な色にし、再読込のたびに演出色が変わるのを防ぐ。
     let hash = 2166136261;
