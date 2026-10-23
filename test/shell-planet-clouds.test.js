@@ -109,6 +109,29 @@ test('builds one fluffy cloud shell with transparent gaps and sun-facing shading
     );
 });
 
+test('keeps shadow samples in object space while lighting uses the view-space direction', () => {
+    const clouds = createShellPlanetClouds(THREE, 4, 1);
+    const material = clouds.children[0].material;
+    const source = material.vertexShader + '\n' + material.fragmentShader;
+
+    assert.match(
+        source,
+        /vShellCloudSunDirection = normalize\(normalMatrix \* shellCloudSunDirection\)/
+    );
+    assert.match(
+        source,
+        /dot\(vShellCloudNormal, vShellCloudSunDirection\)/
+    );
+    assert.match(
+        source,
+        /shellCloudLightShadow\(\s*vShellCloudPosition,\s*shellCloudTime,\s*shellCloudSunDirection\s*\)/
+    );
+    assert.doesNotMatch(
+        source,
+        /shellCloudLightShadow\(\s*vShellCloudPosition,\s*shellCloudTime,\s*vShellCloudSunDirection\s*\)/
+    );
+});
+
 test('can reuse the terrain clock for synchronized cloud shadows', () => {
     const material = createShellPlanetMaterial(THREE, { id: 'mars-terrain' });
     const clouds = createShellPlanetClouds(

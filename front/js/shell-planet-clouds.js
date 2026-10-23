@@ -242,6 +242,7 @@ function createCloudMaterial(THREE, uniforms, opacity) {
                     0.0,
                     1.0
                 );
+                // Shadow offsets use object-space positions, so pass the object-space sun uniform.
                 float lightShadow = shellCloudLightShadow(
                     vShellCloudPosition,
                     shellCloudTime,

@@ -23,7 +23,6 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
         const hasMergedGithubPlanetPullRequest = (userData.mergedPullRequests || []).some((pullRequest) => (
             pullRequest.repositoryNameWithOwner?.toLowerCase() === 'nitr0yukkuri/githubplanet'
         ));
-        const repositories = [...ownedRepos, ...contributedRepos];
         const starredCount = userData.starredRepositoryCount || 0;
         const observedTotalContributions = userData.totalContributions || 0;
         let totalCommits = observedTotalContributions;
@@ -40,7 +39,8 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
 
         const languageStats = {};
         let receivedStars = 0;
-        for (const repo of repositories) {
+        // 主言語と軌跡は公開所有repo/forkで計算し、参加先全体の言語構成が混ざるのを防ぐ。
+        for (const repo of ownedRepos) {
             for (const languageEntry of repo.languages || []) {
                 const language = languageEntry.language === 'Sass' ? 'CSS' : languageEntry.language;
                 languageStats[language] = (languageStats[language] || 0) + languageEntry.bytes;
