@@ -18,6 +18,38 @@ body {
     z-index: 1; /* UIより下に配置 */
 }
 
+#webgl-fallback {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    background: radial-gradient(ellipse at 50% 46%, rgba(36, 39, 70, 0.7), #05060b 72%);
+    pointer-events: none;
+}
+
+#webgl-fallback[hidden] {
+    display: none;
+}
+
+.webgl-fallback-planet {
+    width: min(42vw, 250px);
+    aspect-ratio: 1;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 28%, #fff 0%, var(--planet-fallback-color, #808080) 9%, #292b45 58%, #080a12 100%);
+    box-shadow: 0 0 55px var(--planet-fallback-color, #808080), inset -20px -18px 36px rgba(0, 0, 0, 0.75);
+}
+
+#webgl-fallback p {
+    max-width: 28rem;
+    margin: 0 1rem;
+    color: #c6c8d8;
+    text-align: center;
+}
+
 /* UI要素の共通スタイル */
 .ui-button {
     background-color: rgba(255, 255, 255, 0.7); /* ★ 白ベースに変更 */

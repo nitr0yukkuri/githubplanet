@@ -6,6 +6,7 @@ import { createPlanetFeatureRuntime } from './planet-features/registry.js';
 import { createPlanetLanguageHistory } from './planet-language-history.js';
 import { applyI18n, localizedPath, localizedPlanetName, localizedTitle, t } from './i18n.js';
 import { DEFAULT_SHOWCASE_SLUG, resolveHomeRoute } from './home-route.js';
+import { createWebGLRenderer } from './webgl-renderer.js';
 
 const MAX_STAR_COUNT = 120;
 const BASE_PLANET_ROTATION_SPEED = 0.001;
@@ -13,6 +14,7 @@ const BASE_PLANET_ROTATION_SPEED = 0.001;
 const HOME_API_TIMEOUT_MS = 15_000;
 
 let scene, camera, renderer, controls, planetGroup;
+let webglAvailable = false;
 let planetFeatureRuntime = null;
 let planetLoadGeneration = 0;
 let planetTexturePromise = null;
@@ -429,6 +431,16 @@ function loadPlanetTexture() {
     return planetTexturePromise;
 }
 
+function showHomeWebGLFallback(color) {
+    const fallback = document.getElementById('webgl-fallback');
+    if (!fallback) return;
+    if (/^#[\da-f]{6}$/i.test(color || '')) {
+        fallback.style.setProperty('--planet-fallback-color', color);
+    }
+    fallback.hidden = false;
+    if (renderer?.domElement) renderer.domElement.hidden = true;
+}
+
 function disposeObject(obj, resources = {
     geometries: new Set(),
     materials: new Set(),
@@ -539,6 +551,17 @@ async function loadPlanet(data, { historySelection = false } = {}) {
     updatePlanetDetails(data);
     recordHomePerformance('loadPlanet:details-ready');
 
+    const message = document.getElementById('not-logged-in-container');
+    if (message) {
+        message.style.display = 'none';
+        if (isShowcaseRoute) updateShowcaseCta();
+    }
+
+    if (!webglAvailable) {
+        showHomeWebGLFallback(data.planetColor);
+        return;
+    }
+
     if (planetGroup) {
         disposeObject(planetGroup);
         scene.remove(planetGroup);
@@ -551,6 +574,7 @@ async function loadPlanet(data, { historySelection = false } = {}) {
     const tex = await loadPlanetTexture();
     recordHomePerformance('loadPlanet:texture-ready');
     if (loadGeneration !== planetLoadGeneration) return;
+    if (!webglAvailable) return;
 
     const geo = new THREE.SphereGeometry(4, 32, 32);
     planetFeatureRuntime = createPlanetFeatureRuntime({
@@ -754,11 +778,6 @@ async function loadPlanet(data, { historySelection = false } = {}) {
 
     planetGroup.rotation.x = Math.PI * 0.4; planetGroup.rotation.y = Math.PI * 0.1;
 
-    const msg = document.getElementById('not-logged-in-container');
-    if (msg) {
-        msg.style.display = 'none';
-        if (isShowcaseRoute) updateShowcaseCta();
-    }
     controls.enabled = true;
     recordHomePerformance('loadPlanet:scene-ready', {
         featureId: planetFeatureRuntime?.id ?? null,
@@ -767,7 +786,7 @@ async function loadPlanet(data, { historySelection = false } = {}) {
 }
 
 function spawnMeteor(data) {
-    if (!scene || !camera) return;
+    if (!scene || !camera || !webglAvailable) return;
 
     // ★追加: サーバーから scale を受け取る（なければ 1.0）
     const scale = data.scale || 1.0;
@@ -942,22 +961,43 @@ async function init() {
 
     scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x000000, 10, 50);
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.z = 25;
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    document.getElementById('canvas-container').appendChild(renderer.domElement);
-    controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.autoRotate = false;
-
-    controls.enablePan = false;
-    controls.zoomSpeed = 4.0;
-    controls.minDistance = 20;
-    controls.maxDistance = 32;
+    try {
+        renderer = createWebGLRenderer(THREE, { antialias: true });
+        if (!renderer) throw new Error('WebGL is unavailable');
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.autoRotate = false;
+        controls.enablePan = false;
+        controls.zoomSpeed = 4.0;
+        controls.minDistance = 20;
+        controls.maxDistance = 32;
+        webglAvailable = true;
+        renderer.domElement.addEventListener('webglcontextlost', (event) => {
+            event.preventDefault();
+            webglAvailable = false;
+            controls?.dispose();
+            controls = null;
+            showHomeWebGLFallback(currentPlanetData?.planetColor);
+        });
+    } catch (error) {
+        console.warn('[Home] WebGL initialization unavailable:', error.message);
+        controls?.dispose();
+        controls = null;
+        renderer?.dispose();
+        renderer?.domElement?.remove();
+        renderer = null;
+        showHomeWebGLFallback();
+    }
 
     scene.add(new THREE.AmbientLight(0x888888, 2));
     const pl = new THREE.PointLight(0xffffff, 25, 1000); pl.position.set(20, 10, 5); scene.add(pl);
     const dl = new THREE.DirectionalLight(0xffffff, 0.4); dl.position.set(50, 15, 10); scene.add(dl);
-    new THREE.CubeTextureLoader().setPath('/front/img/skybox/').load(['right.webp', 'left.webp', 'top.webp', 'bottom.webp', 'front.webp', 'back.webp'], (tex) => scene.background = tex);
+    if (webglAvailable) {
+        new THREE.CubeTextureLoader().setPath('/front/img/skybox/').load(['right.webp', 'left.webp', 'top.webp', 'bottom.webp', 'front.webp', 'back.webp'], (tex) => scene.background = tex);
+    }
 
     socket.on('meteor', (data) => {
         if (document.hidden) return;
@@ -971,13 +1011,14 @@ async function init() {
         if (resizeFrame !== null) return;
         resizeFrame = window.requestAnimationFrame(() => {
             resizeFrame = null;
+            if (!renderer || !camera) return;
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
     });
 
-    animate();
+    if (webglAvailable) animate();
 
     const hasVisited = localStorage.getItem('githubPlanetVisited');
     const shouldShowWelcome = isExhibitionRoute || (!isPublicPlanetRoute && !hasVisited);
@@ -1026,7 +1067,7 @@ async function loadMainContent() {
                 notLoggedInContainer.style.display = isPublicPlanetRoute ? 'none' : 'flex';
                 const returnButton = document.getElementById('return-my-planet-btn');
                 if (returnButton) returnButton.style.display = 'none';
-                controls.enabled = false;
+                if (controls) controls.enabled = false;
             }
         }
 
@@ -1052,6 +1093,7 @@ async function loadMainContent() {
 }
 
 function animate() {
+    if (!renderer || !webglAvailable) return;
     const frameStartedAt = isHomePerformanceEnabled() ? performance.now() : null;
     requestAnimationFrame(animate);
     if (planetGroup) planetGroup.rotation.z += planetRotationSpeed;

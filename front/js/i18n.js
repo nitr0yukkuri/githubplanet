@@ -22,6 +22,7 @@ const translations = {
             login: '星を誕生させる',
             loadError: '惑星データを読み込めませんでした。通信状態を確認して再試行してください。',
             retry: '再試行',
+            webglUnavailable: '3D表示を利用できませんが、惑星情報は表示されています。',
             showcaseCta: '自分の惑星を見に行く',
             searchPlanet: '惑星を探す',
             menu: 'メニュー',
@@ -140,6 +141,7 @@ const translations = {
         },
         card: {
             pageTitle: 'GitHub Planet Card',
+            webglUnavailable: '3D表示を利用できません。',
             language: 'LANGUAGE',
             contributions: 'CONTRIBUTIONS',
             systemStatus: 'SYSTEM STATUS',
@@ -177,6 +179,7 @@ const translations = {
             login: 'Create Planet',
             loadError: 'Planet data could not be loaded. Check your connection and try again.',
             retry: 'Retry',
+            webglUnavailable: '3D rendering is unavailable, but planet details are still shown.',
             showcaseCta: 'View My Planet',
             searchPlanet: 'Find a planet',
             menu: 'Menu',
@@ -295,6 +298,7 @@ const translations = {
         },
         card: {
             pageTitle: 'GitHub Planet Card',
+            webglUnavailable: '3D rendering is unavailable.',
             language: 'LANGUAGE',
             contributions: 'CONTRIBUTIONS',
             systemStatus: 'SYSTEM STATUS',

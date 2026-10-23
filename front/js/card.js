@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createPlanetFeatureRuntime, resolvePlanetFeature } from './planet-features/registry.js';
 import { applyI18n, localizedPath, localizedPlanetName } from './i18n.js';
+import { createWebGLRenderer } from './webgl-renderer.js';
 
 const MAX_STAR_COUNT = 120;
 const CARD_DATA_TIMEOUT_MS = 6000;
@@ -76,14 +77,47 @@ if (isScreenshotMode) {
     camera.position.set(6.0, 0, 10.0);
 }
 
-const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-renderer.setSize(width, height);
-const rendererPixelRatio = Math.min(window.devicePixelRatio, 2);
-renderer.setPixelRatio(rendererPixelRatio);
-canvasContainer.appendChild(renderer.domElement);
+let renderer = createWebGLRenderer(THREE, { alpha: true, antialias: true });
+let webglAvailable = Boolean(renderer);
+let controls = null;
+const rendererPixelRatio = Math.min(window.devicePixelRatio || 1, 2);
 
-if (isScreenshotMode) {
+if (renderer) {
+    try {
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(rendererPixelRatio);
+        canvasContainer.appendChild(renderer.domElement);
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.enableZoom = false;
+        controls.autoRotate = false;
+        controls.enabled = false;
+        controls.target.set(3.5, 0, 0);
+        controls.update();
+        renderer.domElement.addEventListener('webglcontextlost', (event) => {
+            event.preventDefault();
+            webglAvailable = false;
+            controls?.dispose();
+            controls = null;
+            showCardWebGLFallback();
+        });
+    } catch (error) {
+        console.warn('[Card] WebGL initialization unavailable:', error.message);
+        controls?.dispose();
+        controls = null;
+        renderer?.dispose();
+        renderer?.domElement?.remove();
+        renderer = null;
+        webglAvailable = false;
+    }
+}
+
+if (!webglAvailable) showCardWebGLFallback();
+
+if (renderer && isScreenshotMode) {
     window.addEventListener('resize', () => {
+        if (!renderer || !webglAvailable) return;
         const w = window.innerWidth;
         const h = 400;
         renderer.setSize(w, h);
@@ -92,22 +126,9 @@ if (isScreenshotMode) {
     });
 }
 
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.05;
-controls.enableZoom = false;
-controls.autoRotate = false;
-controls.enabled = false;
-
-if (isScreenshotMode) {
-    controls.target.set(3.5, 0, 0);
-} else {
-    controls.target.set(3.5, 0, 0);
-}
-controls.update();
-
-if (!isScreenshotMode) {
+if (renderer && !isScreenshotMode) {
     window.addEventListener('resize', () => {
+        if (!renderer || !webglAvailable) return;
         const w = containerElement ? containerElement.clientWidth : 800;
         const h = containerElement ? containerElement.clientHeight : 400;
         renderer.setSize(w, h);
@@ -117,7 +138,7 @@ if (!isScreenshotMode) {
 }
 
 const textureLoader = new THREE.TextureLoader();
-const planetTexture = textureLoader.load('/front/img/2k_mars.jpg');
+const planetTexture = webglAvailable ? textureLoader.load('/front/img/2k_mars.jpg') : null;
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
 scene.add(ambientLight);
@@ -205,6 +226,16 @@ function colorWithAlpha(hexColor, alpha) {
     const green = (value >> 8) & 255;
     const blue = value & 255;
     return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+function showCardWebGLFallback(color) {
+    const fallback = document.getElementById('card-webgl-fallback');
+    if (!fallback) return;
+    if (/^#[\da-f]{6}$/i.test(color || '')) {
+        fallback.style.setProperty('--planet-fallback-color', color);
+    }
+    fallback.hidden = false;
+    if (renderer?.domElement) renderer.domElement.hidden = true;
 }
 
 function getCardAccentColor(data) {
@@ -308,6 +339,10 @@ function disposeObject(object, resources = {
 }
 
 function createPlanet(data) {
+    if (!webglAvailable) {
+        showCardWebGLFallback(data.planetColor);
+        return;
+    }
     const resources = {
         geometries: new Set(),
         materials: new Set(),
@@ -484,6 +519,7 @@ const CARD_PLANET_ROTATION_SPEED = 0.005;
 const BASE_PLANET_ROTATION_SPEED = 0.001;
 
 function animate() {
+    if (!renderer || !webglAvailable) return;
     requestAnimationFrame(animate);
     const cardRotationSpeed = CARD_PLANET_ROTATION_SPEED * cardRotationMultiplier;
     planetGroup.rotation.y -= cardRotationSpeed;
