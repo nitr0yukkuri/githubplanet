@@ -1,5 +1,5 @@
 const SHELL_CLOUD_CYCLE_SECONDS = 32;
-const SHELL_CLOUD_SHADER_VERSION = 'shell-planet-clouds-v18-coordinate-consistent-lighting';
+const SHELL_CLOUD_SHADER_VERSION = 'shell-planet-clouds-v19-fragment-shadow-uniform';
 const SHELL_TERRAIN_SHADER_VERSION = 'shell-planet-terrain-v4-white-relief-cloud-shadow';
 
 const SHELL_CLOUD_NOISE_GLSL = `
@@ -208,6 +208,8 @@ function createCloudMaterial(THREE, uniforms, opacity) {
             uniform float shellCloudTime;
             uniform float shellCloudIntensity;
             uniform float shellCloudOpacity;
+            // 頂点・フラグメント間でuniform宣言は共有されないため、影サンプル用にここでも宣言する。
+            uniform vec3 shellCloudSunDirection;
             varying vec3 vShellCloudPosition;
             varying vec3 vShellCloudNormal;
             varying vec3 vShellCloudViewDirection;
