@@ -72,8 +72,8 @@ const EXPECTED_CARD_CAPTIONS = {
         en: 'A hot corona glows above the surface as ember-like sparks rise.'
     },
     python: {
-        ja: '青と黄の二本が別軌道を巡り、裏側では惑星に隠れる。',
-        en: 'Blue and yellow trails follow separate paths and disappear behind the planet.'
+        ja: 'RustとTypeScriptの軌跡が別軌道を巡り、裏側では惑星に隠れる。',
+        en: 'Rust and TypeScript trails follow separate paths and disappear behind the planet.'
     }
 };
 
@@ -86,7 +86,7 @@ test('provides deterministic feature planets without database records', () => {
         assert.equal(planet.mainLanguage, language);
         assert.equal(planet.planetSizeFactor, 2);
         assert.equal(planet.totalCommits, 2000);
-        assert.equal(planet.languageStats[language], 100);
+        assert.equal(planet.languageStats[language], slug === 'python' ? 70 : 100);
         assert.match(planet.username, /^SHOWCASE_/);
     }
     assert.equal(getShowcasePlanet('unknown'), undefined);

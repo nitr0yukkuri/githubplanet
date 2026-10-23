@@ -42,7 +42,7 @@ test('orchestrates GitHub aggregation, domain rules, and persistence', async () 
     }, 'token');
 
     assert.equal(result.mainLanguage, 'TypeScript');
-    assert.deepEqual(result.languageStats, { TypeScript: 70, CSS: 50 });
+    assert.deepEqual(result.languageStats, { TypeScript: 70, CSS: 20 });
     assert.equal(result.totalCommits, 99999);
     assert.equal(result.observedTotalContributions, 120000);
     assert.equal(result.isNewPlanet, true);
