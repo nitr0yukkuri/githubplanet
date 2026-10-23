@@ -1,0 +1,20 @@
+{
+  "hosting": {
+    "public": "firebase-public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "githubplanet-git",
+          "region": "asia-northeast2"
+        }
+      }
+    ]
+  }
+}
+
