@@ -1,13 +1,17 @@
 import crypto from 'crypto';
 
+const MAX_METEOR_EVENT_ID = 9_223_372_036_854_775_807n;
+
 export function registerEventRoutes(app, {
     geminiClient,
     meteorService,
+    meteorEventRepository,
     systemApiKey,
     webhookSecret,
     webhookDeliveryStore,
     requireInternalAuth = false,
-    requireWebhookSignature = false
+    requireWebhookSignature = false,
+    logger = console
 }) {
     function isInternalAuthorized(req) {
         if (!requireInternalAuth) return true;
@@ -31,6 +35,26 @@ export function registerEventRoutes(app, {
         return suppliedBuffer.length === expectedBuffer.length
             && crypto.timingSafeEqual(suppliedBuffer, expectedBuffer);
     }
+
+    app.get('/api/meteors', async (req, res) => {
+        const afterId = req.query?.after ?? '0';
+        if (typeof afterId !== 'string'
+            || !/^\d{1,19}$/.test(afterId)
+            || BigInt(afterId) > MAX_METEOR_EVENT_ID) {
+            return res.status(400).json({ error: 'Invalid meteor event cursor' });
+        }
+
+        res.setHeader('Cache-Control', 'no-store');
+        if (!meteorEventRepository) return res.json({ events: [] });
+
+        try {
+            const events = await meteorEventRepository.findAfter(afterId);
+            return res.json({ events });
+        } catch (error) {
+            logger.error('[Meteor Event Replay Error]', error);
+            return res.status(503).json({ error: 'Meteor events are temporarily unavailable' });
+        }
+    });
 
     app.post('/api/meteor', requireAuthorization, async (req, res) => {
         try {
