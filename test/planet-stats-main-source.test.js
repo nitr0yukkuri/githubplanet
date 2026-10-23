@@ -29,7 +29,7 @@ test('keeps the main GitHub client source shape and contributed repository langu
     assert.equal(stats.mainLanguage, 'TypeScript');
     assert.deepEqual(stats.languageStats, { TypeScript: 70, CSS: 50 });
     assert.equal(stats.totalCommits, 99_999);
-    assert.equal(stats.weeklyCommits, 150);
+    assert.equal(stats.weeklyCommits, 100);
     assert.equal(stats.totalStars, 10);
     assert.equal(stats.hasContributedToOthers, true);
     assert.equal(stats.hasMergedGithubPlanetPullRequest, true);
