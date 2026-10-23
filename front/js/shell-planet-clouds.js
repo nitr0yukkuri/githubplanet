@@ -1,5 +1,5 @@
 const SHELL_CLOUD_CYCLE_SECONDS = 32;
-const SHELL_CLOUD_SHADER_VERSION = 'shell-planet-clouds-v17-optical-depth-wind';
+const SHELL_CLOUD_SHADER_VERSION = 'shell-planet-clouds-v18-coordinate-consistent-lighting';
 const SHELL_TERRAIN_SHADER_VERSION = 'shell-planet-terrain-v4-white-relief-cloud-shadow';
 
 const SHELL_CLOUD_NOISE_GLSL = `
@@ -188,14 +188,18 @@ function createCloudMaterial(THREE, uniforms, opacity) {
         blending: THREE.NormalBlending,
         side: THREE.FrontSide,
         vertexShader: `
+            uniform vec3 shellCloudSunDirection;
             varying vec3 vShellCloudPosition;
             varying vec3 vShellCloudNormal;
             varying vec3 vShellCloudViewDirection;
+            varying vec3 vShellCloudSunDirection;
 
             void main() {
                 vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
                 vShellCloudPosition = normalize(position);
                 vShellCloudNormal = normalize(normalMatrix * normal);
+                // 法線・視線と太陽方向をビュー空間へそろえ、カメラ回転で照明がずれないようにする。
+                vShellCloudSunDirection = normalize(normalMatrix * shellCloudSunDirection);
                 vShellCloudViewDirection = normalize(-viewPosition.xyz);
                 gl_Position = projectionMatrix * viewPosition;
             }
@@ -204,10 +208,10 @@ function createCloudMaterial(THREE, uniforms, opacity) {
             uniform float shellCloudTime;
             uniform float shellCloudIntensity;
             uniform float shellCloudOpacity;
-            uniform vec3 shellCloudSunDirection;
             varying vec3 vShellCloudPosition;
             varying vec3 vShellCloudNormal;
             varying vec3 vShellCloudViewDirection;
+            varying vec3 vShellCloudSunDirection;
 
             ${SHELL_CLOUD_NOISE_GLSL}
 
@@ -234,7 +238,7 @@ function createCloudMaterial(THREE, uniforms, opacity) {
                     smoothstep(0.0, 0.26, facing)
                 );
                 float sunLight = clamp(
-                    dot(vShellCloudNormal, normalize(shellCloudSunDirection)),
+                    dot(vShellCloudNormal, vShellCloudSunDirection),
                     0.0,
                     1.0
                 );
@@ -246,7 +250,7 @@ function createCloudMaterial(THREE, uniforms, opacity) {
                 float forwardScatter = pow(
                     max(
                         dot(
-                            normalize(shellCloudSunDirection),
+                            vShellCloudSunDirection,
                             vShellCloudViewDirection
                         ),
                         0.0
