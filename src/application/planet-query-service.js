@@ -1,6 +1,53 @@
 export function createPlanetQueryService({ repository, githubClient, planetService, cacheDuration }) {
+    const publicPreviewCache = new Map();
+    const publicPreviewCacheTtlMs = 5 * 60 * 1000;
+    const maxPublicPreviewCacheEntries = 200;
+
     function isExpired(lastUpdated) {
         return Date.now() - new Date(lastUpdated).getTime() > cacheDuration;
+    }
+
+    async function getPublicPlanetPreview(username) {
+        const normalizedUsername = String(username || '').trim();
+        if (!/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(normalizedUsername)
+            || !planetService?.createPublicPreview) return null;
+
+        const key = normalizedUsername.toLowerCase();
+        const cached = publicPreviewCache.get(key);
+        if (cached?.promise) return cached.promise;
+        if (cached && cached.expiresAt > Date.now()) {
+            publicPreviewCache.delete(key);
+            publicPreviewCache.set(key, cached);
+            return cached.value;
+        }
+        publicPreviewCache.delete(key);
+
+        while (publicPreviewCache.size >= maxPublicPreviewCacheEntries) {
+            const removableKey = [...publicPreviewCache]
+                .find(([, entry]) => !entry.promise)?.[0];
+            if (!removableKey) throw new Error('Public planet preview cache is busy');
+            publicPreviewCache.delete(removableKey);
+        }
+
+        const entry = { promise: null, value: null, expiresAt: 0 };
+        entry.promise = planetService.createPublicPreview(normalizedUsername)
+            .then((preview) => {
+                entry.value = preview;
+                entry.expiresAt = Date.now() + publicPreviewCacheTtlMs;
+                return preview;
+            })
+            .catch((error) => {
+                if (error.response?.status === 404) {
+                    entry.value = null;
+                    entry.expiresAt = Date.now() + 30_000;
+                    return null;
+                }
+                publicPreviewCache.delete(key);
+                throw error;
+            })
+            .finally(() => { entry.promise = null; });
+        publicPreviewCache.set(key, entry);
+        return entry.promise;
     }
 
     async function refresh(username, accessToken) {
@@ -22,6 +69,7 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
             }
         }
 
+        if (!row && !accessToken) return getPublicPlanetPreview(username);
         return row;
     }
 

@@ -23,6 +23,7 @@ export function toPlanetResponse(planet) {
         weeklyCommits: clampCommitCount(planet.weeklyCommits, MAX_WEEKLY_COMMITS),
         planetName: planet.planetName || generatePlanetName(mainLanguage, planetColor, totalCommits),
         achievements: planet.achievements || {},
-        activeTitle: planet.activeTitle || { prefix: '名もなき', suffix: '旅人' }
+        activeTitle: planet.activeTitle || { prefix: '名もなき', suffix: '旅人' },
+        ...(planet.isPublicPreview ? { isPublicPreview: true } : {})
     };
 }
