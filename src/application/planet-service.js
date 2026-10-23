@@ -1,6 +1,8 @@
 import { resolvePlanetIdentity } from './planet-identity.js';
 import { derivePlanetProgression } from './planet-progression.js';
 import { derivePlanetStats } from './planet-stats.js';
+import { LANGUAGE_COLORS } from '../domain/planet/constants.js';
+import { calculatePlanetSizeFactor, generatePlanetName } from '../domain/planet/planet.js';
 
 export function createPlanetService({ repository, githubClient, geminiClient, geminiApiKey }) {
     async function updateAndSavePlanetData(user, accessToken) {
@@ -72,6 +74,28 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
         };
     }
 
+    async function createPublicPreview(username) {
+        const publicSource = await githubClient.getPublicPlanetSource(username);
+        const user = { login: publicSource.username || username };
+        const stats = derivePlanetStats(publicSource, user);
+        const planetColor = LANGUAGE_COLORS[stats.mainLanguage] || '#808080';
+
+        // 匿名プレビューは公開repoの概算だけを使い、貢献数や実績を推測して表示しない。
+        return {
+            username: user.login,
+            planetColor,
+            planetSizeFactor: calculatePlanetSizeFactor(0),
+            mainLanguage: stats.mainLanguage,
+            languageStats: stats.languageStats,
+            totalCommits: 0,
+            weeklyCommits: 0,
+            planetName: generatePlanetName(stats.mainLanguage, planetColor, 0),
+            achievements: {},
+            activeTitle: { prefix: '名もなき', suffix: '旅人' },
+            isPublicPreview: true
+        };
+    }
+
     async function recordLoginProgress(githubId, updateResult) {
         if (!repository?.recordLoginProgress) {
             return { contributionDelta: 0, newlyUnlockedAchievementIds: [] };
@@ -83,6 +107,6 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
         });
     }
 
-    return { updateAndSavePlanetData, recordLoginProgress };
+    return { updateAndSavePlanetData, createPublicPreview, recordLoginProgress };
 }
 

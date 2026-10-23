@@ -168,6 +168,54 @@ export function createGithubClient({
             }, { provider: 'github' });
         },
 
+        async getPublicPlanetSource(username) {
+            return measureExternalOperation(onRequestTiming, 'get_public_planet_source', async () => {
+                try {
+                    const response = await axios.get(
+                        `https://api.github.com/users/${encodeURIComponent(username)}/repos`,
+                        {
+                            params: { per_page: 100, sort: 'updated', type: 'owner' },
+                            headers: { Accept: 'application/vnd.github+json' },
+                            timeout: GITHUB_API_TIMEOUT_MS
+                        }
+                    );
+                    const repositories = Array.isArray(response.data) ? response.data : [];
+                    return {
+                        username: repositories[0]?.owner?.login || username,
+                        ownedRepositories: repositories.map((repository) => ({
+                            languages: repository.language
+                                ? [{ language: repository.language, bytes: Math.max(1, Number(repository.size) || 1) * 1024 }]
+                                : [],
+                            receivedStars: repository.fork ? 0 : Number(repository.stargazers_count) || 0
+                        })),
+                        contributedRepositories: [],
+                        starredRepositoryCount: 0,
+                        mergedPullRequests: [],
+                        totalContributions: 0,
+                        dailyContributions: []
+                    };
+                } catch (error) {
+                    const status = error.response?.status;
+                    const retryAfterSeconds = Number(
+                        error.response?.headers?.['retry-after']
+                        || error.response?.headers?.['Retry-After']
+                    );
+                    const resetAt = Number(
+                        error.response?.headers?.['x-ratelimit-reset']
+                        || error.response?.headers?.['X-RateLimit-Reset']
+                    ) * 1000;
+                    if ([403, 429].includes(status)) {
+                        if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+                            error.retryAfterMs = retryAfterSeconds * 1000;
+                        } else if (Number.isFinite(resetAt) && resetAt > Date.now()) {
+                            error.retryAfterMs = resetAt - Date.now();
+                        }
+                    }
+                    throw error;
+                }
+            }, { provider: 'github' });
+        },
+
         async getPlanetSource(login, accessToken) {
             return measureExternalOperation(onRequestTiming, 'get_planet_source', async () => {
                 const repositoryData = await requestGraphql(REPOSITORY_DATA_QUERY, { login }, accessToken);

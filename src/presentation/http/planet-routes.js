@@ -197,6 +197,13 @@ export function registerPlanetRoutes(app, {
             res.json(toPlanetResponse(row));
         } catch (error) {
             console.error('[API /user/:username Error]', error);
+            if ([403, 429].includes(error.response?.status)) {
+                if (error.retryAfterMs) {
+                    res.setHeader('Retry-After', String(Math.ceil(error.retryAfterMs / 1_000)));
+                }
+                return res.status(429).json({ error: 'GitHub public API rate limit reached' });
+            }
+            if (error.response?.status === 404) return res.status(404).json({ error: 'Planet not found' });
             res.status(500).json({ error: 'Internal Server Error' });
         }
     });

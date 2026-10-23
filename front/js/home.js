@@ -20,6 +20,7 @@ let activePlanetReveal = null;
 let currentPlanetData = null;
 let planetLanguageHistory = null;
 let planetLanguageHistoryRequest = 0;
+let planetSearchRequestGeneration = 0;
 
 let welcomeModal, okButton, mainUiWrapper;
 let isFetchingRandomPlanet = false;
@@ -323,7 +324,9 @@ function updatePlanetDetails(data) {
     }
 
     if (commits) {
-        const commitCount = (data.totalCommits !== null && data.totalCommits !== undefined) ? data.totalCommits : 0;
+        const commitCount = data.isPublicPreview
+            ? '—'
+            : (data.totalCommits !== null && data.totalCommits !== undefined) ? data.totalCommits : 0;
         commits.textContent = commitCount;
     }
 
@@ -523,7 +526,9 @@ async function loadPlanet(data, { historySelection = false } = {}) {
     planetRotationSpeed = basePlanetRotationSpeed;
 
     if (ownerDisplay && data.username) {
-        ownerDisplay.textContent = t('home.ownerPlanet', { username: data.username });
+        ownerDisplay.textContent = data.isPublicPreview
+            ? t('home.publicPreviewOwner', { username: data.username })
+            : t('home.ownerPlanet', { username: data.username });
         ownerDisplay.style.display = 'inline-block';
     }
     if (profileLink && data.username) {
@@ -1072,12 +1077,15 @@ function setupUI() {
         const username = prompt(t('home.promptUsername'));
         if (!username || username.trim() === '') return;
 
+        const searchGeneration = ++planetSearchRequestGeneration;
         toggleLoading(true);
 
         try {
-            const res = await fetchHomeApi(`/api/planets/user/${username.trim()}?t=${Date.now()}`, { cache: 'no-store' });
+            const res = await fetchHomeApi(`/api/planets/user/${encodeURIComponent(username.trim())}?t=${Date.now()}`, { cache: 'no-store' });
+            if (searchGeneration !== planetSearchRequestGeneration) return;
             if (res.ok) {
                 const planetData = await res.json();
+                if (searchGeneration !== planetSearchRequestGeneration) return;
                 console.log('取得したユーザーデータ:', planetData);
                 await loadPlanet(planetData);
 
@@ -1098,10 +1106,11 @@ function setupUI() {
                 alert(t('home.searchError'));
             }
         } catch (e) {
+            if (searchGeneration !== planetSearchRequestGeneration) return;
             console.error('Error fetching user planet:', e);
             alert(t('home.networkError'));
         } finally {
-            toggleLoading(false);
+            if (searchGeneration === planetSearchRequestGeneration) toggleLoading(false);
         }
     });
 
