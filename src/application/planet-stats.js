@@ -14,36 +14,28 @@ export function derivePlanetStats(userData, user, { now = new Date() } = {}) {
         pullRequest.repositoryNameWithOwner?.toLowerCase() === 'nitr0yukkuri/githubplanet'
     ));
     const starredCount = Number(userData.starredRepositoryCount) || 0;
-    const calendar = userData.contributionCalendar;
-    const observedTotalContributions = calendar?.totalContributions
-        ?? userData.totalContributions
-        ?? 0;
+    const observedTotalContributions = userData.totalContributions || 0;
     const oneWeekAgo = new Date(now);
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    const contributionDays = calendar?.weeks
-        ? calendar.weeks.flatMap((week) => week.contributionDays || [])
-        : userData.dailyContributions || [];
+    const contributionDays = userData.dailyContributions || [];
 
     let weeklyCommits = 0;
     for (const day of contributionDays) {
-        const count = Number(day.contributionCount ?? day.count) || 0;
+        const count = Number(day.count) || 0;
         if (new Date(day.date) >= oneWeekAgo) weeklyCommits += count;
     }
 
     const languageStats = {};
     let receivedStars = 0;
     for (const repo of repositories) {
-        const entries = Array.isArray(repo.languages)
-            ? repo.languages.map(({ language, bytes }) => [language, bytes])
-            : Object.entries(repo.languageBytes || {});
-        for (const [rawLanguage, rawBytes] of entries) {
+        for (const { language: rawLanguage, bytes: rawBytes } of repo.languages || []) {
             const language = rawLanguage === 'Sass' ? 'CSS' : rawLanguage;
             const bytes = Math.max(0, Number(rawBytes) || 0);
             if (language && bytes > 0) {
                 languageStats[language] = (languageStats[language] || 0) + bytes;
             }
         }
-        receivedStars += Number(repo.receivedStars ?? repo.stargazerCount) || 0;
+        receivedStars += Number(repo.receivedStars) || 0;
     }
 
     let mainLanguage = 'Unknown';
@@ -63,7 +55,7 @@ export function derivePlanetStats(userData, user, { now = new Date() } = {}) {
         observedTotalContributions,
         languagesCount: Object.keys(languageStats).length,
         featuredProjects: userData.featuredProjects || [],
-        hasContributedToOthers: Number(userData.contributedRepositoryCount ?? contributedRepos.length) > 0,
+        hasContributedToOthers: contributedRepos.length > 0,
         hasMergedExternalPullRequest,
         hasMergedGithubPlanetPullRequest,
         totalStars: starredCount + receivedStars,
