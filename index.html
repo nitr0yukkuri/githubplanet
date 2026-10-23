@@ -54,7 +54,12 @@
             <button type="button" class="ok-button" id="welcome-ok-btn">OK</button>
         </div>
 
-        <div id="canvas-container"></div>
+        <div id="canvas-container">
+            <div id="webgl-fallback" role="status" aria-live="polite" hidden>
+                <div class="webgl-fallback-planet" aria-hidden="true"></div>
+                <p data-i18n="home.webglUnavailable">3D表示を利用できませんが、惑星情報は表示されています。</p>
+            </div>
+        </div>
 
         <div id="main-ui-wrapper" style="display: none;">
 
