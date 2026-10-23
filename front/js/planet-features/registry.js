@@ -10,6 +10,7 @@ import * as perl from '../perl-planet-ocean.js';
 import * as python from '../python-planet-structure.js';
 import * as ruby from '../ruby-planet-solar.js';
 import * as rust from '../rust-planet-desert.js';
+import * as shell from '../shell-planet-clouds.js';
 import * as swift from '../swift-planet-feathers.js';
 import * as typescript from '../typescript-planet-shell.js';
 import * as vue from '../vue-planet-circulation.js';
@@ -109,6 +110,24 @@ const FEATURE_DEFINITIONS = [
             go.updateGoPlanetWind(material, now, windSpeed);
             go.updateGoPlanetAtmosphere(objects.atmosphere, now, windSpeed);
         }
+    },
+    {
+        id: 'shell',
+        language: 'Shell',
+        module: shell,
+        matches: shell.isShellPlanet,
+        createMaterial: ({ THREE, planetTexture }) => (
+            shell.createShellPlanetMaterial(THREE, planetTexture)
+        ),
+        createObjects: ({ THREE, radius, material }) => ({
+            clouds: shell.createShellPlanetClouds(
+                THREE,
+                radius,
+                1,
+                material?.userData?.shellCloudUniforms
+            )
+        }),
+        update: ({ objects, now }) => shell.updateShellPlanetClouds(objects.clouds, now)
     },
     {
         id: 'swift',
