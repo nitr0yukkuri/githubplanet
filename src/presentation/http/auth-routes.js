@@ -110,21 +110,23 @@ export function registerAuthRoutes(app, {
         try {
             const accessToken = await githubClient.exchangeCode(code, codeVerifier);
             const user = await githubClient.getAuthenticatedUser(accessToken);
-            const updatedPlanetData = await planetService.updateAndSavePlanetData(user, accessToken);
-            const progressNotice = await planetService.recordLoginProgress(user.id, updatedPlanetData);
-            const {
-                observedTotalContributions,
-                isNewPlanet,
-                ...planetData
-            } = updatedPlanetData;
-
+            // 初回の惑星取得が失敗しても認証状態を保てるよう、先にセッションへ保存する。
             req.session.github_token = accessToken;
-            req.session.last_updated = Date.now();
-            req.session.planetData = { user, planetData };
-            req.session.pendingProgressNotice = progressNotice;
+            req.session.last_updated = 0;
+            req.session.planetData = { user, planetData: null };
+            delete req.session.pendingProgressNotice;
 
             delete req.session.login_return_to;
-            res.redirect(loginReturnTo);
+            req.session.save((error) => {
+                if (error) {
+                    logger.error(JSON.stringify({
+                        event: 'oauth.session.save_failed',
+                        ...safeErrorMetadata(error)
+                    }));
+                    return res.status(503).send('ログイン状態を保存できませんでした。もう一度お試しください。');
+                }
+                res.redirect(loginReturnTo);
+            });
         } catch (error) {
             logger.error(JSON.stringify({
                 event: 'oauth.callback.processing_failed',

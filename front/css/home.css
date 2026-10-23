@@ -365,6 +365,35 @@ body {
     gap: 30px; /* テキストとボタンの間隔 */
 }
 
+#planet-load-error-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transform: translate(-50%, -50%);
+    padding: 1rem 1.25rem;
+    border: 1px solid rgba(180, 150, 255, 0.6);
+    border-radius: 0.75rem;
+    background: rgba(10, 12, 24, 0.92);
+    color: #f4f0ff;
+}
+
+#planet-load-error-container[hidden] {
+    display: none;
+}
+
+#retry-planet-load-btn {
+    border: 1px solid #b99cff;
+    border-radius: 999px;
+    padding: 0.5rem 0.9rem;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
 /* ★ 最小限の変更点: 未ログイン時テキストのスタイル ★ */
 #not-logged-in-text {
     color: #e0e0e0;

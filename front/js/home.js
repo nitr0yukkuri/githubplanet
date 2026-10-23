@@ -202,29 +202,26 @@ function showLocalAchievementPreview() {
 }
 
 async function fetchMyPlanetData() {
-    try {
-        const res = await fetchHomeApi(`/api/me?t=${Date.now()}`, { cache: 'no-store' });
+    const res = await fetchHomeApi(`/api/me?t=${Date.now()}`, { cache: 'no-store' });
 
-        if (!res.ok) return null;
-        const data = await res.json();
-        showPlanetProgressToast(data.progressNotice);
+    if (res.status === 401) return null;
+    if (!res.ok) throw new Error(`Planet data request failed (${res.status})`);
+    const data = await res.json();
+    if (!data.user || !data.planetData) {
+        throw new Error('Authenticated planet data is incomplete');
+    }
+    showPlanetProgressToast(data.progressNotice);
 
-        if (data.planetData && data.user) {
-            loggedInUsername = data.user.login; // ★追加: ログインユーザー名を保存
-            data.planetData.username = data.user.login;
+    loggedInUsername = data.user.login;
+    data.planetData.username = data.user.login;
 
-            // ★修正: どの惑星を見ていても、カード作成は常に自分のユーザー名で行うように固定
-            const cardLink = document.getElementById('card-link');
-            if (cardLink) {
-                cardLink.href = `${localizedPath('/card.html')}?username=${loggedInUsername}`;
-                cardLink.hidden = false;
-            }
+    const cardLink = document.getElementById('card-link');
+    if (cardLink) {
+        cardLink.href = `${localizedPath('/card.html')}?username=${loggedInUsername}`;
+        cardLink.hidden = false;
+    }
 
-            return data.planetData;
-        }
-        return null;
-
-    } catch (e) { return null; }
+    return data.planetData;
 }
 
 async function fetchShowcasePlanetData(showcaseSlug = homeRoute.showcaseSlug) {
@@ -1012,6 +1009,8 @@ async function loadMainContent() {
             ? await fetchShowcasePlanetData()
             : await fetchMyPlanetData();
         const notLoggedInContainer = document.getElementById('not-logged-in-container');
+        const loadErrorContainer = document.getElementById('planet-load-error-container');
+        if (loadErrorContainer) loadErrorContainer.hidden = true;
 
         if (notLoggedInContainer) {
             if (data) {
@@ -1030,6 +1029,17 @@ async function loadMainContent() {
         if (isShowcaseRoute) void resolveShowcaseCtaTarget();
     } catch (e) {
         console.error('Initial load failed:', e);
+        const notLoggedInContainer = document.getElementById('not-logged-in-container');
+        const loadErrorContainer = document.getElementById('planet-load-error-container');
+        if (!isPublicPlanetRoute && notLoggedInContainer) notLoggedInContainer.style.display = 'none';
+        if (loadErrorContainer) loadErrorContainer.hidden = false;
+        const retryButton = document.getElementById('retry-planet-load-btn');
+        if (retryButton) {
+            retryButton.onclick = () => {
+                toggleLoading(true);
+                void loadMainContent();
+            };
+        }
     } finally {
         // ★追加: 処理が終わったら（成功・失敗にかかわらず）ローディングを消す
         toggleLoading(false);

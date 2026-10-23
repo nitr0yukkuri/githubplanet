@@ -44,12 +44,13 @@ export function registerPlanetRoutes(app, {
     );
 
     app.get('/api/me', async (req, res) => {
-        if (!req.session.planetData) {
+        if (!req.session.planetData?.user) {
             return res.status(401).json({ error: 'Not logged in' });
         }
 
         const lastUpdated = req.session.last_updated;
-        const isStale = !lastUpdated || (Date.now() - lastUpdated > cacheDuration);
+        const hadPlanetData = Boolean(req.session.planetData.planetData);
+        const isStale = !hadPlanetData || !lastUpdated || (Date.now() - lastUpdated > cacheDuration);
 
         if (req.session.github_token && isStale) {
             console.log('[Auto Update] データを更新中... (キャッシュ切れ)');
@@ -59,12 +60,30 @@ export function registerPlanetRoutes(app, {
                 const { observedTotalContributions, isNewPlanet, ...newPlanetData } = updatedPlanetData;
                 req.session.planetData.planetData = newPlanetData;
                 req.session.last_updated = Date.now();
+                if (!hadPlanetData) {
+                    try {
+                        req.session.pendingProgressNotice = await planetService.recordLoginProgress(
+                            user.id,
+                            updatedPlanetData
+                        );
+                    } catch (error) {
+                        console.error('[Login Progress] 初回記録に失敗しました:', error.message);
+                    }
+                }
                 console.log('[Auto Update] 更新完了');
             } catch (error) {
                 console.error('[Auto Update] 更新失敗 (キャッシュを返します):', error.message);
             }
         } else {
             console.log('[Auto Update] キャッシュ有効のためスキップ');
+        }
+
+        if (!req.session.planetData.planetData) {
+            res.setHeader('Retry-After', '5');
+            return res.status(503).json({
+                error: 'Planet data is temporarily unavailable',
+                authenticated: true
+            });
         }
 
         const progressNotice = req.session.pendingProgressNotice || {
