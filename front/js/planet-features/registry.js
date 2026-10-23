@@ -13,6 +13,7 @@ import * as rust from '../rust-planet-desert.js';
 import * as swift from '../swift-planet-feathers.js';
 import * as typescript from '../typescript-planet-shell.js';
 import * as vue from '../vue-planet-circulation.js';
+import * as xml from '../xml-planet-nesting.js';
 import { createLanguageCompositionTrails } from '../language-composition-trails.js';
 
 const CARD_THEMES = Object.freeze({
@@ -300,6 +301,16 @@ const FEATURE_DEFINITIONS = [
         createMaterial: ({ THREE, planetTexture }) => (
             python.createPythonPlanetMaterial(THREE, planetTexture)
         )
+    },
+    {
+        id: 'xml',
+        language: 'XML',
+        module: xml,
+        matches: xml.isXmlPlanet,
+        createMaterial: ({ THREE, planetTexture }) => (
+            xml.createXmlPlanetMaterial(THREE, planetTexture)
+        ),
+        update: ({ material, now }) => xml.updateXmlPlanetNesting(material, now)
     }
 ];
 
