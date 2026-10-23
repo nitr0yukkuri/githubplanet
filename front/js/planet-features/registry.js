@@ -324,7 +324,7 @@ const FEATURE_DEFINITIONS = [
         update: ({ material, now }) => xml.updateXmlPlanetNesting(material, now)
     }
 ];
- 
+
 export const planetFeatures = Object.freeze(FEATURE_DEFINITIONS);
 
 export function resolvePlanetFeature(data) {
