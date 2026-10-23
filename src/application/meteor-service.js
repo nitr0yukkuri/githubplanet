@@ -5,7 +5,7 @@ export function createMeteorService({ geminiClient, extensionMap, emitMeteor, lo
         const resolvedLanguage = language || 'Manual';
 
         logger.log(`[Manual Meteor] Language: ${language}, Color: ${finalColor}, Scale: ${finalScale}`);
-        emitMeteor({ color: finalColor, language: resolvedLanguage, scale: finalScale });
+        await emitMeteor({ color: finalColor, language: resolvedLanguage, scale: finalScale });
         return { color: finalColor };
     }
 
@@ -33,7 +33,7 @@ export function createMeteorService({ geminiClient, extensionMap, emitMeteor, lo
 
             const resolvedColor = await geminiClient.resolveLanguageColor(targetLanguage);
             logger.log(`[Webhook] Commit: ${commit.id.substring(0, 7)} -> Scale: ${meteorScale.toFixed(2)}, Lines: ${totalLines}`);
-            emitMeteor({ color: resolvedColor, language: targetLanguage, scale: meteorScale });
+            await emitMeteor({ color: resolvedColor, language: targetLanguage, scale: meteorScale });
         }
     }
 

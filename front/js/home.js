@@ -11,12 +11,16 @@ const MAX_STAR_COUNT = 120;
 const BASE_PLANET_ROTATION_SPEED = 0.001;
 // API停止時に画面を無期限でローディング状態にしないための上限。通常時の表示・動きは変えない。
 const HOME_API_TIMEOUT_MS = 15_000;
+const METEOR_REPLAY_POLL_INTERVAL_MS = 15_000;
+const METEOR_REPLAY_PAGE_SIZE = 500;
 
 let scene, camera, renderer, controls, planetGroup;
 let planetFeatureRuntime = null;
 let planetLoadGeneration = 0;
 let planetTexturePromise = null;
 let activePlanetReveal = null;
+let meteorReplayPromise = null;
+let lastMeteorIdInMemory = '0';
 let currentPlanetData = null;
 let planetLanguageHistory = null;
 let planetLanguageHistoryRequest = 0;
@@ -119,6 +123,64 @@ function toggleLoading(show) {
         loadingOverlay.style.opacity = '0';
         loadingOverlay.style.pointerEvents = 'none';
     }
+}
+
+function readLastMeteorId() {
+    try {
+        const value = sessionStorage.getItem('githubPlanetLastMeteorId') || '0';
+        if (/^\d{1,19}$/.test(value) && BigInt(value) > BigInt(lastMeteorIdInMemory)) {
+            lastMeteorIdInMemory = value;
+        }
+    } catch {
+        // ストレージが使えない間はページ内のカーソルを使う。
+    }
+    return lastMeteorIdInMemory;
+}
+
+function storeLastMeteorId(id) {
+    lastMeteorIdInMemory = id;
+    try {
+        sessionStorage.setItem('githubPlanetLastMeteorId', id);
+    } catch {
+        // 保存できないブラウザーでも現在のページ内では流星を再生する。
+    }
+}
+
+async function syncMeteorEvents() {
+    if (document.hidden) return;
+    if (meteorReplayPromise) return meteorReplayPromise;
+
+    meteorReplayPromise = (async () => {
+        let cursor = readLastMeteorId();
+        while (!document.hidden) {
+            const response = await fetchHomeApi(
+                `/api/meteors?after=${encodeURIComponent(cursor)}`,
+                { cache: 'no-store' }
+            );
+            if (!response.ok) throw new Error(`Meteor replay request failed (${response.status})`);
+
+            const body = await response.json();
+            const events = Array.isArray(body.events) ? body.events : [];
+            if (events.length === 0) break;
+
+            const previousCursor = cursor;
+            for (const event of events) {
+                if (document.hidden) break;
+                if (!/^\d{1,19}$/.test(String(event.id || ''))) continue;
+                if (BigInt(event.id) <= BigInt(cursor)) continue;
+
+                spawnMeteor(event);
+                cursor = String(event.id);
+                storeLastMeteorId(cursor);
+            }
+
+            if (cursor === previousCursor || events.length < METEOR_REPLAY_PAGE_SIZE) break;
+        }
+    })()
+        .catch((error) => console.warn('[Meteor Replay] Events could not be synchronized:', error.message))
+        .finally(() => { meteorReplayPromise = null; });
+
+    return meteorReplayPromise;
 }
 
 function showPlanetProgressToast(progressNotice = {}) {
@@ -958,11 +1020,17 @@ async function init() {
     new THREE.CubeTextureLoader().setPath('/front/img/skybox/').load(['right.webp', 'left.webp', 'top.webp', 'bottom.webp', 'front.webp', 'back.webp'], (tex) => scene.background = tex);
 
     socket.on('meteor', (data) => {
-        if (document.hidden) return;
-
-        console.log('Meteor received:', data);
-        spawnMeteor(data);
+        if (!data?.id) {
+            if (!document.hidden) spawnMeteor(data);
+            return;
+        }
+        void syncMeteorEvents();
     });
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) void syncMeteorEvents();
+    });
+    window.setInterval(() => { void syncMeteorEvents(); }, METEOR_REPLAY_POLL_INTERVAL_MS);
+    void syncMeteorEvents();
 
     let resizeFrame = null;
     window.addEventListener('resize', () => {
