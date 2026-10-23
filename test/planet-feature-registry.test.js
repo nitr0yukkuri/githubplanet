@@ -62,6 +62,7 @@ class FakeVector3 {
 
 class FakeMaterial {
     constructor(options) { Object.assign(this, options); }
+    dispose() { this.disposed = true; }
 }
 
 class FakeMesh {
@@ -78,6 +79,7 @@ class FakeCurve {
 
 class FakeTubeGeometry {
     constructor(...args) { this.args = args; }
+    dispose() { this.disposed = true; }
 }
 
 test('shares secondary language trails with Python and updates historical ranks in place', () => {
@@ -119,4 +121,32 @@ test('shares secondary language trails with Python and updates historical ranks 
     assert.equal(second.geometry, secondGeometry);
     assert.notEqual(second.material.uniforms.trailColor.value.value, '#dea584');
     assert.equal(second.material.uniforms.trailWidthDelta.value !== 0, true);
+});
+
+
+test('disposes GPU resources for shared language trails', () => {
+    const THREE = {
+        AdditiveBlending: 'additive',
+        CatmullRomCurve3: FakeCurve,
+        Color: FakeColor,
+        DoubleSide: 'double',
+        Group: FakeGroup,
+        Mesh: FakeMesh,
+        MeshStandardMaterial: FakeMaterial,
+        ShaderMaterial: FakeMaterial,
+        TubeGeometry: FakeTubeGeometry,
+        Vector3: FakeVector3
+    };
+    const runtime = createPlanetFeatureRuntime({
+        THREE,
+        planetTexture: { id: 'mars' },
+        data: { mainLanguage: 'Unknown', languageStats: { Unknown: 70, Rust: 20, Go: 10 } },
+        radius: 4
+    });
+    const tracks = runtime.sceneObjects[0].children.slice();
+
+    runtime.dispose();
+
+    assert.equal(tracks.length, 2);
+    assert.ok(tracks.every(({ geometry, material }) => geometry.disposed && material.disposed));
 });

@@ -359,6 +359,7 @@ export function createPlanetFeatureRuntime({
         },
         dispose() {
             feature?.dispose?.({ material, objects });
+            languageTrails?.dispose();
         }
     };
     return runtime;

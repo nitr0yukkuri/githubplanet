@@ -222,6 +222,12 @@ export function createLanguageCompositionTrails({ THREE, data, radius, direction
             });
             currentLanguages = nextLanguages;
         },
+        dispose() {
+            for (const { mesh, material } of tracks) {
+                mesh.geometry?.dispose?.();
+                material.dispose?.();
+            }
+        },
         update(now) {
             if (!Number.isFinite(now)) return;
             if (lastMilliseconds === null) {
