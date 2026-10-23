@@ -104,7 +104,7 @@
   <tr>
     <td align="center" colspan="2">
       <strong>Python — 対をなす軌道光</strong><br>
-      <sub>Paired Orbital Trails — 青と黄の二本が別軌道を巡り、裏側では惑星に隠れる。</sub><br>
+      <sub>Paired Orbital Trails — RustとTypeScriptの軌跡が別軌道を巡り、裏側では惑星に隠れる。</sub><br>
       <a href="https://githubplanet.dev/card.html?showcase=python&amp;fix=true">
         <img width="400" alt="Python showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_python.gif">
       </a>

@@ -2,9 +2,10 @@ const REPOSITORY_DATA_QUERY = `
   query RepositoryData($login: String!) {
     user(login: $login) {
       starredRepositories { totalCount }
-      repositories(first: 100, ownerAffiliations: OWNER, isFork: false, privacy: PUBLIC, orderBy: {field: PUSHED_AT, direction: DESC}) {
+      repositories(first: 100, ownerAffiliations: OWNER, privacy: PUBLIC, orderBy: {field: PUSHED_AT, direction: DESC}) {
         nodes {
           name
+          isFork
           stargazerCount
           languages(first: 5, orderBy: {field: SIZE, direction: DESC}) {
             edges { size node { name color } }
@@ -69,7 +70,7 @@ function mapRepositories(connection, { includeStars = false } = {}) {
             language: edge.node?.name || 'Unknown',
             bytes: edge.size || 0
         })),
-        ...(includeStars ? { receivedStars: repository.stargazerCount || 0 } : {})
+        ...(includeStars ? { receivedStars: repository.isFork ? 0 : repository.stargazerCount || 0 } : {})
     }));
 }
 
