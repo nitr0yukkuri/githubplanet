@@ -9,7 +9,7 @@ test('registers every language feature behind one frontend boundary', () => {
     assert.deepEqual(
         planetFeatures.map((feature) => feature.id),
         [
-            'c', 'css', 'cpp', 'elm', 'go', 'swift', 'vue',
+            'c', 'css', 'cpp', 'elm', 'go', 'shell', 'swift', 'vue',
             'typescript', 'javascript', 'java', 'kotlin', 'perl', 'rust', 'ruby', 'python'
         ]
     );
