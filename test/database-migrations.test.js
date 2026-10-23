@@ -84,7 +84,7 @@ function createFakePool(client) {
 test('loads ordered immutable migrations and keeps concurrent indexes outside transactions', () => {
     const migrations = loadDatabaseMigrations();
 
-    assert.deepEqual(migrations.map(({ version }) => version), ['001', '002', '003']);
+    assert.deepEqual(migrations.map(({ version }) => version), ['001', '002', '003', '009', '010', '011']);
     assert.equal(migrations[0].transactional, true);
     assert.equal(migrations[1].transactional, false);
     assert.equal(migrations[1].verifiedIndex, 'idx_planets_username_lower');
@@ -92,6 +92,16 @@ test('loads ordered immutable migrations and keeps concurrent indexes outside tr
     assert.match(migrations[0].sql, /CREATE TABLE IF NOT EXISTS "session"/);
     assert.match(migrations[0].sql, /CREATE TABLE IF NOT EXISTS language_color_cache/);
     assert.match(migrations[0].sql, /UPDATE planets SET random_key = random\(\)/);
+    assert.match(migrations[3].sql, /CREATE TABLE IF NOT EXISTS planet_language_snapshots/);
+    assert.match(migrations[3].sql, /CREATE TRIGGER capture_planet_language_snapshot_after_language_change/);
+    assert.match(migrations[3].sql, /planet_language_percentages\(language_stats\)/);
+    assert.match(migrations[3].sql, /to_regclass\('public\.planet_snapshots'\)/);
+    assert.match(migrations[4].sql, /CREATE TABLE IF NOT EXISTS authored_language_commits/);
+    assert.match(migrations[4].sql, /api_requests INTEGER NOT NULL DEFAULT 0/);
+    assert.match(migrations[4].sql, /request_budget_reached BOOLEAN NOT NULL DEFAULT FALSE/);
+    assert.match(migrations[4].sql, /scan_cursor JSONB NOT NULL DEFAULT/);
+    assert.match(migrations[5].sql, /github_webhook_deliveries/);
+    assert.match(migrations[5].sql, /delivery_id UUID PRIMARY KEY/);
 });
 
 test('keeps migration checksums stable across operating-system line endings', () => {
@@ -126,8 +136,8 @@ test('applies each migration once under a lock and repairs an invalid concurrent
         || sql.includes('CREATE INDEX CONCURRENTLY')
     )).length;
 
-    assert.deepEqual(firstAppliedVersions, ['001', '002', '003']);
-    assert.equal(client.appliedMigrations.size, 3);
+    assert.deepEqual(firstAppliedVersions, ['001', '002', '003', '009', '010', '011']);
+    assert.equal(client.appliedMigrations.size, 6);
     assert.ok(client.queries.some(({ sql }) => (
         sql === 'DROP INDEX CONCURRENTLY IF EXISTS "idx_planets_username_lower"'
     )));
@@ -190,3 +200,4 @@ test('starts the Docker application only after its migration service succeeds', 
     assert.match(composeSource, /migrate:[\s\S]*?depends_on:\s+\s*db:\s+\s*condition: service_healthy/);
     assert.match(composeSource, /command: npm run migrate/);
 });
+

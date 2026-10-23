@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { derivePlanetStats } from '../src/application/planet-stats.js';
 
-test('keeps the main GitHub client source shape and contributed repository languages', () => {
+test('keeps language composition on public owned repositories and forks', () => {
     const stats = derivePlanetStats({
         ownedRepositories: [{
             receivedStars: 4,
@@ -11,7 +11,10 @@ test('keeps the main GitHub client source shape and contributed repository langu
                 { language: 'Sass', bytes: 20 }
             ]
         }],
-        contributedRepositories: [{ languages: [{ language: 'CSS', bytes: 30 }] }],
+        contributedRepositories: [{
+            receivedStars: 99,
+            languages: [{ language: 'CSS', bytes: 30 }]
+        }],
         mergedPullRequests: [{
             repositoryOwnerLogin: 'someone-else',
             repositoryNameWithOwner: 'nitr0yukkuri/githubplanet'
@@ -27,7 +30,7 @@ test('keeps the main GitHub client source shape and contributed repository langu
     });
 
     assert.equal(stats.mainLanguage, 'TypeScript');
-    assert.deepEqual(stats.languageStats, { TypeScript: 70, CSS: 50 });
+    assert.deepEqual(stats.languageStats, { TypeScript: 70, CSS: 20 });
     assert.equal(stats.totalCommits, 99_999);
     assert.equal(stats.weeklyCommits, 100);
     assert.equal(stats.totalStars, 10);

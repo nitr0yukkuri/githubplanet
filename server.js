@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import connectPgSimple from 'connect-pg-simple';
 import { Server } from 'socket.io';
 import { createPlanetQueryService } from './src/application/planet-query-service.js';
+import { createAuthoredLanguageHistoryService } from './src/application/authored-language-history-service.js';
 import { createPlanetService } from './src/application/planet-service.js';
 import { createMeteorService } from './src/application/meteor-service.js';
 import { DATA_CACHE_DURATION, EXTENSION_MAP, LANGUAGE_COLORS } from './src/domain/planet/constants.js';
@@ -27,6 +28,11 @@ import { createExternalPerformanceReporter } from './src/infrastructure/observab
 const app = express();
 const port = parseInt(process.env.PORT) || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
+const sessionSecret = process.env.SESSION_SECRET;
+if (isProduction && (!sessionSecret || sessionSecret === 'dev_secret')) {
+    throw new Error('SESSION_SECRET must be configured in production and must not use the development placeholder');
+}
+const effectiveSessionSecret = sessionSecret || 'dev_secret';
 const randomPerformance = createRandomPerformanceReporter({
     enabled: process.env.PERF_TRACE_RANDOM === 'true'
 });
@@ -55,7 +61,7 @@ app.use((req, res, next) => {
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com data:",
         "img-src 'self' data: https://image.thum.io",
-        "connect-src 'self' ws: wss: https://www.google-analytics.com https://region1.google-analytics.com",
+        "connect-src 'self' ws: wss: https://githubplanet-git-e7ranic5ja-dt.a.run.app https://www.google-analytics.com https://region1.google-analytics.com",
         "object-src 'none'",
         "base-uri 'self'",
         "frame-ancestors 'none'"
@@ -148,6 +154,10 @@ const planetQueryService = planetRepository ? createPlanetQueryService({
     planetService,
     cacheDuration: DATA_CACHE_DURATION
 }) : undefined;
+const authoredLanguageHistoryService = planetRepository ? createAuthoredLanguageHistoryService({
+    repository: planetRepository,
+    githubClient
+}) : undefined;
 
 app.use('/front/img', express.static(path.join(__dirname, 'front/img'), { maxAge: '30d' }));
 app.use('/front', express.static(path.join(__dirname, 'front'), { maxAge: 0 }));
@@ -160,7 +170,7 @@ const sessionCookieName = isProduction ? '__session' : 'connect.sid';
 app.use(session({
     name: sessionCookieName,
     store: pool ? new PgSession({ pool, createTableIfMissing: false }) : undefined,
-    secret: process.env.SESSION_SECRET || 'dev_secret',
+    secret: effectiveSessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: { secure: isProduction, httpOnly: true, sameSite: 'lax' }
@@ -171,8 +181,9 @@ registerPageRoutes(app, {
     rootDirectory: __dirname,
     isProduction,
     systemApiKey: process.env.SYSTEM_API_KEY,
-    sessionSecret: process.env.SESSION_SECRET || 'dev_secret',
-    publicBaseUrl
+    sessionSecret: effectiveSessionSecret,
+    publicBaseUrl,
+    cardCaptureBaseUrl: process.env.PUBLIC_BASE_URL
 });
 registerAuthRoutes(app, {
     githubClient,
@@ -184,6 +195,12 @@ registerAuthRoutes(app, {
 registerPlanetRoutes(app, {
     planetService,
     planetQueryService,
+    authoredLanguageHistoryService,
+    // 一時停止する利用者を限定でき、DBの保存済み履歴は保持する。
+    historyDisabledUsernames: (process.env.PLANET_HISTORY_DISABLED_USERNAMES || '')
+        .split(',')
+        .map((username) => username.trim().toLowerCase())
+        .filter(Boolean),
     cacheDuration: DATA_CACHE_DURATION,
     randomHistoryStorage: process.env.RANDOM_HISTORY_STORAGE || 'cookie',
     randomPerformance
@@ -192,15 +209,16 @@ registerPlanetRoutes(app, {
 let io;
 const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
 if (isProduction && !webhookSecret) {
-    console.warn('[Webhook] GITHUB_WEBHOOK_SECRET is not configured; signature verification is disabled.');
+    console.error('[Webhook] GITHUB_WEBHOOK_SECRET is not configured; incoming webhooks will be rejected.');
 }
 registerEventRoutes(app, {
     geminiClient,
     meteorService,
     systemApiKey: process.env.SYSTEM_API_KEY,
     webhookSecret,
+    webhookDeliveryStore: planetRepository,
     requireInternalAuth: isProduction,
-    requireWebhookSignature: isProduction && Boolean(webhookSecret)
+    requireWebhookSignature: isProduction
 });
 
 // 404 handler
@@ -212,7 +230,25 @@ const server = app.listen(port, '0.0.0.0', () => {
     console.log(`Server running on port ${port}`);
 });
 
-io = new Server(server);
-io.on('connection', () => {
-    console.log('Client connected to socket');
+// Cloud Run直URLへ切り替えたPollingフォールバックは、公開サイトのOriginだけ許可する。
+io = new Server(server, { cors: { origin: publicBaseUrl } });
+// HTTPログの400だけでは拒否理由が分からないため、WebSocket失敗の必要項目だけ記録する。
+io.engine.on('connection_error', (error) => {
+    const request = error.req;
+    const requestUrl = new URL(request?.url || '/', 'http://localhost');
+    if (requestUrl.searchParams.get('transport') !== 'websocket') return;
+
+    console.warn('[Socket.IO] WebSocket connection rejected', {
+        code: error.code,
+        message: error.message,
+        method: request?.method,
+        path: requestUrl.pathname,
+        origin: request?.headers?.origin,
+        upgrade: request?.headers?.upgrade
+    });
+});
+io.on('connection', (socket) => {
+    console.log('[Socket.IO] Client connected', {
+        transport: socket.conn.transport.name
+    });
 });

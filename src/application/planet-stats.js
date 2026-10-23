@@ -4,7 +4,7 @@ import { clampCommitCount } from '../domain/planet/planet.js';
 export function derivePlanetStats(userData, user, { now = new Date() } = {}) {
     const ownedRepos = userData.ownedRepositories || [];
     const contributedRepos = userData.contributedRepositories || [];
-    const repositories = [...ownedRepos, ...contributedRepos];
+    // 主言語と軌跡は公開所有repo/forkから算出し、参加先の言語構成を混ぜない。
     const hasMergedExternalPullRequest = (userData.mergedPullRequests || []).some((pullRequest) => {
         const ownerLogin = pullRequest.repositoryOwnerLogin;
         return ownerLogin && ownerLogin.toLowerCase() !== user.login.toLowerCase();
@@ -27,7 +27,7 @@ export function derivePlanetStats(userData, user, { now = new Date() } = {}) {
 
     const languageStats = {};
     let receivedStars = 0;
-    for (const repo of repositories) {
+    for (const repo of ownedRepos) {
         for (const { language: rawLanguage, bytes: rawBytes } of repo.languages || []) {
             const language = rawLanguage === 'Sass' ? 'CSS' : rawLanguage;
             const bytes = Math.max(0, Number(rawBytes) || 0);

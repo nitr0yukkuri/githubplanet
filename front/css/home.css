@@ -635,6 +635,137 @@ html[lang="en"] .planet-title {
     z-index: 1; /* パネルより手前 */
 }
 
+.planet-language-history {
+    --language-history-accent: #403d61;
+    --language-history-track: rgba(255, 255, 255, 0.32);
+    position: fixed;
+    left: 50%;
+    bottom: max(14px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 6;
+    width: min(440px, calc(100vw - 64px));
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.75rem;
+    text-shadow: 0 1px 4px #000;
+}
+
+.planet-language-history[hidden] {
+    display: none;
+}
+
+#planet-language-history-slider {
+    width: 100%;
+    height: 32px;
+    margin: 0;
+    padding: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    cursor: ew-resize;
+    touch-action: pan-y;
+}
+
+#planet-language-history-slider::-webkit-slider-runnable-track {
+    height: 8px;
+    border-radius: 999px;
+    box-shadow: 0 0 0 1px #fff;
+    background: linear-gradient(
+        to right,
+        var(--language-history-accent) 0%,
+        var(--language-history-accent) var(--language-history-progress, 100%),
+        var(--language-history-track) var(--language-history-progress, 100%),
+        var(--language-history-track) 100%
+    );
+}
+
+#planet-language-history-slider::-moz-range-track {
+    height: 8px;
+    border-radius: 999px;
+    box-shadow: 0 0 0 1px #fff;
+    background: var(--language-history-track);
+}
+
+#planet-language-history-slider::-moz-range-progress {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--language-history-accent);
+}
+
+#planet-language-history-slider::-webkit-slider-thumb {
+    width: 12px;
+    height: 12px;
+    margin-top: -2px;
+    appearance: none;
+    -webkit-appearance: none;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #170633;
+}
+
+#planet-language-history-slider::-moz-range-thumb {
+    box-sizing: border-box;
+    width: 12px;
+    height: 12px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #170633;
+}
+
+#planet-language-history-slider:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+/* 年ラベルと丸をスライダーの停止位置に合わせる。 */
+.planet-language-history-years {
+    position: relative;
+    width: calc(100% - 12px);
+    height: 16px;
+    margin: 0 6px;
+    pointer-events: none;
+}
+
+.planet-language-history-year {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 0.62rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 14px;
+    white-space: nowrap;
+}
+
+.planet-language-history-year::before {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    width: 12px;
+    height: 12px;
+    box-sizing: border-box;
+    transform: translateX(-50%);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 50%;
+    background: var(--language-history-accent);
+    content: "";
+}
+
+.planet-language-history-year[data-selected="true"] {
+    color: #fff;
+    font-weight: 700;
+}
+
+.planet-language-history-year[data-selected="true"]::before {
+    border: 2px solid #fff;
+    background: #fff;
+}
+
 /* 矢印SVGのスタイル */
 .arrow-icon {
     width: 24px;

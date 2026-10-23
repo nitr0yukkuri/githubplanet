@@ -5,6 +5,7 @@ export function registerEventRoutes(app, {
     meteorService,
     systemApiKey,
     webhookSecret,
+    webhookDeliveryStore,
     requireInternalAuth = false,
     requireWebhookSignature = false
 }) {
@@ -41,13 +42,33 @@ export function registerEventRoutes(app, {
         }
     });
 
-    app.post('/webhook', (req, res) => {
+    app.post('/webhook', async (req, res) => {
         try {
             if (requireWebhookSignature && !webhookSecret) {
                 return res.status(503).send('Webhook secret is not configured');
             }
             if (!hasValidWebhookSignature(req)) {
                 return res.status(401).send('Invalid signature');
+            }
+
+            if (requireWebhookSignature) {
+                const deliveryId = req.get('x-github-delivery') || '';
+                if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(deliveryId)) {
+                    return res.status(400).send('Invalid delivery ID');
+                }
+                if (typeof webhookDeliveryStore?.claimGithubWebhookDelivery !== 'function') {
+                    return res.status(503).send('Webhook delivery store is unavailable');
+                }
+
+                let isNewDelivery;
+                try {
+                    const payloadHash = crypto.createHash('sha256').update(req.rawBody).digest('hex');
+                    isNewDelivery = await webhookDeliveryStore.claimGithubWebhookDelivery(deliveryId, payloadHash);
+                } catch (error) {
+                    console.error('[Webhook Delivery Store Error]', error);
+                    return res.status(503).send('Webhook delivery could not be recorded');
+                }
+                if (!isNewDelivery) return res.status(200).send('OK');
             }
 
             const payload = req.body;

@@ -2,9 +2,10 @@ const REPOSITORY_DATA_QUERY = `
   query RepositoryData($login: String!) {
     user(login: $login) {
       starredRepositories { totalCount }
-      repositories(first: 100, ownerAffiliations: OWNER, isFork: false, privacy: PUBLIC, orderBy: {field: PUSHED_AT, direction: DESC}) {
+      repositories(first: 100, ownerAffiliations: OWNER, privacy: PUBLIC, orderBy: {field: PUSHED_AT, direction: DESC}) {
         nodes {
           name
+          isFork
           stargazerCount
           languages(first: 5, orderBy: {field: SIZE, direction: DESC}) {
             edges { size node { name color } }
@@ -58,6 +59,8 @@ const MERGED_PULL_REQUESTS_QUERY = `
 `;
 
 import { measureExternalOperation } from '../observability/external-performance.js';
+import { createGithubAuthoredLanguageHistoryClient } from './github-authored-language-history.js';
+import { EXTENSION_MAP } from '../../domain/planet/constants.js';
 
 const GITHUB_API_TIMEOUT_MS = 10_000;
 
@@ -67,7 +70,7 @@ function mapRepositories(connection, { includeStars = false } = {}) {
             language: edge.node?.name || 'Unknown',
             bytes: edge.size || 0
         })),
-        ...(includeStars ? { receivedStars: repository.stargazerCount || 0 } : {})
+        ...(includeStars ? { receivedStars: repository.isFork ? 0 : repository.stargazerCount || 0 } : {})
     }));
 }
 
@@ -100,6 +103,12 @@ export function createGithubClient({
     onRequestTiming,
     parallelPlanetSourceRequests = true
 }) {
+    const authoredLanguageHistoryClient = createGithubAuthoredLanguageHistoryClient({
+        axios,
+        extensionMap: EXTENSION_MAP,
+        onRequestTiming
+    });
+
     async function requestGraphql(query, variables, accessToken) {
         const operation = query.match(/query (\w+)/)?.[1] || 'graphql';
         return measureExternalOperation(onRequestTiming, operation, async () => {
@@ -122,6 +131,7 @@ export function createGithubClient({
     }
 
     return {
+        scanHistoricalAuthoredLanguageCommits: authoredLanguageHistoryClient.scanHistoricalAuthoredLanguageCommits,
         async exchangeCode(code, codeVerifier) {
             return measureExternalOperation(onRequestTiming, 'exchange_code', async () => {
                 const response = await axios.post('https://github.com/login/oauth/access_token', {

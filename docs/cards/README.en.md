@@ -1,5 +1,7 @@
 # GitHub Planet Card Gallery
 
+Cards without descriptions: [view the cards only](README.cards-only.en.md)
+
 This is the gallery of language showcase planet cards. Every card uses fixed data and the production read-only showcase API. Each card includes a short description of its visual identity.
 
 <table>
@@ -16,6 +18,22 @@ This is the gallery of language showcase planet cards. Every card uses fixed dat
       <sub>Plasma-like light pulses around the globe.</sub><br>
       <a href="https://githubplanet.dev/card.html?showcase=cpp&amp;fix=true">
         <img width="400" alt="C++ showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_cpp.gif">
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <strong>Elm — Wind Meadow</strong><br>
+      <sub>Connected forest and meadow regions shift gently in the wind.</sub><br>
+      <a href="https://githubplanet.dev/card.html?showcase=elm&amp;fix=true">
+        <img width="400" alt="Elm showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_elm.gif">
+      </a>
+    </td>
+    <td align="center">
+      <strong>Perl — Ocean Current</strong><br>
+      <sub>A deep blue ocean carries gentle currents and restrained reflections.</sub><br>
+      <a href="https://githubplanet.dev/card.html?showcase=perl&amp;fix=true">
+        <img width="400" alt="Perl showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_perl.gif">
       </a>
     </td>
   </tr>
@@ -86,7 +104,7 @@ This is the gallery of language showcase planet cards. Every card uses fixed dat
   <tr>
     <td align="center" colspan="2">
       <strong>Python — Paired Orbital Trails</strong><br>
-      <sub>Blue and yellow trails follow separate paths and disappear behind the planet.</sub><br>
+      <sub>Rust and TypeScript trails follow separate paths and disappear behind the planet.</sub><br>
       <a href="https://githubplanet.dev/card.html?showcase=python&amp;fix=true">
         <img width="400" alt="Python showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_python.gif">
       </a>

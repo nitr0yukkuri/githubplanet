@@ -13,7 +13,10 @@ test('derives activity statistics without GitHub, Gemini, or database access', (
                 { language: 'Sass', bytes: 20 }
             ]
         }],
-        contributedRepositories: [{ languages: [] }],
+        contributedRepositories: [{
+            receivedStars: 99,
+            languages: [{ language: 'CSS', bytes: 30 }]
+        }],
         mergedPullRequests: [{
             repositoryNameWithOwner: 'nitr0yukkuri/githubplanet',
             repositoryOwnerLogin: 'nitr0yukkuri'

@@ -30,10 +30,19 @@ function writeAnonymousRandomCookie(res, planetId) {
 export function registerPlanetRoutes(app, {
     planetService,
     planetQueryService,
+    authoredLanguageHistoryService,
+    historyDisabledUsernames = [],
     cacheDuration,
     randomHistoryStorage = 'cookie',
     randomPerformance = null
 }) {
+    const disabledHistoryUsernames = new Set(
+        historyDisabledUsernames.map((username) => String(username).trim().toLowerCase()).filter(Boolean)
+    );
+    const isHistoryDisabled = (username) => disabledHistoryUsernames.has(
+        String(username || '').trim().toLowerCase()
+    );
+
     app.get('/api/me', async (req, res) => {
         if (!req.session.planetData) {
             return res.status(401).json({ error: 'Not logged in' });
@@ -89,6 +98,87 @@ export function registerPlanetRoutes(app, {
         } catch (error) {
             console.error('Save Title Error:', error);
             res.status(500).json({ error: 'DB Error' });
+        }
+    });
+
+    app.get('/api/me/language-history', async (req, res) => {
+        const githubId = req.session?.planetData?.user?.id;
+        if (!githubId) return res.status(401).json({ error: 'Not logged in' });
+        res.set('Cache-Control', 'private, no-store');
+        if (isHistoryDisabled(req.session?.planetData?.user?.login)) {
+            return res.json({ history: [] });
+        }
+        if (!planetQueryService) return res.status(503).json({ error: 'DB unavailable' });
+
+        try {
+            const rows = await planetQueryService.getLanguageHistoryByGithubId(githubId);
+            res.json({
+                history: rows.map((row) => ({
+                    capturedAt: row.capturedAt,
+                    mainLanguage: row.mainLanguage,
+                    planetColor: row.planetColor,
+                    languagePercentages: row.languagePercentages || {}
+                }))
+            });
+        } catch (error) {
+            console.error('[API /me/language-history Error]', error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    });
+
+    app.get('/api/me/authored-language-history', async (req, res) => {
+        const user = req.session?.planetData?.user;
+        if (!user?.id) return res.status(401).json({ error: 'Not logged in' });
+        if (isHistoryDisabled(user.login)) {
+            res.set('Cache-Control', 'private, no-store');
+            return res.json({
+                history: [],
+                status: { state: 'disabled', ready: false, partial: false }
+            });
+        }
+        if (!authoredLanguageHistoryService) {
+            return res.status(503).json({ error: 'History unavailable' });
+        }
+        res.set('Cache-Control', 'private, no-store');
+
+        try {
+            res.json(await authoredLanguageHistoryService.getHistory(user.id));
+        } catch (error) {
+            console.error('[API /me/authored-language-history Error]', error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    });
+
+    app.post('/api/me/authored-language-history/scan', async (req, res) => {
+        const user = req.session?.planetData?.user;
+        if (!user?.id || !req.session.github_token) {
+            return res.status(401).json({ error: 'Not logged in' });
+        }
+        if (isHistoryDisabled(user.login)) {
+            res.set('Cache-Control', 'private, no-store');
+            return res.json({
+                history: [],
+                status: { state: 'disabled', ready: false, partial: false },
+                scanStarted: false
+            });
+        }
+        if (!authoredLanguageHistoryService) {
+            return res.status(503).json({ error: 'History unavailable' });
+        }
+        res.set('Cache-Control', 'private, no-store');
+
+        try {
+            const scanStarted = await authoredLanguageHistoryService.startScan({
+                githubId: user.id,
+                login: user.login,
+                accessToken: req.session.github_token,
+                accountCreatedAt: user.created_at
+            });
+            const result = await authoredLanguageHistoryService.getHistory(user.id);
+            res.json({ ...result, scanStarted });
+        } catch (error) {
+            console.error('[API /me/authored-language-history/scan Error]', error);
+            res.status(500).json({ error: 'Internal Server Error' });
         }
     });
 

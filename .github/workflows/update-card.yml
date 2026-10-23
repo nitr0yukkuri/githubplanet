@@ -1,38 +1,127 @@
 name: Update Animated Planet Card
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/update-card.yml
+      - card.html
+      - front/css/card.css
+      - front/img/2k_mars.jpg
+      - front/js/card.js
+      - front/js/card-feature-presentation.js
+      - front/js/i18n.js
+      - front/js/language-composition-trails.js
+      - front/js/perl-ocean-preview.js
+      - front/js/planet-activity.js
+      - front/js/planet-features/**
+      - front/js/rust-planet-preview.js
+      - front/js/visible-animation-loop.js
+      - front/js/*-planet-*.js
+      - scripts/record-profile-card.mjs
   schedule:
     # Daily at 00:00 UTC.
     - cron: '0 0 * * *'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: update-animated-planet-card
   cancel-in-progress: true
 
 jobs:
-  update-card:
+  build-card-assets:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # マージ前後の差分から、本番反映を待つカード用ファイルを特定する。
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22'
+          node-version: '24.22.1'
           cache: npm
 
       - name: Install dependencies
-        run: |
-          npm ci
+        run: npm ci --ignore-scripts
 
       - name: Run application tests
         # 壊れたコードからGIFだけを生成して公開しないため、素材生成より先に検証する。
         run: npm test
+
+      - name: Wait for merged card assets to reach production
+        if: github.event_name == 'push'
+        env:
+          BASE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+          CARD_BASE_URL: https://githubplanet.dev
+        run: |
+          set -euo pipefail
+
+          mapfile -t card_files < <(
+            git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- \
+              card.html \
+              front/css/card.css \
+              front/img/2k_mars.jpg \
+              front/js/card.js \
+              front/js/card-feature-presentation.js \
+              front/js/i18n.js \
+              front/js/language-composition-trails.js \
+              front/js/perl-ocean-preview.js \
+              front/js/planet-activity.js \
+              front/js/planet-features \
+              front/js/rust-planet-preview.js \
+              front/js/visible-animation-loop.js \
+              ':(glob)front/js/*-planet-*.js'
+          )
+
+          if [ "${#card_files[@]}" -eq 0 ]; then
+            echo "No public card assets changed in this push."
+            exit 0
+          fi
+
+          deadline=$((SECONDS + 900))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            all_assets_current=true
+
+            for file in "${card_files[@]}"; do
+              # 削除された言語モジュールは、残るカード本体の一致確認で判定する。
+              [ -f "$file" ] || continue
+
+              expected="$(sha256sum "$file" | cut -d' ' -f1)"
+              if ! actual="$(curl --fail --silent --show-error --max-time 20 \
+                --header 'Cache-Control: no-cache' \
+                "$CARD_BASE_URL/$file?card_deploy_check=$HEAD_SHA" | sha256sum | cut -d' ' -f1)"; then
+                all_assets_current=false
+                break
+              fi
+
+              if [ "$actual" != "$expected" ]; then
+                all_assets_current=false
+                break
+              fi
+            done
+
+            if [ "$all_assets_current" = true ]; then
+              echo "Production is serving the merged card assets."
+              exit 0
+            fi
+
+            echo "Production card assets are not updated yet; checking again in 20 seconds."
+            sleep 20
+          done
+
+          echo "Timed out before the merged card assets reached production; generated GIFs were not published."
+          exit 1
 
       - name: Smoke test deployed showcase routes
         # 本番URLの表示/API障害を検知して、異常な公開素材の更新を止める。
@@ -49,6 +138,14 @@ jobs:
             {
               path: '/api/planets/showcase/ruby',
               validate: (text) => JSON.parse(text).mainLanguage === 'Ruby'
+            },
+            {
+              path: '/api/planets/showcase/elm',
+              validate: (text) => JSON.parse(text).mainLanguage === 'Elm'
+            },
+            {
+              path: '/api/planets/showcase/perl',
+              validate: (text) => JSON.parse(text).mainLanguage === 'Perl'
             }
           ];
 
@@ -65,9 +162,7 @@ jobs:
           NODE
 
       - name: Install Playwright browser
-        run: |
-          npm install --no-save --package-lock=false playwright@1.58.2
-          npx playwright install chromium --with-deps
+        run: npx --no-install playwright install chromium --with-deps
 
       - name: Install FFmpeg
         run: |
@@ -103,11 +198,13 @@ jobs:
           record_card profile_card.gif "$base_url?username=nitr0yukkuri&fix=true" 8000
           record_card showcase_css.gif "$base_url?showcase=css&fix=true"
           record_card showcase_cpp.gif "$base_url?showcase=cpp&fix=true"
+          record_card showcase_elm.gif "$base_url?showcase=elm&fix=true"
           record_card showcase_go.gif "$base_url?showcase=go&fix=true"
           record_card showcase_typescript.gif "$base_url?showcase=typescript&fix=true"
           record_card showcase_javascript.gif "$base_url?showcase=javascript&fix=true"
           record_card showcase_java.gif "$base_url?showcase=java&fix=true"
           record_card showcase_kotlin.gif "$base_url?showcase=kotlin&fix=true"
+          record_card showcase_perl.gif "$base_url?showcase=perl&fix=true"
           record_card showcase_rust.gif "$base_url?showcase=rust&fix=true"
           record_card showcase_vue.gif "$base_url?showcase=vue&fix=true"
           record_card showcase_ruby.gif "$base_url?showcase=ruby&fix=true"
@@ -117,7 +214,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          test "$(find generated-card-assets -maxdepth 1 -name '*.gif' | wc -l)" -eq 12
+          test "$(find generated-card-assets -maxdepth 1 -name '*.gif' | wc -l)" -eq 14
 
           for gif in generated-card-assets/*.gif; do
             file "$gif" | grep -q "GIF image data"
@@ -137,23 +234,46 @@ jobs:
             echo "Validated $gif ($dimensions, $size_bytes bytes)."
           done
 
-      - name: Publish GIF to asset branch
+      - name: Upload validated GIFs
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: generated-card-assets
+          path: generated-card-assets/*.gif
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-card-assets:
+    needs: build-card-assets
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download validated GIFs
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: generated-card-assets
+          path: generated-card-assets
+
+      - name: Publish GIFs to asset branch
         run: |
           set -euo pipefail
-
-          asset_branch="card-assets"
-          asset_dir="$(mktemp -d)"
-          cp generated-card-assets/*.gif "$asset_dir/"
+          test "$(find generated-card-assets -maxdepth 1 -name '*.gif' | wc -l)" -eq 14
+          for gif in generated-card-assets/*.gif; do
+            file "$gif" | grep -q "GIF image data"
+          done
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch --orphan generated-card-assets
           git rm --recursive --force . || true
-          cp "$asset_dir"/*.gif .
+          cp generated-card-assets/*.gif .
           git add -- *.gif
           git commit -m "Update animated planet cards [skip ci]"
-          git push --force origin "HEAD:$asset_branch"
+          git push --force origin HEAD:card-assets
 
       - name: Summary
-        run: |
-          echo "Animated profile and showcase cards published to card-assets."
+        run: echo "Animated profile and showcase cards published to card-assets."
