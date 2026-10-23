@@ -5,6 +5,17 @@ import path from 'path';
 const DEFAULT_PUBLIC_BASE_URL = 'https://githubplanet.dev';
 const SOURCE_PUBLIC_BASE_URL = 'https://githubplanet.dev';
 
+function escapeXml(value) {
+    return value.replace(/[<>&'"]/g, (character) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&apos;'
+    })[character]);
+}
+
+
 export function registerPageRoutes(app, {
     rootDirectory,
     isProduction,
@@ -76,6 +87,47 @@ export function registerPageRoutes(app, {
     app.get(['/', '/en', '/english'], (req, res) => {
         sendPage(req, res, 'index.html');
     });
+
+
+    app.get('/robots.txt', (_req, res) => {
+        const sitemapUrl = new URL('/sitemap.xml', normalizedPublicBaseUrl).href;
+        res.type('text/plain').send([
+            'User-agent: *',
+            'Allow: /',
+            'Sitemap: ' + sitemapUrl
+        ].join('\n') + '\n');
+    });
+
+    app.get('/sitemap.xml', (_req, res) => {
+        const japaneseUrl = new URL('/', normalizedPublicBaseUrl).href;
+        const englishUrl = new URL('/en', normalizedPublicBaseUrl).href;
+        const alternateLinks = [
+            ['ja', japaneseUrl],
+            ['en', englishUrl],
+            ['x-default', japaneseUrl]
+        ];
+        const urls = [japaneseUrl, englishUrl].map((href) => {
+            const alternates = alternateLinks.map(([language, alternateUrl]) =>
+                '        <xhtml:link rel="alternate" hreflang="' + language
+                + '" href="' + escapeXml(alternateUrl) + '" />'
+            );
+
+            return [
+                '    <url>',
+                '        <loc>' + escapeXml(href) + '</loc>',
+                ...alternates,
+                '    </url>'
+            ].join('\n');
+        });
+
+        res.type('application/xml').send([
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
+            ...urls,
+            '</urlset>'
+        ].join('\n'));
+    });
+
 
     app.get([
         '/exhibition',
