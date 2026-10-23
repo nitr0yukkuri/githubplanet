@@ -84,7 +84,10 @@ test('uses the same random fallback order and delegates title persistence', asyn
     const { calls, service } = createHarness();
 
     assert.equal(await service.getRandom({ loggedInUserId: 1, lastRandomVisitedId: 2 }), null);
-    await service.saveActiveTitle(1, { prefix: 'x', suffix: 'y' });
+    await service.saveActiveTitle(1, { prefix: 'x', suffix: 'y' }, {
+        prefixes: ['x'],
+        suffixes: ['y']
+    });
 
     assert.deepEqual(calls, [
         ['findRandom', [1, 2]],
