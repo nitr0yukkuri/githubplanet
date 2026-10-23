@@ -62,6 +62,10 @@
                 <p id="not-logged-in-text" data-i18n="home.empty">まだ何もありません...</p>
                 <a href="/login" id="login-button" data-i18n="home.login">星を誕生させる</a>
             </div>
+            <div id="planet-load-error-container" role="alert" aria-live="polite" hidden>
+                <p data-i18n="home.loadError">惑星データを読み込めませんでした。</p>
+                <button id="retry-planet-load-btn" type="button" data-i18n="home.retry">再試行</button>
+            </div>
 
             <div class="ui-top-left">
                 <button id="open-select-modal-btn" class="ui-button" title="惑星を探す" aria-label="惑星を探す" data-i18n-attr="title:home.searchPlanet,aria-label:home.searchPlanet">
