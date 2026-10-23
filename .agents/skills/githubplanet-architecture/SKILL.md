@@ -63,7 +63,6 @@ Webhookは `presentation -> applicationのイベント用ユースケース/ポ�
 具体的な技術との接続を閉じ込める。
 
 - `database/planet-repository.js`、`postgres.js`はDB接続・トランザクション・スキーマを担当する。
-- DBスキーマ変更は連番migrationとして管理し、`npm run migrate`から明示的に適用する。HTTPサーバー起動時は適用確認だけを行い、DDL・backfill・index作成を実行しない。
 - `external/github-client.js`、`gemini-client.js`は外部API通信、リトライ/キャッシュ、外部DTO変換を担当する。
 - アダプターはApplication全体や巨大なRepositoryを受け取らず、`languageColorStore`のような狭いportを注入する。
 - DB row、GitHub GraphQL、Gemini応答をApplication/Domainへそのまま漏らさず、境界で内部入力モデルへ変換する。
@@ -98,7 +97,7 @@ HTTP/WebSocket入口の輸送責務を担当する。
 4. `planet-stats.js`がGitHub GraphQLの生フィールド名を知る。外部アダプターのDTO mapperを境界に置く。ただし、まずは挙動を固定し、必要性が出てから分離する。
 5. `planet-query-service.js`の検索、cache、random fallback、称号保存が膨らんだら、ユースケース単位へ分割する。小規模なfacadeを機械的に分割しない。
 6. `constants.js`の設定値、Webhook入力変換、ドメインルールの混在を整理する。変更頻度と責務が異なるものを同じ定数ファイルに集めない。
-7. `server.js`のruntime configはComposition Rootの運用課題として扱う。DB migrationは専用コマンドへ分離済みなので、起動時DDLへ戻さない。
+7. `server.js`の起動時migrationやruntime configはComposition Rootの運用課題として扱う。通常リクエストの業務ロジックと混ぜない。
 
 ## 守るべき互換性
 
@@ -109,10 +108,15 @@ HTTP/WebSocket入口の輸送責務を担当する。
 - ランダム惑星の検索順、履歴除外、fallback、DBなしのshowcase/preview挙動。
 - Webhookのacknowledge、meteorイベント、Socket.IO通知。
 - `home`と`card`の言語別演出、アニメーション更新、カードの決定的レンダリング。
-- 本番DBに対して、テスト目的のmigration/backfill/index作成を実行しない。
-- migrationは使い捨てPostgreSQLで冪等性・同時実行・旧schemaからの更新を検証し、本番DBをテスト対象にしない。
+- 本番DBをテストのために変更しない。migration/backfill/index作成をテストへ持ち込まない。
 
 特に設定値と公開URLは一箇所で解決する。callback、canonical、OGP、README、デプロイ先の既定値が別ホストを指さないよう、環境変数未設定時の認証経路をテストする。
+
+### ローカル GitHub OAuth の切り分け
+
+ローカルで「不正なリクエストです」や `missing_code_verifier` が出たら、まず認証開始時とcallback時のホスト名を照合する。`localhost` と `127.0.0.1` は別ホストなので、ログイン開始時のsession cookieがcallbackへ送られない。さらに `/login` がGitHubへ渡す `redirect_uri`、実際のcallback URL、GitHub OAuth Appに登録したcallback URLをscheme・host・port・pathまで完全一致させる。ローカルだけcallbackを変える場合は `CALLBACK_URL` を使い、本番の既定値をローカル都合で変えない。
+
+切り分けでは、サーバーログのOAuth callback拒否理由、ログイン開始時の `Set-Cookie`、callbackリクエストにsession cookieが含まれるかを順に見る。DBなしのローカル起動でsession storeがMemoryStoreなら、プロセス再起動や別プロセスへのcallback振り分けでPKCE verifierが失われるため、認証往復中は同じサーバープロセスを保つ。ブラウザーの一般的な `404` 表示だけではOAuth失敗と判断せず、失敗したリクエストのURLを特定する。`/favicon.ico` など静的ファイルの404はcallback/sessionエラーと別に扱う。
 
 ## 安全なリファクタリング順序
 
