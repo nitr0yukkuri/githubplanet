@@ -13,6 +13,7 @@ import * as rust from '../rust-planet-desert.js';
 import * as swift from '../swift-planet-feathers.js';
 import * as typescript from '../typescript-planet-shell.js';
 import * as vue from '../vue-planet-circulation.js';
+import * as xml from '../xml-planet-nesting.js';
 
 const CARD_THEMES = Object.freeze({
     c: Object.freeze({ id: 'c-steel', accent: '#c3d0d7', atmosphere: '#728491', highlight: '#b6c3ca', atmospherePosition: '25% 50%', highlightPosition: '75% 32%' }),
@@ -311,9 +312,19 @@ const FEATURE_DEFINITIONS = [
         update: ({ objects, now }) => (
             python.updatePythonPlanetTrails(objects.trails, now)
         )
+    },
+    {
+        id: 'xml',
+        language: 'XML',
+        module: xml,
+        matches: xml.isXmlPlanet,
+        createMaterial: ({ THREE, planetTexture }) => (
+            xml.createXmlPlanetMaterial(THREE, planetTexture)
+        ),
+        update: ({ material, now }) => xml.updateXmlPlanetNesting(material, now)
     }
 ];
-
+ 
 export const planetFeatures = Object.freeze(FEATURE_DEFINITIONS);
 
 export function resolvePlanetFeature(data) {
