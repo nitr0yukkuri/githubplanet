@@ -7,22 +7,23 @@ import { derivePlanetStats } from '../src/application/planet-stats.js';
 test('derives activity statistics without GitHub, Gemini, or database access', () => {
     const stats = derivePlanetStats({
         ownedRepositories: [{
-            stargazerCount: 4,
-            languageBytes: { TypeScript: 70, Sass: 20 }
+            receivedStars: 4,
+            languages: [
+                { language: 'TypeScript', bytes: 70 },
+                { language: 'Sass', bytes: 20 }
+            ]
         }],
-        contributedRepositoryCount: 1,
+        contributedRepositories: [{ languages: [] }],
         mergedPullRequests: [{
             repositoryNameWithOwner: 'nitr0yukkuri/githubplanet',
             repositoryOwnerLogin: 'nitr0yukkuri'
         }],
         starredRepositoryCount: 6,
-        contributionCalendar: {
-            totalContributions: 120000,
-            weeks: [{ contributionDays: [
-                { date: '2026-08-24', contributionCount: 150 },
-                { date: '2026-08-22', contributionCount: 20 }
-            ] }]
-        },
+        totalContributions: 120000,
+        dailyContributions: [
+            { date: '2026-08-24', count: 150 },
+            { date: '2026-08-22', count: 20 }
+        ],
         featuredProjects: []
     }, {
         login: 'tester',
