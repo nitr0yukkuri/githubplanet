@@ -81,16 +81,21 @@ export function registerPlanetRoutes(app, {
     });
 
     app.post('/api/save-title', async (req, res) => {
-        if (!req.session.planetData || !planetQueryService) {
+        const userId = req.session?.planetData?.user?.id;
+        if (!userId || !planetQueryService) {
             return res.status(401).json({ error: 'Not logged in' });
         }
 
-        const { prefix, suffix } = req.body;
-        const userId = req.session.planetData.user.id;
+        const { prefix, suffix } = req.body || {};
+        const unlockedTitles = req.session.planetData.planetData?.unlockedTitles || {
+            prefixes: ['名もなき'],
+            suffixes: ['旅人']
+        };
         const newTitle = { prefix, suffix };
 
         try {
-            await planetQueryService.saveActiveTitle(userId, newTitle);
+            const saved = await planetQueryService.saveActiveTitle(userId, newTitle, unlockedTitles);
+            if (!saved) return res.status(400).json({ error: 'Invalid title' });
             if (req.session.planetData.planetData) {
                 req.session.planetData.planetData.activeTitle = newTitle;
             }

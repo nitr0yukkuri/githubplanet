@@ -36,8 +36,18 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         return row || null;
     }
 
-    async function saveActiveTitle(githubId, activeTitle) {
+    async function saveActiveTitle(githubId, activeTitle, unlockedTitles) {
+        const { prefix, suffix } = activeTitle || {};
+        if (!githubId
+            || typeof prefix !== 'string'
+            || typeof suffix !== 'string'
+            || !Array.isArray(unlockedTitles?.prefixes)
+            || !Array.isArray(unlockedTitles?.suffixes)
+            || !unlockedTitles.prefixes.includes(prefix)
+            || !unlockedTitles.suffixes.includes(suffix)) return false;
+
         await repository.updateActiveTitle(githubId, activeTitle);
+        return true;
     }
 
     async function getLanguageHistoryByGithubId(githubId) {
