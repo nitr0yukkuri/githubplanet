@@ -15,7 +15,12 @@ function dominantLanguage(languageLines) {
 // 追加行を累積し、既存コード量ではなく本人が積み上げた変更の傾向を再生する。
 export function buildAuthoredLanguageHistory(commitRows = []) {
     const commitsByDate = new Map();
+    const seenCommitShas = new Set();
     for (const row of commitRows) {
+        const commitSha = String(row.commitSha || '').toLowerCase();
+        if (commitSha && seenCommitShas.has(commitSha)) continue;
+        if (commitSha) seenCommitShas.add(commitSha);
+
         const date = dateKey(row.authoredAt);
         if (!date) continue;
         const bucket = commitsByDate.get(date) || { lastAuthoredAt: null, additions: {} };
