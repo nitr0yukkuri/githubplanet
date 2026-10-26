@@ -138,6 +138,35 @@ test('refreshes the authenticated username by stable GitHub ID', async () => {
     ]);
 });
 
+test('retries username synchronization when the database update fails', async () => {
+    let updateCalls = 0;
+    const service = createPlanetService({
+        repository: {
+            async updateUsernameByGithubId() {
+                updateCalls++;
+                throw new Error('database unavailable');
+            }
+        },
+        githubClient: {
+            async getAuthenticatedUser() {
+                return { id: 42, login: 'new-login', html_url: 'https://github.com/new-login' };
+            }
+        },
+        geminiClient: {},
+        geminiApiKey: ''
+    });
+
+    await assert.rejects(
+        service.refreshAuthenticatedUser('token', { id: 42, login: 'old-login' }),
+        /database unavailable/
+    );
+    await assert.rejects(
+        service.refreshAuthenticatedUser('token', { id: 42, login: 'old-login' }),
+        /database unavailable/
+    );
+    assert.equal(updateCalls, 2);
+});
+
 test('rejects an authenticated identity change that does not match the session ID', async () => {
     const service = createPlanetService({
         repository: {},
