@@ -50,19 +50,31 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         return entry.promise;
     }
 
-    async function refresh(username, accessToken) {
-        const user = await githubClient.getUser(username, accessToken);
+    async function refresh(user, accessToken) {
         await planetService.updateAndSavePlanetData(user, accessToken);
     }
 
     async function getByUsername(username, accessToken) {
         let row = await repository.findByUsername(username);
-        const shouldUpdate = Boolean(accessToken) && (!row || (row.lastUpdated && isExpired(row.lastUpdated)));
+        let user = null;
 
+        // 表示名は再利用されるため、保存行を返す前に不変IDで所有者を照合する。
+        if (row || accessToken) {
+            user = await githubClient.getUser(username, accessToken);
+            if (row && String(user.id) !== String(row.githubId)) {
+                row = await repository.findByGithubId(user.id);
+            }
+            if (row && user.login && user.login !== row.username) {
+                await repository.updateUsernameByGithubId(user.id, user.login);
+                row = { ...row, username: user.login };
+            }
+        }
+
+        const shouldUpdate = Boolean(accessToken) && (!row || (row.lastUpdated && isExpired(row.lastUpdated)));
         if (shouldUpdate) {
             try {
-                await refresh(username, accessToken);
-                const updatedRow = await repository.findByUsername(username);
+                await refresh(user || await githubClient.getUser(username, accessToken), accessToken);
+                const updatedRow = await repository.findByGithubId(user.id);
                 if (updatedRow) row = updatedRow;
             } catch (error) {
                 console.warn(`[Visit Update] Failed to update ${username}: ${error.message}`);
