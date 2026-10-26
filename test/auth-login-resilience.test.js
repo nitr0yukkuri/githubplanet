@@ -142,3 +142,65 @@ test('an authenticated session with unavailable initial planet data gets 503, no
         authenticated: true
     });
 });
+
+test('refreshes the GitHub profile link identity without reloading fresh planet data', async () => {
+    const app = createRouteApp();
+    const currentUser = { id: 42, login: 'new-login', html_url: 'https://github.com/new-login' };
+    let planetUpdateCalled = false;
+    registerPlanetRoutes(app, {
+        planetService: {
+            async refreshAuthenticatedUser(token, previousUser) {
+                assert.equal(token, 'access-token');
+                assert.equal(previousUser.login, 'old-login');
+                return currentUser;
+            },
+            async updateAndSavePlanetData() { planetUpdateCalled = true; }
+        },
+        cacheDuration: 60_000
+    });
+
+    const res = createResponse();
+    await app.handlers.get('GET /api/me')({
+        session: {
+            github_token: 'access-token',
+            last_updated: Date.now(),
+            planetData: {
+                user: { id: 42, login: 'old-login' },
+                planetData: { username: 'old-login', totalCommits: 10, weeklyCommits: 2 }
+            }
+        }
+    }, res);
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.user.login, 'new-login');
+    assert.equal(res.body.planetData.username, 'new-login');
+    assert.equal(res.body.githubProfileVerified, true);
+    assert.equal(planetUpdateCalled, false);
+});
+
+test('keeps cached planet data but marks its stale profile link unverified when GitHub is unavailable', async () => {
+    const app = createRouteApp();
+    registerPlanetRoutes(app, {
+        planetService: {
+            async refreshAuthenticatedUser() { throw new Error('GitHub unavailable'); },
+            async updateAndSavePlanetData() {}
+        },
+        cacheDuration: 60_000
+    });
+
+    const res = createResponse();
+    await app.handlers.get('GET /api/me')({
+        session: {
+            github_token: 'access-token',
+            last_updated: Date.now(),
+            planetData: {
+                user: { id: 42, login: 'old-login' },
+                planetData: { username: 'old-login', totalCommits: 10, weeklyCommits: 2 }
+            }
+        }
+    }, res);
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.planetData.username, 'old-login');
+    assert.equal(res.body.githubProfileVerified, false);
+});
