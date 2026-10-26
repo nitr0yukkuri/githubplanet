@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { test } from 'node:test';
 import pg from 'pg';
 import { createPostgresPool } from '../src/infrastructure/database/postgres.js';
@@ -55,7 +58,22 @@ test('strips SSL query flags from local connection strings', () => {
         'postgresql://user:password@localhost/database?sslmode=require&ssl=1'
     );
     assert.equal(parsedSsl, false);
-    assert.doesNotMatch(poolOptions.connectionString, /sslmode|ssl=/i);
+    assert.equal(poolOptions.ssl, false);
+    assert.equal(poolOptions.host, 'localhost');
+    assert.equal(poolOptions.connectionString, undefined);
+});
+
+test('recognizes empty-authority URLs and PostgreSQL Unix socket paths as local', () => {
+    const connectionStrings = [
+        'postgresql://user:password@/database?host=localhost&sslmode=disable',
+        'postgresql:///database?host=%2Fcloudsql%2Fproject%3Aregion%3Ainstance',
+        '/var/run/postgresql database'
+    ];
+    for (const connectionString of connectionStrings) {
+        const { poolOptions, parsedSsl } = capturePoolOptions(connectionString);
+        assert.equal(poolOptions.ssl, false, connectionString);
+        assert.equal(parsedSsl, false, connectionString);
+    }
 });
 
 test('does not let connection-string SSL flags disable remote certificate verification', () => {
@@ -68,5 +86,25 @@ test('does not let connection-string SSL flags disable remote certificate verifi
         const connectionString = `postgresql://user:password@example.com/database?${parameters}`;
         const { parsedSsl } = capturePoolOptions(connectionString);
         assert.deepEqual(parsedSsl, { rejectUnauthorized: true }, parameters);
+    }
+});
+
+test('keeps a configured root certificate while requiring verification', () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'githubplanet-postgres-ca-'));
+    const certificatePath = path.join(directory, 'root-ca.pem');
+    const certificate = 'test root certificate';
+    fs.writeFileSync(certificatePath, certificate);
+
+    try {
+        const connectionStrings = [
+            `postgresql://user:password@example.com/database?sslmode=no-verify&sslrootcert=${encodeURIComponent(certificatePath)}`,
+            `postgresql://user:password@example.com/database?uselibpqcompat=true&sslmode=verify-ca&sslrootcert=${encodeURIComponent(certificatePath)}`
+        ];
+        for (const connectionString of connectionStrings) {
+            const { parsedSsl } = capturePoolOptions(connectionString);
+            assert.deepEqual(parsedSsl, { ca: certificate, rejectUnauthorized: true });
+        }
+    } finally {
+        fs.rmSync(directory, { recursive: true, force: true });
     }
 });

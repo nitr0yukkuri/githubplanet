@@ -1,30 +1,30 @@
-import fs from 'node:fs';
 import pg from 'pg';
+import { parse as parsePostgresConnectionString } from 'pg-connection-string';
 import { safeErrorMetadata } from '../../shared/error-metadata.js';
 
-const POSTGRES_TLS_PARAMETERS = new Set([
-    'ssl', 'sslmode', 'sslcert', 'sslkey', 'sslrootcert', 'uselibpqcompat'
-]);
+const LOCAL_DATABASE_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]', 'db']);
 
-function preparePostgresConnection(connectionUrl, isLocalDatabase) {
-    const tlsOptions = isLocalDatabase ? false : { rejectUnauthorized: true };
-    const queryParameters = [...connectionUrl.searchParams.entries()];
-
-    for (const parameterName of POSTGRES_TLS_PARAMETERS) {
-        const matchingEntries = queryParameters.filter(([key]) => key.toLowerCase() === parameterName);
-        const value = matchingEntries.at(-1)?.[1] || null;
-
-        if (tlsOptions && value && ['sslcert', 'sslkey', 'sslrootcert'].includes(parameterName)) {
-            const contents = fs.readFileSync(value, 'utf8');
-            if (parameterName === 'sslcert') tlsOptions.cert = contents;
-            if (parameterName === 'sslkey') tlsOptions.key = contents;
-            if (parameterName === 'sslrootcert') tlsOptions.ca = contents;
-        }
-
-        for (const [matchingKey] of matchingEntries) connectionUrl.searchParams.delete(matchingKey);
+function preparePostgresConnection(connectionString) {
+    if (!connectionString.startsWith('/')
+        && !/^postgres(?:ql)?:\/\//i.test(connectionString)) {
+        throw new Error('DATABASE_URL must use a PostgreSQL URL or local socket path');
     }
 
-    return { connectionString: connectionUrl.toString(), ssl: tlsOptions };
+    const connectionOptions = parsePostgresConnectionString(connectionString);
+    const databaseHost = String(connectionOptions.host || 'localhost').toLowerCase();
+    const isLocalDatabase = LOCAL_DATABASE_HOSTS.has(databaseHost) || databaseHost.startsWith('/');
+    const configuredSsl = connectionOptions.ssl && typeof connectionOptions.ssl === 'object'
+        ? connectionOptions.ssl
+        : {};
+    const safeConfiguredSsl = { ...configuredSsl };
+    // libpq's verify-ca mode disables hostname matching, which is weaker than this policy.
+    delete safeConfiguredSsl.checkServerIdentity;
+
+    // pg parses SSL query parameters after Pool options, so pass parsed fields without the URL.
+    return {
+        ...connectionOptions,
+        ssl: isLocalDatabase ? false : { ...safeConfiguredSsl, rejectUnauthorized: true }
+    };
 }
 
 export function createPostgresPool(connectionString, {
@@ -33,18 +33,7 @@ export function createPostgresPool(connectionString, {
     statementTimeout = 15000
 } = {}) {
     if (!connectionString) return undefined;
-    let connectionUrl;
-    try {
-        connectionUrl = new URL(connectionString);
-    } catch {
-        throw new Error('DATABASE_URL must be a valid PostgreSQL URL');
-    }
-    if (!['postgres:', 'postgresql:'].includes(connectionUrl.protocol)) {
-        throw new Error('DATABASE_URL must use the PostgreSQL protocol');
-    }
-    const databaseHost = connectionUrl.hostname.toLowerCase();
-    const isLocalDatabase = ['localhost', '127.0.0.1', '[::1]', 'db'].includes(databaseHost);
-    const preparedConnection = preparePostgresConnection(connectionUrl, isLocalDatabase);
+    const preparedConnection = preparePostgresConnection(connectionString);
 
     const pool = new pg.Pool({
         ...preparedConnection,

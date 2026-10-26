@@ -7,6 +7,7 @@
     "express": "^4.21.2",
     "express-session": "^1.18.2",
     "pg": "^8.16.3",
+    "pg-connection-string": "^2.9.1",
     "pngjs": "^7.0.0",
     "socket.io": "^4.7.2",
     "three": "0.160.0",
