@@ -17,12 +17,13 @@ export function buildAuthoredLanguageHistory(commitRows = []) {
     const commitsByDate = new Map();
     const seenCommitShas = new Set();
     for (const row of commitRows) {
+        const date = dateKey(row.authoredAt);
+        if (!date) continue;
+
+        // リポジトリ名は所有者変更で変わるため、同一コミットSHAは一度だけ集計する。
         const commitSha = String(row.commitSha || '').toLowerCase();
         if (commitSha && seenCommitShas.has(commitSha)) continue;
         if (commitSha) seenCommitShas.add(commitSha);
-
-        const date = dateKey(row.authoredAt);
-        if (!date) continue;
         const bucket = commitsByDate.get(date) || { lastAuthoredAt: null, additions: {} };
         const authoredAt = new Date(row.authoredAt).toISOString();
         if (!bucket.lastAuthoredAt || authoredAt > bucket.lastAuthoredAt) bucket.lastAuthoredAt = authoredAt;
