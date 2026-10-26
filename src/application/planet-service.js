@@ -3,6 +3,7 @@ import { derivePlanetProgression } from './planet-progression.js';
 import { derivePlanetStats } from './planet-stats.js';
 import { LANGUAGE_COLORS } from '../domain/planet/constants.js';
 import { calculatePlanetSizeFactor, generatePlanetName } from '../domain/planet/planet.js';
+import { safeErrorMetadata } from '../shared/error-metadata.js';
 
 export function createPlanetService({ repository, githubClient, geminiClient, geminiApiKey }) {
     async function refreshAuthenticatedUser(accessToken, previousUser) {
@@ -28,7 +29,7 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
         try {
             userData = await githubClient.getPlanetSource(user.login, accessToken);
         } catch (error) {
-            console.error('[GraphQL] データ取得失敗:', error.message);
+            console.error('[GraphQL] データ取得失敗:', safeErrorMetadata(error));
             throw error;
         }
 
@@ -39,7 +40,7 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
             try {
                 existingData = await repository.findByGithubId(user.id);
             } catch (error) {
-                console.error('[DB] 既存データ取得エラー:', error.message);
+                console.error('[DB] 既存データ取得エラー:', safeErrorMetadata(error));
             }
         }
 

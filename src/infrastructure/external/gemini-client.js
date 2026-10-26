@@ -1,4 +1,5 @@
 import { measureExternalOperation } from '../observability/external-performance.js';
+import { safeErrorMetadata } from '../../shared/error-metadata.js';
 
 const GEMINI_API_TIMEOUT_MS = 5_000;
 const DEFAULT_LANGUAGE_COLOR = '#808080';
@@ -71,11 +72,11 @@ export function createGeminiClient({
                     const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
                     if (text) return text.trim();
                 } catch (error) {
-                    console.warn(`[Gemini] スキップ (${modelId}): ${error.message}`);
+                    console.warn('[Gemini] モデル候補の生成失敗:', safeErrorMetadata(error));
                 }
             }
         } catch (error) {
-            console.error('[Gemini] 生成失敗:', error.message);
+            console.error('[Gemini] 生成失敗:', safeErrorMetadata(error));
         }
         return null;
     }
@@ -103,7 +104,7 @@ export function createGeminiClient({
                     }
                 } catch (error) {
                     // キャッシュ表の障害で惑星生成全体を止めず、従来どおりGeminiへ進む。
-                    console.warn(`[DB] 言語色キャッシュの読取をスキップ: ${error.message}`);
+                    console.warn('[DB] 言語色キャッシュの読取をスキップ:', safeErrorMetadata(error));
                 }
             }
 
@@ -121,7 +122,7 @@ export function createGeminiClient({
                     }
                 } catch (error) {
                     // 保存だけ失敗しても今回の生成結果はそのまま利用する。
-                    console.warn(`[DB] 言語色キャッシュの保存をスキップ: ${error.message}`);
+                    console.warn('[DB] 言語色キャッシュの保存をスキップ:', safeErrorMetadata(error));
                 }
             }
 

@@ -129,7 +129,7 @@ export function createGithubClient({
                 timeout: GITHUB_API_TIMEOUT_MS
             });
             if (response.data.errors) {
-                console.error('[GraphQL Error]', response.data.errors);
+                console.error('[GraphQL Error]', { errorCount: Array.isArray(response.data.errors) ? response.data.errors.length : 1 });
                 throw new Error('GraphQL query failed');
             }
             return response.data.data.user;

@@ -1,3 +1,5 @@
+import { safeErrorMetadata } from '../shared/error-metadata.js';
+
 const ANONYMOUS_GITHUB_PROFILE_LOOKUP_LIMIT = 40;
 const ANONYMOUS_GITHUB_PROFILE_LOOKUP_WINDOW_MS = 60 * 60 * 1000;
 
@@ -158,7 +160,7 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
                 const updatedRow = await repository.findByGithubId(user.id);
                 if (updatedRow) row = updatedRow;
             } catch (error) {
-                console.warn(`[Visit Update] Failed to update ${username}: ${error.message}`);
+                console.warn('[Visit Update] Failed to update planet:', safeErrorMetadata(error));
             }
         }
 
@@ -211,7 +213,7 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
                 await repository.updateUsernameByGithubId(normalizedGithubId, login);
             } catch (error) {
                 // 名前の同期に失敗しても、確認できた現在のプロフィールへは転送する。
-                console.warn('[GitHub Profile] Could not save the current login:', error.message);
+                console.warn('[GitHub Profile] Could not save the current login:', safeErrorMetadata(error));
             }
         }
         return `https://github.com/${encodeURIComponent(login)}`;

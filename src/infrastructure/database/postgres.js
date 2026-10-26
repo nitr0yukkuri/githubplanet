@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { safeErrorMetadata } from '../../shared/error-metadata.js';
 
 export function createPostgresPool(connectionString, {
     max = 5,
@@ -24,7 +25,7 @@ export function createPostgresPool(connectionString, {
     });
 
     pool.on('error', (error) => {
-        console.error(`[DB] Idle client connection error: ${error.message}`);
+        console.error('[DB] Idle client connection error:', safeErrorMetadata(error));
     });
 
     return pool;
