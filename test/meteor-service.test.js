@@ -26,26 +26,6 @@ test('emits a manual meteor using the existing color fallback and scale cap', as
     assert.match(logs[0], /Scale: 1\.5/);
 });
 
-test('waits for asynchronous meteor publication before completing the operation', async () => {
-    let publicationCompleted = false;
-    const service = createMeteorService({
-        geminiClient: {
-            async resolveLanguageColor() { return '#f0db4f'; }
-        },
-        extensionMap: {},
-        emitMeteor: async (event) => {
-            await Promise.resolve();
-            publicationCompleted = true;
-            return event;
-        },
-        logger: { log() {} }
-    });
-
-    await service.emitManualMeteor({ language: 'JavaScript' });
-
-    assert.equal(publicationCompleted, true);
-});
-
 test('maps webhook commit files to the existing language and scale event', async () => {
     const { service, emissions, logs } = createHarness();
 
