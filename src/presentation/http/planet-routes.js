@@ -71,6 +71,9 @@ export function registerPlanetRoutes(app, {
             return res.redirect(302, profileUrl);
         } catch (error) {
             if ([403, 429].includes(error.response?.status)) {
+                if (error.retryAfterMs) {
+                    res.setHeader('Retry-After', String(Math.ceil(error.retryAfterMs / 1_000)));
+                }
                 return res.status(429).send('GitHub rate limit reached. Try again later.');
             }
             console.error('[GitHub Profile Redirect] Lookup failed:', error.message);

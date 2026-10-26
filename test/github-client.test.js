@@ -169,6 +169,7 @@ test('gets a public GitHub profile without sending an empty bearer token', async
 test('gets a public GitHub profile by immutable account ID', async () => {
     let request;
     const client = createGithubClient({
+        githubApiBaseUrl: 'https://github-api.example.test',
         axios: {
             async get(url, config) {
                 request = { url, config };
@@ -181,7 +182,27 @@ test('gets a public GitHub profile by immutable account ID', async () => {
         id: 76643867,
         login: 'renamed-user'
     });
-    assert.equal(request.url, 'https://api.github.com/user/76643867');
+    assert.equal(request.url, 'https://github-api.example.test/user/76643867');
     assert.equal(request.config.headers.Authorization, 'Bearer token');
     assert.equal(request.config.headers.Accept, 'application/vnd.github+json');
+});
+
+test('caps anonymous profile-by-ID lookups per GitHub client instance', async () => {
+    let requests = 0;
+    const client = createGithubClient({
+        axios: {
+            async get(url) {
+                requests += 1;
+                const id = Number(url.split('/').at(-1));
+                return { data: { id, login: `user-${id}` } };
+            }
+        }
+    });
+
+    for (let id = 1; id <= 40; id += 1) await client.getUserById(id);
+
+    await assert.rejects(client.getUserById(41), (error) => (
+        error.response?.status === 429 && error.retryAfterMs > 0
+    ));
+    assert.equal(requests, 40);
 });

@@ -194,3 +194,33 @@ test('redirects profile links through the immutable ID and reports unavailable p
     await handlers.get('/github-profile/:githubId')({ params: { githubId: '76643867' } }, unavailableProfileResponse);
     assert.equal(unavailableProfileResponse.statusCode, 410);
 });
+
+test('returns the retry delay when the anonymous profile lookup budget is exhausted', async () => {
+    const handlers = new Map();
+    const app = {
+        get(paths, handler) {
+            for (const path of Array.isArray(paths) ? paths : [paths]) handlers.set(path, handler);
+        },
+        post() {}
+    };
+    const rateLimited = Object.assign(new Error('lookup budget exhausted'), {
+        response: { status: 429 },
+        retryAfterMs: 12_000
+    });
+    registerPlanetRoutes(app, {
+        planetService: {},
+        planetQueryService: { async getGithubProfileUrlById() { throw rateLimited; } },
+        cacheDuration: 60_000
+    });
+    const response = {
+        headers: {},
+        setHeader(name, value) { this.headers[name] = value; },
+        status(code) { this.statusCode = code; return this; },
+        send(body) { this.body = body; return this; }
+    };
+
+    await handlers.get('/github-profile/:githubId')({ params: { githubId: '12345' } }, response);
+
+    assert.equal(response.statusCode, 429);
+    assert.equal(response.headers['Retry-After'], '12');
+});

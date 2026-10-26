@@ -245,7 +245,10 @@ test('resolves the current GitHub profile URL from a saved stable ID', async () 
         repository: {
             async findByGithubId(id) {
                 calls.push(['findByGithubId', id]);
-                return { githubId: id };
+                return { githubId: id, username: 'old-login' };
+            },
+            async updateUsernameByGithubId(id, username) {
+                calls.push(['updateUsernameByGithubId', id, username]);
             }
         },
         githubClient: {
@@ -261,7 +264,8 @@ test('resolves the current GitHub profile URL from a saved stable ID', async () 
     assert.equal(await service.getGithubProfileUrlById(12345), 'https://github.com/new-login');
     assert.deepEqual(calls, [
         ['findByGithubId', '12345'],
-        ['getUserById', '12345']
+        ['getUserById', '12345'],
+        ['updateUsernameByGithubId', '12345', 'new-login']
     ]);
 });
 

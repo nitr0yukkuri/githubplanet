@@ -179,11 +179,21 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         const normalizedGithubId = String(githubId ?? '').trim();
         if (!/^[1-9]\d*$/.test(normalizedGithubId)
             || typeof repository?.findByGithubId !== 'function') return null;
-        if (!await repository.findByGithubId(normalizedGithubId)) return null;
+        const row = await repository.findByGithubId(normalizedGithubId);
+        if (!row) return null;
 
         const user = await resolveGithubUserById(normalizedGithubId);
         const login = String(user?.login || '');
         if (!/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(login)) return null;
+
+        if (login !== row.username && typeof repository.updateUsernameByGithubId === 'function') {
+            try {
+                await repository.updateUsernameByGithubId(normalizedGithubId, login);
+            } catch (error) {
+                // 名前の同期に失敗しても、確認できた現在のプロフィールへは転送する。
+                console.warn('[GitHub Profile] Could not save the current login:', error.message);
+            }
+        }
         return `https://github.com/${encodeURIComponent(login)}`;
     }
 

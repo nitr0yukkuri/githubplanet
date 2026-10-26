@@ -63,6 +63,8 @@ import { createGithubAuthoredLanguageHistoryClient } from './github-authored-lan
 import { EXTENSION_MAP } from '../../domain/planet/constants.js';
 
 const GITHUB_API_TIMEOUT_MS = 10_000;
+const ANONYMOUS_USER_ID_LOOKUP_WINDOW_MS = 60 * 60 * 1000;
+const MAX_ANONYMOUS_USER_ID_LOOKUPS_PER_WINDOW = 40;
 
 function endpoint(baseUrl, pathname) {
     return new URL(pathname, `${baseUrl.replace(/\/+$/, '')}/`).href;
@@ -114,6 +116,28 @@ export function createGithubClient({
         extensionMap: EXTENSION_MAP,
         onRequestTiming
     });
+    const anonymousUserIdLookupTimes = [];
+
+    function reserveAnonymousUserIdLookup() {
+        const now = Date.now();
+        while (anonymousUserIdLookupTimes.length
+            && now - anonymousUserIdLookupTimes[0] >= ANONYMOUS_USER_ID_LOOKUP_WINDOW_MS) {
+            anonymousUserIdLookupTimes.shift();
+        }
+
+        if (anonymousUserIdLookupTimes.length >= MAX_ANONYMOUS_USER_ID_LOOKUPS_PER_WINDOW) {
+            const retryAfterMs = Math.max(
+                1,
+                anonymousUserIdLookupTimes[0] + ANONYMOUS_USER_ID_LOOKUP_WINDOW_MS - now
+            );
+            const error = new Error('GitHub public API rate limit reached');
+            error.response = { status: 429 };
+            error.retryAfterMs = retryAfterMs;
+            throw error;
+        }
+
+        anonymousUserIdLookupTimes.push(now);
+    }
 
     async function requestGraphql(query, variables, accessToken) {
         const operation = query.match(/query (\w+)/)?.[1] || 'graphql';
@@ -183,8 +207,10 @@ export function createGithubClient({
                 if (!/^[1-9]\d*$/.test(normalizedAccountId)) {
                     throw new TypeError('Invalid GitHub account ID');
                 }
+                // GitHubの未認証枠は送信元IP単位なので、ID転送だけで枠を使い切らないよう余裕を残す。
+                if (!accessToken) reserveAnonymousUserIdLookup();
                 const response = await axios.get(
-                    `https://api.github.com/user/${normalizedAccountId}`,
+                    endpoint(githubApiBaseUrl, `/user/${normalizedAccountId}`),
                     {
                         headers: {
                             Accept: 'application/vnd.github+json',
