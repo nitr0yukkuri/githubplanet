@@ -159,11 +159,11 @@ async function syncMeteorEvents() {
         let cursor = readLastMeteorId();
         if (cursor === null) {
             const response = await fetchHomeApi('/api/meteors', { cache: 'no-store' });
-            if (!response.ok) throw new Error(\`Meteor replay cursor request failed (\${response.status})\`);
+            if (!response.ok) throw new Error('Meteor replay cursor request failed (' + response.status + ')');
 
             const body = await response.json();
             const latestId = String(body.cursor ?? '');
-            if (!/^\\d{1,19}$/.test(latestId)) {
+            if (!/^\d{1,19}$/.test(latestId)) {
                 throw new Error('Meteor replay cursor response was invalid');
             }
 
