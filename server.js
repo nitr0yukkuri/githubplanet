@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import connectPgSimple from 'connect-pg-simple';
 import { Server } from 'socket.io';
+import { randomBytes } from 'node:crypto';
 import { createPlanetQueryService } from './src/application/planet-query-service.js';
 import { createAuthoredLanguageHistoryService } from './src/application/authored-language-history-service.js';
 import { createPlanetService } from './src/application/planet-service.js';
@@ -54,13 +55,15 @@ if (isProduction) app.set('trust proxy', 1);
 app.use(randomPerformance.startMiddleware);
 app.use(compression({ threshold: 1024 }));
 app.use((req, res, next) => {
+    const scriptNonce = randomBytes(18).toString('base64');
+    req.cspNonce = scriptNonce;
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
     res.setHeader('Content-Security-Policy', [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.googletagmanager.com",
+        `script-src 'self' 'nonce-${scriptNonce}' https://cdn.jsdelivr.net https://www.googletagmanager.com`,
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com data:",
         "img-src 'self' data: https://image.thum.io",

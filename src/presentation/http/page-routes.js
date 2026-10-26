@@ -32,7 +32,14 @@ export function registerPageRoutes(app, {
     const seo = createPageSeo({ publicBaseUrl: normalizedPublicBaseUrl, showcasePages });
     app.use(seo.middleware);
 
+    function addScriptNonce(html, req) {
+        if (!req.cspNonce) return html;
+        // script-srcのnonce許可を、HTMLテンプレート内と後挿入された全scriptで共有する。
+        return html.replace(/<script(?=[\s>])/gi, `<script nonce="${req.cspNonce}"`);
+    }
+
     function sendPage(req, res, fileName) {
+        res.setHeader('Cache-Control', 'no-store');
         const isEnglish = /^\/(en|english)(\/|$)/.test(req.path);
         let html = pageCache.get(fileName);
 
@@ -40,7 +47,7 @@ export function registerPageRoutes(app, {
             const page = seo.resolveHomePage(req);
             if (!page) {
                 res.setHeader('X-Robots-Tag', 'noindex, follow');
-                return res.status(404).type('html').send(pageCache.get('404.html'));
+                return res.status(404).type('html').send(addScriptNonce(pageCache.get('404.html'), req));
             }
             if (!page.indexable) res.setHeader('X-Robots-Tag', 'noindex, follow');
             html = seo.renderHome(html, page);
@@ -52,7 +59,7 @@ export function registerPageRoutes(app, {
             }
         }
 
-        res.type('html').send(html);
+        res.type('html').send(addScriptNonce(html, req));
     }
 
     function generateSignature(username) {
@@ -185,7 +192,8 @@ export function registerPageRoutes(app, {
     });
 
     app.get(['/sender', '/en/sender', '/english/sender'], (req, res) => {
-        res.type('html').send(pageCache.get('sender.html'));
+        res.setHeader('Cache-Control', 'no-store');
+        res.type('html').send(addScriptNonce(pageCache.get('sender.html'), req));
     });
 
     app.get(['/achievements', '/en/achievements', '/english/achievements'], (req, res) => {
