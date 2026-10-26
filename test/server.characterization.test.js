@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import net from 'node:net';
 
 let serverProcess;
@@ -38,6 +38,18 @@ function waitForServer(process, timeoutMs = 15000) {
         });
     });
 }
+
+test('fails closed when NODE_ENV is missing', () => {
+    const result = spawnSync(process.execPath, ['server.js'], {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+        timeout: 10_000,
+        env: { ...process.env, NODE_ENV: '', DATABASE_URL: '' }
+    });
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr + result.stdout, /NODE_ENV must be explicitly set/);
+});
 
 before(async () => {
     const port = await getAvailablePort();

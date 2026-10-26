@@ -443,9 +443,9 @@ docker compose --profile css-test up --build
 | 変数 | 必須 | 用途 |
 | --- | --- | --- |
 | `PORT` | No | HTTPポート。既定値は`3000` |
-| `NODE_ENV` | No | `production`で本番向け設定と署名検証を有効化 |
+| `NODE_ENV` | 必須 | `development`、`test`、`production`のいずれか。本番は`production`を指定 |
 | `DATABASE_URL` | 本番必須 | PostgreSQL接続文字列 |
-| `SESSION_SECRET` | 推奨 | Express Sessionの署名 |
+| `SESSION_SECRET` | 本番必須 | Express Sessionの署名 |
 | `GITHUB_CLIENT_ID_LOCAL` / `GITHUB_CLIENT_SECRET_LOCAL` | 開発OAuth時 | ローカル用GitHub OAuth App |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | 本番OAuth時 | 本番用GitHub OAuth App |
 | `CALLBACK_URL` | 本番では推奨 | OAuth callback URL |

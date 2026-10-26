@@ -28,9 +28,14 @@ import { createExternalPerformanceReporter } from './src/infrastructure/observab
 import { createErrorHandler } from './src/presentation/http/error-handler.js';
 import { safeErrorMetadata } from './src/shared/error-metadata.js';
 
+const runtimeEnvironment = process.env.NODE_ENV;
+if (!['development', 'test', 'production'].includes(runtimeEnvironment)) {
+    throw new Error('NODE_ENV must be explicitly set to development, test, or production');
+}
+
 const app = express();
 const port = parseInt(process.env.PORT) || 3000;
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = runtimeEnvironment === 'production';
 const sessionSecret = process.env.SESSION_SECRET;
 if (isProduction && (!sessionSecret || sessionSecret === 'dev_secret')) {
     throw new Error('SESSION_SECRET must be configured in production and must not use the development placeholder');
