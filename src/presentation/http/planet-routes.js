@@ -55,6 +55,32 @@ export function registerPlanetRoutes(app, {
         }
     });
 
+    app.get('/github-profile/:githubId', async (req, res) => {
+        if (!/^[1-9]\d*$/.test(String(req.params.githubId || ''))) {
+            return res.status(400).send('Invalid GitHub account ID.');
+        }
+        if (typeof planetQueryService?.getGithubProfileUrlById !== 'function') {
+            return res.status(503).send('GitHub profile lookup is unavailable.');
+        }
+
+        try {
+            const profileUrl = await planetQueryService.getGithubProfileUrlById(req.params.githubId);
+            if (!profileUrl) {
+                return res.status(410).send('This GitHub profile is no longer publicly available.');
+            }
+            return res.redirect(302, profileUrl);
+        } catch (error) {
+            if ([403, 429].includes(error.response?.status)) {
+                if (error.retryAfterMs) {
+                    res.setHeader('Retry-After', String(Math.ceil(error.retryAfterMs / 1_000)));
+                }
+                return res.status(429).send('GitHub rate limit reached. Try again later.');
+            }
+            console.error('[GitHub Profile Redirect] Lookup failed:', error.message);
+            return res.status(502).send('GitHub profile could not be verified.');
+        }
+    });
+
     app.get('/api/me', authenticatedMeRateLimit, async (req, res) => {
         if (!req.session.planetData?.user) {
             return res.status(401).json({ error: 'Not logged in' });
