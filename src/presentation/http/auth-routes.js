@@ -47,6 +47,7 @@ export function registerAuthRoutes(app, {
     clientId,
     callbackUrl,
     sessionCookieName,
+    authorizationUrl = 'https://github.com/login/oauth/authorize',
     logger = console
 }) {
     app.get(['/login', '/en/login', '/english/login'], (req, res) => {
@@ -59,7 +60,7 @@ export function registerAuthRoutes(app, {
         const codeChallenge = base64URLEncode(sha256(codeVerifier));
         const state = crypto.randomBytes(16).toString('hex');
         req.session.oauth_state = state;
-        const authUrl = new URL('https://github.com/login/oauth/authorize');
+        const authUrl = new URL(authorizationUrl);
         authUrl.searchParams.set('client_id', clientId);
         authUrl.searchParams.set('redirect_uri', callbackUrl);
         authUrl.searchParams.set('scope', 'read:user');

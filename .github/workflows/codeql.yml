@@ -28,6 +28,10 @@ jobs:
         uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
         with:
           languages: javascript-typescript
+          config: |
+            # E2E creates a loopback-only HTTP test server; keep production code in analysis without test-fixture alerts.
+            paths-ignore:
+              - 'e2e/**'
 
       - name: Analyze
         uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4

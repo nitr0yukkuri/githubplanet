@@ -64,6 +64,10 @@ import { EXTENSION_MAP } from '../../domain/planet/constants.js';
 
 const GITHUB_API_TIMEOUT_MS = 10_000;
 
+function endpoint(baseUrl, pathname) {
+    return new URL(pathname, `${baseUrl.replace(/\/+$/, '')}/`).href;
+}
+
 function mapRepositories(connection, { includeStars = false } = {}) {
     return (connection?.nodes || []).map((repository) => ({
         languages: (repository.languages?.edges || []).map((edge) => ({
@@ -101,7 +105,9 @@ export function createGithubClient({
     clientSecret,
     callbackUrl,
     onRequestTiming,
-    parallelPlanetSourceRequests = true
+    parallelPlanetSourceRequests = true,
+    githubApiBaseUrl = 'https://api.github.com',
+    githubOAuthBaseUrl = 'https://github.com'
 }) {
     const authoredLanguageHistoryClient = createGithubAuthoredLanguageHistoryClient({
         axios,
@@ -112,7 +118,7 @@ export function createGithubClient({
     async function requestGraphql(query, variables, accessToken) {
         const operation = query.match(/query (\w+)/)?.[1] || 'graphql';
         return measureExternalOperation(onRequestTiming, operation, async () => {
-            const response = await axios.post('https://api.github.com/graphql', {
+            const response = await axios.post(endpoint(githubApiBaseUrl, '/graphql'), {
                 query,
                 variables
             }, {
@@ -134,7 +140,7 @@ export function createGithubClient({
         scanHistoricalAuthoredLanguageCommits: authoredLanguageHistoryClient.scanHistoricalAuthoredLanguageCommits,
         async exchangeCode(code, codeVerifier) {
             return measureExternalOperation(onRequestTiming, 'exchange_code', async () => {
-                const response = await axios.post('https://github.com/login/oauth/access_token', {
+                const response = await axios.post(endpoint(githubOAuthBaseUrl, '/login/oauth/access_token'), {
                     client_id: clientId,
                     client_secret: clientSecret,
                     code,
@@ -150,7 +156,7 @@ export function createGithubClient({
 
         async getAuthenticatedUser(accessToken) {
             return measureExternalOperation(onRequestTiming, 'get_authenticated_user', async () => {
-                const response = await axios.get('https://api.github.com/user', {
+                const response = await axios.get(endpoint(githubApiBaseUrl, '/user'), {
                     headers: { Authorization: `Bearer ${accessToken}` },
                     timeout: GITHUB_API_TIMEOUT_MS
                 });
@@ -160,7 +166,7 @@ export function createGithubClient({
 
         async getUser(username, accessToken) {
             return measureExternalOperation(onRequestTiming, 'get_user', async () => {
-                const response = await axios.get(`https://api.github.com/users/${username}`, {
+                const response = await axios.get(endpoint(githubApiBaseUrl, `/users/${encodeURIComponent(username)}`), {
                     headers: {
                         Accept: 'application/vnd.github+json',
                         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
@@ -175,7 +181,7 @@ export function createGithubClient({
             return measureExternalOperation(onRequestTiming, 'get_public_planet_source', async () => {
                 try {
                     const response = await axios.get(
-                        `https://api.github.com/users/${encodeURIComponent(username)}/repos`,
+                        endpoint(githubApiBaseUrl, `/users/${encodeURIComponent(username)}/repos`),
                         {
                             params: { per_page: 100, sort: 'updated', type: 'owner' },
                             headers: { Accept: 'application/vnd.github+json' },
