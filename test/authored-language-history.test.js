@@ -112,3 +112,12 @@ test('continues short request chunks while preserving the cumulative request bud
     assert.equal(scan.scanStatus, 'complete');
     assert.equal(scan.apiRequests, 30);
 });
+
+test('counts one authored commit once when repository ownership changed', () => {
+    const history = buildAuthoredLanguageHistory([
+        { commitSha: 'abc123', authoredAt: '2025-01-01T10:00:00Z', languageAdditions: { TypeScript: 12 } },
+        { commitSha: 'ABC123', authoredAt: '2025-01-01T10:00:00Z', languageAdditions: { TypeScript: 12 } }
+    ]);
+
+    assert.deepEqual(history[0].languageStats, { TypeScript: 12 });
+});
