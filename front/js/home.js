@@ -1020,8 +1020,10 @@ async function init() {
 
     if (webglAvailable) animate();
 
-    const hasVisited = localStorage.getItem('githubPlanetVisited');
-    const shouldShowWelcome = isExhibitionRoute || (!isPublicPlanetRoute && !hasVisited);
+    const hasVisited = isPublicPlanetRoute || document.body.dataset.welcomeAccepted === 'true'
+        || localStorage.getItem('githubPlanetVisited');
+    const shouldShowWelcome = document.body.dataset.welcomeAccepted !== 'true'
+        && (isExhibitionRoute || (!isPublicPlanetRoute && !hasVisited));
 
     if (shouldShowWelcome) {
         if (welcomeModal) {
