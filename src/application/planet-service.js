@@ -16,11 +16,7 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
 
         if (previousUser?.login !== user.login && repository?.updateUsernameByGithubId) {
             // GitHub ID is stable across renames; only synchronize the mutable login after token verification.
-            try {
-                await repository.updateUsernameByGithubId(user.id, user.login);
-            } catch (error) {
-                console.warn('[DB] Could not synchronize the authenticated GitHub username:', error.message);
-            }
+            await repository.updateUsernameByGithubId(user.id, user.login);
         }
         return user;
     }
