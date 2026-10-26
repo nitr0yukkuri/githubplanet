@@ -193,6 +193,12 @@ GitHub Webhook → Express → Socket.IO → Browser
   </a>
 </div>
 
+## 📣 Featured Posts
+
+- [Demo Stage Summer — Grand Prize announcement](https://x.com/lena_gig/status/2083880465019338867) — @lena_gig, Aug 2026
+- [CSS Winner — STAR](https://x.com/lena_gig/status/2088272346117455987) — @lena_gig, Aug 2026
+- [Planet 技育展 — qualifier announcement](https://x.com/lena_gig/status/2111454798038159431) — @lena_gig, Oct 2026
+
 ## 🚀 Local Development with Docker
 
 ### 1. Prerequisites
