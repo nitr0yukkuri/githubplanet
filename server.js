@@ -13,6 +13,7 @@ import { createPlanetService } from './src/application/planet-service.js';
 import { createMeteorService } from './src/application/meteor-service.js';
 import { DATA_CACHE_DURATION, EXTENSION_MAP, LANGUAGE_COLORS } from './src/domain/planet/constants.js';
 import { createPlanetRepository } from './src/infrastructure/database/planet-repository.js';
+import { createMeteorEventRepository } from './src/infrastructure/database/meteor-event-repository.js';
 import { assertDatabaseMigrationsApplied } from './src/infrastructure/database/migrations.js';
 import { createPostgresPool } from './src/infrastructure/database/postgres.js';
 import { createGeminiClient } from './src/infrastructure/external/gemini-client.js';
@@ -113,6 +114,7 @@ const planetRepository = createPlanetRepository(pool, {
         10
     )
 });
+const meteorEventRepository = createMeteorEventRepository(pool);
 const languageColorCache = await planetRepository?.loadLanguageColorCache?.() || {};
 const languageColorStore = planetRepository ? {
     findLanguageColor: (...args) => planetRepository.findLanguageColor(...args),
@@ -146,7 +148,12 @@ const planetService = createPlanetService({
 const meteorService = createMeteorService({
     geminiClient,
     extensionMap: EXTENSION_MAP,
-    emitMeteor: (payload) => io.emit('meteor', payload)
+    emitMeteor: async (payload) => {
+        const event = meteorEventRepository
+            ? await meteorEventRepository.append(payload)
+            : payload;
+        io?.emit('meteor', event);
+    }
 });
 const planetQueryService = planetRepository ? createPlanetQueryService({
     repository: planetRepository,
@@ -214,6 +221,7 @@ if (isProduction && !webhookSecret) {
 registerEventRoutes(app, {
     geminiClient,
     meteorService,
+    meteorEventRepository,
     systemApiKey: process.env.SYSTEM_API_KEY,
     webhookSecret,
     webhookDeliveryStore: planetRepository,
