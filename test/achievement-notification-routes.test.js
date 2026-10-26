@@ -8,7 +8,8 @@ function createRouteHarness() {
     return {
         routes,
         app: {
-            get(paths, handler) {
+            get(paths, ...routeHandlers) {
+                const handler = routeHandlers.at(-1);
                 for (const path of Array.isArray(paths) ? paths : [paths]) {
                     routes.set(`GET ${path}`, handler);
                 }
