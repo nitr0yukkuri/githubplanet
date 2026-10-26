@@ -157,3 +157,33 @@ test('does not return the previous owner planet after a username is claimed', as
         ['findByGithubId', 2]
     ]);
 });
+
+test('coalesces repeated GitHub identity checks for a stored username', async () => {
+    let githubLookups = 0;
+    const row = { githubId: 1, username: 'tester', lastUpdated: null };
+    const service = createPlanetQueryService({
+        repository: {
+            async findByUsername() { return row; },
+            async findByGithubId() { return null; },
+            async updateUsernameByGithubId() {}
+        },
+        githubClient: {
+            async getUser(username) {
+                githubLookups += 1;
+                await new Promise((resolve) => setTimeout(resolve, 5));
+                return { id: 1, login: username };
+            }
+        },
+        planetService: {},
+        cacheDuration: 60_000
+    });
+
+    const [first, second] = await Promise.all([
+        service.getByUsername('tester'),
+        service.getByUsername('tester')
+    ]);
+
+    assert.equal(first, row);
+    assert.equal(second, row);
+    assert.equal(githubLookups, 1);
+});
