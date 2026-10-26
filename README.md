@@ -19,6 +19,14 @@ GitHub Planetは、開発者のGitHub活動を、宇宙空間に浮かぶ3D惑�
 
 この作品の中心は、数字の一覧ではなく、自分の開発履歴を反映した惑星を回転させて表面の質感や言語ごとの表現を観察し、他の開発者の惑星と見比べられることにあります。
 
+## 🏆 受賞歴
+
+- **CSS Winner Star** 受賞（Score 7.5）— https://www.csswinner.com/details/github-planet/19334
+- **Demo Stage 最優秀賞**
+- **技育CAMP Vol.14 優秀賞**
+- **技育博 Vol.6 企業賞（ウイングアーク1st）**
+- **ヒーローズ・リーグ 2025 決勝進出**
+
 ## 🎬 まずは1分で体験
 
 [ログイン不要のデモを開く](https://githubplanet.dev/demo?showcase=typescript)

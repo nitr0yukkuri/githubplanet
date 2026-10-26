@@ -31,6 +31,14 @@ Public repositories, languages, contributions, stars, and contributions to exter
 
 When a GitHub Push Webhook arrives, the application derives a shooting star's color and scale from the changed language and change size, then broadcasts it through Socket.IO to connected visitors in real time. Planets can also be explored through user visits, achievements and titles, and shareable static or animated profile cards.
 
+## 🏆 Awards
+
+- **CSS Winner — Star** (Score 7.5) — https://www.csswinner.com/details/github-planet/19334
+- **Demo Stage — Grand Prize** （最優秀賞）
+- **Geek CAMP Vol.14 (技育CAMP) — Excellence Award** （優秀賞）
+- **Geek Haku Vol.6 (技育博) — Corporate Award, WingArc1st** （企業賞）
+- **Heroes League 2025 — Finalist** （決勝進出）
+
 ## 🌟 Features
 
 ### 1. A unique planet for every developer
