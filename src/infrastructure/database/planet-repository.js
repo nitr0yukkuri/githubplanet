@@ -203,6 +203,13 @@ export function createPlanetRepository(pool, {
             return mapPlanetRow(result.rows[0]);
         },
 
+        async updateUsernameByGithubId(githubId, username) {
+            await pool.query(
+                'UPDATE planets SET username = $2 WHERE github_id = $1 AND username IS DISTINCT FROM $2',
+                [githubId, username]
+            );
+        },
+
         async findLanguageHistoryByGithubId(githubId) {
             const result = await pool.query(`
                 SELECT captured_at, main_language, planet_color, language_percentages
