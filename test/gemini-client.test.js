@@ -29,6 +29,8 @@ test('bounds Gemini model discovery and generation requests', async () => {
 
     assert.equal(await client.resolveLanguageColor('NewLanguage'), '#ff00aa');
     assert.deepEqual(requests.map(({ config }) => config.timeout), [5_000, 5_000]);
+    assert.ok(requests.every(({ url }) => !url.includes('key=')));
+    assert.ok(requests.every(({ config }) => config.headers['x-goog-api-key'] === 'key'));
 });
 
 test('reuses the discovered generation model list during its cache window', async () => {
