@@ -1060,3 +1060,14 @@ html[lang="en"] .planet-title {
     margin-bottom: 30px;
     text-align: left;
 }
+
+/* 初回案内中のGPU負荷を避け、狭い画面でも開始操作を画面内に収める。 */
+.welcome-modal {
+    box-sizing: border-box;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+}
+
+.home-introduction #canvas-container {
+    background: #03030b url('/front/img/skybox/preview.webp') center / cover no-repeat;
+}

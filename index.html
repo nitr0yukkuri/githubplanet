@@ -41,8 +41,11 @@
     <div class="achievement-container">
 
         <div id="welcome-modal" class="welcome-modal" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
-            <img src="/front/img/GitHubPlanet_logo.png" alt="GitHub Planet Logo" class="welcome-logo" width="350"
-                height="auto">
+            <picture>
+                <source srcset="/front/img/GitHubPlanet_logo-700.webp" type="image/webp">
+                <img src="/front/img/GitHubPlanet_logo.png" alt="GitHub Planet Logo" class="welcome-logo" width="1980"
+                    height="684" decoding="async" fetchpriority="high">
+            </picture>
             <h2 id="welcome-title" data-i18n="home.welcomeTitle">GitHub Planetへようこそ</h2>
             <p style="margin-bottom: 15px;" data-i18n-html="home.welcomeBody">
                 これはあなたのGitHubでの活動に応じて育つ惑星を楽しめる<br>サイトです。使用言語とコントリビューション数によって惑星の色や輝きなどが変わり、自分だけの星を育てられます。
@@ -180,7 +183,7 @@
     }
     </script>
 
-    <script type="module" src="/front/js/home.js"></script>
+    <script type="module" src="/front/js/home-bootstrap.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
