@@ -340,6 +340,12 @@ test/                             Node.jsテスト
 
 依存方向は`Presentation → Application → Domain`を基本とし、外部サービスの具体的な通信は`Infrastructure`に閉じ込めます。起動時はDBがある場合に適用済みマイグレーションを検証し、実行は`npm run migrate`で別に行います。
 
+## 📣 紹介ポスト
+
+- [DemoStage Summer 最優秀賞の受賞報告](https://x.com/lena_gig/status/2083880465019338867)（@lena_gig、2026年8月）
+- [CSS Winner STAR 獲得の投稿](https://x.com/lena_gig/status/2088272346117455987)（@lena_gig、2026年8月）
+- [プラネット技育展 予選進出の報告](https://x.com/lena_gig/status/2111454798038159431)（@lena_gig、2026年10月）
+
 ## セットアップ
 
 ### 必要なもの
