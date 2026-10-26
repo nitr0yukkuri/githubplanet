@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: nitr0yukkuri/githubplanet
-          ref: 4ced8657ee24c3cb257e2fb41517a53765ca1a0d
+          ref: 5cc5050fab54dc667b7a910e2a17ed5e41a8b9f8
           path: .githubplanet-generator
           persist-credentials: false
 
