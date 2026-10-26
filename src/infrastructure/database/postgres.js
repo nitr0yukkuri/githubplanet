@@ -7,14 +7,17 @@ export function createPostgresPool(connectionString, {
     statementTimeout = 15000
 } = {}) {
     if (!connectionString) return undefined;
-    const isLocalDatabase = connectionString.includes('@localhost')
-        || connectionString.includes('@127.0.0.1')
-        || connectionString.includes('@db')
-        || connectionString.includes('localhost');
+    let databaseHost = '';
+    try {
+        databaseHost = new URL(connectionString).hostname.toLowerCase();
+    } catch {
+        // 不正な接続文字列でも、リモートTLS検証を無効化しない。
+    }
+    const isLocalDatabase = ['localhost', '127.0.0.1', '[::1]', 'db'].includes(databaseHost);
 
     const pool = new pg.Pool({
         connectionString,
-        ssl: isLocalDatabase ? undefined : { rejectUnauthorized: false },
+        ssl: isLocalDatabase ? undefined : { rejectUnauthorized: true },
         max,
         connectionTimeoutMillis: 15000,
         idleTimeoutMillis: 60000,

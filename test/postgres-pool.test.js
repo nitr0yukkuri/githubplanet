@@ -3,11 +3,10 @@ import { test } from 'node:test';
 import pg from 'pg';
 import { createPostgresPool } from '../src/infrastructure/database/postgres.js';
 
-test('handles idle PostgreSQL client errors without leaving the pool error unobserved', () => {
+function capturePoolOptions(connectionString) {
     const OriginalPool = pg.Pool;
-    let errorHandler;
     let poolOptions;
-
+    let errorHandler;
     class FakePool {
         constructor(options) {
             poolOptions = options;
@@ -17,19 +16,32 @@ test('handles idle PostgreSQL client errors without leaving the pool error unobs
             if (eventName === 'error') errorHandler = handler;
         }
     }
-
     pg.Pool = FakePool;
     try {
-        createPostgresPool('postgresql://user:password@example.com/database', {
-            max: 1,
-            queryTimeout: 0,
-            statementTimeout: 0
-        });
-        assert.equal(typeof errorHandler, 'function');
-        assert.equal(poolOptions.max, 1);
-        assert.equal(poolOptions.query_timeout, 0);
-        assert.equal(poolOptions.statement_timeout, 0);
+        createPostgresPool(connectionString, { max: 1, queryTimeout: 0, statementTimeout: 0 });
+        return { poolOptions, errorHandler };
     } finally {
         pg.Pool = OriginalPool;
+    }
+}
+
+test('handles idle PostgreSQL client errors without leaving the pool error unobserved', () => {
+    const { poolOptions, errorHandler } = capturePoolOptions('postgresql://user:password@example.com/database');
+    assert.equal(typeof errorHandler, 'function');
+    assert.equal(poolOptions.max, 1);
+    assert.equal(poolOptions.query_timeout, 0);
+    assert.equal(poolOptions.statement_timeout, 0);
+    assert.deepEqual(poolOptions.ssl, { rejectUnauthorized: true });
+});
+
+test('keeps TLS verification enabled when a remote URL credential contains localhost', () => {
+    const { poolOptions } = capturePoolOptions('postgresql://user:password-localhost@example.com/database');
+    assert.deepEqual(poolOptions.ssl, { rejectUnauthorized: true });
+});
+
+test('does not require TLS for exact local PostgreSQL hosts', () => {
+    for (const host of ['localhost', '127.0.0.1', '[::1]', 'db']) {
+        const { poolOptions } = capturePoolOptions(`postgresql://user:password@${host}/database`);
+        assert.equal(poolOptions.ssl, undefined, host);
     }
 });
