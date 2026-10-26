@@ -338,3 +338,21 @@ test('records and advances the owner login baseline in one transaction', async (
     ]);
     assert.deepEqual(calls[2][1], [1, 128, '["FIRST_PLANET","COMMIT_100"]']);
 });
+
+test('returns commit SHAs with authored language history rows for domain deduplication', async () => {
+    const repository = createPlanetRepository({
+        async query() {
+            return { rows: [{
+                commit_sha: 'abc123',
+                authored_at: '2025-01-01T00:00:00Z',
+                language_added_lines: { TypeScript: 4 }
+            }] };
+        }
+    });
+
+    assert.deepEqual(await repository.findAuthoredLanguageCommits(41), [{
+        commitSha: 'abc123',
+        authoredAt: '2025-01-01T00:00:00Z',
+        languageAdditions: { TypeScript: 4 }
+    }]);
+});
