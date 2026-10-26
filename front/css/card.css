@@ -323,6 +323,17 @@ canvas {
 
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
+/* 動きを減らす設定では点滅や幅の遷移を止める。 */
+@media (prefers-reduced-motion: reduce) {
+    .sys-status {
+        animation: none;
+    }
+
+    .bar-fill {
+        transition: none;
+    }
+}
+
 .share-container {
     width: 100%;
     max-width: 800px;
