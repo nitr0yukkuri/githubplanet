@@ -217,6 +217,7 @@ async function fetchMyPlanetData() {
 
     loggedInUsername = data.user.login;
     data.planetData.username = data.user.login;
+    data.planetData.githubId = data.user.id;
     data.planetData.githubProfileVerified = data.githubProfileVerified === true;
     data.planetData.githubProfileUrl = data.githubProfileVerified === true ? data.user.html_url : null;
 
@@ -544,7 +545,9 @@ async function loadPlanet(data, { historySelection = false } = {}) {
     }
     if (profileLink && data.username && data.githubProfileVerified !== false) {
         profileLink.href = data.githubProfileUrl
-            || `https://github.com/${encodeURIComponent(data.username)}`;
+            || (data.githubId
+                ? `/github-profile/${encodeURIComponent(data.githubId)}`
+                : `https://github.com/${encodeURIComponent(data.username)}`);
         profileLink.style.display = 'flex';
     } else if (profileLink) {
         profileLink.removeAttribute('href');
