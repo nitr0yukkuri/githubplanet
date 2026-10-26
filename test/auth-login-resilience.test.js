@@ -7,7 +7,8 @@ function createRouteApp() {
     const handlers = new Map();
     return {
         handlers,
-        get(paths, handler) {
+        get(paths, ...routeHandlers) {
+            const handler = routeHandlers.at(-1);
             for (const path of Array.isArray(paths) ? paths : [paths]) handlers.set(`GET ${path}`, handler);
         },
         post(path, handler) {
