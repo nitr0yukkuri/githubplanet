@@ -444,7 +444,9 @@ function applyLocalizedLinks(root) {
 
     document.querySelectorAll('[data-home-language]').forEach((link) => {
         const language = link.dataset.homeLanguage;
-        link.href = `${language === 'en' ? '/en' : '/'}${window.location.search}${window.location.hash}`;
+        const pagePath = window.location.pathname.replace(/^\/(en|english)(?=\/|$)/, '') || '/';
+        const targetPath = language === 'en' ? `/en${pagePath === '/' ? '' : pagePath}` : pagePath;
+        link.href = `${targetPath}${window.location.search}${window.location.hash}`;
         const isActive = language === getLanguage();
         link.classList.toggle('is-active', isActive);
         if (isActive) link.setAttribute('aria-current', 'page');
@@ -455,7 +457,10 @@ function applyLocalizedLinks(root) {
 export function applyI18n(root = document) {
     const lang = getLanguage();
     document.documentElement.lang = lang;
-    document.title = t(document.body?.dataset.i18nTitle || 'home.pageTitle');
+    // ページ固有の検索タイトルを、共通UIの翻訳でホームのタイトルへ戻さない。
+    if (document.body?.dataset.seoTitle !== 'true') {
+        document.title = t(document.body?.dataset.i18nTitle || 'home.pageTitle');
+    }
 
     root.querySelectorAll('[data-i18n]').forEach((element) => {
         element.textContent = t(element.dataset.i18n);
