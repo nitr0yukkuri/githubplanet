@@ -14,6 +14,11 @@ const showcaseSlug = params.get('showcase');
 const username = params.get('username')
     || (showcaseSlug ? `SHOWCASE_${showcaseSlug.toUpperCase()}` : 'nitr0yukkuri');
 const isScreenshotMode = params.has('fix');
+const motionPreference = window.matchMedia?.('(prefers-reduced-motion: reduce)') || null;
+
+function prefersReducedMotion() {
+    return motionPreference?.matches === true;
+}
 
 applyI18n();
 
@@ -80,6 +85,9 @@ if (isScreenshotMode) {
 let renderer = createWebGLRenderer(THREE, { alpha: true, antialias: true });
 let webglAvailable = Boolean(renderer);
 let controls = null;
+let animationFrameId = null;
+let previousFrameTimestamp = null;
+let animationElapsedMs = 0;
 const rendererPixelRatio = Math.min(window.devicePixelRatio || 1, 2);
 
 if (renderer) {
@@ -98,6 +106,7 @@ if (renderer) {
         renderer.domElement.addEventListener('webglcontextlost', (event) => {
             event.preventDefault();
             webglAvailable = false;
+            stopAnimation();
             controls?.dispose();
             controls = null;
             showCardWebGLFallback();
@@ -123,6 +132,7 @@ if (renderer && isScreenshotMode) {
         renderer.setSize(w, h);
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
+        scheduleAnimationFrame();
     });
 }
 
@@ -134,6 +144,7 @@ if (renderer && !isScreenshotMode) {
         renderer.setSize(w, h);
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
+        scheduleAnimationFrame();
     });
 }
 
@@ -251,7 +262,7 @@ function updateUI(data) {
     usernameDisplay.textContent = data.username || username;
     planetNameSub.textContent = localizedPlanetName(data).toUpperCase();
 
-    const duration = isScreenshotMode ? 0 : 1500;
+    const duration = isScreenshotMode || prefersReducedMotion() ? 0 : 1500;
     animateValue(commitsVal, 0, data.totalCommits || 0, duration);
 
     mainLangStat.textContent = (data.mainLanguage || 'UNKNOWN').toUpperCase();
@@ -263,7 +274,7 @@ function updateUI(data) {
         if (sysStatus) sysStatus.style.color = cardAccentColor;
         if (idLabel) idLabel.style.color = cardAccentColor;
     }
-    setTimeout(() => { langBar.style.width = '100%'; }, isScreenshotMode ? 0 : 100);
+    setTimeout(() => { langBar.style.width = '100%'; }, isScreenshotMode || prefersReducedMotion() ? 0 : 100);
 }
 
 function animateValue(obj, start, end, duration) {
@@ -490,6 +501,7 @@ function createPlanet(data) {
         planetGroup.add(aura);
     }
     if (planetFeatureRuntime?.id !== 'java') addParticles(cardAccentColor);
+    scheduleAnimationFrame();
 }
 
 function addParticles(color) {
@@ -517,20 +529,77 @@ function addParticles(color) {
 
 const CARD_PLANET_ROTATION_SPEED = 0.005;
 const BASE_PLANET_ROTATION_SPEED = 0.001;
+const CARD_FRAME_DURATION_MS = 1000 / 60;
+const MAX_CARD_FRAME_DELTA_MS = 100;
 
-function animate() {
-    if (!renderer || !webglAvailable) return;
-    requestAnimationFrame(animate);
-    const cardRotationSpeed = CARD_PLANET_ROTATION_SPEED * cardRotationMultiplier;
-    planetGroup.rotation.y -= cardRotationSpeed;
-    const now = performance.now();
-    planetFeatureRuntime?.update(now, {
-        rotationSpeed: cardRotationSpeed,
-        baseRotationSpeed: BASE_PLANET_ROTATION_SPEED,
-        camera
-    });
-    renderer.render(scene, camera);
+function stopAnimation() {
+    if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    previousFrameTimestamp = null;
 }
 
-animate();
+function scheduleAnimationFrame() {
+    if (!renderer || !webglAvailable || document.hidden || animationFrameId !== null) return;
+    animationFrameId = window.requestAnimationFrame(animate);
+}
+
+function animate(timestamp) {
+    animationFrameId = null;
+    if (!renderer || !webglAvailable) return;
+    if (document.hidden) {
+        previousFrameTimestamp = null;
+        return;
+    }
+
+    const elapsedMs = previousFrameTimestamp === null
+        ? 0
+        : Math.min(timestamp - previousFrameTimestamp, MAX_CARD_FRAME_DELTA_MS);
+    previousFrameTimestamp = timestamp;
+    const frameScale = elapsedMs / CARD_FRAME_DURATION_MS;
+    const reduceMotion = prefersReducedMotion();
+    const cardRotationSpeed = reduceMotion
+        ? 0
+        : CARD_PLANET_ROTATION_SPEED * cardRotationMultiplier * frameScale;
+
+    // 60fps時の既存速度を保ちつつFPS差をなくし、タブ復帰直後の急回転を防ぐ。
+    // OSの動きを減らす設定では惑星とシェーダーの時間を止め、静止フレームだけ描画する。
+    if (!reduceMotion) {
+        planetGroup.rotation.y -= cardRotationSpeed;
+        animationElapsedMs += elapsedMs;
+    }
+    if (elapsedMs > 0) {
+        planetFeatureRuntime?.update(animationElapsedMs, {
+            rotationSpeed: cardRotationSpeed,
+            baseRotationSpeed: reduceMotion ? 0 : BASE_PLANET_ROTATION_SPEED * frameScale,
+            camera
+        });
+    }
+    renderer.render(scene, camera);
+
+    if (!reduceMotion) scheduleAnimationFrame();
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        stopAnimation();
+        return;
+    }
+    scheduleAnimationFrame();
+});
+
+if (motionPreference) {
+    const handleMotionPreferenceChange = () => {
+        stopAnimation();
+        scheduleAnimationFrame();
+    };
+    if (typeof motionPreference.addEventListener === 'function') {
+        motionPreference.addEventListener('change', handleMotionPreferenceChange);
+    } else {
+        motionPreference.addListener?.(handleMotionPreferenceChange);
+    }
+}
+
+scheduleAnimationFrame();
 init();
