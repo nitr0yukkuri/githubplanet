@@ -113,3 +113,70 @@ test('reuses the existing color, name, title, and achievements for the same lang
     assert.equal(result.isNewPlanet, false);
     assert.equal(saved.planetName, '既存の惑星名');
 });
+
+test('refreshes the authenticated username by stable GitHub ID', async () => {
+    const calls = [];
+    const currentUser = { id: 42, login: 'new-login', html_url: 'https://github.com/new-login' };
+    const service = createPlanetService({
+        repository: {
+            async updateUsernameByGithubId(...args) { calls.push(args); }
+        },
+        githubClient: {
+            async getAuthenticatedUser(token) {
+                calls.push(['getAuthenticatedUser', token]);
+                return currentUser;
+            }
+        },
+        geminiClient: {},
+        geminiApiKey: ''
+    });
+
+    assert.equal(await service.refreshAuthenticatedUser('token', { id: '42', login: 'old-login' }), currentUser);
+    assert.deepEqual(calls, [
+        ['getAuthenticatedUser', 'token'],
+        [42, 'new-login']
+    ]);
+});
+
+test('retries username synchronization when the database update fails', async () => {
+    let updateCalls = 0;
+    const service = createPlanetService({
+        repository: {
+            async updateUsernameByGithubId() {
+                updateCalls++;
+                throw new Error('database unavailable');
+            }
+        },
+        githubClient: {
+            async getAuthenticatedUser() {
+                return { id: 42, login: 'new-login', html_url: 'https://github.com/new-login' };
+            }
+        },
+        geminiClient: {},
+        geminiApiKey: ''
+    });
+
+    await assert.rejects(
+        service.refreshAuthenticatedUser('token', { id: 42, login: 'old-login' }),
+        /database unavailable/
+    );
+    await assert.rejects(
+        service.refreshAuthenticatedUser('token', { id: 42, login: 'old-login' }),
+        /database unavailable/
+    );
+    assert.equal(updateCalls, 2);
+});
+
+test('rejects an authenticated identity change that does not match the session ID', async () => {
+    const service = createPlanetService({
+        repository: {},
+        githubClient: { async getAuthenticatedUser() { return { id: 99, login: 'other-user' }; } },
+        geminiClient: {},
+        geminiApiKey: ''
+    });
+
+    await assert.rejects(
+        service.refreshAuthenticatedUser('token', { id: 42, login: 'old-user' }),
+        /does not match the active session/
+    );
+});

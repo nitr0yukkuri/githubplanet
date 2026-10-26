@@ -217,6 +217,8 @@ async function fetchMyPlanetData() {
 
     loggedInUsername = data.user.login;
     data.planetData.username = data.user.login;
+    data.planetData.githubProfileVerified = data.githubProfileVerified === true;
+    data.planetData.githubProfileUrl = data.githubProfileVerified === true ? data.user.html_url : null;
 
     const cardLink = document.getElementById('card-link');
     if (cardLink) {
@@ -540,9 +542,13 @@ async function loadPlanet(data, { historySelection = false } = {}) {
             : t('home.ownerPlanet', { username: data.username });
         ownerDisplay.style.display = 'inline-block';
     }
-    if (profileLink && data.username) {
-        profileLink.href = `https://github.com/${data.username}`;
+    if (profileLink && data.username && data.githubProfileVerified !== false) {
+        profileLink.href = data.githubProfileUrl
+            || `https://github.com/${encodeURIComponent(data.username)}`;
         profileLink.style.display = 'flex';
+    } else if (profileLink) {
+        profileLink.removeAttribute('href');
+        profileLink.style.display = 'none';
     }
 
     // ★修正: 他人の惑星を見ているときでも自分のカードを作れるよう、ここではカードリンクを書き換えない
