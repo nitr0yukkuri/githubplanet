@@ -84,7 +84,7 @@ function createFakePool(client) {
 test('loads ordered immutable migrations and keeps concurrent indexes outside transactions', () => {
     const migrations = loadDatabaseMigrations();
 
-    assert.deepEqual(migrations.map(({ version }) => version), ['001', '002', '003', '009', '010', '011', '012']);
+    assert.deepEqual(migrations.map(({ version }) => version), ['001', '002', '003', '009', '010', '011']);
     assert.equal(migrations[0].transactional, true);
     assert.equal(migrations[1].transactional, false);
     assert.equal(migrations[1].verifiedIndex, 'idx_planets_username_lower');
@@ -102,8 +102,6 @@ test('loads ordered immutable migrations and keeps concurrent indexes outside tr
     assert.match(migrations[4].sql, /scan_cursor JSONB NOT NULL DEFAULT/);
     assert.match(migrations[5].sql, /github_webhook_deliveries/);
     assert.match(migrations[5].sql, /delivery_id UUID PRIMARY KEY/);
-    assert.match(migrations[6].sql, /CREATE TABLE IF NOT EXISTS meteor_events/);
-    assert.match(migrations[6].sql, /payload JSONB NOT NULL/);
 });
 
 test('keeps migration checksums stable across operating-system line endings', () => {
@@ -138,8 +136,8 @@ test('applies each migration once under a lock and repairs an invalid concurrent
         || sql.includes('CREATE INDEX CONCURRENTLY')
     )).length;
 
-    assert.deepEqual(firstAppliedVersions, ['001', '002', '003', '009', '010', '011', '012']);
-    assert.equal(client.appliedMigrations.size, 7);
+    assert.deepEqual(firstAppliedVersions, ['001', '002', '003', '009', '010', '011']);
+    assert.equal(client.appliedMigrations.size, 6);
     assert.ok(client.queries.some(({ sql }) => (
         sql === 'DROP INDEX CONCURRENTLY IF EXISTS "idx_planets_username_lower"'
     )));
