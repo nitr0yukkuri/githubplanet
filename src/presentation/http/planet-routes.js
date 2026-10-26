@@ -48,6 +48,23 @@ export function registerPlanetRoutes(app, {
             return res.status(401).json({ error: 'Not logged in' });
         }
 
+        let githubProfileVerified = false;
+        if (req.session.github_token && planetService?.refreshAuthenticatedUser) {
+            try {
+                const user = await planetService.refreshAuthenticatedUser(
+                    req.session.github_token,
+                    req.session.planetData.user
+                );
+                req.session.planetData.user = user;
+                if (req.session.planetData.planetData) {
+                    req.session.planetData.planetData.username = user.login;
+                }
+                githubProfileVerified = true;
+            } catch (error) {
+                console.warn('[GitHub Profile] Could not refresh the authenticated username:', error.message);
+            }
+        }
+
         const lastUpdated = req.session.last_updated;
         const hadPlanetData = Boolean(req.session.planetData.planetData);
         const isStale = !hadPlanetData || !lastUpdated || (Date.now() - lastUpdated > cacheDuration);
@@ -95,7 +112,8 @@ export function registerPlanetRoutes(app, {
         res.json({
             ...req.session.planetData,
             planetData: normalizePlanetCommitCounts(req.session.planetData.planetData),
-            progressNotice
+            progressNotice,
+            githubProfileVerified
         });
     });
 
