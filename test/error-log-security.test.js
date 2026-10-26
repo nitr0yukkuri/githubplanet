@@ -85,7 +85,7 @@ test('a real Axios failure in the named-search path never logs the token', async
 for (const [route, status] of [
     ['GET /api/me', 200], ['POST /api/save-title', 500], ['GET /api/me/language-history', 500],
     ['GET /api/me/authored-language-history', 500], ['POST /api/me/authored-language-history/scan', 500],
-    ['GET /api/planets/random', 500]
+    ['GET /api/planets/random', 500], ['GET /github-profile/:githubId', 502]
 ]) {
     test(`${route} error logs keep diagnostics and exclude request secrets`, async (t) => {
         const logs = captureLogs(t);
@@ -93,10 +93,13 @@ for (const [route, status] of [
         const { app, routes } = routeHarness();
         registerPlanetRoutes(app, {
             planetService: { refreshAuthenticatedUser: fail },
-            planetQueryService: { saveActiveTitle: fail, getRandom: fail, getLanguageHistoryByGithubId: fail },
+            planetQueryService: {
+                saveActiveTitle: fail, getRandom: fail, getLanguageHistoryByGithubId: fail,
+                getGithubProfileUrlById: fail
+            },
             authoredLanguageHistoryService: { getHistory: fail, startScan: fail }, cacheDuration: 60_000
         });
-        const req = { body: { prefix: '名もなき', suffix: '旅人' }, session: {
+        const req = { params: { githubId: '42' }, body: { prefix: '名もなき', suffix: '旅人' }, session: {
             github_token: marker, last_updated: Date.now(),
             planetData: { user: { id: 42, login: 'test-user' }, planetData: { totalCommits: 321 } }
         } };
@@ -106,6 +109,21 @@ for (const [route, status] of [
         assertSafeLogs(logs);
     });
 }
+
+test('a failed rename sync keeps the verified profile URL without logging credentials', async (t) => {
+    const logs = captureLogs(t);
+    const service = createPlanetQueryService({
+        repository: {
+            async findByGithubId() { return { githubId: 42, username: 'old-user' }; },
+            async reserveGithubProfileLookup() { return { allowed: true }; },
+            async updateUsernameByGithubId() { throw secretError(); }
+        },
+        githubClient: { async getUserById() { return { id: 42, login: 'new-user' }; } },
+        planetService: {}, cacheDuration: 60_000
+    });
+    assert.equal(await service.getGithubProfileUrlById('42'), 'https://github.com/new-user');
+    assertSafeLogs(logs);
+});
 
 for (const asyncWebhook of [false, true]) {
     test(`${asyncWebhook ? 'webhook' : 'manual meteor'} failures never log raw upstream errors`, async (t) => {

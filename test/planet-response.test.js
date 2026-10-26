@@ -36,3 +36,22 @@ test('preserves the language color when contributions are zero but language stat
     assert.equal(response.planetColor, '#007acc');
     assert.equal(response.planetName, '堅牢な蒼穹の星');
 });
+
+test('preserves an unavailable GitHub profile marker for the UI to hide its stale link', () => {
+    const response = toPlanetResponse({
+        username: '0x3EF8', planetColor: '#007acc', planetSizeFactor: 1, mainLanguage: 'TypeScript',
+        languageStats: { TypeScript: 1 }, totalCommits: 0, weeklyCommits: 0,
+        githubProfileVerified: false
+    });
+
+    assert.equal(response.githubProfileVerified, false);
+});
+
+test('includes the saved GitHub ID so profile links can resolve a renamed login', () => {
+    const response = toPlanetResponse({
+        githubId: 76643867, username: '0x3EF8', planetColor: '#007acc', planetSizeFactor: 1,
+        mainLanguage: 'TypeScript', languageStats: { TypeScript: 1 }, totalCommits: 0, weeklyCommits: 0
+    });
+
+    assert.equal(response.githubId, '76643867');
+});

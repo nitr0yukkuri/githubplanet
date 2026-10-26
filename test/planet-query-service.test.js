@@ -158,6 +158,148 @@ test('does not return the previous owner planet after a username is claimed', as
     ]);
 });
 
+test('resolves a renamed account by GitHub ID after the previous login returns 404', async () => {
+    const storedPlanet = { githubId: 12345, username: 'old-login', lastUpdated: null };
+    const calls = [];
+    const notFound = () => Object.assign(new Error('Not Found'), { response: { status: 404 } });
+    const service = createPlanetQueryService({
+        repository: {
+            async findByUsername(username) {
+                calls.push(['findByUsername', username]);
+                return storedPlanet;
+            },
+            async findByGithubId(id) {
+                calls.push(['findByGithubId', id]);
+                return storedPlanet;
+            },
+            async updateUsernameByGithubId(id, username) {
+                calls.push(['updateUsernameByGithubId', id, username]);
+            },
+            async reserveGithubProfileLookup(maxRequests, windowMs) {
+                calls.push(['reserveGithubProfileLookup', maxRequests, windowMs]);
+                return { allowed: true, retryAfterMs: 0 };
+            }
+        },
+        githubClient: {
+            async getUser(username) {
+                calls.push(['getUser', username]);
+                throw notFound();
+            },
+            async getUserById(id) {
+                calls.push(['getUserById', id]);
+                return { id: Number(id), login: 'new-login' };
+            }
+        },
+        planetService: {},
+        cacheDuration: 60_000
+    });
+
+    assert.deepEqual(await service.getByUsername('old-login'), {
+        ...storedPlanet,
+        username: 'new-login'
+    });
+    assert.deepEqual(calls, [
+        ['findByUsername', 'old-login'],
+        ['getUser', 'old-login'],
+        ['reserveGithubProfileLookup', 40, 3_600_000],
+        ['getUserById', '12345'],
+        ['updateUsernameByGithubId', 12345, 'new-login']
+    ]);
+});
+
+test('keeps the cached 0x3EF8 planet but marks its unavailable GitHub profile as unverified', async () => {
+    const storedPlanet = { githubId: 76643867, username: '0x3EF8', lastUpdated: null };
+    const calls = [];
+    const notFound = () => Object.assign(new Error('Not Found'), { response: { status: 404 } });
+    const service = createPlanetQueryService({
+        repository: {
+            async findByUsername(username) {
+                calls.push(['findByUsername', username]);
+                return storedPlanet;
+            },
+            async updateUsernameByGithubId() {},
+            async reserveGithubProfileLookup(maxRequests, windowMs) {
+                calls.push(['reserveGithubProfileLookup', maxRequests, windowMs]);
+                return { allowed: true, retryAfterMs: 0 };
+            }
+        },
+        githubClient: {
+            async getUser(username) {
+                calls.push(['getUser', username]);
+                throw notFound();
+            },
+            async getUserById(id) {
+                calls.push(['getUserById', id]);
+                throw notFound();
+            }
+        },
+        planetService: {},
+        cacheDuration: 60_000
+    });
+
+    assert.deepEqual(await service.getByUsername('0x3EF8'), {
+        ...storedPlanet,
+        githubProfileVerified: false
+    });
+    assert.deepEqual(calls, [
+        ['findByUsername', '0x3EF8'],
+        ['getUser', '0x3EF8'],
+        ['reserveGithubProfileLookup', 40, 3_600_000],
+        ['getUserById', '76643867']
+    ]);
+});
+
+test('resolves the current GitHub profile URL from a saved stable ID', async () => {
+    const calls = [];
+    const service = createPlanetQueryService({
+        repository: {
+            async findByGithubId(id) {
+                calls.push(['findByGithubId', id]);
+                return { githubId: id, username: 'old-login' };
+            },
+            async updateUsernameByGithubId(id, username) {
+                calls.push(['updateUsernameByGithubId', id, username]);
+            },
+            async reserveGithubProfileLookup(maxRequests, windowMs) {
+                calls.push(['reserveGithubProfileLookup', maxRequests, windowMs]);
+                return { allowed: true, retryAfterMs: 0 };
+            }
+        },
+        githubClient: {
+            async getUserById(id) {
+                calls.push(['getUserById', id]);
+                return { id: Number(id), login: 'new-login' };
+            }
+        },
+        planetService: {},
+        cacheDuration: 60_000
+    });
+
+    assert.equal(await service.getGithubProfileUrlById(12345), 'https://github.com/new-login');
+    assert.deepEqual(calls, [
+        ['findByGithubId', '12345'],
+        ['reserveGithubProfileLookup', 40, 3_600_000],
+        ['getUserById', '12345'],
+        ['updateUsernameByGithubId', '12345', 'new-login']
+    ]);
+});
+
+test('does not turn a malformed GitHub login into an external redirect', async () => {
+    const service = createPlanetQueryService({
+        repository: {
+            async findByGithubId() { return { githubId: 12345 }; },
+            async reserveGithubProfileLookup() { return { allowed: true, retryAfterMs: 0 }; }
+        },
+        githubClient: {
+            async getUserById() { return { id: 12345, login: 'https://evil.example' }; }
+        },
+        planetService: {},
+        cacheDuration: 60_000
+    });
+
+    assert.equal(await service.getGithubProfileUrlById(12345), null);
+});
+
 test('coalesces repeated GitHub identity checks for a stored username', async () => {
     let githubLookups = 0;
     const row = { githubId: 1, username: 'tester', lastUpdated: null };

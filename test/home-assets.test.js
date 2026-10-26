@@ -18,6 +18,14 @@ test('pins browser dependencies and loads the optimized skybox', () => {
     assert.ok(totalBytes < 3_000_000, `optimized skybox is ${totalBytes} bytes`);
 });
 
+test('hides the GitHub profile button when the backend cannot verify its identity', () => {
+    const homeScript = fs.readFileSync('front/js/home.js', 'utf8');
+
+    assert.match(homeScript, /data\.githubProfileVerified !== false/);
+    assert.match(homeScript, /profileLink\.removeAttribute\('href'\)/);
+    assert.match(homeScript, /github-profile\/\$\{encodeURIComponent\(data\.githubId\)\}/);
+});
+
 test('uses the optimized shared background and excludes legacy images from Cloud Run', () => {
     for (const stylesheet of ['achievements.css', 'card.css', 'settings.css']) {
         const css = fs.readFileSync(`front/css/${stylesheet}`, 'utf8');

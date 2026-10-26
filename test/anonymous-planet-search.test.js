@@ -109,3 +109,119 @@ test('returns GitHub public API rate limits as 429 with a retry delay', async ()
     assert.equal(response.headers['Retry-After'], '2');
     assert.deepEqual(response.body, { error: 'GitHub public API rate limit reached' });
 });
+
+test('returns the 0x3EF8 cached planet without exposing its unverified profile URL', async () => {
+    const handlers = new Map();
+    const app = {
+        get(paths, handler) {
+            for (const path of Array.isArray(paths) ? paths : [paths]) handlers.set(path, handler);
+        },
+        post() {}
+    };
+    const storedPlanet = { githubId: 76643867, username: '0x3EF8', lastUpdated: null };
+    const notFound = () => Object.assign(new Error('Not Found'), { response: { status: 404 } });
+    const githubClient = {
+        async getUser() { throw notFound(); },
+        async getUserById() { throw notFound(); }
+    };
+    const planetQueryService = createPlanetQueryService({
+        repository: {
+            async findByUsername() { return storedPlanet; },
+            async updateUsernameByGithubId() {},
+            async reserveGithubProfileLookup() { return { allowed: true, retryAfterMs: 0 }; }
+        },
+        githubClient,
+        planetService: {},
+        cacheDuration: 60_000
+    });
+    registerPlanetRoutes(app, {
+        planetService: {},
+        planetQueryService,
+        cacheDuration: 60_000
+    });
+    const response = {
+        statusCode: 200,
+        status(code) { this.statusCode = code; return this; },
+        json(body) { this.body = body; return this; },
+        send(body) { this.body = body; return this; },
+        redirect(status, url) { this.statusCode = status; this.redirectUrl = url; return this; }
+    };
+
+    await handlers.get('/api/planets/user/:username')({
+        params: { username: '0x3EF8' },
+        session: {}
+    }, response);
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.username, '0x3EF8');
+    assert.equal(response.body.githubProfileVerified, false);
+
+    const profileResponse = { ...response, statusCode: 200 };
+    await handlers.get('/github-profile/:githubId')({ params: { githubId: '76643867' } }, profileResponse);
+    assert.equal(profileResponse.statusCode, 410);
+    assert.match(profileResponse.body, /no longer publicly available/i);
+});
+
+test('redirects profile links through the immutable ID and reports unavailable profiles', async () => {
+    const handlers = new Map();
+    const app = {
+        get(paths, handler) {
+            for (const path of Array.isArray(paths) ? paths : [paths]) handlers.set(path, handler);
+        },
+        post() {}
+    };
+    registerPlanetRoutes(app, {
+        planetService: {},
+        planetQueryService: {
+            async getGithubProfileUrlById(id) {
+                return id === '76643867' ? null : 'https://github.com/new-login';
+            }
+        },
+        cacheDuration: 60_000
+    });
+    const createResponse = () => ({
+        statusCode: 200,
+        status(code) { this.statusCode = code; return this; },
+        send(body) { this.body = body; return this; },
+        redirect(status, url) { this.statusCode = status; this.redirectUrl = url; return this; }
+    });
+
+    const renamedProfileResponse = createResponse();
+    await handlers.get('/github-profile/:githubId')({ params: { githubId: '12345' } }, renamedProfileResponse);
+    assert.equal(renamedProfileResponse.statusCode, 302);
+    assert.equal(renamedProfileResponse.redirectUrl, 'https://github.com/new-login');
+
+    const unavailableProfileResponse = createResponse();
+    await handlers.get('/github-profile/:githubId')({ params: { githubId: '76643867' } }, unavailableProfileResponse);
+    assert.equal(unavailableProfileResponse.statusCode, 410);
+});
+
+test('returns the retry delay when the anonymous profile lookup budget is exhausted', async () => {
+    const handlers = new Map();
+    const app = {
+        get(paths, handler) {
+            for (const path of Array.isArray(paths) ? paths : [paths]) handlers.set(path, handler);
+        },
+        post() {}
+    };
+    const rateLimited = Object.assign(new Error('lookup budget exhausted'), {
+        response: { status: 429 },
+        retryAfterMs: 12_000
+    });
+    registerPlanetRoutes(app, {
+        planetService: {},
+        planetQueryService: { async getGithubProfileUrlById() { throw rateLimited; } },
+        cacheDuration: 60_000
+    });
+    const response = {
+        headers: {},
+        setHeader(name, value) { this.headers[name] = value; },
+        status(code) { this.statusCode = code; return this; },
+        send(body) { this.body = body; return this; }
+    };
+
+    await handlers.get('/github-profile/:githubId')({ params: { githubId: '12345' } }, response);
+
+    assert.equal(response.statusCode, 429);
+    assert.equal(response.headers['Retry-After'], '12');
+});

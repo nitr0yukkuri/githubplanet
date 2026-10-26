@@ -177,6 +177,26 @@ export function createGithubClient({
             }, { provider: 'github' });
         },
 
+        async getUserById(accountId, accessToken) {
+            return measureExternalOperation(onRequestTiming, 'get_user_by_id', async () => {
+                const normalizedAccountId = String(accountId ?? '').trim();
+                if (!/^[1-9]\d*$/.test(normalizedAccountId)) {
+                    throw new TypeError('Invalid GitHub account ID');
+                }
+                const response = await axios.get(
+                    endpoint(githubApiBaseUrl, `/user/${normalizedAccountId}`),
+                    {
+                        headers: {
+                            Accept: 'application/vnd.github+json',
+                            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+                        },
+                        timeout: GITHUB_API_TIMEOUT_MS
+                    }
+                );
+                return response.data;
+            }, { provider: 'github' });
+        },
+
         async getPublicPlanetSource(username) {
             return measureExternalOperation(onRequestTiming, 'get_public_planet_source', async () => {
                 try {
