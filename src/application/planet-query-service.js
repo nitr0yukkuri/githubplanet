@@ -2,6 +2,45 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
     const publicPreviewCache = new Map();
     const publicPreviewCacheTtlMs = 5 * 60 * 1000;
     const maxPublicPreviewCacheEntries = 200;
+    const usernameIdentityCache = new Map();
+    const usernameIdentityCacheTtlMs = 30_000;
+    const missingUsernameCacheTtlMs = 10_000;
+    const maxUsernameIdentityCacheEntries = 500;
+
+    async function resolveGithubUser(username, accessToken) {
+        const key = String(username || '').trim().toLowerCase();
+        const cached = usernameIdentityCache.get(key);
+        if (cached?.promise) return cached.promise;
+        if (cached && cached.expiresAt > Date.now()) {
+            usernameIdentityCache.delete(key);
+            usernameIdentityCache.set(key, cached);
+            return cached.value;
+        }
+        usernameIdentityCache.delete(key);
+
+        while (usernameIdentityCache.size >= maxUsernameIdentityCacheEntries) {
+            usernameIdentityCache.delete(usernameIdentityCache.keys().next().value);
+        }
+
+        const entry = { promise: null, value: null, expiresAt: 0 };
+        entry.promise = githubClient.getUser(username, accessToken)
+            .then((user) => {
+                entry.value = user;
+                entry.expiresAt = Date.now() + usernameIdentityCacheTtlMs;
+                return user;
+            })
+            .catch((error) => {
+                if (error.response?.status === 404) {
+                    entry.expiresAt = Date.now() + missingUsernameCacheTtlMs;
+                    return null;
+                }
+                usernameIdentityCache.delete(key);
+                throw error;
+            })
+            .finally(() => { entry.promise = null; });
+        usernameIdentityCache.set(key, entry);
+        return entry.promise;
+    }
 
     function isExpired(lastUpdated) {
         return Date.now() - new Date(lastUpdated).getTime() > cacheDuration;
@@ -50,19 +89,32 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         return entry.promise;
     }
 
-    async function refresh(username, accessToken) {
-        const user = await githubClient.getUser(username, accessToken);
+    async function refresh(user, accessToken) {
         await planetService.updateAndSavePlanetData(user, accessToken);
     }
 
     async function getByUsername(username, accessToken) {
         let row = await repository.findByUsername(username);
-        const shouldUpdate = Boolean(accessToken) && (!row || (row.lastUpdated && isExpired(row.lastUpdated)));
+        let user = null;
 
+        // 表示名は再利用されるため、保存行を返す前に不変IDで所有者を照合する。
+        if (row || accessToken) {
+            user = await resolveGithubUser(username, accessToken);
+            if (!user) return null;
+            if (row && String(user.id) !== String(row.githubId)) {
+                row = await repository.findByGithubId(user.id);
+            }
+            if (row && user.login && user.login !== row.username) {
+                await repository.updateUsernameByGithubId(user.id, user.login);
+                row = { ...row, username: user.login };
+            }
+        }
+
+        const shouldUpdate = Boolean(accessToken) && (!row || (row.lastUpdated && isExpired(row.lastUpdated)));
         if (shouldUpdate) {
             try {
-                await refresh(username, accessToken);
-                const updatedRow = await repository.findByUsername(username);
+                await refresh(user || await resolveGithubUser(username, accessToken), accessToken);
+                const updatedRow = await repository.findByGithubId(user.id);
                 if (updatedRow) row = updatedRow;
             } catch (error) {
                 console.warn(`[Visit Update] Failed to update ${username}: ${error.message}`);
