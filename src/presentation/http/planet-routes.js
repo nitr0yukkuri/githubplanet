@@ -1,3 +1,4 @@
+import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import { normalizePlanetCommitCounts } from '../../domain/planet/planet.js';
 import { getShowcasePlanet } from '../../domain/planet/showcase-planets.js';
 import { toPlanetResponse } from './planet-response.js';
@@ -42,8 +43,19 @@ export function registerPlanetRoutes(app, {
     const isHistoryDisabled = (username) => disabledHistoryUsernames.has(
         String(username || '').trim().toLowerCase()
     );
+    // /api/me verifies the GitHub profile, so cap repeated upstream calls per stable account ID.
+    const authenticatedMeRateLimit = rateLimit({
+        windowMs: 15 * 60 * 1000,
+        limit: 100,
+        standardHeaders: true,
+        legacyHeaders: false,
+        keyGenerator: (req) => {
+            const userId = req.session?.planetData?.user?.id;
+            return userId ? `github-user:${userId}` : ipKeyGenerator(req.ip);
+        }
+    });
 
-    app.get('/api/me', async (req, res) => {
+    app.get('/api/me', authenticatedMeRateLimit, async (req, res) => {
         if (!req.session.planetData?.user) {
             return res.status(401).json({ error: 'Not logged in' });
         }
