@@ -32,6 +32,21 @@ test('finds a planet by username regardless of case', async () => {
     assert.doesNotMatch(calls[0][0], /SELECT\s+\*/i);
 });
 
+test('updates a renamed account by immutable GitHub ID', async () => {
+    const calls = [];
+    const repository = createPlanetRepository({
+        async query(sql, params) {
+            calls.push([sql, params]);
+            return { rows: [], rowCount: 1 };
+        }
+    });
+
+    await repository.updateUsernameByGithubId(42, 'new-login');
+
+    assert.match(calls[0][0], /UPDATE planets SET username = \$2 WHERE github_id = \$1/i);
+    assert.deepEqual(calls[0][1], [42, 'new-login']);
+});
+
 test('maps persisted planet columns into the application model', async () => {
     const databaseRow = {
         github_id: 42,
