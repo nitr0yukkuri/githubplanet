@@ -240,12 +240,13 @@ export function createPlanetRepository(pool, {
 
         async findAuthoredLanguageCommits(githubId) {
             const result = await pool.query(`
-                SELECT authored_at, language_added_lines
+                SELECT commit_sha, authored_at, language_added_lines
                 FROM authored_language_commits
                 WHERE github_id = $1
                 ORDER BY authored_at ASC
             `, [githubId]);
-            return result.rows.map(({ authored_at, language_added_lines }) => ({
+            return result.rows.map(({ commit_sha, authored_at, language_added_lines }) => ({
+                commitSha: commit_sha,
                 authoredAt: authored_at,
                 languageAdditions: language_added_lines
             }));
