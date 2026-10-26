@@ -102,7 +102,8 @@ test('shares secondary language trails with Python and updates historical ranks 
             mainLanguage: 'Python',
             languageStats: { Python: 70, Rust: 20, TypeScript: 10 }
         },
-        radius: 4
+        radius: 4,
+        direction: -1
     });
     const trailGroup = runtime.sceneObjects[0];
     const [second, third] = trailGroup.children;
@@ -111,6 +112,10 @@ test('shares secondary language trails with Python and updates historical ranks 
     assert.equal(runtime.id, 'python');
     assert.equal(runtime.sceneObjects.length, 1);
     assert.deepEqual([second.userData.language, third.userData.language], ['Rust', 'TypeScript']);
+    assert.deepEqual([
+        second.material.uniforms.trailSpeed.value,
+        third.material.uniforms.trailSpeed.value
+    ], [1, 1]);
 
     runtime.setLanguageComposition({
         mainLanguage: 'Python',
