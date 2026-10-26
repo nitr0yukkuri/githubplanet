@@ -161,7 +161,10 @@ export function createGithubClient({
         async getUser(username, accessToken) {
             return measureExternalOperation(onRequestTiming, 'get_user', async () => {
                 const response = await axios.get(`https://api.github.com/users/${username}`, {
-                    headers: { Authorization: `Bearer ${accessToken}` },
+                    headers: {
+                        Accept: 'application/vnd.github+json',
+                        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+                    },
                     timeout: GITHUB_API_TIMEOUT_MS
                 });
                 return response.data;
