@@ -162,7 +162,6 @@ test('stops before the REST reserve is exhausted', async () => {
     assert.equal(progress.requestBudgetReached, true);
 });
 
-
 test('does not scan the same commit SHA twice after its repository owner changes', async () => {
     const detailRequests = [];
     const saved = [];
