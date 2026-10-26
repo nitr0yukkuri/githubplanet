@@ -17,6 +17,9 @@ function createHarness(rows = {}) {
             calls.push(['findRandom', excludeIds]);
             return Object.values(rows).find((row) => !excludeIds.includes(row.githubId)) || null;
         },
+        async updateUsernameByGithubId(id, username) {
+            calls.push(['updateUsernameByGithubId', id, username]);
+        },
         async updateActiveTitle(id, title) {
             calls.push(['updateActiveTitle', id, title]);
         }
@@ -49,7 +52,7 @@ test('keeps a stored user with no last_updated without refreshing it', async () 
     const { calls, service } = createHarness({ tester: row });
 
     assert.equal(await service.getByUsername('tester', 'token'), row);
-    assert.deepEqual(calls, [['findByUsername', 'tester']]);
+    assert.deepEqual(calls, [['findByUsername', 'tester'], ['getUser', 'tester']]);
 });
 
 test('keeps the previous stale row when the post-refresh read is empty', async () => {
@@ -58,8 +61,12 @@ test('keeps the previous stale row when the post-refresh read is empty', async (
     const repository = {
         async findByUsername() {
             reads += 1;
-            return reads === 1 ? staleRow : null;
-        }
+            return staleRow;
+        },
+        async findByGithubId() {
+            return null;
+        },
+        async updateUsernameByGithubId() {}
     };
     const service = createPlanetQueryService({
         repository,
@@ -69,7 +76,7 @@ test('keeps the previous stale row when the post-refresh read is empty', async (
     });
 
     assert.equal(await service.getByUsername('tester', 'token'), staleRow);
-    assert.equal(reads, 2);
+    assert.equal(reads, 1);
 });
 
 test('returns a stored random planet without refreshing it', async () => {
@@ -119,4 +126,34 @@ test('delegates language history reads to the repository by GitHub account id', 
 
     assert.equal(await service.getLanguageHistoryByGithubId(42), expected);
     assert.deepEqual(calls, [42]);
+});
+
+test('does not return the previous owner planet after a username is claimed', async () => {
+    const oldPlanet = { githubId: 1, username: 'claimed-name', lastUpdated: null };
+    const preview = { username: 'claimed-name', isPublicPreview: true };
+    const calls = [];
+    const service = createPlanetQueryService({
+        repository: {
+            async findByUsername() { return oldPlanet; },
+            async findByGithubId(id) {
+                calls.push(['findByGithubId', id]);
+                return null;
+            },
+            async updateUsernameByGithubId(...args) { calls.push(['updateUsernameByGithubId', ...args]); }
+        },
+        githubClient: {
+            async getUser(username) {
+                calls.push(['getUser', username]);
+                return { id: 2, login: 'claimed-name' };
+            }
+        },
+        planetService: { async createPublicPreview() { return preview; } },
+        cacheDuration: 60_000
+    });
+
+    assert.equal(await service.getByUsername('claimed-name'), preview);
+    assert.deepEqual(calls, [
+        ['getUser', 'claimed-name'],
+        ['findByGithubId', 2]
+    ]);
 });
