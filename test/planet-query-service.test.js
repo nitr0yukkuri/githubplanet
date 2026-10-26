@@ -174,6 +174,10 @@ test('resolves a renamed account by GitHub ID after the previous login returns 4
             },
             async updateUsernameByGithubId(id, username) {
                 calls.push(['updateUsernameByGithubId', id, username]);
+            },
+            async reserveGithubProfileLookup(maxRequests, windowMs) {
+                calls.push(['reserveGithubProfileLookup', maxRequests, windowMs]);
+                return { allowed: true, retryAfterMs: 0 };
             }
         },
         githubClient: {
@@ -197,6 +201,7 @@ test('resolves a renamed account by GitHub ID after the previous login returns 4
     assert.deepEqual(calls, [
         ['findByUsername', 'old-login'],
         ['getUser', 'old-login'],
+        ['reserveGithubProfileLookup', 40, 3_600_000],
         ['getUserById', '12345'],
         ['updateUsernameByGithubId', 12345, 'new-login']
     ]);
@@ -212,7 +217,11 @@ test('keeps the cached 0x3EF8 planet but marks its unavailable GitHub profile as
                 calls.push(['findByUsername', username]);
                 return storedPlanet;
             },
-            async updateUsernameByGithubId() {}
+            async updateUsernameByGithubId() {},
+            async reserveGithubProfileLookup(maxRequests, windowMs) {
+                calls.push(['reserveGithubProfileLookup', maxRequests, windowMs]);
+                return { allowed: true, retryAfterMs: 0 };
+            }
         },
         githubClient: {
             async getUser(username) {
@@ -235,6 +244,7 @@ test('keeps the cached 0x3EF8 planet but marks its unavailable GitHub profile as
     assert.deepEqual(calls, [
         ['findByUsername', '0x3EF8'],
         ['getUser', '0x3EF8'],
+        ['reserveGithubProfileLookup', 40, 3_600_000],
         ['getUserById', '76643867']
     ]);
 });
@@ -249,6 +259,10 @@ test('resolves the current GitHub profile URL from a saved stable ID', async () 
             },
             async updateUsernameByGithubId(id, username) {
                 calls.push(['updateUsernameByGithubId', id, username]);
+            },
+            async reserveGithubProfileLookup(maxRequests, windowMs) {
+                calls.push(['reserveGithubProfileLookup', maxRequests, windowMs]);
+                return { allowed: true, retryAfterMs: 0 };
             }
         },
         githubClient: {
@@ -264,6 +278,7 @@ test('resolves the current GitHub profile URL from a saved stable ID', async () 
     assert.equal(await service.getGithubProfileUrlById(12345), 'https://github.com/new-login');
     assert.deepEqual(calls, [
         ['findByGithubId', '12345'],
+        ['reserveGithubProfileLookup', 40, 3_600_000],
         ['getUserById', '12345'],
         ['updateUsernameByGithubId', '12345', 'new-login']
     ]);
@@ -271,7 +286,10 @@ test('resolves the current GitHub profile URL from a saved stable ID', async () 
 
 test('does not turn a malformed GitHub login into an external redirect', async () => {
     const service = createPlanetQueryService({
-        repository: { async findByGithubId() { return { githubId: 12345 }; } },
+        repository: {
+            async findByGithubId() { return { githubId: 12345 }; },
+            async reserveGithubProfileLookup() { return { allowed: true, retryAfterMs: 0 }; }
+        },
         githubClient: {
             async getUserById() { return { id: 12345, login: 'https://evil.example' }; }
         },

@@ -127,7 +127,8 @@ test('returns the 0x3EF8 cached planet without exposing its unverified profile U
     const planetQueryService = createPlanetQueryService({
         repository: {
             async findByUsername() { return storedPlanet; },
-            async updateUsernameByGithubId() {}
+            async updateUsernameByGithubId() {},
+            async reserveGithubProfileLookup() { return { allowed: true, retryAfterMs: 0 }; }
         },
         githubClient,
         planetService: {},
