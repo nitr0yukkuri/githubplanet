@@ -162,3 +162,52 @@ test('stops before the REST reserve is exhausted', async () => {
     assert.equal(progress.requestBudgetReached, true);
 });
 
+test('does not scan the same commit SHA twice after its repository owner changes', async () => {
+    const detailRequests = [];
+    const saved = [];
+    const axios = {
+        async post() {
+            return { headers: { 'x-ratelimit-remaining': '5000' }, data: { data: { user: {
+                contributionsCollection: { commitContributionsByRepository: [
+                    { repository: { nameWithOwner: 'old-owner/project', isPrivate: false } },
+                    { repository: { nameWithOwner: 'new-owner/project', isPrivate: false } }
+                ] }
+            } } } };
+        },
+        async get(url, config) {
+            if (url.endsWith('/commits')) {
+                const page = Number(config.params.page);
+                return {
+                    headers: { 'x-ratelimit-remaining': '4999' },
+                    data: page === 1
+                        ? [{ sha: 'same-sha', commit: { author: { date: '2025-01-02T03:00:00Z' } } }]
+                        : []
+                };
+            }
+            detailRequests.push(url);
+            return {
+                headers: { 'x-ratelimit-remaining': '4998' },
+                data: {
+                    stats: { additions: 3 },
+                    files: [{ filename: 'main.ts', additions: 3 }],
+                    commit: { author: { date: '2025-01-02T03:00:00Z' } }
+                }
+            };
+        }
+    };
+    const client = createClient({ axios });
+    const knownCommits = new Set();
+
+    await client.scanHistoricalAuthoredLanguageCommits({
+        login: 'new-owner',
+        accessToken: 'token',
+        accountCreatedAt: '2025-01-01T00:00:00Z',
+        now: '2025-12-31T00:00:00Z',
+        knownCommits,
+        onBatch: async (rows) => saved.push(...rows)
+    });
+
+    assert.equal(detailRequests.length, 1);
+    assert.equal(saved.length, 1);
+    assert.ok(knownCommits.has('same-sha'));
+});

@@ -271,10 +271,11 @@ export function createGithubAuthoredLanguageHistoryClient({ axios, extensionMap,
                         const references = commitList.filter((commit) => {
                             const sha = commit?.sha;
                             if (!sha) return false;
-                            const key = `${fullName.toLowerCase()}:${sha.toLowerCase()}`;
-                            if (seen.has(key)) return false;
-                            seen.add(key);
-                            const isNew = !knownCommits.has(key);
+                            const normalizedSha = sha.toLowerCase();
+                            const key = `${fullName.toLowerCase()}:${normalizedSha}`;
+                            if (seen.has(normalizedSha)) return false;
+                            seen.add(normalizedSha);
+                            const isNew = !knownCommits.has(key) && !knownCommits.has(normalizedSha);
                             if (isNew) progress.commitsFound += 1;
                             return isNew;
                         });
@@ -306,23 +307,27 @@ export function createGithubAuthoredLanguageHistoryClient({ axios, extensionMap,
                         for (let index = 0; index < details.length; index += 1) {
                             const result = details[index];
                             const commit = references[index];
-                            const key = `${fullName.toLowerCase()}:${commit.sha.toLowerCase()}`;
+                            const normalizedSha = commit.sha.toLowerCase();
+                            const key = `${fullName.toLowerCase()}:${normalizedSha}`;
                             if (result.status === 'rejected') {
                                 if (result.reason?.code === 'GITHUB_HISTORY_REQUEST_BUDGET_REACHED') {
                                     if (!progress.yielded) progress.requestBudgetReached = true;
                                 } else if ([404, 409].includes(result.reason?.response?.status)) {
                                     progress.unavailableCommits += 1;
                                     knownCommits.add(key);
+                                    knownCommits.add(normalizedSha);
                                 } else failure ||= result.reason;
                                 continue;
                             }
                             if (!result.value.authoredAt) {
                                 progress.unavailableCommits += 1;
                                 knownCommits.add(key);
+                                knownCommits.add(normalizedSha);
                                 continue;
                             }
                             batch.push(result.value);
                             knownCommits.add(key);
+                            knownCommits.add(normalizedSha);
                         }
                         if (batch.length) {
                             await onBatch(batch);

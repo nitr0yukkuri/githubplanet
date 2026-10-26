@@ -36,9 +36,13 @@ export function createAuthoredLanguageHistoryService({ repository, githubClient 
         inFlightScans.add(key);
         try {
             const savedKeys = await repository.findAuthoredLanguageCommitKeys(githubId);
-            const knownCommits = new Set(savedKeys.map(({ repositoryFullName, commitSha }) => (
-                `${repositoryFullName.toLowerCase()}:${commitSha.toLowerCase()}`
-            )));
+            const knownCommits = new Set(savedKeys.flatMap(({ repositoryFullName, commitSha }) => {
+                const normalizedSha = commitSha.toLowerCase();
+                return [
+                    `${repositoryFullName.toLowerCase()}:${normalizedSha}`,
+                    normalizedSha
+                ];
+            }));
             const progress = await githubClient.scanHistoricalAuthoredLanguageCommits({
                 login,
                 accessToken,
