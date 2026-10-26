@@ -220,7 +220,12 @@ async function startApp() {
     }));
 
     app.use('/front', express.static(path.join(projectRoot, 'front')));
-    app.use('/vendor/three', express.static(path.join(projectRoot, 'node_modules/three')));
+    app.get('/vendor/three/build/three.module.js', (_req, res) => {
+        res.sendFile(path.join(projectRoot, 'node_modules/three/build/three.module.js'));
+    });
+    app.get('/vendor/three/examples/jsm/controls/OrbitControls.js', (_req, res) => {
+        res.sendFile(path.join(projectRoot, 'node_modules/three/examples/jsm/controls/OrbitControls.js'));
+    });
 
     appServer = http.createServer(app);
     const address = await listen(appServer);
