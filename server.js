@@ -10,6 +10,7 @@ import { Server } from 'socket.io';
 import { createPlanetQueryService } from './src/application/planet-query-service.js';
 import { createAuthoredLanguageHistoryService } from './src/application/authored-language-history-service.js';
 import { createPlanetService } from './src/application/planet-service.js';
+import { listShowcasePlanets } from './src/domain/planet/showcase-planets.js';
 import { createMeteorService } from './src/application/meteor-service.js';
 import { DATA_CACHE_DURATION, EXTENSION_MAP, LANGUAGE_COLORS } from './src/domain/planet/constants.js';
 import { createPlanetRepository } from './src/infrastructure/database/planet-repository.js';
@@ -183,7 +184,8 @@ registerPageRoutes(app, {
     systemApiKey: process.env.SYSTEM_API_KEY,
     sessionSecret: effectiveSessionSecret,
     publicBaseUrl,
-    cardCaptureBaseUrl: process.env.PUBLIC_BASE_URL
+    cardCaptureBaseUrl: process.env.PUBLIC_BASE_URL,
+    showcasePages: listShowcasePlanets()
 });
 registerAuthRoutes(app, {
     githubClient,
@@ -223,6 +225,7 @@ registerEventRoutes(app, {
 
 // 404 handler
 app.use((req, res) => {
+    res.setHeader('X-Robots-Tag', 'noindex, follow');
     res.status(404).sendFile(path.join(__dirname, '404.html'));
 });
 

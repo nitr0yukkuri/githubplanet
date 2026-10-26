@@ -1,20 +1,10 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { createPageSeo } from './page-seo.js';
 
 const DEFAULT_PUBLIC_BASE_URL = 'https://githubplanet.dev';
 const SOURCE_PUBLIC_BASE_URL = 'https://githubplanet.dev';
-
-function escapeXml(value) {
-    return value.replace(/[<>&'"]/g, (character) => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&apos;'
-    })[character]);
-}
-
 
 export function registerPageRoutes(app, {
     rootDirectory,
@@ -22,7 +12,8 @@ export function registerPageRoutes(app, {
     systemApiKey,
     sessionSecret,
     publicBaseUrl = DEFAULT_PUBLIC_BASE_URL,
-    cardCaptureBaseUrl = isProduction ? publicBaseUrl : undefined
+    cardCaptureBaseUrl = isProduction ? publicBaseUrl : undefined,
+    showcasePages = []
 }) {
     const normalizedPublicBaseUrl = publicBaseUrl.replace(/\/+$/, '');
     const normalizedCardCaptureBaseUrl = cardCaptureBaseUrl?.replace(/\/+$/, '');
@@ -32,35 +23,33 @@ export function registerPageRoutes(app, {
         'settings.html': 'Settings - GitHub Planet',
         'card.html': 'GitHub Planet Card'
     };
-    const pageCache = new Map();
+    // 公開ページのクロールごとに同期I/Oが発生しないよう、テンプレートは起動時に読み込む。
+    const pageCache = new Map([
+        'index.html', 'achievements.html', 'settings.html', 'card.html', '404.html', 'sender.html'
+    ].map((fileName) => [fileName, fs.readFileSync(path.join(rootDirectory, fileName), 'utf8')
+        .replaceAll(SOURCE_PUBLIC_BASE_URL, normalizedPublicBaseUrl)]));
+    const favicon = fs.readFileSync(path.join(rootDirectory, 'front/img/favicon-96.png'));
+    const seo = createPageSeo({ publicBaseUrl: normalizedPublicBaseUrl, showcasePages });
+    app.use(seo.middleware);
 
     function sendPage(req, res, fileName) {
         const isEnglish = /^\/(en|english)(\/|$)/.test(req.path);
-        let html = isProduction ? pageCache.get(fileName) : undefined;
-        if (!html) {
-            html = fs.readFileSync(path.join(rootDirectory, fileName), 'utf8');
-            html = html
-                .replaceAll(SOURCE_PUBLIC_BASE_URL, normalizedPublicBaseUrl)
-                .replaceAll(DEFAULT_PUBLIC_BASE_URL, normalizedPublicBaseUrl);
-            if (isProduction) {
-                pageCache.set(fileName, html);
-            }
-        }
-
-        if (!isEnglish) {
-            return res.type('html').send(html);
-        }
-
-        html = html
-            .replace('<html lang="ja">', '<html lang="en">')
-            .replace(/<title>[^<]*<\/title>/, `<title>${pageTitles[fileName]}</title>`);
+        let html = pageCache.get(fileName);
 
         if (fileName === 'index.html') {
-            html = html
-                .replace('GitHubの活動履歴からあなただけの惑星を生成しよう。', 'Generate your own planet from your GitHub activity.')
-                .replaceAll('あなたのコードが、星になる。GitHubの活動履歴からあなただけの惑星を生成しよう。', 'Your code becomes a star. Generate your own planet from your GitHub activity.')
-                .replace(`content="${normalizedPublicBaseUrl}/"`, `content="${normalizedPublicBaseUrl}/en"`)
-                .replace(`href="${normalizedPublicBaseUrl}/" rel="canonical"`, `href="${normalizedPublicBaseUrl}/en" rel="canonical"`);
+            const page = seo.resolveHomePage(req);
+            if (!page) {
+                res.setHeader('X-Robots-Tag', 'noindex, follow');
+                return res.status(404).type('html').send(pageCache.get('404.html'));
+            }
+            if (!page.indexable) res.setHeader('X-Robots-Tag', 'noindex, follow');
+            html = seo.renderHome(html, page);
+        } else {
+            html = seo.renderUtility(html);
+            if (isEnglish) {
+                html = html.replace('<html lang="ja">', '<html lang="en">')
+                    .replace(/<title>[^<]*<\/title>/, `<title>${pageTitles[fileName]}</title>`);
+            }
         }
 
         res.type('html').send(html);
@@ -90,6 +79,7 @@ export function registerPageRoutes(app, {
 
 
     app.get('/robots.txt', (_req, res) => {
+        res.setHeader('Cache-Control', 'public, max-age=3600');
         const sitemapUrl = new URL('/sitemap.xml', normalizedPublicBaseUrl).href;
         res.type('text/plain').send([
             'User-agent: *',
@@ -99,33 +89,8 @@ export function registerPageRoutes(app, {
     });
 
     app.get('/sitemap.xml', (_req, res) => {
-        const japaneseUrl = new URL('/', normalizedPublicBaseUrl).href;
-        const englishUrl = new URL('/en', normalizedPublicBaseUrl).href;
-        const alternateLinks = [
-            ['ja', japaneseUrl],
-            ['en', englishUrl],
-            ['x-default', japaneseUrl]
-        ];
-        const urls = [japaneseUrl, englishUrl].map((href) => {
-            const alternates = alternateLinks.map(([language, alternateUrl]) =>
-                '        <xhtml:link rel="alternate" hreflang="' + language
-                + '" href="' + escapeXml(alternateUrl) + '" />'
-            );
-
-            return [
-                '    <url>',
-                '        <loc>' + escapeXml(href) + '</loc>',
-                ...alternates,
-                '    </url>'
-            ].join('\n');
-        });
-
-        res.type('application/xml').send([
-            '<?xml version="1.0" encoding="UTF-8"?>',
-            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
-            ...urls,
-            '</urlset>'
-        ].join('\n'));
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.type('application/xml').send(seo.sitemap());
     });
 
 
@@ -134,6 +99,8 @@ export function registerPageRoutes(app, {
         '/en/exhibition',
         '/english/exhibition',
         '/demo',
+        '/en/demo',
+        '/english/demo',
         '/showcase',
         '/en/showcase',
         '/english/showcase',
@@ -152,6 +119,10 @@ export function registerPageRoutes(app, {
     app.get('/manifest-en.json', (req, res) => {
         res.type('application/manifest+json');
         res.sendFile(path.join(rootDirectory, 'manifest-en.json'));
+    });
+
+    app.get('/favicon.ico', (_req, res) => {
+        res.type('image/png').send(favicon);
     });
 
     app.get('/sw.js', (req, res) => {
@@ -214,7 +185,7 @@ export function registerPageRoutes(app, {
     });
 
     app.get(['/sender', '/en/sender', '/english/sender'], (req, res) => {
-        res.sendFile(path.join(rootDirectory, 'sender.html'));
+        res.type('html').send(pageCache.get('sender.html'));
     });
 
     app.get(['/achievements', '/en/achievements', '/english/achievements'], (req, res) => {

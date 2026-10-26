@@ -1,0 +1,37 @@
+.site-information {
+    position: fixed;
+    left: 12px;
+    bottom: 12px;
+    z-index: 25;
+    max-width: min(390px, calc(100vw - 24px));
+    border: 1px solid #666178;
+    border-radius: 8px;
+    background: #15131f;
+    color: #f4f2ff;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.site-information summary {
+    cursor: pointer;
+    padding: 7px 12px;
+    font-size: 12px;
+}
+
+.site-information section {
+    padding: 0 16px 12px;
+    max-height: min(55vh, 460px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.site-information h1 { font-size: 19px; line-height: 1.5; margin: 8px 0 12px; }
+.site-information h2 { font-size: 14px; margin: 16px 0 8px; }
+.site-information ul { display: flex; flex-wrap: wrap; gap: 6px 14px; list-style: none; padding: 0; }
+.site-information li a { display: flex; align-items: center; min-height: 32px; }
+.site-information a { color: #b8ccff; text-underline-offset: 3px; }
+.site-information a:focus-visible, .site-information summary:focus-visible { outline: 2px solid #c8baff; outline-offset: 3px; }
+.site-information-disclaimer { color: #ccc7d7; font-size: 12px; }
+.site-breadcrumbs ol { display: flex; flex-wrap: wrap; gap: 4px 8px; list-style: none; padding: 0; font-size: 12px; }
+.site-breadcrumbs li + li::before { content: '/'; margin-right: 8px; color: #ccc7d7; }
+.site-noscript { position: fixed; top: 8px; left: 8px; right: 8px; z-index: 110; padding: 10px; background: #15131f; }
