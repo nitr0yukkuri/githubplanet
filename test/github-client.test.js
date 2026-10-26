@@ -148,3 +148,20 @@ test('reports GitHub request timings without changing the response shape', async
         provider === 'github' && outcome === 'success' && durationMs >= 0
     )));
 });
+
+test('gets a public GitHub profile without sending an empty bearer token', async () => {
+    let request;
+    const client = createGithubClient({
+        axios: {
+            async get(url, config) {
+                request = { url, config };
+                return { data: { id: 42, login: 'alice' } };
+            }
+        }
+    });
+
+    assert.deepEqual(await client.getUser('alice'), { id: 42, login: 'alice' });
+    assert.equal(request.url, 'https://api.github.com/users/alice');
+    assert.equal(request.config.headers.Authorization, undefined);
+    assert.equal(request.config.headers.Accept, 'application/vnd.github+json');
+});
