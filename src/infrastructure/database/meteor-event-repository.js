@@ -72,6 +72,14 @@ export function createMeteorEventRepository(pool, { logger = console } = {}) {
             return mapMeteorEvent(row);
         },
 
+        async getLatestId() {
+            const result = await pool.query(`
+                SELECT COALESCE(MAX(id), 0)::text AS id
+                FROM meteor_events
+            `);
+            return result.rows[0]?.id ?? '0';
+        },
+
         async findAfter(afterId = '0', limit = MAX_REPLAY_EVENTS) {
             const cursor = parseEventId(afterId);
             if (!Number.isInteger(limit) || limit < 1 || limit > MAX_REPLAY_EVENTS) {
