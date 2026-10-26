@@ -1,4 +1,5 @@
 import { calculateLoginProgress } from '../../domain/planet/login-progress.js';
+import { safeErrorMetadata } from '../../shared/error-metadata.js';
 
 const PLANET_COLUMNS = `
     github_id, username, planet_color, planet_size_factor, main_language, language_stats,
@@ -136,7 +137,7 @@ export function createPlanetRepository(pool, {
                 planetCountUpdatedAt = Date.now();
             })
             .catch((error) => {
-                console.warn(`[DB] ランダム検索用人数更新をスキップ: ${error.message}`);
+                console.warn('[DB] ランダム検索用人数更新をスキップ:', safeErrorMetadata(error));
             })
             .finally(() => {
                 countRefreshPromise = null;
@@ -452,7 +453,7 @@ export function createPlanetRepository(pool, {
                 return Object.fromEntries(result.rows.map((row) => [row.language, row.color]));
             } catch (error) {
                 // 起動時の最適化なので、キャッシュ表の一時障害で本体を停止させない。
-                console.warn(`[DB] 言語色キャッシュの事前読込をスキップ: ${error.message}`);
+                console.warn('[DB] 言語色キャッシュの事前読込をスキップ:', safeErrorMetadata(error));
                 return {};
             }
         },
@@ -525,7 +526,7 @@ export function createPlanetRepository(pool, {
                         strategy: strategyUsed,
                         poolBefore,
                         poolAfter: snapshotPool(pool),
-                        error: queryError?.message || null
+                        error: queryError ? safeErrorMetadata(queryError) : null
                     });
                 } catch {
                     // Performance logging must never affect the query result.

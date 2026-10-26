@@ -1,3 +1,5 @@
+import { safeErrorMetadata } from '../shared/error-metadata.js';
+
 export function createPlanetQueryService({ repository, githubClient, planetService, cacheDuration }) {
     const publicPreviewCache = new Map();
     const publicPreviewCacheTtlMs = 5 * 60 * 1000;
@@ -117,7 +119,7 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
                 const updatedRow = await repository.findByGithubId(user.id);
                 if (updatedRow) row = updatedRow;
             } catch (error) {
-                console.warn(`[Visit Update] Failed to update ${username}: ${error.message}`);
+                console.warn('[Visit Update] Failed to update planet:', safeErrorMetadata(error));
             }
         }
 

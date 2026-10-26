@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { safeErrorMetadata } from '../../shared/error-metadata.js';
 
 export function registerEventRoutes(app, {
     geminiClient,
@@ -37,7 +38,7 @@ export function registerEventRoutes(app, {
             const result = await meteorService.emitManualMeteor(req.body);
             res.json({ success: true, color: result.color });
         } catch (error) {
-            console.error('[Manual Meteor Error]', error);
+            console.error('[Manual Meteor Error]', safeErrorMetadata(error));
             res.status(500).json({ error: 'Failed' });
         }
     });
@@ -65,7 +66,7 @@ export function registerEventRoutes(app, {
                     const payloadHash = crypto.createHash('sha256').update(req.rawBody).digest('hex');
                     isNewDelivery = await webhookDeliveryStore.claimGithubWebhookDelivery(deliveryId, payloadHash);
                 } catch (error) {
-                    console.error('[Webhook Delivery Store Error]', error);
+                    console.error('[Webhook Delivery Store Error]', safeErrorMetadata(error));
                     return res.status(503).send('Webhook delivery could not be recorded');
                 }
                 if (!isNewDelivery) return res.status(200).send('OK');
@@ -76,9 +77,9 @@ export function registerEventRoutes(app, {
 
             // GitHubへのACK速度は維持しつつ、業務処理はApplicationのユースケースに委譲する。
             meteorService.processWebhook(payload)
-                .catch((error) => console.error('[Webhook Async Error]', error));
+                .catch((error) => console.error('[Webhook Async Error]', safeErrorMetadata(error)));
         } catch (error) {
-            console.error('[Webhook Error]', error);
+            console.error('[Webhook Error]', safeErrorMetadata(error));
             if (!res.headersSent) res.status(500).send('Error');
         }
     });

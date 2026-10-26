@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { safeErrorMetadata } from '../../shared/error-metadata.js';
 
 function base64URLEncode(value) {
     return value.toString('base64')
@@ -29,16 +30,6 @@ function hasCookie(req, cookieName) {
     if (typeof header !== 'string') return false;
 
     return header.split(';').some((cookie) => cookie.trim().startsWith(`${cookieName}=`));
-}
-
-function safeErrorMetadata(error) {
-    const errorName = typeof error?.name === 'string' && /^[A-Za-z][A-Za-z0-9]{0,63}$/.test(error.name)
-        ? error.name
-        : 'Error';
-    const errorCode = typeof error?.code === 'string' && /^[A-Z0-9_]{1,64}$/.test(error.code)
-        ? error.code
-        : 'unknown';
-    return { errorName, errorCode };
 }
 
 export function registerAuthRoutes(app, {

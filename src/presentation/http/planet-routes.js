@@ -2,6 +2,7 @@ import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import { normalizePlanetCommitCounts } from '../../domain/planet/planet.js';
 import { getShowcasePlanet } from '../../domain/planet/showcase-planets.js';
 import { toPlanetResponse } from './planet-response.js';
+import { safeErrorMetadata } from '../../shared/error-metadata.js';
 
 const ANONYMOUS_RANDOM_COOKIE = 'githubplanet_random_planet';
 
@@ -73,7 +74,7 @@ export function registerPlanetRoutes(app, {
                 }
                 githubProfileVerified = true;
             } catch (error) {
-                console.warn('[GitHub Profile] Could not refresh the authenticated username:', error.message);
+                console.warn('[GitHub Profile] Could not refresh the authenticated username:', safeErrorMetadata(error));
             }
         }
 
@@ -96,12 +97,12 @@ export function registerPlanetRoutes(app, {
                             updatedPlanetData
                         );
                     } catch (error) {
-                        console.error('[Login Progress] 初回記録に失敗しました:', error.message);
+                        console.error('[Login Progress] 初回記録に失敗しました:', safeErrorMetadata(error));
                     }
                 }
                 console.log('[Auto Update] 更新完了');
             } catch (error) {
-                console.error('[Auto Update] 更新失敗 (キャッシュを返します):', error.message);
+                console.error('[Auto Update] 更新失敗 (キャッシュを返します):', safeErrorMetadata(error));
             }
         } else {
             console.log('[Auto Update] キャッシュ有効のためスキップ');
@@ -150,7 +151,7 @@ export function registerPlanetRoutes(app, {
             }
             res.json({ success: true, activeTitle: newTitle });
         } catch (error) {
-            console.error('Save Title Error:', error);
+            console.error('Save Title Error:', safeErrorMetadata(error));
             res.status(500).json({ error: 'DB Error' });
         }
     });
@@ -175,7 +176,7 @@ export function registerPlanetRoutes(app, {
                 }))
             });
         } catch (error) {
-            console.error('[API /me/language-history Error]', error);
+            console.error('[API /me/language-history Error]', safeErrorMetadata(error));
             res.status(500).json({ error: 'Internal Server Error' });
         }
     });
@@ -198,7 +199,7 @@ export function registerPlanetRoutes(app, {
         try {
             res.json(await authoredLanguageHistoryService.getHistory(user.id));
         } catch (error) {
-            console.error('[API /me/authored-language-history Error]', error);
+            console.error('[API /me/authored-language-history Error]', safeErrorMetadata(error));
             res.status(500).json({ error: 'Internal Server Error' });
         }
     });
@@ -231,7 +232,7 @@ export function registerPlanetRoutes(app, {
             const result = await authoredLanguageHistoryService.getHistory(user.id);
             res.json({ ...result, scanStarted });
         } catch (error) {
-            console.error('[API /me/authored-language-history/scan Error]', error);
+            console.error('[API /me/authored-language-history/scan Error]', safeErrorMetadata(error));
             res.status(500).json({ error: 'Internal Server Error' });
         }
     });
@@ -250,7 +251,7 @@ export function registerPlanetRoutes(app, {
             if (!row) return res.status(404).json({ error: 'Planet not found' });
             res.json(toPlanetResponse(row));
         } catch (error) {
-            console.error('[API /user/:username Error]', error);
+            console.error('[API /user/:username Error]', safeErrorMetadata(error));
             if ([403, 429].includes(error.response?.status)) {
                 if (error.retryAfterMs) {
                     res.setHeader('Retry-After', String(Math.ceil(error.retryAfterMs / 1_000)));
@@ -293,7 +294,7 @@ export function registerPlanetRoutes(app, {
             res.json(toPlanetResponse(row));
             randomPerformance?.markRandomStage(req, 'response-serialized');
         } catch (error) {
-            console.error('[API /random Error]', error);
+            console.error('[API /random Error]', safeErrorMetadata(error));
             res.status(500).json({ error: 'Internal Server Error' });
         }
     });

@@ -25,6 +25,8 @@ import { registerPageRoutes } from './src/presentation/http/page-routes.js';
 import { registerPlanetRoutes } from './src/presentation/http/planet-routes.js';
 import { createRandomPerformanceReporter } from './src/presentation/http/random-performance.js';
 import { createExternalPerformanceReporter } from './src/infrastructure/observability/external-performance.js';
+import { createErrorHandler } from './src/presentation/http/error-handler.js';
+import { safeErrorMetadata } from './src/shared/error-metadata.js';
 
 const app = express();
 const port = parseInt(process.env.PORT) || 3000;
@@ -105,7 +107,10 @@ if (isProduction) {
 
 const pool = createPostgresPool(process.env.DATABASE_URL);
 // 複数インスタンスが起動時に同じDDLを実行する事故を防ぐため、ここでは適用確認だけを行う。
-await assertDatabaseMigrationsApplied(pool);
+await assertDatabaseMigrationsApplied(pool).catch((error) => {
+    console.error('[DB] Startup migration check failed:', safeErrorMetadata(error));
+    process.exit(1);
+});
 const planetRepository = createPlanetRepository(pool, {
     onRandomQueryTiming: randomPerformance.recordRandomQuery,
     randomQueryStrategy: process.env.RANDOM_QUERY_STRATEGY || 'indexed',
@@ -170,7 +175,11 @@ app.use(randomPerformance.beforeSessionMiddleware);
 const sessionCookieName = isProduction ? '__session' : 'connect.sid';
 app.use(session({
     name: sessionCookieName,
-    store: pool ? new PgSession({ pool, createTableIfMissing: false }) : undefined,
+    store: pool ? new PgSession({
+        pool,
+        createTableIfMissing: false,
+        errorLog: (_message, error) => console.error('[Session Store Error]', safeErrorMetadata(error))
+    }) : undefined,
     secret: effectiveSessionSecret,
     resave: false,
     saveUninitialized: false,
@@ -229,6 +238,8 @@ app.use((req, res) => {
     res.status(404).sendFile(path.join(__dirname, '404.html'));
 });
 
+app.use(createErrorHandler());
+
 const server = app.listen(port, '0.0.0.0', () => {
     console.log(`Server running on port ${port}`);
 });
@@ -242,12 +253,8 @@ io.engine.on('connection_error', (error) => {
     if (requestUrl.searchParams.get('transport') !== 'websocket') return;
 
     console.warn('[Socket.IO] WebSocket connection rejected', {
-        code: error.code,
-        message: error.message,
-        method: request?.method,
-        path: requestUrl.pathname,
-        origin: request?.headers?.origin,
-        upgrade: request?.headers?.upgrade
+        code: Number.isInteger(error.code) && error.code >= 0 && error.code <= 6 ? error.code : 'unknown',
+        transport: 'websocket'
     });
 });
 io.on('connection', (socket) => {

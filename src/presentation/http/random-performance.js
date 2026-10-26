@@ -1,3 +1,5 @@
+import { safeErrorMetadata } from '../../shared/error-metadata.js';
+
 function nowNanoseconds() {
     return process.hrtime.bigint();
 }
@@ -60,7 +62,7 @@ export function createRandomPerformanceReporter({ enabled = false, logger = cons
                     return originalSave((error) => {
                         sessionSaveDurations.push({
                             durationMs: elapsedMilliseconds(saveStartedAt),
-                            error: error?.message || null
+                            error: error ? safeErrorMetadata(error) : null
                         });
                         callback?.(error);
                     });
