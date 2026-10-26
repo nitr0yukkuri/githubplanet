@@ -546,6 +546,9 @@ async function loadPlanet(data, { historySelection = false } = {}) {
         profileLink.href = data.githubProfileUrl
             || `https://github.com/${encodeURIComponent(data.username)}`;
         profileLink.style.display = 'flex';
+    } else if (profileLink) {
+        profileLink.removeAttribute('href');
+        profileLink.style.display = 'none';
     }
 
     // ★修正: 他人の惑星を見ているときでも自分のカードを作れるよう、ここではカードリンクを書き換えない
