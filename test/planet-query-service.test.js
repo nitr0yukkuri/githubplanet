@@ -139,7 +139,8 @@ test('does not return the previous owner planet after a username is claimed', as
                 calls.push(['findByGithubId', id]);
                 return null;
             },
-            async updateUsernameByGithubId(...args) { calls.push(['updateUsernameByGithubId', ...args]); }
+            async updateUsernameByGithubId(...args) { calls.push(['updateUsernameByGithubId', ...args]); },
+            async reserveGithubProfileLookup() { return { allowed: true, retryAfterMs: 0 }; }
         },
         githubClient: {
             async getUser(username) {
@@ -200,6 +201,7 @@ test('resolves a renamed account by GitHub ID after the previous login returns 4
     });
     assert.deepEqual(calls, [
         ['findByUsername', 'old-login'],
+        ['reserveGithubProfileLookup', 40, 3_600_000],
         ['getUser', 'old-login'],
         ['reserveGithubProfileLookup', 40, 3_600_000],
         ['getUserById', '12345'],
@@ -243,6 +245,7 @@ test('keeps the cached 0x3EF8 planet but marks its unavailable GitHub profile as
     });
     assert.deepEqual(calls, [
         ['findByUsername', '0x3EF8'],
+        ['reserveGithubProfileLookup', 40, 3_600_000],
         ['getUser', '0x3EF8'],
         ['reserveGithubProfileLookup', 40, 3_600_000],
         ['getUserById', '76643867']
@@ -302,12 +305,17 @@ test('does not turn a malformed GitHub login into an external redirect', async (
 
 test('coalesces repeated GitHub identity checks for a stored username', async () => {
     let githubLookups = 0;
+    let budgetReservations = 0;
     const row = { githubId: 1, username: 'tester', lastUpdated: null };
     const service = createPlanetQueryService({
         repository: {
             async findByUsername() { return row; },
             async findByGithubId() { return null; },
-            async updateUsernameByGithubId() {}
+            async updateUsernameByGithubId() {},
+            async reserveGithubProfileLookup() {
+                budgetReservations += 1;
+                return { allowed: true, retryAfterMs: 0 };
+            }
         },
         githubClient: {
             async getUser(username) {
@@ -328,4 +336,5 @@ test('coalesces repeated GitHub identity checks for a stored username', async ()
     assert.equal(first, row);
     assert.equal(second, row);
     assert.equal(githubLookups, 1);
+    assert.equal(budgetReservations, 1);
 });

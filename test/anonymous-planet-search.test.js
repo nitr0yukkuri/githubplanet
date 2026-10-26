@@ -8,6 +8,7 @@ import { registerPlanetRoutes } from '../src/presentation/http/planet-routes.js'
 
 test('builds an anonymous public preview from public repository metadata without an OAuth token', async () => {
     const requests = [];
+    let reservations = 0;
     const githubClient = createGithubClient({
         axios: {
             async get(url, config) {
@@ -26,7 +27,15 @@ test('builds an anonymous public preview from public repository metadata without
         githubClient,
         geminiClient: { async resolveLanguageColor() { throw new Error('must not call Gemini'); } }
     });
-    const repository = { async findByUsername() { return null; } };
+    const repository = {
+        async findByUsername() { return null; },
+        async reserveGithubProfileLookup(limit, windowMs) {
+            reservations += 1;
+            assert.equal(limit, 40);
+            assert.equal(windowMs, 3_600_000);
+            return { allowed: true, retryAfterMs: 0 };
+        }
+    };
     const queryService = createPlanetQueryService({
         repository,
         githubClient,
@@ -41,6 +50,7 @@ test('builds an anonymous public preview from public repository metadata without
     const response = toPlanetResponse(first);
 
     assert.equal(requests.length, 1);
+    assert.equal(reservations, 1);
     assert.equal(requests[0].url, 'https://api.github.com/users/new-user/repos');
     assert.equal(requests[0].config.timeout, 10_000);
     assert.equal(requests[0].config.headers.Authorization, undefined);
@@ -54,7 +64,10 @@ test('builds an anonymous public preview from public repository metadata without
 test('caches missing public profiles briefly and rejects invalid usernames before GitHub calls', async () => {
     let calls = 0;
     const queryService = createPlanetQueryService({
-        repository: { async findByUsername() { return null; } },
+        repository: {
+            async findByUsername() { return null; },
+            async reserveGithubProfileLookup() { return { allowed: true, retryAfterMs: 0 }; }
+        },
         githubClient: {},
         planetService: {
             async createPublicPreview() {
@@ -71,6 +84,26 @@ test('caches missing public profiles briefly and rejects invalid usernames befor
     assert.equal(await queryService.getByUsername('MISSING-USER'), null);
     assert.equal(await queryService.getByUsername('invalid/name'), null);
     assert.equal(calls, 1);
+});
+
+test('does not call GitHub when the shared anonymous budget is exhausted', async () => {
+    let githubCalls = 0;
+    const queryService = createPlanetQueryService({
+        repository: {
+            async findByUsername() { return null; },
+            async reserveGithubProfileLookup() { return { allowed: false, retryAfterMs: 30_000 }; }
+        },
+        githubClient: {},
+        planetService: { async createPublicPreview() { githubCalls += 1; } },
+        cacheDuration: 60_000
+    });
+
+    await assert.rejects(queryService.getByUsername('new-user'), (error) => {
+        assert.equal(error.response.status, 429);
+        assert.equal(error.retryAfterMs, 30_000);
+        return true;
+    });
+    assert.equal(githubCalls, 0);
 });
 
 test('returns GitHub public API rate limits as 429 with a retry delay', async () => {

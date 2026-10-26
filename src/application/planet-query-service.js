@@ -46,9 +46,28 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         return entry.promise;
     }
 
+    async function reserveAnonymousGithubProfileLookup() {
+        if (typeof repository?.reserveGithubProfileLookup !== 'function') {
+            throw new Error('Anonymous GitHub profile lookup budget is unavailable');
+        }
+        const reservation = await repository.reserveGithubProfileLookup(
+            ANONYMOUS_GITHUB_PROFILE_LOOKUP_LIMIT,
+            ANONYMOUS_GITHUB_PROFILE_LOOKUP_WINDOW_MS
+        );
+        if (reservation?.allowed !== true) {
+            const error = new Error('Anonymous GitHub profile lookup budget reached');
+            error.response = { status: 429 };
+            error.retryAfterMs = reservation?.retryAfterMs;
+            throw error;
+        }
+    }
+
     function resolveGithubUser(username, accessToken) {
         const key = `login:${String(username || '').trim().toLowerCase()}`;
-        return resolveGithubIdentity(key, () => githubClient.getUser(username, accessToken));
+        return resolveGithubIdentity(key, async () => {
+            if (!accessToken) await reserveAnonymousGithubProfileLookup();
+            return githubClient.getUser(username, accessToken);
+        });
     }
 
     async function resolveGithubUserById(githubId, accessToken) {
@@ -59,21 +78,7 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         const user = await resolveGithubIdentity(
             `id:${normalizedGithubId}`,
             async () => {
-                if (!accessToken) {
-                    if (typeof repository?.reserveGithubProfileLookup !== 'function') {
-                        throw new Error('Anonymous GitHub profile lookup budget is unavailable');
-                    }
-                    const reservation = await repository.reserveGithubProfileLookup(
-                        ANONYMOUS_GITHUB_PROFILE_LOOKUP_LIMIT,
-                        ANONYMOUS_GITHUB_PROFILE_LOOKUP_WINDOW_MS
-                    );
-                    if (reservation?.allowed !== true) {
-                        const error = new Error('Anonymous GitHub profile lookup budget reached');
-                        error.response = { status: 429 };
-                        error.retryAfterMs = reservation?.retryAfterMs;
-                        throw error;
-                    }
-                }
+                if (!accessToken) await reserveAnonymousGithubProfileLookup();
                 return githubClient.getUserById(normalizedGithubId, accessToken);
             }
         );
@@ -107,7 +112,9 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         }
 
         const entry = { promise: null, value: null, expiresAt: 0 };
-        entry.promise = planetService.createPublicPreview(normalizedUsername)
+        // 未認証API枠は複数インスタンスで共有するため、キャッシュミスごとにDBで先に確保する。
+        entry.promise = reserveAnonymousGithubProfileLookup()
+            .then(() => planetService.createPublicPreview(normalizedUsername))
             .then((preview) => {
                 entry.value = preview;
                 entry.expiresAt = Date.now() + publicPreviewCacheTtlMs;
