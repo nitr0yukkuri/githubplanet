@@ -21,7 +21,8 @@
     "perf:compare-random": "node scripts/compare-random-http.mjs",
     "perf:random-sql": "node scripts/measure-random-sql.mjs",
     "perf:random-http": "node scripts/measure-random-http.mjs",
-    "test": "node --test --test-concurrency=1"
+    "test": "node --test --test-concurrency=1 \"test/**/*.test.js\"",
+    "test:e2e": "node --test --test-concurrency=1 e2e/app.e2e.test.js"
   },
   "license": "MIT",
   "devDependencies": {
