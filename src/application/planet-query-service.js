@@ -1,8 +1,5 @@
 import { safeErrorMetadata } from '../shared/error-metadata.js';
 
-const ANONYMOUS_GITHUB_PROFILE_LOOKUP_LIMIT = 40;
-const ANONYMOUS_GITHUB_PROFILE_LOOKUP_WINDOW_MS = 60 * 60 * 1000;
-
 export function createPlanetQueryService({ repository, githubClient, planetService, cacheDuration }) {
     const publicPreviewCache = new Map();
     const publicPreviewCacheTtlMs = 5 * 60 * 1000;
@@ -58,24 +55,7 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
 
         const user = await resolveGithubIdentity(
             `id:${normalizedGithubId}`,
-            async () => {
-                if (!accessToken) {
-                    if (typeof repository?.reserveGithubProfileLookup !== 'function') {
-                        throw new Error('Anonymous GitHub profile lookup budget is unavailable');
-                    }
-                    const reservation = await repository.reserveGithubProfileLookup(
-                        ANONYMOUS_GITHUB_PROFILE_LOOKUP_LIMIT,
-                        ANONYMOUS_GITHUB_PROFILE_LOOKUP_WINDOW_MS
-                    );
-                    if (reservation?.allowed !== true) {
-                        const error = new Error('Anonymous GitHub profile lookup budget reached');
-                        error.response = { status: 429 };
-                        error.retryAfterMs = reservation?.retryAfterMs;
-                        throw error;
-                    }
-                }
-                return githubClient.getUserById(normalizedGithubId, accessToken);
-            }
+            () => githubClient.getUserById(normalizedGithubId, accessToken)
         );
         return user && String(user.id) === normalizedGithubId ? user : null;
     }

@@ -211,48 +211,6 @@ export function createPlanetRepository(pool, {
             );
         },
 
-        async reserveGithubProfileLookup(maxRequests, windowMs) {
-            if (!Number.isInteger(maxRequests) || maxRequests < 1
-                || !Number.isInteger(windowMs) || windowMs < 1) {
-                throw new RangeError('GitHub profile lookup limits must be positive integers');
-            }
-
-            // API枠はプロセスごとではなく共有DBで予約し、複数インスタンスからの超過を防ぐ。
-            const result = await pool.query(`
-                INSERT INTO github_profile_lookup_quota AS quota (
-                    quota_key, window_started_at, request_count
-                )
-                VALUES ('anonymous-profile-by-id', NOW(), 1)
-                ON CONFLICT (quota_key) DO UPDATE
-                SET
-                    window_started_at = CASE
-                        WHEN quota.window_started_at <= NOW() - ($2::double precision * INTERVAL '1 millisecond')
-                            THEN NOW()
-                        ELSE quota.window_started_at
-                    END,
-                    request_count = CASE
-                        WHEN quota.window_started_at <= NOW() - ($2::double precision * INTERVAL '1 millisecond')
-                            THEN 1
-                        WHEN quota.request_count <= $1::integer
-                            THEN quota.request_count + 1
-                        ELSE quota.request_count
-                    END
-                RETURNING
-                    request_count <= $1::integer AS allowed,
-                    GREATEST(
-                        1,
-                        CEIL(EXTRACT(EPOCH FROM (
-                            window_started_at + ($2::double precision * INTERVAL '1 millisecond') - NOW()
-                        )) * 1000)
-                    )::bigint AS retry_after_ms
-            `, [maxRequests, windowMs]);
-            const row = result.rows[0];
-            return {
-                allowed: row?.allowed === true,
-                retryAfterMs: Number(row?.retry_after_ms || 0)
-            };
-        },
-
         async findLanguageHistoryByGithubId(githubId) {
             const result = await pool.query(`
                 SELECT captured_at, main_language, planet_color, language_percentages
