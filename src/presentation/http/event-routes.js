@@ -37,17 +37,26 @@ export function registerEventRoutes(app, {
     }
 
     app.get('/api/meteors', async (req, res) => {
-        const afterId = req.query?.after ?? '0';
-        if (typeof afterId !== 'string'
+        const afterId = req.query?.after;
+        if (afterId !== undefined && (
+            typeof afterId !== 'string'
             || !/^\d{1,19}$/.test(afterId)
-            || BigInt(afterId) > MAX_METEOR_EVENT_ID) {
+            || BigInt(afterId) > MAX_METEOR_EVENT_ID
+        )) {
             return res.status(400).json({ error: 'Invalid meteor event cursor' });
         }
 
         res.setHeader('Cache-Control', 'no-store');
-        if (!meteorEventRepository) return res.json({ events: [] });
+        if (!meteorEventRepository) {
+            return res.json(afterId === undefined ? { events: [], cursor: '0' } : { events: [] });
+        }
 
         try {
+            if (afterId === undefined) {
+                const cursor = await meteorEventRepository.getLatestId();
+                return res.json({ events: [], cursor });
+            }
+
             const events = await meteorEventRepository.findAfter(afterId);
             return res.json({ events });
         } catch (error) {
