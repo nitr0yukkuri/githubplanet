@@ -19,7 +19,11 @@ function capturePoolOptions(connectionString) {
     pg.Pool = FakePool;
     try {
         createPostgresPool(connectionString, { max: 1, queryTimeout: 0, statementTimeout: 0 });
-        return { poolOptions, errorHandler };
+        return {
+            poolOptions,
+            errorHandler,
+            parsedSsl: new pg.Client(poolOptions).connectionParameters.ssl
+        };
     } finally {
         pg.Pool = OriginalPool;
     }
@@ -42,6 +46,27 @@ test('keeps TLS verification enabled when a remote URL credential contains local
 test('does not require TLS for exact local PostgreSQL hosts', () => {
     for (const host of ['localhost', '127.0.0.1', '[::1]', 'db']) {
         const { poolOptions } = capturePoolOptions(`postgresql://user:password@${host}/database`);
-        assert.equal(poolOptions.ssl, undefined, host);
+        assert.equal(poolOptions.ssl, false, host);
+    }
+});
+
+test('strips SSL query flags from local connection strings', () => {
+    const { poolOptions, parsedSsl } = capturePoolOptions(
+        'postgresql://user:password@localhost/database?sslmode=require&ssl=1'
+    );
+    assert.equal(parsedSsl, false);
+    assert.doesNotMatch(poolOptions.connectionString, /sslmode|ssl=/i);
+});
+
+test('does not let connection-string SSL flags disable remote certificate verification', () => {
+    for (const parameters of [
+        'sslmode=no-verify',
+        'sslmode=disable',
+        'ssl=0',
+        'uselibpqcompat=true&sslmode=prefer'
+    ]) {
+        const connectionString = `postgresql://user:password@example.com/database?${parameters}`;
+        const { parsedSsl } = capturePoolOptions(connectionString);
+        assert.deepEqual(parsedSsl, { rejectUnauthorized: true }, parameters);
     }
 });
