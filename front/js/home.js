@@ -20,7 +20,8 @@ let planetLoadGeneration = 0;
 let planetTexturePromise = null;
 let activePlanetReveal = null;
 let meteorReplayPromise = null;
-let lastMeteorIdInMemory = '0';
+let meteorReplayRequested = false;
+let lastMeteorIdInMemory = null;
 let currentPlanetData = null;
 let planetLanguageHistory = null;
 let planetLanguageHistoryRequest = 0;
@@ -127,8 +128,9 @@ function toggleLoading(show) {
 
 function readLastMeteorId() {
     try {
-        const value = sessionStorage.getItem('githubPlanetLastMeteorId') || '0';
-        if (/^\d{1,19}$/.test(value) && BigInt(value) > BigInt(lastMeteorIdInMemory)) {
+        const value = sessionStorage.getItem('githubPlanetLastMeteorId');
+        if (/^\d{1,19}$/.test(value)
+            && (lastMeteorIdInMemory === null || BigInt(value) > BigInt(lastMeteorIdInMemory))) {
             lastMeteorIdInMemory = value;
         }
     } catch {
@@ -148,10 +150,27 @@ function storeLastMeteorId(id) {
 
 async function syncMeteorEvents() {
     if (document.hidden) return;
-    if (meteorReplayPromise) return meteorReplayPromise;
+    if (meteorReplayPromise) {
+        meteorReplayRequested = true;
+        return meteorReplayPromise;
+    }
 
     meteorReplayPromise = (async () => {
         let cursor = readLastMeteorId();
+        if (cursor === null) {
+            const response = await fetchHomeApi('/api/meteors', { cache: 'no-store' });
+            if (!response.ok) throw new Error(\`Meteor replay cursor request failed (\${response.status})\`);
+
+            const body = await response.json();
+            const latestId = String(body.cursor ?? '');
+            if (!/^\\d{1,19}$/.test(latestId)) {
+                throw new Error('Meteor replay cursor response was invalid');
+            }
+
+            storeLastMeteorId(latestId);
+            return;
+        }
+
         while (!document.hidden) {
             const response = await fetchHomeApi(
                 `/api/meteors?after=${encodeURIComponent(cursor)}`,
@@ -178,7 +197,12 @@ async function syncMeteorEvents() {
         }
     })()
         .catch((error) => console.warn('[Meteor Replay] Events could not be synchronized:', error.message))
-        .finally(() => { meteorReplayPromise = null; });
+        .finally(() => {
+            const shouldSyncAgain = meteorReplayRequested;
+            meteorReplayRequested = false;
+            meteorReplayPromise = null;
+            if (shouldSyncAgain) void syncMeteorEvents();
+        });
 
     return meteorReplayPromise;
 }
