@@ -9,6 +9,27 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
     const missingGithubIdentityCacheTtlMs = 10_000;
     const maxGithubIdentityCacheEntries = 500;
 
+    async function reserveAnonymousLookup(anonymousLookupKey) {
+        if (!anonymousLookupKey) return;
+        if (typeof repository?.reserveGithubProfileLookup !== 'function') {
+            const error = new Error('Anonymous GitHub lookup quota is unavailable');
+            error.response = { status: 503 };
+            throw error;
+        }
+
+        const reservation = await repository.reserveGithubProfileLookup(
+            anonymousLookupKey,
+            20,
+            60 * 60 * 1000
+        );
+        if (reservation.allowed) return;
+
+        const error = new Error('Anonymous GitHub lookup limit reached');
+        error.response = { status: 429 };
+        error.retryAfterMs = reservation.retryAfterMs;
+        throw error;
+    }
+
     function resolveGithubIdentity(key, requestUser) {
         const cached = githubIdentityCache.get(key);
         if (cached?.promise) return cached.promise;
@@ -43,19 +64,25 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         return entry.promise;
     }
 
-    function resolveGithubUser(username, accessToken) {
+    function resolveGithubUser(username, accessToken, anonymousLookupKey) {
         const key = `login:${String(username || '').trim().toLowerCase()}`;
-        return resolveGithubIdentity(key, () => githubClient.getUser(username, accessToken));
+        return resolveGithubIdentity(key, async () => {
+            if (!accessToken) await reserveAnonymousLookup(anonymousLookupKey);
+            return githubClient.getUser(username, accessToken);
+        });
     }
 
-    async function resolveGithubUserById(githubId, accessToken) {
+    async function resolveGithubUserById(githubId, accessToken, anonymousLookupKey) {
         const normalizedGithubId = String(githubId ?? '').trim();
         if (!/^[1-9]\d*$/.test(normalizedGithubId)
             || typeof githubClient.getUserById !== 'function') return null;
 
         const user = await resolveGithubIdentity(
             `id:${normalizedGithubId}`,
-            () => githubClient.getUserById(normalizedGithubId, accessToken)
+            async () => {
+                if (!accessToken) await reserveAnonymousLookup(anonymousLookupKey);
+                return githubClient.getUserById(normalizedGithubId, accessToken);
+            }
         );
         return user && String(user.id) === normalizedGithubId ? user : null;
     }
@@ -64,7 +91,7 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         return Date.now() - new Date(lastUpdated).getTime() > cacheDuration;
     }
 
-    async function getPublicPlanetPreview(username) {
+    async function getPublicPlanetPreview(username, anonymousLookupKey) {
         const normalizedUsername = String(username || '').trim();
         if (!/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(normalizedUsername)
             || !planetService?.createPublicPreview) return null;
@@ -87,7 +114,10 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         }
 
         const entry = { promise: null, value: null, expiresAt: 0 };
-        entry.promise = planetService.createPublicPreview(normalizedUsername)
+        entry.promise = (async () => {
+            await reserveAnonymousLookup(anonymousLookupKey);
+            return planetService.createPublicPreview(normalizedUsername);
+        })()
             .then((preview) => {
                 entry.value = preview;
                 entry.expiresAt = Date.now() + publicPreviewCacheTtlMs;
@@ -111,16 +141,16 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         await planetService.updateAndSavePlanetData(user, accessToken);
     }
 
-    async function getByUsername(username, accessToken) {
+    async function getByUsername(username, accessToken, anonymousLookupKey) {
         let row = await repository.findByUsername(username);
         let user = null;
 
         // 表示名は再利用されるため、保存行を返す前に不変IDで所有者を照合する。
         if (row || accessToken) {
-            user = await resolveGithubUser(username, accessToken);
+            user = await resolveGithubUser(username, accessToken, anonymousLookupKey);
             if (!user && row) {
                 // GitHubは旧プロフィールURLを転送しないため、保存済みIDから現在のログイン名を解決する。
-                user = await resolveGithubUserById(row.githubId, accessToken);
+                user = await resolveGithubUserById(row.githubId, accessToken, anonymousLookupKey);
                 if (!user) return { ...row, githubProfileVerified: false };
             }
             if (!user) return null;
@@ -136,7 +166,7 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         const shouldUpdate = Boolean(accessToken) && (!row || (row.lastUpdated && isExpired(row.lastUpdated)));
         if (shouldUpdate) {
             try {
-                await refresh(user || await resolveGithubUser(username, accessToken), accessToken);
+                await refresh(user || await resolveGithubUser(username, accessToken, anonymousLookupKey), accessToken);
                 const updatedRow = await repository.findByGithubId(user.id);
                 if (updatedRow) row = updatedRow;
             } catch (error) {
@@ -144,7 +174,7 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
             }
         }
 
-        if (!row && !accessToken) return getPublicPlanetPreview(username);
+        if (!row && !accessToken) return getPublicPlanetPreview(username, anonymousLookupKey);
         return row;
     }
 
@@ -177,14 +207,14 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         return repository.findLanguageHistoryByGithubId(githubId);
     }
 
-    async function getGithubProfileUrlById(githubId) {
+    async function getGithubProfileUrlById(githubId, anonymousLookupKey) {
         const normalizedGithubId = String(githubId ?? '').trim();
         if (!/^[1-9]\d*$/.test(normalizedGithubId)
             || typeof repository?.findByGithubId !== 'function') return null;
         const row = await repository.findByGithubId(normalizedGithubId);
         if (!row) return null;
 
-        const user = await resolveGithubUserById(normalizedGithubId);
+        const user = await resolveGithubUserById(normalizedGithubId, undefined, anonymousLookupKey);
         const login = String(user?.login || '');
         if (!/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(login)) return null;
 

@@ -214,7 +214,8 @@ registerPlanetRoutes(app, {
         .filter(Boolean),
     cacheDuration: DATA_CACHE_DURATION,
     randomHistoryStorage: process.env.RANDOM_HISTORY_STORAGE || 'cookie',
-    randomPerformance
+    randomPerformance,
+    sessionSecret: effectiveSessionSecret
 });
 
 let io;

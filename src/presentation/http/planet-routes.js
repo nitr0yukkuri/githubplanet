@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import { normalizePlanetCommitCounts } from '../../domain/planet/planet.js';
 import { getShowcasePlanet } from '../../domain/planet/showcase-planets.js';
@@ -36,7 +37,8 @@ export function registerPlanetRoutes(app, {
     historyDisabledUsernames = [],
     cacheDuration,
     randomHistoryStorage = 'cookie',
-    randomPerformance = null
+    randomPerformance = null,
+    sessionSecret
 }) {
     const disabledHistoryUsernames = new Set(
         historyDisabledUsernames.map((username) => String(username).trim().toLowerCase()).filter(Boolean)
@@ -44,6 +46,10 @@ export function registerPlanetRoutes(app, {
     const isHistoryDisabled = (username) => disabledHistoryUsernames.has(
         String(username || '').trim().toLowerCase()
     );
+    // 生IPはDBに渡さず、秘密鍵付きの識別子で複数サーバー間の上限を共有する。
+    const anonymousLookupKey = (req) => sessionSecret
+        ? createHmac('sha256', sessionSecret).update(ipKeyGenerator(req.ip)).digest('hex')
+        : undefined;
     // /api/me verifies the GitHub profile, so cap repeated upstream calls per stable account ID.
     const authenticatedMeRateLimit = rateLimit({
         windowMs: 15 * 60 * 1000,
@@ -65,7 +71,10 @@ export function registerPlanetRoutes(app, {
         }
 
         try {
-            const profileUrl = await planetQueryService.getGithubProfileUrlById(req.params.githubId);
+            const profileUrl = await planetQueryService.getGithubProfileUrlById(
+                req.params.githubId,
+                anonymousLookupKey(req)
+            );
             if (!profileUrl) {
                 return res.status(410).send('This GitHub profile is no longer publicly available.');
             }
@@ -273,7 +282,11 @@ export function registerPlanetRoutes(app, {
         if (!planetQueryService) return res.status(503).json({ error: 'DB unavailable' });
 
         try {
-            const row = await planetQueryService.getByUsername(req.params.username, req.session.github_token);
+            const row = await planetQueryService.getByUsername(
+                req.params.username,
+                req.session.github_token,
+                anonymousLookupKey(req)
+            );
             if (!row) return res.status(404).json({ error: 'Planet not found' });
             res.json(toPlanetResponse(row));
         } catch (error) {
