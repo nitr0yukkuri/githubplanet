@@ -360,8 +360,7 @@ export function createPlanetFeatureRuntime({
     const languageTrails = createLanguageCompositionTrails({
         THREE,
         data,
-        radius,
-        direction
+        radius
     });
     if (!feature && !languageTrails) return null;
 
