@@ -44,7 +44,7 @@ const TRAIL_MAX_FRAME_SECONDS = 0.08;
 // home/cardで惑星の自転方向が異なっても、順位を示す軌跡の進行方向は揃える。
 const TRAIL_DIRECTION = 1;
 // ホームとプロフィールカードでは、暗い言語色が軌跡として埋もれないよう表示明度を補う。
-const VISIBLE_TRAIL_MIN_LIGHTNESS = 0.58;
+const VISIBLE_TRAIL_MIN_LIGHTNESS = 0.32;
 const TRAIL_ORBIT_SCALE = 1.34;
 const TRAIL_MIN_WIDTH_SCALE = 0.016;
 const TRAIL_SHARE_WIDTH_SCALE = 0.06;
