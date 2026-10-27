@@ -43,6 +43,8 @@ const TRAIL_CYCLE_SECONDS = 9;
 const TRAIL_MAX_FRAME_SECONDS = 0.08;
 // home/cardで惑星の自転方向が異なっても、順位を示す軌跡の進行方向は揃える。
 const TRAIL_DIRECTION = 1;
+// ホームとプロフィールカードでは、暗い言語色が軌跡として埋もれないよう表示明度を補う。
+const VISIBLE_TRAIL_MIN_LIGHTNESS = 0.58;
 const TRAIL_ORBIT_SCALE = 1.34;
 const TRAIL_MIN_WIDTH_SCALE = 0.016;
 const TRAIL_SHARE_WIDTH_SCALE = 0.06;
@@ -101,6 +103,17 @@ export function resolveLanguageTrailColor(THREE, language) {
     return `#${new THREE.Color().setHSL(hue, 0.72, 0.64).getHexString()}`;
 }
 
+function resolveTrailDisplayColor(THREE, language, colorProfile) {
+    const color = new THREE.Color(resolveLanguageTrailColor(THREE, language));
+    if (colorProfile !== 'home' && colorProfile !== 'profile-card') return color;
+
+    const hsl = color.getHSL({ h: 0, s: 0, l: 0 });
+    if (hsl.l < VISIBLE_TRAIL_MIN_LIGHTNESS) {
+        color.setHSL(hsl.h, hsl.s, VISIBLE_TRAIL_MIN_LIGHTNESS);
+    }
+    return color;
+}
+
 function createTrailCurve(THREE, radius, path) {
     const points = path.map(([longitude, latitude]) => {
         const cosLatitude = Math.cos(latitude);
@@ -120,14 +133,14 @@ function calculateTubeRadius(radius, entry) {
     return minimumRadius + (maximumRadius - minimumRadius) * share;
 }
 
-function createTrail(THREE, entry, path, radius, index, timeUniform) {
+function createTrail(THREE, entry, path, radius, index, timeUniform, colorProfile) {
     const tubeRadius = calculateTubeRadius(radius, entry);
     const geometry = new THREE.TubeGeometry(
         createTrailCurve(THREE, radius, path), 160, tubeRadius, 5, true
     );
     const material = new THREE.ShaderMaterial({
         uniforms: {
-            trailColor: { value: new THREE.Color(resolveLanguageTrailColor(THREE, entry.language)) },
+            trailColor: { value: resolveTrailDisplayColor(THREE, entry.language, colorProfile) },
             trailOpacity: { value: 0.4 + 0.6 * Math.sqrt(entry.share) },
             trailWidthDelta: { value: 0 },
             trailTime: timeUniform,
@@ -182,7 +195,12 @@ function createTrail(THREE, entry, path, radius, index, timeUniform) {
     return { mesh, material };
 }
 
-export function createLanguageCompositionTrails({ THREE, data, radius }) {
+export function createLanguageCompositionTrails({
+    THREE,
+    data,
+    radius,
+    colorProfile = 'language'
+}) {
     const rankedLanguages = rankPlanetLanguages(data?.languageStats, data?.mainLanguage);
     if (!Number.isFinite(radius) || radius <= 0 || rankedLanguages.length === 0) return null;
 
@@ -191,7 +209,7 @@ export function createLanguageCompositionTrails({ THREE, data, radius }) {
     const trailTime = { value: 0 };
     const tracks = TRAIL_PATHS.map((path, index) => {
         const entry = rankedLanguages[index + 1] || { language: '', share: 0 };
-        const track = createTrail(THREE, entry, path, radius, index, trailTime);
+        const track = createTrail(THREE, entry, path, radius, index, trailTime, colorProfile);
         track.mesh.visible = Boolean(entry.language);
         group.add(track.mesh);
         return track;
@@ -218,7 +236,7 @@ export function createLanguageCompositionTrails({ THREE, data, radius }) {
                     return;
                 }
                 material.uniforms.trailColor.value.set(
-                    resolveLanguageTrailColor(THREE, entry.language)
+                    resolveTrailDisplayColor(THREE, entry.language, colorProfile)
                 );
                 material.uniforms.trailOpacity.value = 0.4 + 0.6 * Math.sqrt(entry.share);
                 material.uniforms.trailWidthDelta.value = calculateTubeRadius(radius, entry)
