@@ -19,6 +19,7 @@ on:
       - front/js/rust-planet-preview.js
       - front/js/visible-animation-loop.js
       - front/js/*-planet-*.js
+      - src/presentation/http/planet-routes.js
       - scripts/record-profile-card.mjs
   schedule:
     # Daily at 00:00 UTC.
@@ -34,9 +35,14 @@ concurrency:
 
 jobs:
   build-card-assets:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     permissions:
       contents: read
     runs-on: ubuntu-latest
+    # Environment側でmainだけを許可し、手動実行の別ブランチにSecretを渡さない。
+    environment:
+      name: official-card
+      deployment: false
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -123,6 +129,60 @@ jobs:
           echo "Timed out before the merged card assets reached production; generated GIFs were not published."
           exit 1
 
+      - name: Refresh official profile planet data
+        if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        env:
+          CARD_REFRESH_TOKEN: ${{ secrets.CARD_REFRESH_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFile } from 'node:fs/promises';
+
+          const token = process.env.CARD_REFRESH_TOKEN;
+          if (!token) {
+            throw new Error('Configure the CARD_REFRESH_TOKEN Actions secret before publishing official card assets.');
+          }
+
+          const endpoint = 'https://githubplanet.dev/api/planets/me/refresh';
+          const deadline = Date.now() + 15 * 60 * 1000;
+          let refreshed = false;
+          while (Date.now() < deadline) {
+            const response = await fetch(endpoint, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/json'
+              },
+              signal: AbortSignal.timeout(30_000)
+            });
+
+            if (response.status === 404) {
+              await response.body?.cancel();
+              console.log('Planet refresh endpoint is not deployed yet; checking again in 20 seconds.');
+              await new Promise((resolve) => setTimeout(resolve, 20_000));
+              continue;
+            }
+            if (!response.ok) {
+              throw new Error(`Official planet data refresh failed (${response.status}); GIFs were not published.`);
+            }
+
+            const result = await response.json();
+            const username = result.username;
+            if (typeof username !== 'string'
+              || !/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(username)) {
+              throw new Error('Planet refresh returned an invalid GitHub username; GIFs were not published.');
+            }
+            if (!process.env.GITHUB_ENV) throw new Error('GitHub Actions environment file is unavailable.');
+            await appendFile(process.env.GITHUB_ENV, `CARD_PROFILE_USERNAME=${username}\n`, 'utf8');
+            console.log('Official profile planet data refreshed successfully.');
+            refreshed = true;
+            break;
+          }
+
+          if (!refreshed) {
+            throw new Error('Planet refresh endpoint did not become available; GIFs were not published.');
+          }
+          NODE
+
       - name: Smoke test deployed showcase routes
         # 本番URLの表示/API障害を検知して、異常な公開素材の更新を止める。
         env:
@@ -195,7 +255,7 @@ jobs:
           }
 
           base_url="https://githubplanet.dev/card.html"
-          record_card profile_card.gif "$base_url?username=nitr0yukkuri&fix=true" 8000
+          record_card profile_card.gif "$base_url?username=${CARD_PROFILE_USERNAME}&fix=true" 8000
           record_card showcase_css.gif "$base_url?showcase=css&fix=true"
           record_card showcase_cpp.gif "$base_url?showcase=cpp&fix=true"
           record_card showcase_elm.gif "$base_url?showcase=elm&fix=true"

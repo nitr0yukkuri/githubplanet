@@ -5,6 +5,7 @@ import { toPlanetResponse } from './planet-response.js';
 import { safeErrorMetadata } from '../../shared/error-metadata.js';
 
 const ANONYMOUS_RANDOM_COOKIE = 'githubplanet_random_planet';
+const OFFICIAL_CARD_GITHUB_ID = '214794479';
 
 function readCookie(cookieHeader, name) {
     const entry = (cookieHeader || '')
@@ -55,6 +56,64 @@ export function registerPlanetRoutes(app, {
             return userId ? `github-user:${userId}` : ipKeyGenerator(req.ip);
         }
     });
+    const planetRefreshAuthRateLimit = rateLimit({
+        windowMs: 15 * 60 * 1000,
+        limit: 20,
+        standardHeaders: true,
+        legacyHeaders: false,
+        keyGenerator: (req) => ipKeyGenerator(req.ip)
+    });
+    const planetRefreshUserRateLimit = rateLimit({
+        windowMs: 60 * 60 * 1000,
+        limit: 2,
+        standardHeaders: true,
+        legacyHeaders: false,
+        keyGenerator: (req) => {
+            const githubId = req.planetRefreshUser?.id;
+            return githubId ? `github-user:${githubId}` : ipKeyGenerator(req.ip);
+        }
+    });
+    const preventPlanetRefreshCaching = (_req, res, next) => {
+        res.set('Cache-Control', 'private, no-store');
+        next();
+    };
+
+    async function authenticatePlanetRefresh(req, res, next) {
+        const authorization = req.get?.('authorization') || req.headers?.authorization;
+        const token = typeof authorization === 'string'
+            ? /^Bearer\s+([^\s]+)$/i.exec(authorization)?.[1]
+            : null;
+        if (!token) return res.status(401).json({ error: 'GitHub bearer token required' });
+        if (typeof planetService?.refreshAuthenticatedUser !== 'function') {
+            return res.status(503).json({ error: 'Planet refresh is unavailable' });
+        }
+
+        try {
+            req.planetRefreshUser = await planetService.refreshAuthenticatedUser(token);
+            if (!req.planetRefreshUser?.id || !req.planetRefreshUser?.login) {
+                return res.status(401).json({ error: 'GitHub identity could not be verified' });
+            }
+            // 誤ったActions Secretで別ユーザーの公開データを更新しないよう、公式カードの不変IDを照合する。
+            if (String(req.planetRefreshUser.id) !== OFFICIAL_CARD_GITHUB_ID) {
+                return res.status(403).json({ error: 'Refresh is restricted to the official card owner' });
+            }
+            req.planetRefreshAccessToken = token;
+            return next();
+        } catch (error) {
+            if (error.response?.status === 401) {
+                return res.status(401).json({ error: 'GitHub token is invalid' });
+            }
+            if ([403, 429].includes(error.response?.status)) {
+                if (error.retryAfterMs) {
+                    res.setHeader('Retry-After', String(Math.ceil(error.retryAfterMs / 1_000)));
+                }
+                return res.status(error.retryAfterMs ? 429 : error.response.status)
+                    .json({ error: 'GitHub rejected the refresh request' });
+            }
+            console.warn('[Planet Refresh] Could not verify GitHub credentials:', safeErrorMetadata(error));
+            return res.status(502).json({ error: 'GitHub identity could not be verified' });
+        }
+    }
 
     app.get('/github-profile/:githubId', async (req, res) => {
         if (!/^[1-9]\d*$/.test(String(req.params.githubId || ''))) {
@@ -155,6 +214,41 @@ export function registerPlanetRoutes(app, {
             githubProfileVerified
         });
     });
+
+    app.post(
+        '/api/planets/me/refresh',
+        preventPlanetRefreshCaching,
+        planetRefreshAuthRateLimit,
+        authenticatePlanetRefresh,
+        planetRefreshUserRateLimit,
+        async (req, res) => {
+            if (typeof planetService?.updateAndSavePlanetData !== 'function') {
+                return res.status(503).json({ error: 'Planet refresh is unavailable' });
+            }
+
+            try {
+                // ユーザー名を受け取らず、Bearer tokenの本人だけを更新して別アカウントへの書き込みを防ぐ。
+                await planetService.updateAndSavePlanetData(
+                    req.planetRefreshUser,
+                    req.planetRefreshAccessToken
+                );
+                return res.json({
+                    username: req.planetRefreshUser.login,
+                    refreshedAt: new Date().toISOString()
+                });
+            } catch (error) {
+                if ([403, 429].includes(error.response?.status)) {
+                    if (error.retryAfterMs) {
+                        res.setHeader('Retry-After', String(Math.ceil(error.retryAfterMs / 1_000)));
+                    }
+                    return res.status(error.retryAfterMs ? 429 : error.response.status)
+                        .json({ error: 'GitHub rejected the refresh request' });
+                }
+                console.error('[Planet Refresh] Could not update planet data:', safeErrorMetadata(error));
+                return res.status(502).json({ error: 'Planet data could not be refreshed' });
+            }
+        }
+    );
 
     app.post('/api/save-title', async (req, res) => {
         const userId = req.session?.planetData?.user?.id;

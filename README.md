@@ -492,6 +492,8 @@ npm run perf:random-http
 
 GIF生成ではPlaywrightでカードを録画し、FFmpegで`800x266`のGIFへ変換します。生成物が10 MiB以下であることを確認してから公開します。
 
+公式プロフィールカードは、毎日の録画前にGitHubから惑星データを更新します。認証トークンはリポジトリSecretではなく、[Actions Environments設定](https://github.com/nitr0yukkuri/githubplanet/settings/environments)で`official-card`環境を作成し、Deployment branchesを`main`だけに制限したうえで、Environment secret `CARD_REFRESH_TOKEN`に登録してください。値には本人のPersonal Access Token (classic)を使い、権限は`read:user`だけにします。`repo`権限は付けません。GitHubの設定によっては、`read:user`で取得できるprivate/internal contributionの合計が公開GIFに表示されます。トークンはActions内からHTTPSで送られ、ログや生成物には含めません。未設定または更新失敗時はGIFを公開せず、古いデータを新しいカードとして扱いません。日次実行はUTC 00:00の予定です。
+
 ## セキュリティと運用上の注意
 
 - `.env`、OAuth client secret、Gemini API key、Webhook secretはコミットしないでください。

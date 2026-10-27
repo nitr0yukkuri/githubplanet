@@ -191,6 +191,8 @@ GitHub Webhook → Express → Socket.IO → Browser
   </a>
 </div>
 
+The official profile card refreshes the owner's planet data before its daily recording. Create an `official-card` environment in [Actions Environments](https://github.com/nitr0yukkuri/githubplanet/settings/environments), restrict its deployment branches to `main`, and add `CARD_REFRESH_TOKEN` as an environment secret there. Do not store this token as a repository secret. Use a Personal Access Token (classic) owned by the profile owner with only the `read:user` scope; do not grant the `repo` scope. Depending on GitHub account settings, the public GIF may include aggregate private or internal contribution counts available through `read:user`. The workflow sends the token over HTTPS and does not include it in logs or generated assets. If the secret is missing or the refresh fails, the workflow stops without publishing a GIF made from stale data. The scheduled run is set for 00:00 UTC.
+
 ### Frontend & Design
 
 **[@lenagig](https://github.com/lenagig)**
