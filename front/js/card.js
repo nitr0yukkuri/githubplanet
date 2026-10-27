@@ -381,7 +381,8 @@ function createPlanet(data) {
         planetTexture,
         data,
         radius: baseSize,
-        direction: -1
+        direction: -1,
+        trailColorProfile: showcaseSlug ? 'language' : 'profile-card'
     });
     cardRotationMultiplier = planetFeatureRuntime?.rotationMultiplier || 1;
 
