@@ -180,3 +180,26 @@ test('rejects an authenticated identity change that does not match the session I
         /does not match the active session/
     );
 });
+
+test('does not overwrite existing planet progress when the stored planet cannot be read', async () => {
+    let saveCalls = 0;
+    const databaseError = new Error('database read failed');
+    const service = createPlanetService({
+        repository: {
+            async findByGithubId() { throw databaseError; },
+            async save() { saveCalls++; }
+        },
+        githubClient: { async getPlanetSource() { return createSource(); } },
+        geminiClient: {
+            async resolveLanguageColor() { return '#123456'; },
+            async ask() { return null; }
+        },
+        geminiApiKey: ''
+    });
+
+    await assert.rejects(
+        service.updateAndSavePlanetData({ id: 42, login: 'tester', created_at: '2020-01-01T00:00:00.000Z' }, 'token'),
+        (error) => error === databaseError
+    );
+    assert.equal(saveCalls, 0);
+});
