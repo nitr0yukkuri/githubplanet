@@ -134,7 +134,7 @@ export function registerPageRoutes(app, {
     app.get('/api/card/:username', (req, res) => {
         const loggedInUser = req.session.planetData?.user?.login;
         const { username } = req.params;
-        const apiKey = req.headers['x-api-key'] || req.query.api_key;
+        const apiKey = req.headers['x-api-key'];
         const isAuthorized = (loggedInUser && loggedInUser === username)
             || (systemApiKey && apiKey === systemApiKey);
 
