@@ -18,8 +18,7 @@ const EXPECTED_SHOWCASES = {
     perl: 'Perl',
     rust: 'Rust',
     vue: 'Vue',
-    ruby: 'Ruby',
-    python: 'Python'
+    ruby: 'Ruby'
 };
 
 const EXPECTED_CARD_CAPTIONS = {
@@ -70,10 +69,6 @@ const EXPECTED_CARD_CAPTIONS = {
     ruby: {
         ja: '熱いコロナの中で、火の粉が上昇する。',
         en: 'A hot corona glows above the surface as ember-like sparks rise.'
-    },
-    python: {
-        ja: 'RustとTypeScriptの軌跡が別軌道を巡り、裏側では惑星に隠れる。',
-        en: 'Rust and TypeScript trails follow separate paths and disappear behind the planet.'
     }
 };
 
@@ -86,11 +81,11 @@ test('provides deterministic feature planets without database records', () => {
         assert.equal(planet.mainLanguage, language);
         assert.equal(planet.planetSizeFactor, 2);
         assert.equal(planet.totalCommits, 2000);
-        assert.equal(planet.languageStats[language], slug === 'python' ? 70 : 100);
+        assert.equal(planet.languageStats[language], 100);
         assert.match(planet.username, /^SHOWCASE_/);
     }
     assert.equal(getShowcasePlanet('unknown'), undefined);
-    assert.equal(getShowcasePlanet('python').planetName, 'Paired Orbital Trails');
+    assert.equal(getShowcasePlanet('python'), undefined);
 });
 
 test('documents every production showcase card in the card gallery', async () => {
@@ -110,6 +105,9 @@ test('documents every production showcase card in the card gallery', async () =>
     const updateWorkflow = await readFile(
         new URL('../.github/workflows/update-card.yml', import.meta.url),
         'utf8'
+    );
+    const cardsOnlyReadme = await readFile(
+        new URL('../docs/cards/README.cards-only.en.md', import.meta.url), 'utf8'
     );
 
     for (const slug of Object.keys(EXPECTED_SHOWCASES)) {
@@ -132,8 +130,14 @@ test('documents every production showcase card in the card gallery', async () =>
         assert.ok(englishCardReadme.includes(captions.en), `Missing English caption for ${slug}`);
     }
 
-    assert.match(cardReadme, /Python — 対をなす軌道光/);
-    assert.match(englishCardReadme, /Python — Paired Orbital Trails/);
+    for (const source of [readme, englishReadme, cardReadme, englishCardReadme, cardsOnlyReadme, updateWorkflow]) {
+        assert.doesNotMatch(source, /showcase=python|showcase_python\.gif|python-planet-structure\.js/);
+    }
+    const expectedGifCount = Object.keys(EXPECTED_SHOWCASES).length + 1;
+    assert.deepEqual(
+        [...updateWorkflow.matchAll(/wc -l\)" -eq (\d+)/g)].map((match) => Number(match[1])),
+        [expectedGifCount, expectedGifCount]
+    );
     assert.match(readme, /docs\/cards\/README\.md/);
     assert.match(englishReadme, /docs\/cards\/README\.en\.md/);
     assert.match(readme, /raw\.githubusercontent\.com\/GitHubユーザー名/);

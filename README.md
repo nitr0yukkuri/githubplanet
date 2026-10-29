@@ -111,13 +111,12 @@ GitHub Push Webhook → Express → Socket.IO → 閲覧中のブラウザに流
 | Java | 土壌と地表ダスト | `java-planet-soil.js` |
 | Kotlin | 結晶・コア・電気的な線 | `kotlin-planet-crystal.js` |
 | Perl | 海洋を思わせる地表表現 | `perl-planet-ocean.js` |
-| Python | 構造的な地表と軌跡 | `python-planet-structure.js` |
 | Rust | 砂漠地形と砂塵 | `rust-planet-desert.js` |
 | Ruby | 太陽熱・コロナ・エンバー | `ruby-planet-solar.js` |
 
 対応言語のカタログと色定義は、専用レンダラーの一覧とは別に `src/domain/planet/constants.js` で管理しています。未登録言語でも、色と名前のフォールバックによって惑星データを保持できます。
 
-Python向けの表現では、構造的な地表とそれに対応する軌跡を表示します。
+2位・3位の言語は、主言語にかかわらず、言語色を持つ共通の軌跡として惑星の周囲を巡ります。
 
 ## 言語別ショーケース
 
@@ -191,14 +190,6 @@ Python向けの表現では、構造的な地表とそれに対応する軌跡�
       <strong>Ruby — Burning Ruby</strong><br>
       <a href="https://githubplanet.dev/card.html?showcase=ruby&amp;fix=true">
         <img width="400" alt="Ruby showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_ruby.gif">
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="50%" colspan="2">
-      <strong>Python — Paired Orbital Trails</strong><br>
-      <a href="https://githubplanet.dev/card.html?showcase=python&amp;fix=true">
-        <img width="400" alt="Python showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_python.gif">
       </a>
     </td>
   </tr>

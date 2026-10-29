@@ -36,10 +36,13 @@ test('keeps CSS card colors fixed while other features follow the saved planet c
 
 test('resets feature styles when switching to a language without a card theme', () => {
     const element = cardElement();
-    applyCardLanguageTheme(element, { mainLanguage: 'CSS', planetColor: '#ffffff' });
-    assert.equal(element.properties.size, 6);
-    applyCardLanguageTheme(element, { mainLanguage: 'Unknown', planetColor: '#808080' });
-    assert.equal(element.properties.size, 0);
-    assert.equal(element.dataset.cardTheme, undefined);
-    assert.equal(getCardAccentColor({ mainLanguage: 'Unknown', planetColor: '#808080' }), '#808080');
+    for (const [mainLanguage, planetColor] of [['Unknown', '#808080'], ['Python', '#306998']]) {
+        applyCardLanguageTheme(element, { mainLanguage: 'CSS', planetColor: '#ffffff' });
+        assert.equal(element.properties.size, 6);
+        const data = { mainLanguage, planetColor };
+        applyCardLanguageTheme(element, data);
+        assert.equal(element.properties.size, 0);
+        assert.equal(element.dataset.cardTheme, undefined);
+        assert.equal(getCardAccentColor(data), planetColor);
+    }
 });
