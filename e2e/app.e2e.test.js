@@ -1,3 +1,6 @@
+import { createMeteorBus } from '../src/infrastructure/realtime/meteor-bus.js';
+import { createMeteorEventStore } from '../src/infrastructure/database/meteor-event-store.js';
+import { createMemoryMeteorStore } from '../test/fixtures/meteor-store.js';
 import { createWebhookDeliveryService } from '../src/application/webhook-delivery-service.js';
 import { createWebhookWorker } from '../src/infrastructure/realtime/webhook-worker.js';
 import { createMemoryWebhookStore } from '../test/fixtures/webhook-store.js';
@@ -48,6 +51,12 @@ let sessionStore;
 let browser;
 let io;
 let webhookWorker;
+let meteorBus;
+const memoryMeteorStore = createMemoryMeteorStore();
+function makeMeteorBus() { return createMeteorBus({
+    store: pool ? createMeteorEventStore(pool) : memoryMeteorStore,
+    emit: (payload) => io.emit('meteor', payload), intervalMs: 25
+}); }
 let baseUrl;
 let githubMockBaseUrl;
 let callbackUrl;
@@ -288,11 +297,10 @@ async function startApp() {
             async saveActiveTitle() { return false; }
         };
 
-    let meteorIo;
     const meteorService = createMeteorService({
         languageColorService,
         extensionMap: EXTENSION_MAP,
-        emitMeteor: (payload) => meteorIo?.emit('meteor', payload),
+        emitMeteor: (payload, key) => meteorBus.publish(payload, key),
         logger: { log() {}, error() {}, warn() {} }
     });
 
@@ -337,7 +345,13 @@ async function startApp() {
     });
 
     io = new Server(appServer, { cors: { origin: baseUrl } });
-    meteorIo = io;
+    meteorBus = makeMeteorBus();
+    io.on('connection', (socket) => {
+        socket.on('disconnect', () => meteorBus.unsubscribe(socket.id));
+        void meteorBus.subscribe(socket.id).then(() => {
+            if (socket.connected) webhookWorker.kick(); else meteorBus.unsubscribe(socket.id);
+        });
+    });
     webhookWorker.start();
 }
 
@@ -481,12 +495,15 @@ async function login(page) {
 
 async function resetTestDatabase() {
     await webhookWorker?.stop();
-    if (pool) await pool.query('TRUNCATE TABLE planets, "session", github_webhook_deliveries CASCADE');
+    await meteorBus?.stop();
+    if (pool) await pool.query('TRUNCATE TABLE planets, "session", github_webhook_deliveries, meteor_events CASCADE');
     await new Promise((resolve, reject) => {
         sessionStore.clear((error) => error ? reject(error) : resolve());
     });
     oauthChallenges.clear();
     memoryWebhookStore.clear();
+    memoryMeteorStore.clear();
+    meteorBus = makeMeteorBus();
     webhookWorker?.start();
 }
 
@@ -522,6 +539,7 @@ beforeEach(async () => {
 
 after(async () => {
     await webhookWorker?.stop();
+    await meteorBus?.stop();
     await Promise.all([...contexts].map((context) => context.close().catch(() => undefined)));
     await browser?.close();
     io?.close();
