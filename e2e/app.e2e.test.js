@@ -12,7 +12,9 @@ import express from 'express';
 import session from 'express-session';
 import { Server } from 'socket.io';
 import { chromium } from 'playwright';
-import { DATA_CACHE_DURATION, EXTENSION_MAP, LANGUAGE_COLORS } from '../src/domain/planet/constants.js';
+import { LANGUAGE_COLORS } from '../src/domain/planet/constants.js';
+import { EXTENSION_MAP } from '../src/domain/planet/language-extensions.js';
+import { requestPlanetName } from '../src/application/planet-name-generator.js';
 import { listShowcasePlanets } from '../src/domain/planet/showcase-planets.js';
 import { createMeteorService } from '../src/application/meteor-service.js';
 import { createPlanetQueryService } from '../src/application/planet-query-service.js';
@@ -26,6 +28,7 @@ import { registerEventRoutes } from '../src/presentation/http/event-routes.js';
 import { registerPageRoutes } from '../src/presentation/http/page-routes.js';
 import { registerPlanetRoutes } from '../src/presentation/http/planet-routes.js';
 
+const DATA_CACHE_DURATION = 60 * 60 * 1000;
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const E2E_DATABASE_NAME = 'githubplanet_e2e';
 const E2E_SESSION_SECRET = 'isolated-e2e-session-secret';
@@ -242,13 +245,16 @@ async function startApp() {
     });
     const repository = pool ? createPlanetRepository(pool, { randomQueryStrategy: 'legacy' }) : undefined;
     const geminiClient = {
-        async ask() { return null; },
+        async ask() { return null; }
+    };
+    const languageColorService = {
         async resolveLanguageColor(language) { return LANGUAGE_COLORS[language] || '#808080'; }
     };
     const planetService = createPlanetService({
         repository,
         githubClient,
         geminiClient,
+        languageColorService,
         geminiApiKey: ''
     });
     const planetQueryService = repository
@@ -279,7 +285,7 @@ async function startApp() {
 
     let meteorIo;
     const meteorService = createMeteorService({
-        geminiClient,
+        languageColorService,
         extensionMap: EXTENSION_MAP,
         emitMeteor: (payload) => meteorIo?.emit('meteor', payload),
         logger: { log() {}, error() {}, warn() {} }
@@ -309,7 +315,9 @@ async function startApp() {
         cacheDuration: DATA_CACHE_DURATION
     });
     registerEventRoutes(app, {
+        generatePlanetName: (input) => requestPlanetName(geminiClient.ask, input),
         geminiClient,
+        languageColorService,
         meteorService,
         systemApiKey: 'isolated-e2e-system-key',
         webhookSecret: E2E_WEBHOOK_SECRET,
