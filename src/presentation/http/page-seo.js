@@ -230,4 +230,3 @@ export function createPageSeo({ publicBaseUrl, showcasePages = [] }) {
 
     return { middleware, resolveHomePage, renderHome, renderUtility, sitemap };
 }
-

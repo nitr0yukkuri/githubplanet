@@ -254,4 +254,3 @@ test('serves the declared social image and favicon and avoids executable metadat
     const json = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(html)[1];
     assert.ok(JSON.parse(json)['@graph'][1].name.includes('<script>'));
 });
-
