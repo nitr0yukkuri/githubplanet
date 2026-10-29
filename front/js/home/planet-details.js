@@ -57,4 +57,3 @@ export function updatePlanetDetails(data) {
         name.textContent = localizedPlanetName(data);
     }
 }
-

@@ -137,4 +137,3 @@ export function spawnMeteor({ scene, camera, webglAvailable }, data) {
         duration: duration
     });
 }
-
