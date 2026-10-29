@@ -287,6 +287,8 @@ async function loadPlanet(data, { historySelection = false } = {}) {
         ownerDisplay.textContent = data.isPublicPreview
             ? t('home.publicPreviewOwner', { username: data.username })
             : t('home.ownerPlanet', { username: data.username });
+        if (data.isStoredSnapshot) ownerDisplay.textContent += ` · ${t('common.savedSnapshot')}`;
+        ownerDisplay.title = data.isStoredSnapshot ? t('common.savedSnapshotDescription') : '';
         ownerDisplay.style.display = 'inline-block';
     }
     if (profileLink && data.username && data.githubProfileVerified !== false) {
