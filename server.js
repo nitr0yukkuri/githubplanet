@@ -16,6 +16,9 @@ import { requestPlanetName } from './src/application/planet-name-generator.js';
 import { createMeteorService } from './src/application/meteor-service.js';
 import { LANGUAGE_COLORS } from './src/domain/planet/constants.js';
 import { EXTENSION_MAP } from './src/domain/planet/language-extensions.js';
+import { createAuthoredLanguageHistoryRepository } from './src/infrastructure/database/authored-language-history-repository.js';
+import { createLanguageColorRepository } from './src/infrastructure/database/language-color-repository.js';
+import { createWebhookDeliveryStore } from './src/infrastructure/database/webhook-delivery-store.js';
 import { createPlanetRepository } from './src/infrastructure/database/planet-repository.js';
 import { assertDatabaseMigrationsApplied } from './src/infrastructure/database/migrations.js';
 import { createPostgresPool } from './src/infrastructure/database/postgres.js';
@@ -123,11 +126,8 @@ const planetRepository = createPlanetRepository(pool, {
         10
     )
 });
-const languageColorCache = await planetRepository?.loadLanguageColorCache?.() || {};
-const languageColorStore = planetRepository ? {
-    findLanguageColor: (...args) => planetRepository.findLanguageColor(...args),
-    saveLanguageColor: (...args) => planetRepository.saveLanguageColor(...args)
-} : undefined;
+const languageColorStore = createLanguageColorRepository(pool);
+const languageColorCache = await languageColorStore?.loadLanguageColorCache() || {};
 const geminiClient = createGeminiClient({
     axios,
     apiKey: process.env.GEMINI_API_KEY,
@@ -166,7 +166,7 @@ const planetQueryService = planetRepository ? createPlanetQueryService({
     cacheDuration: DATA_CACHE_DURATION
 }) : undefined;
 const authoredLanguageHistoryService = planetRepository ? createAuthoredLanguageHistoryService({
-    repository: planetRepository,
+    repository: createAuthoredLanguageHistoryRepository(pool),
     githubClient
 }) : undefined;
 
@@ -234,7 +234,7 @@ registerEventRoutes(app, {
     meteorService,
     systemApiKey: process.env.SYSTEM_API_KEY,
     webhookSecret,
-    webhookDeliveryStore: planetRepository,
+    webhookDeliveryStore: createWebhookDeliveryStore(pool),
     requireInternalAuth: isProduction,
     requireWebhookSignature: isProduction
 });
