@@ -8,6 +8,9 @@ RUN npm ci --omit=dev --ignore-scripts
 
 COPY . .
 
+# Webサーバーとmigrationをroot権限で実行しない。
+USER node
+
 # Renderが設定するPORT環境変数に従う
 EXPOSE 3000
 
