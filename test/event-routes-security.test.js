@@ -26,6 +26,7 @@ test('protects internal event tools and verifies GitHub webhook signatures', asy
     let processedWebhookDeliveries = 0;
     const meteorService = createMeteorService({
         geminiClient,
+        languageColorService: geminiClient,
         extensionMap: { js: 'JavaScript' },
         emitMeteor: () => {}
     });
@@ -35,7 +36,9 @@ test('protects internal event tools and verifies GitHub webhook signatures', asy
         return processWebhook(...args);
     };
     registerEventRoutes(app, {
+        generatePlanetName: async () => 'ok',
         geminiClient,
+        languageColorService: geminiClient,
         meteorService,
         webhookDeliveryStore: {
             deliveries: new Set(),

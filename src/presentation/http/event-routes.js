@@ -3,6 +3,8 @@ import { safeErrorMetadata } from '../../shared/error-metadata.js';
 
 export function registerEventRoutes(app, {
     geminiClient,
+    languageColorService,
+    generatePlanetName,
     meteorService,
     systemApiKey,
     webhookSecret,
@@ -91,7 +93,7 @@ export function registerEventRoutes(app, {
 
     app.get('/api/debug-color/:lang', requireAuthorization, async (req, res) => {
         const mainLanguage = req.params.lang;
-        const color = await geminiClient.resolveLanguageColor(mainLanguage);
+        const color = await languageColorService.resolveLanguageColor(mainLanguage);
         res.json({ target_language: mainLanguage, generated_color: color });
     });
 
@@ -99,13 +101,7 @@ export function registerEventRoutes(app, {
         const mainLanguage = req.params.lang;
         const planetColor = req.query.color || '#808080';
         const totalCommits = parseInt(req.query.commits || '100');
-        const suffix = totalCommits > 1000 ? '帝星' : totalCommits > 500 ? '巨星' : '星';
-        const prompt = `Programming language: ${mainLanguage}. Color: ${planetColor}.
-    Generate a cool Japanese planet name in the format: "[Adjective][ColorName]の${suffix}".
-    The adjective should describe the nature of "${mainLanguage}". The color name should describe the color "${planetColor}".
-    Example: "JavaScript" -> "柔軟な黄金の${suffix}".
-    Return ONLY the name string.`;
-        const generatedName = await geminiClient.ask(prompt);
+        const generatedName = await generatePlanetName({ mainLanguage, planetColor, totalCommits });
 
         res.json({
             input_language: mainLanguage,
