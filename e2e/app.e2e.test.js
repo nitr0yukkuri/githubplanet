@@ -684,9 +684,9 @@ test('a saved title survives reload and OAuth re-login from PostgreSQL', {
         const saveResponse = firstBrowser.page.waitForResponse((response) => (
             response.url().endsWith('/api/save-title')
         ));
-        const alert = firstBrowser.page.waitForEvent('dialog');
-        await firstBrowser.page.locator('#save-btn').click();
-        (await alert).accept();
+        // clickは遷移完了まで待つため、同期アラートを別のPromiseで先に閉じる。
+        const alertAccepted = firstBrowser.page.waitForEvent('dialog').then((dialog) => dialog.accept());
+        await Promise.all([firstBrowser.page.locator('#save-btn').click(), alertAccepted]);
         assert.equal((await saveResponse).status(), 200);
 
         const storedTitle = await pool.query('SELECT active_title FROM planets WHERE github_id = $1', [githubUser().id]);
