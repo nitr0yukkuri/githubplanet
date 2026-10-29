@@ -4,7 +4,7 @@ import { calculateStarCount, createPlanetDisposalResources, disposePlanetObject 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createPlanetFeatureRuntime } from './planet-features/registry.js';
-import { applyI18n, localizedPath, localizedPlanetName } from './i18n.js';
+import { applyI18n, localizedPath, localizedPlanetName, t } from './i18n.js';
 import { createWebGLRenderer } from './webgl-renderer.js';
 
 const CARD_DATA_TIMEOUT_MS = 6000;
@@ -219,6 +219,12 @@ function updateUI(data) {
     animateValue(commitsVal, 0, data.totalCommits || 0, duration);
 
     mainLangStat.textContent = (data.mainLanguage || 'UNKNOWN').toUpperCase();
+    if (sysStatus) {
+        const statusKey = data.isStoredSnapshot ? 'card.snapshot' : 'card.online';
+        sysStatus.dataset.i18n = statusKey;
+        sysStatus.textContent = t(statusKey);
+        sysStatus.title = data.isStoredSnapshot ? t('common.savedSnapshotDescription') : '';
+    }
 
     const cardAccentColor = getCardAccentColor(data);
     if (cardAccentColor) {

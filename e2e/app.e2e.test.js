@@ -62,6 +62,7 @@ let githubMockBaseUrl;
 let callbackUrl;
 let socketIoClientModule;
 let oauthCodeSequence = 0;
+let githubQuotaLimited = false;
 const oauthChallenges = new Map();
 const contexts = new Set();
 const memoryWebhookStore = createMemoryWebhookStore();
@@ -192,6 +193,7 @@ async function startGithubMock() {
     });
 
     app.get('/users/:login', (req, res) => {
+        if (githubQuotaLimited) return res.set('x-ratelimit-remaining', '0').status(403).json({ message: 'API rate limit exceeded' });
         if (req.params.login.toLowerCase() !== 'e2e-user') {
             return res.status(404).json({ message: 'Not Found' });
         }
@@ -494,6 +496,7 @@ async function login(page) {
 }
 
 async function resetTestDatabase() {
+    githubQuotaLimited = false;
     await webhookWorker?.stop();
     await meteorBus?.stop();
     if (pool) await pool.query('TRUNCATE TABLE planets, "session", github_webhook_deliveries, meteor_events CASCADE');
@@ -795,5 +798,30 @@ test('a signed GitHub webhook reaches the other browser over live Socket.IO', { 
         receiver.assertNoPageErrors();
     } finally {
         await Promise.all([sender.close(), receiver.close()]);
+    }
+});
+
+test('stored cards keep real statistics and show SNAPSHOT when GitHub identity lookup is rate limited', {
+    skip: !process.env.E2E_DATABASE_URL, timeout: 60000
+}, async () => {
+    const owner = await openPage(), visitor = await openPage();
+    try {
+        await login(owner.page);
+        githubQuotaLimited = true;
+        await visitor.page.goto(`${baseUrl}/card.html?username=e2e-user&fix=true`);
+        await visitor.page.locator('.sys-status').filter({ hasText: 'SNAPSHOT' }).waitFor();
+        assert.equal(await visitor.page.locator('#main-lang-stat').textContent(), 'JAVASCRIPT');
+        assert.equal(await visitor.page.locator('#commits-val').textContent(), '1');
+        const response = await visitor.page.request.get(`${baseUrl}/api/planets/user/e2e-user`);
+        assert.equal(response.status(), 200);
+        const data = await response.json();
+        assert.equal(data.isStoredSnapshot, true);
+        assert.equal(data.githubProfileVerified, false);
+        assert.equal(data.totalCommits, 1);
+        assert.ok(data.snapshotCapturedAt);
+        visitor.assertNoPageErrors();
+    } finally {
+        githubQuotaLimited = false;
+        await Promise.all([owner.close(), visitor.close()]);
     }
 });
