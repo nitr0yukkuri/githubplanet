@@ -78,12 +78,14 @@ app.use((req, res, next) => {
 // Firebase Hostingが付ける元ホストを使わないと、rewrite先のrun.appへ戻す転送ループになる。
 app.use(createCanonicalHostRedirect({ publicBaseUrl, isProduction }));
 
-app.use(express.json({
-    limit: '50mb',
+// Ordinary API payloads stay small; only GitHub webhook deliveries need a larger signed body.
+app.use('/webhook', express.json({
+    limit: '25mb',
     verify: (req, res, buffer) => {
-        req.rawBody = Buffer.from(buffer);
+        req.rawBody = buffer;
     }
 }));
+app.use(express.json({ limit: '1mb' }));
 
 let githubClientId;
 let githubClientSecret;
