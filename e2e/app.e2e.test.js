@@ -20,6 +20,7 @@ import { createMeteorService } from '../src/application/meteor-service.js';
 import { createPlanetQueryService } from '../src/application/planet-query-service.js';
 import { createPlanetService } from '../src/application/planet-service.js';
 import { runDatabaseMigrations } from '../src/infrastructure/database/migrations.js';
+import { createWebhookDeliveryStore } from '../src/infrastructure/database/webhook-delivery-store.js';
 import { createPlanetRepository } from '../src/infrastructure/database/planet-repository.js';
 import { createPostgresPool } from '../src/infrastructure/database/postgres.js';
 import { createGithubClient } from '../src/infrastructure/external/github-client.js';
@@ -321,7 +322,7 @@ async function startApp() {
         meteorService,
         systemApiKey: 'isolated-e2e-system-key',
         webhookSecret: E2E_WEBHOOK_SECRET,
-        webhookDeliveryStore: repository || {
+        webhookDeliveryStore: (pool && createWebhookDeliveryStore(pool)) || {
             async claimGithubWebhookDelivery(deliveryId) {
                 if (inMemoryWebhookDeliveries.has(deliveryId)) return false;
                 inMemoryWebhookDeliveries.add(deliveryId);
