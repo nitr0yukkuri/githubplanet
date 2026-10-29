@@ -24,7 +24,7 @@ test('builds an anonymous public preview from public repository metadata without
     });
     const planetService = createPlanetService({
         githubClient,
-        geminiClient: { async resolveLanguageColor() { throw new Error('must not call Gemini'); } }
+        languageColorService: { async resolveLanguageColor() { throw new Error('must not call Gemini'); } }
     });
     const repository = { async findByUsername() { return null; } };
     const queryService = createPlanetQueryService({
