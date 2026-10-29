@@ -19,29 +19,23 @@ const COPY = {
         title: 'GitHub Planet | GitHubの活動から育つ3D惑星',
         heading: 'GitHubの活動が、あなただけの惑星になる',
         description: 'GitHubの公開リポジトリの使用言語とコントリビューションから、あなただけの3D惑星を生成。言語ごとに異なる色や演出を楽しみ、ほかの開発者の惑星も探索できます。',
-        summary: 'GitHub Planetについて',
         welcome: 'GitHub Planetへようこそ',
         body: 'GitHub Planetは、GitHubの活動を3Dの惑星として楽しむWebアプリです。公開リポジトリの言語構成から色や演出が、コントリビューションから惑星の成長が決まります。',
         explore: 'ログイン前でも言語別サンプルを見られます。自分の惑星はGitHubでログインして作成でき、プロフィール用のカードも共有できます。',
-        showcaseHeading: '言語別の惑星サンプル',
-        repo: 'ソースコードをGitHubで見る',
         disclaimer: '※GitHub PlanetはGitHub公式とは一切関係ありません。',
         imageAlt: 'GitHubの活動を惑星にするGitHub Planet',
-        noScript: '3D表示と惑星の操作にはJavaScriptが必要です。サービスの説明と言語別サンプルのリンクはこのまま読めます。'
+        noScript: '3D表示と惑星の操作にはJavaScriptが必要です。'
     },
     en: {
         title: 'GitHub Planet | Your GitHub activity as a 3D planet',
         heading: 'Your GitHub activity becomes a planet of your own',
         description: 'Generate your own planet from your GitHub activity. Public repository languages and contributions shape a 3D world you can share and explore.',
-        summary: 'About GitHub Planet',
         welcome: 'Welcome to GitHub Planet',
         body: 'GitHub Planet is a web app that turns GitHub activity into a 3D planet. The languages in public repositories shape its colors and effects, while contributions shape its growth.',
         explore: 'Explore language showcases without signing in. Sign in with GitHub to create your own planet and share a profile card.',
-        showcaseHeading: 'Explore language showcases',
-        repo: 'View the source code on GitHub',
         disclaimer: 'GitHub Planet is an independent project and is not affiliated with GitHub.',
         imageAlt: 'GitHub Planet turns GitHub activity into a planet',
-        noScript: 'JavaScript is required for the 3D view and planet controls. You can still read about the app and follow the language showcase links.'
+        noScript: 'JavaScript is required for the 3D view and planet controls.'
     }
 };
 
@@ -152,35 +146,8 @@ export function createPageSeo({ publicBaseUrl, showcasePages = [] }) {
         next();
     }
 
-    function informationMarkup(page) {
-        const { locale, copy, showcase } = page;
-        const links = [...showcases.values()].map(({ slug, mainLanguage }) =>
-            `<li><a href="${localePath(`/showcase/${slug}`, locale)}">${escapeHtml(mainLanguage)}</a></li>`).join('');
-        const sampleNotice = showcase
-            ? locale === 'ja'
-                ? `これは実在ユーザーのデータではなく、表示用の固定サンプルです。${Number(showcase.totalCommits).toLocaleString('ja-JP')}件のサンプル活動量をもとに描画します。`
-                : `This is a fixed visual sample, not a live GitHub profile. It uses ${Number(showcase.totalCommits).toLocaleString('en-US')} sample contributions.`
-            : copy.explore;
-        const breadcrumbs = showcase ? `<nav class="site-breadcrumbs" aria-label="${locale === 'ja' ? 'パンくずリスト' : 'Breadcrumb'}">
-            <ol><li><a href="${localePath('/', locale)}">GitHub Planet</a></li>
-            <li><a href="${localePath(page.publicPath, locale)}" aria-current="page">${escapeHtml(page.heading)}</a></li></ol>
-        </nav>` : '';
-        return `<details id="site-information" class="site-information">
-    <summary>${escapeHtml(showcase ? page.heading : copy.summary)}</summary>
-    <section aria-labelledby="site-information-title">
-        ${breadcrumbs}
-        <h1 id="site-information-title">${escapeHtml(page.heading)}</h1>
-        <p>${escapeHtml(showcase ? page.description : copy.body)}</p>
-        <p>${escapeHtml(sampleNotice)}</p>
-        <nav aria-label="${escapeHtml(copy.showcaseHeading)}">
-            <h2>${escapeHtml(copy.showcaseHeading)}</h2>
-            <ul>${links}</ul>
-        </nav>
-        <p><a href="${localePath('/', locale)}">GitHub Planet</a> · <a href="https://github.com/nitr0yukkuri/githubplanet" rel="noopener noreferrer">${escapeHtml(copy.repo)}</a></p>
-        <p class="site-information-disclaimer">${escapeHtml(copy.disclaimer)}</p>
-    </section>
-</details>
-<noscript><p class="site-noscript">${escapeHtml(copy.noScript)}</p></noscript>`;
+    function noScriptMarkup(page) {
+        return `<noscript><p class="site-noscript">${escapeHtml(page.copy.noScript)}</p></noscript>`;
     }
 
     function renderHome(html, page) {
@@ -237,7 +204,7 @@ export function createPageSeo({ publicBaseUrl, showcasePages = [] }) {
             .replace(/<h2 id="welcome-title"[^>]*>[\s\S]*?<\/h2>/, `<h2 id="welcome-title">${escapeHtml(copy.welcome)}</h2>`)
             .replace(/<p([^>]*?) data-i18n-html="home\.welcomeBody"[^>]*>[\s\S]*?<\/p>/, `<p$1>${escapeHtml(copy.body)}<br>${escapeHtml(copy.explore)}</p>`)
             .replace(/(<p[^>]*data-i18n="common\.disclaimer"[^>]*>)[\s\S]*?<\/p>/, `$1${escapeHtml(copy.disclaimer)}</p>`)
-            .replace('<!-- site-information -->', informationMarkup(page))
+            .replace('<!-- site-noscript -->', noScriptMarkup(page))
             .replace(/<nav class="home-language-switcher"[^>]*>[\s\S]*?<\/nav>/, `<nav class="home-language-switcher" aria-label="Language">
                 <a href="${localePath(publicPath, 'ja')}" data-home-language="ja" hreflang="ja" lang="ja">JA</a>
                 <a href="${localePath(publicPath, 'en')}" data-home-language="en" hreflang="en" lang="en">EN</a>
@@ -263,3 +230,4 @@ export function createPageSeo({ publicBaseUrl, showcasePages = [] }) {
 
     return { middleware, resolveHomePage, renderHome, renderUtility, sitemap };
 }
+

@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdir } from 'node:fs/promises';
 import net from 'node:net';
 import { chromium } from 'playwright';
 import { listShowcasePlanets } from '../src/domain/planet/showcase-planets.js';
@@ -29,18 +28,14 @@ try {
         server.stderr.on('data', onData);
         server.once('exit', (code) => { clearTimeout(timeout); reject(new Error(`Server exited (${code}): ${output}`)); });
     });
-    await mkdir('artifacts/seo', { recursive: true });
     browser = await chromium.launch({ channel: 'chrome' });
     const sourceContext = await browser.newContext({ javaScriptEnabled: false });
     const sourcePage = await sourceContext.newPage();
     await sourcePage.goto(`${baseUrl}/en/showcase/typescript`, { waitUntil: 'domcontentloaded' });
     assert.equal(await sourcePage.title(), 'TypeScript Planet Showcase | GitHub Planet');
     assert.equal(await sourcePage.locator('html').getAttribute('lang'), 'en');
-    assert.match(await sourcePage.locator('#site-information').textContent(), /not a live GitHub profile/);
-    await sourcePage.locator('#site-information summary').click();
-    assert.equal(await sourcePage.locator('h1').isVisible(), true);
-    assert.equal(await sourcePage.locator('.site-breadcrumbs [aria-current="page"]').textContent(),
-        'TypeScript Planet Showcase');
+    assert.equal(await sourcePage.locator('#site-information').count(), 0);
+    assert.match(await sourcePage.locator('.site-noscript').textContent(), /JavaScript is required/);
     await sourceContext.close();
 
     const context = await browser.newContext();
@@ -59,12 +54,7 @@ try {
     assert.equal(await page.locator('#main-ui-wrapper').getAttribute('data-nosnippet'), '');
     for (const width of [320, 390, 1440]) {
         await page.setViewportSize({ width, height: width < 500 ? 844 : 900 });
-        await page.locator('#site-information').evaluate((element) => { element.open = true; });
-        const bounds = await page.locator('#site-information').boundingBox();
-        assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width, `information panel fits ${width}px`);
-        assert.ok(await page.locator('h1').isVisible());
-        await page.screenshot({ path: `artifacts/seo/english-showcase-${width}.png` });
-        await page.locator('#site-information').evaluate((element) => { element.open = false; });
+        assert.equal(await page.locator('#site-information').count(), 0, `about disclosure is absent at ${width}px`);
     }
     const sitemapCount = await page.evaluate(async () => {
         const xml = await (await fetch('/sitemap.xml')).text();
@@ -75,9 +65,10 @@ try {
     assert.equal(sitemapCount, (listShowcasePlanets().length + 1) * 2);
     assert.deepEqual(errors, []);
     console.log(JSON.stringify({ result: 'passed', sourceWithoutJavaScript: true,
-        metadataPreservedAfterJavaScript: true, mobileWidths: [320, 390], sitemapUrls: sitemapCount,
-        screenshots: 'artifacts/seo/' }, null, 2));
+        metadataPreservedAfterJavaScript: true, aboutDisclosureRemoved: true,
+        mobileWidths: [320, 390], sitemapUrls: sitemapCount }, null, 2));
 } finally {
     await browser?.close();
     server.kill();
 }
+
