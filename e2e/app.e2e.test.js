@@ -1,3 +1,6 @@
+import { createWebhookDeliveryService } from '../src/application/webhook-delivery-service.js';
+import { createWebhookWorker } from '../src/infrastructure/realtime/webhook-worker.js';
+import { createMemoryWebhookStore } from '../test/fixtures/webhook-store.js';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
@@ -44,6 +47,7 @@ let githubMockServer;
 let sessionStore;
 let browser;
 let io;
+let webhookWorker;
 let baseUrl;
 let githubMockBaseUrl;
 let callbackUrl;
@@ -51,7 +55,7 @@ let socketIoClientModule;
 let oauthCodeSequence = 0;
 const oauthChallenges = new Map();
 const contexts = new Set();
-const inMemoryWebhookDeliveries = new Set();
+const memoryWebhookStore = createMemoryWebhookStore();
 
 function assertSafeE2eDatabaseUrl(connectionString) {
     if (!connectionString) {
@@ -315,6 +319,10 @@ async function startApp() {
         planetQueryService,
         cacheDuration: DATA_CACHE_DURATION
     });
+    const webhookDeliveryService = createWebhookDeliveryService({
+        store: pool ? createWebhookDeliveryStore(pool) : memoryWebhookStore, meteorService
+    });
+    webhookWorker = createWebhookWorker({ service: webhookDeliveryService, intervalMs: 25 });
     registerEventRoutes(app, {
         generatePlanetName: (input) => requestPlanetName(geminiClient.ask, input),
         geminiClient,
@@ -322,19 +330,15 @@ async function startApp() {
         meteorService,
         systemApiKey: 'isolated-e2e-system-key',
         webhookSecret: E2E_WEBHOOK_SECRET,
-        webhookDeliveryStore: (pool && createWebhookDeliveryStore(pool)) || {
-            async claimGithubWebhookDelivery(deliveryId) {
-                if (inMemoryWebhookDeliveries.has(deliveryId)) return false;
-                inMemoryWebhookDeliveries.add(deliveryId);
-                return true;
-            }
-        },
+        webhookDeliveryService,
+        onWebhookAccepted: () => webhookWorker.kick(),
         requireInternalAuth: true,
         requireWebhookSignature: true
     });
 
     io = new Server(appServer, { cors: { origin: baseUrl } });
     meteorIo = io;
+    webhookWorker.start();
 }
 
 function createAnimeTestModule() {
@@ -476,12 +480,14 @@ async function login(page) {
 }
 
 async function resetTestDatabase() {
+    await webhookWorker?.stop();
     if (pool) await pool.query('TRUNCATE TABLE planets, "session", github_webhook_deliveries CASCADE');
     await new Promise((resolve, reject) => {
         sessionStore.clear((error) => error ? reject(error) : resolve());
     });
     oauthChallenges.clear();
-    inMemoryWebhookDeliveries.clear();
+    memoryWebhookStore.clear();
+    webhookWorker?.start();
 }
 
 before(async () => {
@@ -515,6 +521,7 @@ beforeEach(async () => {
 }, { timeout: 30_000 });
 
 after(async () => {
+    await webhookWorker?.stop();
     await Promise.all([...contexts].map((context) => context.close().catch(() => undefined)));
     await browser?.close();
     io?.close();
