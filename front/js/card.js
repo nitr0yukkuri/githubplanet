@@ -1,3 +1,4 @@
+import { calculateStarCount, createPlanetDisposalResources, disposePlanetObject } from './planet-scene-resources.js';
 // front/js/card.js
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -5,7 +6,6 @@ import { createPlanetFeatureRuntime, resolvePlanetFeature } from './planet-featu
 import { applyI18n, localizedPath, localizedPlanetName } from './i18n.js';
 import { createWebGLRenderer } from './webgl-renderer.js';
 
-const MAX_STAR_COUNT = 120;
 const CARD_DATA_TIMEOUT_MS = 6000;
 const PUBLIC_DEPLOY_URL = 'https://githubplanet.dev';
 
@@ -294,74 +294,15 @@ function animateValue(obj, start, end, duration) {
     window.requestAnimationFrame(step);
 }
 
-function calculateStarCount(totalCommits) {
-    let starCount = 0;
-    let commitsUsed = 0;
-    let requiredCommitsPerStar = 10;
-    const costIncreaseStep = 10;
-    const levelUpThreshold = 5;
-
-    while (starCount < MAX_STAR_COUNT) {
-        const currentLevelCost = requiredCommitsPerStar + (Math.floor(starCount / levelUpThreshold) * costIncreaseStep);
-        if (totalCommits >= commitsUsed + currentLevelCost) {
-            starCount++;
-            commitsUsed += currentLevelCost;
-        } else {
-            break;
-        }
-    }
-    return starCount;
-}
-
-function disposeObject(object, resources = {
-    geometries: new Set(),
-    materials: new Set(),
-    textures: new Set()
-}) {
-    if (!object) return;
-    for (let index = object.children?.length - 1; index >= 0; index--) {
-        const child = object.children[index];
-        disposeObject(child, resources);
-        object.remove(child);
-    }
-
-    if (object.geometry && !resources.geometries.has(object.geometry)) {
-        resources.geometries.add(object.geometry);
-        object.geometry.dispose();
-    }
-
-    const materials = Array.isArray(object.material) ? object.material : [object.material];
-    materials.forEach((material) => {
-        if (!material || resources.materials.has(material)) return;
-        resources.materials.add(material);
-
-        [material.map, material.aoMap].forEach((texture) => {
-            if (
-                texture
-                && texture !== planetTexture
-                && !resources.textures.has(texture)
-            ) {
-                resources.textures.add(texture);
-                texture.dispose();
-            }
-        });
-        material.dispose();
-    });
-}
-
 function createPlanet(data) {
     if (!webglAvailable) {
         showCardWebGLFallback(data.planetColor);
         return;
     }
-    const resources = {
-        geometries: new Set(),
-        materials: new Set(),
-        textures: new Set()
-    };
+    const resources = createPlanetDisposalResources([planetTexture]);
     while (planetGroup.children.length > 0) {
         const child = planetGroup.children[0];
-        disposeObject(child, resources);
+        disposePlanetObject(child, resources);
         planetGroup.remove(child);
     }
     planetFeatureRuntime = null;

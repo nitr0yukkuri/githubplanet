@@ -1,3 +1,4 @@
+import { calculateStarCount, createPlanetDisposalResources, disposePlanetObject } from './planet-scene-resources.js';
 import { createHomeApi } from './home/api-client.js';
 import { createLanguageHistoryController } from './home/language-history-controller.js';
 import { updatePlanetDetails } from './home/planet-details.js';
@@ -12,7 +13,6 @@ import { applyI18n, localizedPath, t } from './i18n.js';
 import { resolveHomeRoute } from './home-route.js';
 import { createWebGLRenderer } from './webgl-renderer.js';
 
-const MAX_STAR_COUNT = 120;
 const BASE_PLANET_ROTATION_SPEED = 0.001;
 
 let scene, camera, renderer, controls, planetGroup;
@@ -199,25 +199,6 @@ async function resolveShowcaseCtaTarget() {
     }
 }
 
-function calculateStarCount(totalCommits) {
-    let starCount = 0;
-    let commitsUsed = 0;
-    let requiredCommitsPerStar = 10;
-    const costIncreaseStep = 10;
-    const levelUpThreshold = 5;
-
-    while (starCount < MAX_STAR_COUNT) {
-        const currentLevelCost = requiredCommitsPerStar + (Math.floor(starCount / levelUpThreshold) * costIncreaseStep);
-        if (totalCommits >= commitsUsed + currentLevelCost) {
-            starCount++;
-            commitsUsed += currentLevelCost;
-        } else {
-            break;
-        }
-    }
-    return starCount;
-}
-
 function loadPlanetTexture() {
     if (cachedPlanetTexture) return Promise.resolve(cachedPlanetTexture);
     if (planetTexturePromise) return planetTexturePromise;
@@ -247,46 +228,6 @@ function showHomeWebGLFallback(color) {
     }
     fallback.hidden = false;
     if (renderer?.domElement) renderer.domElement.hidden = true;
-}
-
-function disposeObject(obj, resources = {
-    geometries: new Set(),
-    materials: new Set(),
-    textures: new Set()
-}) {
-    if (!obj) return;
-
-    if (obj.children) {
-        for (let i = obj.children.length - 1; i >= 0; i--) {
-            disposeObject(obj.children[i], resources);
-            obj.remove(obj.children[i]);
-        }
-    }
-
-    if (obj.geometry && !resources.geometries.has(obj.geometry)) {
-        resources.geometries.add(obj.geometry);
-        obj.geometry.dispose();
-    }
-
-    if (obj.material) {
-        const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
-        materials.forEach((material) => {
-            if (!material || resources.materials.has(material)) return;
-            resources.materials.add(material);
-
-            [material.map, material.aoMap].forEach((texture) => {
-                if (
-                    texture
-                    && texture !== cachedPlanetTexture
-                    && !resources.textures.has(texture)
-                ) {
-                    resources.textures.add(texture);
-                    texture.dispose();
-                }
-            });
-            material.dispose();
-        });
-    }
 }
 
 function cancelActivePlanetReveal() {
@@ -377,7 +318,7 @@ async function loadPlanet(data, { historySelection = false } = {}) {
     }
 
     if (planetGroup) {
-        disposeObject(planetGroup);
+        disposePlanetObject(planetGroup, createPlanetDisposalResources([cachedPlanetTexture]));
         scene.remove(planetGroup);
         planetGroup = undefined;
     }
