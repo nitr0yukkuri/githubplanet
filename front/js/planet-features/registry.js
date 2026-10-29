@@ -340,7 +340,8 @@ export function createPlanetFeatureRuntime({
     planetTexture,
     data,
     radius,
-    direction = 1
+    direction = 1,
+    trailColorProfile = 'language'
 }) {
     const feature = resolvePlanetFeature(data);
     const material = feature?.createMaterial({
@@ -361,7 +362,8 @@ export function createPlanetFeatureRuntime({
     const languageTrails = createLanguageCompositionTrails({
         THREE,
         data,
-        radius
+        radius,
+        colorProfile: trailColorProfile
     });
     if (!feature && !languageTrails) return null;
 
