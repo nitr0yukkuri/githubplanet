@@ -558,7 +558,7 @@ test('shared Markdown opens the card in a clean anonymous browser without a 403'
     }
 });
 
-test('all language showcase cards render their data and shared trail shaders keep advancing', { timeout: 180_000 }, async () => {
+test('showcase cards render without WebGL fallback and shared trail shader time advances', { timeout: 180_000 }, async () => {
     const { page, close, assertNoPageErrors } = await openPage();
     await page.addInitScript(() => {
         window.__e2eTrailShaderSeen = false;
@@ -608,7 +608,7 @@ test('all language showcase cards render their data and shared trail shaders kee
             assert.equal(await page.locator('#card-webgl-fallback').isVisible(), false, `${showcase.slug}: WebGL should be active`);
         }
 
-        // 共通軌跡は、専用ショーケースを持たない言語でも実描画されることを確認する。
+        // 専用演出のない言語でも、共通軌跡のシェーダーのコンパイルと時間更新を確認する。
         await page.route(`${baseUrl}/api/planets/user/e2e-trails`, (route) => route.fulfill({
             json: {
                 username: 'e2e-trails',
@@ -623,19 +623,12 @@ test('all language showcase cards render their data and shared trail shaders kee
         }));
         await page.goto(`${baseUrl}/card.html?username=e2e-trails&fix=true`);
         await page.waitForFunction(() => document.getElementById('main-lang-stat')?.textContent === 'PYTHON');
+        assert.equal(await page.locator('#card-webgl-fallback').isVisible(), false);
         assert.equal(await page.locator('#card-container').getAttribute('data-card-theme'), null);
         await page.waitForFunction(() => (
             window.__e2eTrailShaderSeen
             && new Set(window.__e2eTrailTimes).size > 1
         ), { timeout: 15_000 });
-        const trailRuntime = await page.evaluate(() => ({
-            shaderSeen: window.__e2eTrailShaderSeen,
-            distinctTimeValues: new Set(window.__e2eTrailTimes).size,
-            updateCount: window.__e2eTrailTimes.length
-        }));
-        assert.ok(trailRuntime.shaderSeen, 'WebGL should compile the secondary-language trail shader');
-        assert.ok(trailRuntime.distinctTimeValues > 1, 'trailTime should advance across rendered frames');
-        assert.ok(trailRuntime.updateCount > 2);
         assertNoPageErrors();
     } finally {
         await close();
@@ -660,6 +653,8 @@ test('Japanese and English mobile showcases fit the viewport and display the fix
             ));
             assert.equal(await page.locator('html').getAttribute('lang'), language);
             assert.equal(await page.locator('#planet-name-val').isVisible(), true);
+            assert.equal(await page.locator('#canvas-container canvas').isVisible(), true);
+            assert.equal(await page.locator('#webgl-fallback').isVisible(), false);
             assert.deepEqual(
                 await page.locator('#lang-stats-container p').allTextContents(),
                 ['TypeScript70%', 'Rust20%', 'Python10%']

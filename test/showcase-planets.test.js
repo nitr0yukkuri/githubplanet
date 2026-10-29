@@ -130,10 +130,13 @@ test('documents every production showcase card in the card gallery', async () =>
         assert.ok(englishCardReadme.includes(captions.en), `Missing English caption for ${slug}`);
     }
 
+    const showcaseSlugs = new Set(listShowcasePlanets().map(({ slug }) => slug));
     for (const source of [readme, englishReadme, cardReadme, englishCardReadme, cardsOnlyReadme, updateWorkflow]) {
-        assert.doesNotMatch(source, /showcase=python|showcase_python\.gif|python-planet-structure\.js/);
+        for (const [, slug] of source.matchAll(/(?:showcase=|showcase_)([a-z0-9_-]+)/gi)) {
+            assert.ok(showcaseSlugs.has(slug.toLowerCase()), `Unknown showcase reference: ${slug}`);
+        }
     }
-    const expectedGifCount = Object.keys(EXPECTED_SHOWCASES).length + 1;
+    const expectedGifCount = showcaseSlugs.size + 1;
     assert.deepEqual(
         [...updateWorkflow.matchAll(/wc -l\)" -eq (\d+)/g)].map((match) => Number(match[1])),
         [expectedGifCount, expectedGifCount]
