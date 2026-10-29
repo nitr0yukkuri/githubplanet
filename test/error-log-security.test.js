@@ -133,7 +133,7 @@ for (const asyncWebhook of [false, true]) {
         const res = response();
         await routes.get(asyncWebhook ? 'POST /webhook' : 'POST /api/meteor')({ body: {} }, res);
         await new Promise((resolve) => setImmediate(resolve));
-        assert.equal(res.statusCode, asyncWebhook ? 200 : 500);
+        assert.equal(res.statusCode, 500);
         assertSafeLogs(logs);
     });
 }
