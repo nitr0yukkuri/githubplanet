@@ -27,6 +27,7 @@ import { createGithubClient } from '../src/infrastructure/external/github-client
 import { registerAuthRoutes } from '../src/presentation/http/auth-routes.js';
 import { registerEventRoutes } from '../src/presentation/http/event-routes.js';
 import { registerPageRoutes } from '../src/presentation/http/page-routes.js';
+import { registerVendorRoutes } from '../src/presentation/http/vendor-routes.js';
 import { registerPlanetRoutes } from '../src/presentation/http/planet-routes.js';
 
 const DATA_CACHE_DURATION = 60 * 60 * 1000;
@@ -230,12 +231,7 @@ async function startApp() {
     }));
 
     app.use('/front', express.static(path.join(projectRoot, 'front')));
-    app.get('/vendor/three/build/three.module.js', (_req, res) => {
-        res.sendFile('build/three.module.js', { root: path.join(projectRoot, 'node_modules/three') });
-    });
-    app.get('/vendor/three/examples/jsm/controls/OrbitControls.js', (_req, res) => {
-        res.sendFile('examples/jsm/controls/OrbitControls.js', { root: path.join(projectRoot, 'node_modules/three') });
-    });
+    const vendorAssets = registerVendorRoutes(app, { rootDirectory: projectRoot });
 
     appServer = http.createServer(app);
     const address = await listen(appServer);
@@ -299,6 +295,7 @@ async function startApp() {
     });
 
     const pageRoutes = registerPageRoutes(app, {
+        ...vendorAssets,
         rootDirectory: projectRoot,
         isProduction: true,
         systemApiKey: 'isolated-e2e-system-key',

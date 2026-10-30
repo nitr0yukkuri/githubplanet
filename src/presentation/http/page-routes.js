@@ -13,7 +13,8 @@ export function registerPageRoutes(app, {
     sessionSecret,
     publicBaseUrl = DEFAULT_PUBLIC_BASE_URL,
     cardCaptureBaseUrl = isProduction ? publicBaseUrl : undefined,
-    showcasePages = []
+    showcasePages = [],
+    threeAssetBasePath = '/vendor/three'
 }) {
     const normalizedPublicBaseUrl = publicBaseUrl.replace(/\/+$/, '');
     const normalizedCardCaptureBaseUrl = cardCaptureBaseUrl?.replace(/\/+$/, '');
@@ -28,7 +29,8 @@ export function registerPageRoutes(app, {
     const pageCache = new Map([
         'index.html', 'achievements.html', 'settings.html', 'card.html', '404.html', 'sender.html'
     ].map((fileName) => [fileName, fs.readFileSync(path.join(rootDirectory, fileName), 'utf8')
-        .replaceAll(SOURCE_PUBLIC_BASE_URL, normalizedPublicBaseUrl)]));
+        .replaceAll(SOURCE_PUBLIC_BASE_URL, normalizedPublicBaseUrl)
+        .replaceAll('/vendor/three/', `${threeAssetBasePath}/`)]));
     const favicon = fs.readFileSync(path.join(rootDirectory, 'front/img/favicon-96.png'));
     // デプロイ中に変わらない小さな公開ファイルも、アクセスごとのファイルI/Oを避ける。
     const staticPageAssets = new Map(['manifest.json', 'manifest-en.json', 'sw.js']
