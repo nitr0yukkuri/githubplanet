@@ -29,6 +29,7 @@ import { registerAuthRoutes } from './src/presentation/http/auth-routes.js';
 import { createCanonicalHostRedirect } from './src/presentation/http/canonical-host-redirect.js';
 import { registerEventRoutes } from './src/presentation/http/event-routes.js';
 import { registerPageRoutes } from './src/presentation/http/page-routes.js';
+import { createSessionCookieOptions } from './src/presentation/http/session-cookie-options.js';
 import { registerVendorRoutes } from './src/presentation/http/vendor-routes.js';
 import { registerPlanetRoutes } from './src/presentation/http/planet-routes.js';
 import { createRandomPerformanceReporter } from './src/presentation/http/random-performance.js';
@@ -182,10 +183,10 @@ const vendorAssets = registerVendorRoutes(app, { rootDirectory: __dirname });
 
 const PgSession = connectPgSimple(session);
 app.use(randomPerformance.beforeSessionMiddleware);
-// Firebase Hostingのrewriteでは予約名以外のCookieがCloud Runへ渡らないため、本番OAuthのstateを維持する。
-const sessionCookieName = isProduction ? '__session' : 'connect.sid';
+const sessionCookieOptions = createSessionCookieOptions(isProduction);
+const sessionCookieName = sessionCookieOptions.name;
 app.use(session({
-    name: sessionCookieName,
+    ...sessionCookieOptions,
     store: pool ? new PgSession({
         pool,
         createTableIfMissing: false,
@@ -193,8 +194,7 @@ app.use(session({
     }) : undefined,
     secret: effectiveSessionSecret,
     resave: false,
-    saveUninitialized: false,
-    cookie: { secure: isProduction, httpOnly: true, sameSite: 'lax' }
+    saveUninitialized: false
 }));
 app.use(randomPerformance.middleware);
 
