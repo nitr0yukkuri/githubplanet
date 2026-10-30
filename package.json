@@ -8,6 +8,7 @@
     "express-rate-limit": "^8.7.1",
     "express-session": "^1.19.0",
     "pg": "^8.23.1",
+    "pg-connection-string": "^2.14.1",
     "pngjs": "^7.0.0",
     "socket.io": "^4.8.4",
     "three": "0.186.1"
@@ -22,7 +23,8 @@
     "perf:random-sql": "node scripts/measure-random-sql.mjs",
     "perf:random-http": "node scripts/measure-random-http.mjs",
     "test": "node --test --test-concurrency=1 \"test/**/*.test.js\"",
-    "test:e2e": "node --test --test-concurrency=1 e2e/app.e2e.test.js"
+    "test:e2e": "node --test --test-concurrency=1 e2e/app.e2e.test.js",
+    "check:database": "node scripts/check-database-connection.mjs"
   },
   "license": "MIT",
   "devDependencies": {
