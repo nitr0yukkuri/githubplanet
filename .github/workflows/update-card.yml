@@ -19,7 +19,9 @@ on:
       - front/js/rust-planet-preview.js
       - front/js/visible-animation-loop.js
       - front/js/*-planet-*.js
+      - src/presentation/http/planet-routes.js
       - scripts/record-profile-card.mjs
+      - scripts/refresh-official-card.mjs
   schedule:
     # Daily at 00:00 UTC.
     - cron: '0 0 * * *'
@@ -34,9 +36,16 @@ concurrency:
 
 jobs:
   build-card-assets:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     permissions:
       contents: read
+    env:
+      CARD_PROFILE_USERNAME: nitr0yukkuri
     runs-on: ubuntu-latest
+    # Environment側でmainだけを許可し、手動実行の別ブランチにSecretを渡さない。
+    environment:
+      name: official-card
+      deployment: false
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -50,6 +59,13 @@ jobs:
         with:
           node-version: '24.22.1'
           cache: npm
+
+      # Secret未設定で従来のGIF生成まで止めず、明示有効化したときだけ同期を必須にする。
+      - name: Validate official refresh settings
+        if: vars.OFFICIAL_CARD_REFRESH_ENABLED == 'true'
+        env:
+          CARD_REFRESH_TOKEN: ${{ secrets.CARD_REFRESH_TOKEN }}
+        run: node scripts/refresh-official-card.mjs --check-config
 
       - name: Install dependencies
         run: npm ci --ignore-scripts
@@ -123,6 +139,12 @@ jobs:
           echo "Timed out before the merged card assets reached production; generated GIFs were not published."
           exit 1
 
+      - name: Refresh official profile planet data
+        if: vars.OFFICIAL_CARD_REFRESH_ENABLED == 'true'
+        env:
+          CARD_REFRESH_TOKEN: ${{ secrets.CARD_REFRESH_TOKEN }}
+        run: node scripts/refresh-official-card.mjs
+
       - name: Smoke test deployed showcase routes
         # 本番URLの表示/API障害を検知して、異常な公開素材の更新を止める。
         env:
@@ -195,7 +217,7 @@ jobs:
           }
 
           base_url="https://githubplanet.dev/card.html"
-          record_card profile_card.gif "$base_url?username=nitr0yukkuri&fix=true" 8000
+          record_card profile_card.gif "$base_url?username=${CARD_PROFILE_USERNAME}&fix=true" 8000
           record_card showcase_css.gif "$base_url?showcase=css&fix=true"
           record_card showcase_cpp.gif "$base_url?showcase=cpp&fix=true"
           record_card showcase_elm.gif "$base_url?showcase=elm&fix=true"
