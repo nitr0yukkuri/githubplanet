@@ -123,6 +123,20 @@ test('serves public pages and sender with their existing content types', async (
     }
 });
 
+test('applies the CSP nonce to general and retired-card 404 responses in both locales', async () => {
+    for (const route of ['/missing-page', '/en/missing-page', '/showcase/removed',
+        '/card.html?showcase=python&fix=true', '/en/card.html?showcase=python&fix=true']) {
+        const response = await fetch(`${baseUrl}${route}`);
+        assert.equal(response.status, 404, route);
+        assert.equal(response.headers.get('cache-control'), 'no-store');
+        const nonce = /'nonce-([^']+)'/.exec(response.headers.get('content-security-policy'))?.[1];
+        assert.ok(nonce);
+        const scripts = [...(await response.text()).matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>/gi)];
+        assert.equal(scripts.length, 2);
+        assert.ok(scripts.every(([tag]) => tag.includes(`nonce="${nonce}"`)), route);
+    }
+});
+
 test('compresses JavaScript responses without changing their contents', async () => {
     const [compressed, identity] = await Promise.all([
         fetch(`${baseUrl}/front/js/home.js`, {

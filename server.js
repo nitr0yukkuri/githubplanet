@@ -195,7 +195,7 @@ app.use(session({
 }));
 app.use(randomPerformance.middleware);
 
-registerPageRoutes(app, {
+const pageRoutes = registerPageRoutes(app, {
     rootDirectory: __dirname,
     isProduction,
     systemApiKey: process.env.SYSTEM_API_KEY,
@@ -242,11 +242,7 @@ registerEventRoutes(app, {
     requireWebhookSignature: isProduction
 });
 
-// 404 handler
-app.use((req, res) => {
-    res.setHeader('X-Robots-Tag', 'noindex, follow');
-    res.status(404).sendFile(path.join(__dirname, '404.html'));
-});
+app.use(pageRoutes.sendNotFound);
 
 app.use(createErrorHandler());
 

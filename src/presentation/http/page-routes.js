@@ -21,7 +21,8 @@ export function registerPageRoutes(app, {
         'index.html': 'GitHub Planet',
         'achievements.html': 'Achievements - GitHub Planet',
         'settings.html': 'Settings - GitHub Planet',
-        'card.html': 'GitHub Planet Card'
+        'card.html': 'GitHub Planet Card',
+        '404.html': '404 - Planet Not Found'
     };
     // 公開ページのクロールごとに同期I/Oが発生しないよう、テンプレートは起動時に読み込む。
     const pageCache = new Map([
@@ -46,8 +47,7 @@ export function registerPageRoutes(app, {
         if (fileName === 'index.html') {
             const page = seo.resolveHomePage(req);
             if (!page) {
-                res.setHeader('X-Robots-Tag', 'noindex, follow');
-                return res.status(404).type('html').send(addScriptNonce(pageCache.get('404.html'), req));
+                return sendNotFound(req, res);
             }
             if (!page.indexable) res.setHeader('X-Robots-Tag', 'noindex, follow');
             html = seo.renderHome(html, page);
@@ -60,6 +60,13 @@ export function registerPageRoutes(app, {
         }
 
         res.type('html').send(addScriptNonce(html, req));
+    }
+
+    function sendNotFound(req, res) {
+        // 一般404と廃止カードも同じ描画経路に通し、翻訳scriptだけnonceが欠ける状態を防ぐ。
+        res.setHeader('X-Robots-Tag', 'noindex, follow');
+        res.status(404);
+        return sendPage(req, res, '404.html');
     }
 
     function generateSignature(username) {
@@ -172,8 +179,7 @@ export function registerPageRoutes(app, {
             const slug = typeof showcase === 'string' ? showcase.trim().toLowerCase() : '';
             // 廃止したショーケースで空のカードを出さず、ページ取得時点で404にする。
             if (!showcasePages.some((planet) => planet.slug === slug)) {
-                res.setHeader('X-Robots-Tag', 'noindex, follow');
-                return res.status(404).type('html').send(pageCache.get('404.html'));
+                return sendNotFound(req, res);
             }
         }
         const loggedInUser = req.session.planetData?.user?.login;
@@ -211,4 +217,5 @@ export function registerPageRoutes(app, {
     app.get(['/settings', '/en/settings', '/english/settings'], (req, res) => {
         sendPage(req, res, 'settings.html');
     });
+    return { sendNotFound };
 }
