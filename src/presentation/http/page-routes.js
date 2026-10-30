@@ -32,6 +32,9 @@ export function registerPageRoutes(app, {
         .replaceAll(SOURCE_PUBLIC_BASE_URL, normalizedPublicBaseUrl)
         .replaceAll('/vendor/three/', `${threeAssetBasePath}/`)]));
     const favicon = fs.readFileSync(path.join(rootDirectory, 'front/img/favicon-96.png'));
+    // デプロイ中に変わらない小さな公開ファイルも、アクセスごとのファイルI/Oを避ける。
+    const staticPageAssets = new Map(['manifest.json', 'manifest-en.json', 'sw.js']
+        .map((fileName) => [fileName, fs.readFileSync(path.join(rootDirectory, fileName))]));
     const seo = createPageSeo({ publicBaseUrl: normalizedPublicBaseUrl, showcasePages });
     app.use(seo.middleware);
 
@@ -127,25 +130,24 @@ export function registerPageRoutes(app, {
         sendPage(req, res, 'index.html');
     });
 
-    // 親が隠しディレクトリでも正規ファイルを返せるよう、rootと相対パスを分ける。
-    app.get('/manifest.json', (req, res) => {
+    app.get('/manifest.json', (_req, res) => {
         res.type('application/manifest+json');
-        res.sendFile('manifest.json', { root: rootDirectory });
+        res.send(staticPageAssets.get('manifest.json'));
     });
 
-    app.get('/manifest-en.json', (req, res) => {
+    app.get('/manifest-en.json', (_req, res) => {
         res.type('application/manifest+json');
-        res.sendFile('manifest-en.json', { root: rootDirectory });
+        res.send(staticPageAssets.get('manifest-en.json'));
     });
 
     app.get('/favicon.ico', (_req, res) => {
         res.type('image/png').send(favicon);
     });
 
-    app.get('/sw.js', (req, res) => {
+    app.get('/sw.js', (_req, res) => {
         res.setHeader('Cache-Control', 'no-cache');
         res.type('application/javascript');
-        res.sendFile('sw.js', { root: rootDirectory });
+        res.send(staticPageAssets.get('sw.js'));
     });
 
     app.get('/api/card/:username', (req, res) => {
