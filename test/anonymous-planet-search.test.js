@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 import { test } from 'node:test';
 import { createPlanetQueryService } from '../src/application/planet-query-service.js';
 import { createPlanetService } from '../src/application/planet-service.js';
@@ -71,6 +72,114 @@ test('caches missing public profiles briefly and rejects invalid usernames befor
     assert.equal(await queryService.getByUsername('MISSING-USER'), null);
     assert.equal(await queryService.getByUsername('invalid/name'), null);
     assert.equal(calls, 1);
+});
+
+test('blocks an anonymous public preview before calling GitHub when its per-client quota is exhausted', async () => {
+    let upstreamCalls = 0;
+    const queryService = createPlanetQueryService({
+        repository: {
+            async findByUsername() { return null; }
+        },
+        anonymousLookupStore: {
+            async reserveGithubProfileLookup() {
+                return { allowed: false, retryAfterMs: 15_000 };
+            }
+        },
+        githubClient: {},
+        planetService: {
+            async createPublicPreview() {
+                upstreamCalls += 1;
+                return { username: 'sample-user' };
+            }
+        },
+        cacheDuration: 60_000
+    });
+
+    await assert.rejects(
+        queryService.getByUsername('sample-user', undefined, 'a'.repeat(64)),
+        (error) => error.response?.status === 429 && error.retryAfterMs === 15_000
+    );
+    assert.equal(upstreamCalls, 0);
+});
+
+test('blocks an anonymous profile redirect before calling GitHub when its per-client quota is exhausted', async () => {
+    let upstreamCalls = 0;
+    const queryService = createPlanetQueryService({
+        repository: {
+            async findByGithubId() { return { githubId: '12345', username: 'sample-user' }; }
+        },
+        anonymousLookupStore: {
+            async reserveGithubProfileLookup() {
+                return { allowed: false, retryAfterMs: 30_000 };
+            }
+        },
+        githubClient: {
+            async getUserById() {
+                upstreamCalls += 1;
+                return { id: '12345', login: 'sample-user' };
+            }
+        },
+        planetService: {},
+        cacheDuration: 60_000
+    });
+
+    await assert.rejects(
+        queryService.getGithubProfileUrlById('12345', 'b'.repeat(64)),
+        (error) => error.response?.status === 429 && error.retryAfterMs === 30_000
+    );
+    assert.equal(upstreamCalls, 0);
+});
+
+test('passes an HMAC of the normalized client IP to anonymous lookup quota storage', async () => {
+    const handlers = new Map();
+    const app = {
+        get(paths, handler) {
+            for (const path of Array.isArray(paths) ? paths : [paths]) handlers.set(path, handler);
+        },
+        post() {}
+    };
+    const secret = 'test-secret-with-sufficient-entropy';
+    let receivedKey;
+    let receivedProfileKey;
+    registerPlanetRoutes(app, {
+        sessionSecret: secret,
+        planetService: {},
+        planetQueryService: {
+            async getByUsername(_username, _accessToken, requesterKey) {
+                receivedKey = requesterKey;
+                return { username: 'sample-user' };
+            },
+            async getGithubProfileUrlById(_githubId, requesterKey) {
+                receivedProfileKey = requesterKey;
+                return 'https://github.com/sample-user';
+            }
+        }
+    });
+    const response = {
+        status(code) { this.statusCode = code; return this; },
+        json(body) { this.body = body; return this; }
+    };
+
+    await handlers.get('/api/planets/user/:username')({
+        ip: '203.0.113.9',
+        params: { username: 'sample-user' },
+        session: {}
+    }, response);
+
+    assert.equal(receivedKey, createHmac('sha256', secret).update('203.0.113.9').digest('hex'));
+    assert.doesNotMatch(receivedKey, /203\.0\.113\.9/);
+
+    const profileResponse = {
+        status(code) { this.statusCode = code; return this; },
+        send(body) { this.body = body; return this; },
+        redirect(code, url) { this.statusCode = code; this.url = url; return this; }
+    };
+    await handlers.get('/github-profile/:githubId')({
+        ip: '203.0.113.9',
+        params: { githubId: '12345' }
+    }, profileResponse);
+    assert.equal(profileResponse.statusCode, 302);
+    assert.equal(receivedProfileKey, createHmac('sha256', secret).update('203.0.113.9').digest('hex'));
 });
 
 test('returns GitHub public API rate limits as 429 with a retry delay', async () => {

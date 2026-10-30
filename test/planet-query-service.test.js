@@ -2,6 +2,22 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createPlanetQueryService } from '../src/application/planet-query-service.js';
 
+test('returns a marked saved planet without an upstream call when the per-client quota is exhausted', async () => {
+    const row = { githubId: 42, username: 'tester', mainLanguage: 'TypeScript',
+        languageStats: { TypeScript: 100 }, totalCommits: 123 };
+    const service = createPlanetQueryService({
+        repository: { async findByUsername() { return row; } },
+        anonymousLookupStore: { async reserveGithubProfileLookup() { return { allowed: false, retryAfterMs: 1000 }; } },
+        githubClient: { async getUser() { assert.fail('quota refusal must happen before GitHub'); } },
+        planetService: {}, cacheDuration: 60000
+    });
+    const result = await service.getByUsername('tester', undefined, 'a'.repeat(64));
+    assert.equal(result.isStoredSnapshot, true);
+    assert.equal(result.githubProfileVerified, false);
+    assert.equal(result.totalCommits, 123);
+    assert.deepEqual(result.languageStats, { TypeScript: 100 });
+});
+
 function createHarness(rows = {}) {
     const calls = [];
     const repository = {
