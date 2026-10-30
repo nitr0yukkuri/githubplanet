@@ -31,4 +31,3 @@ test('reserves anonymous GitHub lookups per HMAC client key in PostgreSQL', asyn
     assert.doesNotMatch(reservation[1].join(' '), /203\.0\.113\./);
     await assert.rejects(repository.reserveGithubProfileLookup('203.0.113.1', 2, 3_600_000), /Invalid anonymous GitHub lookup key/);
 });
-
