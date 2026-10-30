@@ -75,4 +75,3 @@ export function updateXmlPlanetNesting(material, nowMilliseconds) {
         nowMilliseconds / 1000 % XML_NESTING_CYCLE_SECONDS
     ) / XML_NESTING_CYCLE_SECONDS;
 }
-

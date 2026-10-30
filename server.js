@@ -10,8 +10,15 @@ import { Server } from 'socket.io';
 import { createPlanetQueryService } from './src/application/planet-query-service.js';
 import { createAuthoredLanguageHistoryService } from './src/application/authored-language-history-service.js';
 import { createPlanetService } from './src/application/planet-service.js';
+import { listShowcasePlanets } from './src/domain/planet/showcase-planets.js';
+import { createLanguageColorService } from './src/application/language-color-service.js';
+import { requestPlanetName } from './src/application/planet-name-generator.js';
 import { createMeteorService } from './src/application/meteor-service.js';
-import { DATA_CACHE_DURATION, EXTENSION_MAP, LANGUAGE_COLORS } from './src/domain/planet/constants.js';
+import { LANGUAGE_COLORS } from './src/domain/planet/constants.js';
+import { EXTENSION_MAP } from './src/domain/planet/language-extensions.js';
+import { createAuthoredLanguageHistoryRepository } from './src/infrastructure/database/authored-language-history-repository.js';
+import { createLanguageColorRepository } from './src/infrastructure/database/language-color-repository.js';
+import { createWebhookDeliveryStore } from './src/infrastructure/database/webhook-delivery-store.js';
 import { createPlanetRepository } from './src/infrastructure/database/planet-repository.js';
 import { assertDatabaseMigrationsApplied } from './src/infrastructure/database/migrations.js';
 import { createPostgresPool } from './src/infrastructure/database/postgres.js';
@@ -24,7 +31,10 @@ import { registerPageRoutes } from './src/presentation/http/page-routes.js';
 import { registerPlanetRoutes } from './src/presentation/http/planet-routes.js';
 import { createRandomPerformanceReporter } from './src/presentation/http/random-performance.js';
 import { createExternalPerformanceReporter } from './src/infrastructure/observability/external-performance.js';
+import { createErrorHandler } from './src/presentation/http/error-handler.js';
+import { safeErrorMetadata } from './src/shared/error-metadata.js';
 
+const DATA_CACHE_DURATION = 60 * 60 * 1000;
 const app = express();
 const port = parseInt(process.env.PORT) || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
@@ -104,7 +114,10 @@ if (isProduction) {
 
 const pool = createPostgresPool(process.env.DATABASE_URL);
 // 複数インスタンスが起動時に同じDDLを実行する事故を防ぐため、ここでは適用確認だけを行う。
-await assertDatabaseMigrationsApplied(pool);
+await assertDatabaseMigrationsApplied(pool).catch((error) => {
+    console.error('[DB] Startup migration check failed:', safeErrorMetadata(error));
+    process.exit(1);
+});
 const planetRepository = createPlanetRepository(pool, {
     onRandomQueryTiming: randomPerformance.recordRandomQuery,
     randomQueryStrategy: process.env.RANDOM_QUERY_STRATEGY || 'indexed',
@@ -113,20 +126,17 @@ const planetRepository = createPlanetRepository(pool, {
         10
     )
 });
-const languageColorCache = await planetRepository?.loadLanguageColorCache?.() || {};
-const languageColorStore = planetRepository ? {
-    findLanguageColor: (...args) => planetRepository.findLanguageColor(...args),
-    saveLanguageColor: (...args) => planetRepository.saveLanguageColor(...args)
-} : undefined;
+const languageColorStore = createLanguageColorRepository(pool);
+const languageColorCache = await languageColorStore?.loadLanguageColorCache() || {};
 const geminiClient = createGeminiClient({
     axios,
     apiKey: process.env.GEMINI_API_KEY,
-    languageColors: LANGUAGE_COLORS,
-    languageColorCache,
-    languageColorStore,
     onRequestTiming: process.env.PERF_TRACE_EXTERNAL === 'true'
         ? externalPerformance.record
         : undefined
+});
+const languageColorService = createLanguageColorService({
+    ask: geminiClient.ask, languageColors: LANGUAGE_COLORS, languageColorCache, languageColorStore
 });
 const githubClient = createGithubClient({
     axios,
@@ -141,10 +151,11 @@ const planetService = createPlanetService({
     repository: planetRepository,
     githubClient,
     geminiClient,
+    languageColorService,
     geminiApiKey: process.env.GEMINI_API_KEY
 });
 const meteorService = createMeteorService({
-    geminiClient,
+    languageColorService,
     extensionMap: EXTENSION_MAP,
     emitMeteor: (payload) => io.emit('meteor', payload)
 });
@@ -155,7 +166,7 @@ const planetQueryService = planetRepository ? createPlanetQueryService({
     cacheDuration: DATA_CACHE_DURATION
 }) : undefined;
 const authoredLanguageHistoryService = planetRepository ? createAuthoredLanguageHistoryService({
-    repository: planetRepository,
+    repository: createAuthoredLanguageHistoryRepository(pool),
     githubClient
 }) : undefined;
 
@@ -169,7 +180,11 @@ app.use(randomPerformance.beforeSessionMiddleware);
 const sessionCookieName = isProduction ? '__session' : 'connect.sid';
 app.use(session({
     name: sessionCookieName,
-    store: pool ? new PgSession({ pool, createTableIfMissing: false }) : undefined,
+    store: pool ? new PgSession({
+        pool,
+        createTableIfMissing: false,
+        errorLog: (_message, error) => console.error('[Session Store Error]', safeErrorMetadata(error))
+    }) : undefined,
     secret: effectiveSessionSecret,
     resave: false,
     saveUninitialized: false,
@@ -183,7 +198,8 @@ registerPageRoutes(app, {
     systemApiKey: process.env.SYSTEM_API_KEY,
     sessionSecret: effectiveSessionSecret,
     publicBaseUrl,
-    cardCaptureBaseUrl: process.env.PUBLIC_BASE_URL
+    cardCaptureBaseUrl: process.env.PUBLIC_BASE_URL,
+    showcasePages: listShowcasePlanets()
 });
 registerAuthRoutes(app, {
     githubClient,
@@ -212,19 +228,24 @@ if (isProduction && !webhookSecret) {
     console.error('[Webhook] GITHUB_WEBHOOK_SECRET is not configured; incoming webhooks will be rejected.');
 }
 registerEventRoutes(app, {
+    generatePlanetName: (input) => requestPlanetName(geminiClient.ask, input),
     geminiClient,
+    languageColorService,
     meteorService,
     systemApiKey: process.env.SYSTEM_API_KEY,
     webhookSecret,
-    webhookDeliveryStore: planetRepository,
+    webhookDeliveryStore: createWebhookDeliveryStore(pool),
     requireInternalAuth: isProduction,
     requireWebhookSignature: isProduction
 });
 
 // 404 handler
 app.use((req, res) => {
+    res.setHeader('X-Robots-Tag', 'noindex, follow');
     res.status(404).sendFile(path.join(__dirname, '404.html'));
 });
+
+app.use(createErrorHandler());
 
 const server = app.listen(port, '0.0.0.0', () => {
     console.log(`Server running on port ${port}`);
@@ -239,12 +260,8 @@ io.engine.on('connection_error', (error) => {
     if (requestUrl.searchParams.get('transport') !== 'websocket') return;
 
     console.warn('[Socket.IO] WebSocket connection rejected', {
-        code: error.code,
-        message: error.message,
-        method: request?.method,
-        path: requestUrl.pathname,
-        origin: request?.headers?.origin,
-        upgrade: request?.headers?.upgrade
+        code: Number.isInteger(error.code) && error.code >= 0 && error.code <= 6 ? error.code : 'unknown',
+        transport: 'websocket'
     });
 });
 io.on('connection', (socket) => {

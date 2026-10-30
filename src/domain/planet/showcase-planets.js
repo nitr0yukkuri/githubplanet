@@ -14,17 +14,16 @@ const SHOWCASE_PLANETS = Object.freeze({
     perl: createShowcasePlanet('Perl', '#087d96', 'Ocean Current'),
     rust: createShowcasePlanet('Rust', '#dea584', 'Desert Dust World'),
     vue: createShowcasePlanet('Vue', '#41b883', 'Gentle Reactive Wind'),
-    ruby: createShowcasePlanet('Ruby', '#CC342D', 'Burning Ruby'),
-    python: createShowcasePlanet('Python', '#306998', 'Paired Orbital Trails', { Python: 70, Rust: 20, TypeScript: 10 })
+    ruby: createShowcasePlanet('Ruby', '#CC342D', 'Burning Ruby')
 });
 
-function createShowcasePlanet(mainLanguage, planetColor, planetName, languageStats = { [mainLanguage]: 100 }) {
+function createShowcasePlanet(mainLanguage, planetColor, planetName) {
     return Object.freeze({
         username: `SHOWCASE_${mainLanguage.replaceAll('+', 'P').toUpperCase()}`,
         planetColor,
         planetSizeFactor: SHOWCASE_PLANET_SIZE,
         mainLanguage,
-        languageStats: Object.freeze(languageStats),
+        languageStats: Object.freeze({ [mainLanguage]: 100 }),
         totalCommits: SHOWCASE_TOTAL_COMMITS,
         weeklyCommits: SHOWCASE_WEEKLY_COMMITS,
         planetName,

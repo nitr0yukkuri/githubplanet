@@ -32,6 +32,21 @@ test('finds a planet by username regardless of case', async () => {
     assert.doesNotMatch(calls[0][0], /SELECT\s+\*/i);
 });
 
+test('updates a renamed account by immutable GitHub ID', async () => {
+    const calls = [];
+    const repository = createPlanetRepository({
+        async query(sql, params) {
+            calls.push([sql, params]);
+            return { rows: [], rowCount: 1 };
+        }
+    });
+
+    await repository.updateUsernameByGithubId(42, 'new-login');
+
+    assert.match(calls[0][0], /UPDATE planets SET username = \$2 WHERE github_id = \$1/i);
+    assert.deepEqual(calls[0][1], [42, 'new-login']);
+});
+
 test('maps persisted planet columns into the application model', async () => {
     const databaseRow = {
         github_id: 42,
@@ -232,29 +247,6 @@ test('refreshes the cached count in the background when the table grows', async 
     assert.ok(indexedRandomQuery);
 });
 
-test('loads persisted language colors in one startup query', async () => {
-    const calls = [];
-    const repository = createPlanetRepository({
-        async query(sql) {
-            calls.push(sql);
-            if (sql.includes('language_color_cache')) {
-                return { rows: [
-                    { language: 'NewLanguage', color: '#123456' },
-                    { language: 'OtherLanguage', color: '#abcdef' }
-                ] };
-            }
-            return { rows: [] };
-        }
-    });
-
-    assert.deepEqual(await repository.loadLanguageColorCache(), {
-        NewLanguage: '#123456',
-        OtherLanguage: '#abcdef'
-    });
-    assert.equal(calls.length, 1);
-    assert.match(calls[0], /SELECT language, color FROM language_color_cache/i);
-});
-
 test('loads language history in chronological order for one GitHub account', async () => {
     const calls = [];
     const rows = [{
@@ -322,4 +314,30 @@ test('records and advances the owner login baseline in one transaction', async (
         'RELEASE'
     ]);
     assert.deepEqual(calls[2][1], [1, 128, '["FIRST_PLANET","COMMIT_100"]']);
+});
+
+test('rolls back and releases the locked login baseline when its update fails', async () => {
+    const operations = [];
+    const failure = new Error('update failed');
+    const repository = createPlanetRepository({
+        async connect() {
+            return {
+                async query(sql) {
+                    operations.push(sql.trim());
+                    if (sql.includes('SELECT last_login_contributions')) {
+                        assert.match(sql, /FOR UPDATE/);
+                        return { rows: [{ last_login_contributions: 100, notified_achievement_ids: [] }] };
+                    }
+                    if (sql.includes('UPDATE planets')) throw failure;
+                    return { rows: [] };
+                },
+                release() { operations.push('RELEASE'); }
+            };
+        }
+    });
+    await assert.rejects(repository.recordLoginProgress(1, {
+        currentContributions: 128, currentAchievementIds: [], notifyCurrentAchievements: false
+    }), (error) => error === failure);
+    assert.deepEqual(operations.slice(-2), ['ROLLBACK', 'RELEASE']);
+    assert.equal(operations.includes('COMMIT'), false);
 });

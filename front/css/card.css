@@ -178,6 +178,40 @@ canvas {
     z-index: 1;
 }
 
+#card-webgl-fallback {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    width: 42%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    color: #c6c8d8;
+    text-align: center;
+    pointer-events: none;
+}
+
+#card-webgl-fallback[hidden] {
+    display: none;
+}
+
+.card-webgl-fallback-planet {
+    width: min(22vw, 150px);
+    aspect-ratio: 1;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 28%, #fff 0%, var(--planet-fallback-color, #808080) 9%, #292b45 58%, #080a12 100%);
+    box-shadow: 0 0 34px var(--planet-fallback-color, #808080), inset -13px -12px 24px rgba(0, 0, 0, 0.75);
+}
+
+#card-webgl-fallback p {
+    max-width: 15rem;
+    margin: 0 0.75rem;
+    font-size: 0.75rem;
+}
+
 .card-content {
     position: absolute;
     top: 0; right: 0;
@@ -288,6 +322,17 @@ canvas {
 }
 
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+/* 動きを減らす設定では点滅や幅の遷移を止める。 */
+@media (prefers-reduced-motion: reduce) {
+    .sys-status {
+        animation: none;
+    }
+
+    .bar-fill {
+        transition: none;
+    }
+}
 
 .share-container {
     width: 100%;

@@ -81,3 +81,8 @@ export function generatePlanetName(mainLanguage, planetColor, totalCommits) {
     const suffix = totalCommits > 1000 ? '帝星' : totalCommits > 500 ? '巨星' : '星';
     return `${adjective}${colorName}の${suffix}`;
 }
+
+export function calculatePlanetSizeFactor(totalCommits) {
+    const factor = 1.0 + Math.min(1.0, Math.log10(Math.max(1, Number(totalCommits) || 0)) / 2.5);
+    return parseFloat(factor.toFixed(2));
+}

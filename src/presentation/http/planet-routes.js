@@ -1,6 +1,8 @@
+import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import { normalizePlanetCommitCounts } from '../../domain/planet/planet.js';
 import { getShowcasePlanet } from '../../domain/planet/showcase-planets.js';
 import { toPlanetResponse } from './planet-response.js';
+import { safeErrorMetadata } from '../../shared/error-metadata.js';
 
 const ANONYMOUS_RANDOM_COOKIE = 'githubplanet_random_planet';
 
@@ -42,14 +44,69 @@ export function registerPlanetRoutes(app, {
     const isHistoryDisabled = (username) => disabledHistoryUsernames.has(
         String(username || '').trim().toLowerCase()
     );
+    // /api/me verifies the GitHub profile, so cap repeated upstream calls per stable account ID.
+    const authenticatedMeRateLimit = rateLimit({
+        windowMs: 15 * 60 * 1000,
+        limit: 100,
+        standardHeaders: true,
+        legacyHeaders: false,
+        keyGenerator: (req) => {
+            const userId = req.session?.planetData?.user?.id;
+            return userId ? `github-user:${userId}` : ipKeyGenerator(req.ip);
+        }
+    });
 
-    app.get('/api/me', async (req, res) => {
-        if (!req.session.planetData) {
+    app.get('/github-profile/:githubId', async (req, res) => {
+        if (!/^[1-9]\d*$/.test(String(req.params.githubId || ''))) {
+            return res.status(400).send('Invalid GitHub account ID.');
+        }
+        if (typeof planetQueryService?.getGithubProfileUrlById !== 'function') {
+            return res.status(503).send('GitHub profile lookup is unavailable.');
+        }
+
+        try {
+            const profileUrl = await planetQueryService.getGithubProfileUrlById(req.params.githubId);
+            if (!profileUrl) {
+                return res.status(410).send('This GitHub profile is no longer publicly available.');
+            }
+            return res.redirect(302, profileUrl);
+        } catch (error) {
+            if ([403, 429].includes(error.response?.status)) {
+                if (error.retryAfterMs) {
+                    res.setHeader('Retry-After', String(Math.ceil(error.retryAfterMs / 1_000)));
+                }
+                return res.status(429).send('GitHub rate limit reached. Try again later.');
+            }
+            console.error('[GitHub Profile Redirect] Lookup failed:', safeErrorMetadata(error));
+            return res.status(502).send('GitHub profile could not be verified.');
+        }
+    });
+
+    app.get('/api/me', authenticatedMeRateLimit, async (req, res) => {
+        if (!req.session.planetData?.user) {
             return res.status(401).json({ error: 'Not logged in' });
         }
 
+        let githubProfileVerified = false;
+        if (req.session.github_token && planetService?.refreshAuthenticatedUser) {
+            try {
+                const user = await planetService.refreshAuthenticatedUser(
+                    req.session.github_token,
+                    req.session.planetData.user
+                );
+                req.session.planetData.user = user;
+                if (req.session.planetData.planetData) {
+                    req.session.planetData.planetData.username = user.login;
+                }
+                githubProfileVerified = true;
+            } catch (error) {
+                console.warn('[GitHub Profile] Could not refresh the authenticated username:', safeErrorMetadata(error));
+            }
+        }
+
         const lastUpdated = req.session.last_updated;
-        const isStale = !lastUpdated || (Date.now() - lastUpdated > cacheDuration);
+        const hadPlanetData = Boolean(req.session.planetData.planetData);
+        const isStale = !hadPlanetData || !lastUpdated || (Date.now() - lastUpdated > cacheDuration);
 
         if (req.session.github_token && isStale) {
             console.log('[Auto Update] データを更新中... (キャッシュ切れ)');
@@ -59,12 +116,30 @@ export function registerPlanetRoutes(app, {
                 const { observedTotalContributions, isNewPlanet, ...newPlanetData } = updatedPlanetData;
                 req.session.planetData.planetData = newPlanetData;
                 req.session.last_updated = Date.now();
+                if (!hadPlanetData) {
+                    try {
+                        req.session.pendingProgressNotice = await planetService.recordLoginProgress(
+                            user.id,
+                            updatedPlanetData
+                        );
+                    } catch (error) {
+                        console.error('[Login Progress] 初回記録に失敗しました:', safeErrorMetadata(error));
+                    }
+                }
                 console.log('[Auto Update] 更新完了');
             } catch (error) {
-                console.error('[Auto Update] 更新失敗 (キャッシュを返します):', error.message);
+                console.error('[Auto Update] 更新失敗 (キャッシュを返します):', safeErrorMetadata(error));
             }
         } else {
             console.log('[Auto Update] キャッシュ有効のためスキップ');
+        }
+
+        if (!req.session.planetData.planetData) {
+            res.setHeader('Retry-After', '5');
+            return res.status(503).json({
+                error: 'Planet data is temporarily unavailable',
+                authenticated: true
+            });
         }
 
         const progressNotice = req.session.pendingProgressNotice || {
@@ -76,27 +151,33 @@ export function registerPlanetRoutes(app, {
         res.json({
             ...req.session.planetData,
             planetData: normalizePlanetCommitCounts(req.session.planetData.planetData),
-            progressNotice
+            progressNotice,
+            githubProfileVerified
         });
     });
 
     app.post('/api/save-title', async (req, res) => {
-        if (!req.session.planetData || !planetQueryService) {
+        const userId = req.session?.planetData?.user?.id;
+        if (!userId || !planetQueryService) {
             return res.status(401).json({ error: 'Not logged in' });
         }
 
-        const { prefix, suffix } = req.body;
-        const userId = req.session.planetData.user.id;
+        const { prefix, suffix } = req.body || {};
+        const unlockedTitles = req.session.planetData.planetData?.unlockedTitles || {
+            prefixes: ['名もなき'],
+            suffixes: ['旅人']
+        };
         const newTitle = { prefix, suffix };
 
         try {
-            await planetQueryService.saveActiveTitle(userId, newTitle);
+            const saved = await planetQueryService.saveActiveTitle(userId, newTitle, unlockedTitles);
+            if (!saved) return res.status(400).json({ error: 'Invalid title' });
             if (req.session.planetData.planetData) {
                 req.session.planetData.planetData.activeTitle = newTitle;
             }
             res.json({ success: true, activeTitle: newTitle });
         } catch (error) {
-            console.error('Save Title Error:', error);
+            console.error('Save Title Error:', safeErrorMetadata(error));
             res.status(500).json({ error: 'DB Error' });
         }
     });
@@ -121,7 +202,7 @@ export function registerPlanetRoutes(app, {
                 }))
             });
         } catch (error) {
-            console.error('[API /me/language-history Error]', error);
+            console.error('[API /me/language-history Error]', safeErrorMetadata(error));
             res.status(500).json({ error: 'Internal Server Error' });
         }
     });
@@ -144,7 +225,7 @@ export function registerPlanetRoutes(app, {
         try {
             res.json(await authoredLanguageHistoryService.getHistory(user.id));
         } catch (error) {
-            console.error('[API /me/authored-language-history Error]', error);
+            console.error('[API /me/authored-language-history Error]', safeErrorMetadata(error));
             res.status(500).json({ error: 'Internal Server Error' });
         }
     });
@@ -177,7 +258,7 @@ export function registerPlanetRoutes(app, {
             const result = await authoredLanguageHistoryService.getHistory(user.id);
             res.json({ ...result, scanStarted });
         } catch (error) {
-            console.error('[API /me/authored-language-history/scan Error]', error);
+            console.error('[API /me/authored-language-history/scan Error]', safeErrorMetadata(error));
             res.status(500).json({ error: 'Internal Server Error' });
         }
     });
@@ -196,7 +277,14 @@ export function registerPlanetRoutes(app, {
             if (!row) return res.status(404).json({ error: 'Planet not found' });
             res.json(toPlanetResponse(row));
         } catch (error) {
-            console.error('[API /user/:username Error]', error);
+            console.error('[API /user/:username Error]', safeErrorMetadata(error));
+            if ([403, 429].includes(error.response?.status)) {
+                if (error.retryAfterMs) {
+                    res.setHeader('Retry-After', String(Math.ceil(error.retryAfterMs / 1_000)));
+                }
+                return res.status(429).json({ error: 'GitHub public API rate limit reached' });
+            }
+            if (error.response?.status === 404) return res.status(404).json({ error: 'Planet not found' });
             res.status(500).json({ error: 'Internal Server Error' });
         }
     });
@@ -232,7 +320,7 @@ export function registerPlanetRoutes(app, {
             res.json(toPlanetResponse(row));
             randomPerformance?.markRandomStage(req, 'response-serialized');
         } catch (error) {
-            console.error('[API /random Error]', error);
+            console.error('[API /random Error]', safeErrorMetadata(error));
             res.status(500).json({ error: 'Internal Server Error' });
         }
     });

@@ -148,3 +148,41 @@ test('reports GitHub request timings without changing the response shape', async
         provider === 'github' && outcome === 'success' && durationMs >= 0
     )));
 });
+
+test('gets a public GitHub profile without sending an empty bearer token', async () => {
+    let request;
+    const client = createGithubClient({
+        axios: {
+            async get(url, config) {
+                request = { url, config };
+                return { data: { id: 42, login: 'alice' } };
+            }
+        }
+    });
+
+    assert.deepEqual(await client.getUser('alice'), { id: 42, login: 'alice' });
+    assert.equal(request.url, 'https://api.github.com/users/alice');
+    assert.equal(request.config.headers.Authorization, undefined);
+    assert.equal(request.config.headers.Accept, 'application/vnd.github+json');
+});
+
+test('gets a public GitHub profile by immutable account ID', async () => {
+    let request;
+    const client = createGithubClient({
+        githubApiBaseUrl: 'https://github-api.example.test',
+        axios: {
+            async get(url, config) {
+                request = { url, config };
+                return { data: { id: 76643867, login: 'renamed-user' } };
+            }
+        }
+    });
+
+    assert.deepEqual(await client.getUserById(76643867, 'token'), {
+        id: 76643867,
+        login: 'renamed-user'
+    });
+    assert.equal(request.url, 'https://github-api.example.test/user/76643867');
+    assert.equal(request.config.headers.Authorization, 'Bearer token');
+    assert.equal(request.config.headers.Accept, 'application/vnd.github+json');
+});

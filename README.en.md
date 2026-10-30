@@ -31,6 +31,14 @@ Public repositories, languages, contributions, stars, and contributions to exter
 
 When a GitHub Push Webhook arrives, the application derives a shooting star's color and scale from the changed language and change size, then broadcasts it through Socket.IO to connected visitors in real time. Planets can also be explored through user visits, achievements and titles, and shareable static or animated profile cards.
 
+## 🏆 Awards
+
+- **CSS Winner — Star** (Score 7.5) — https://www.csswinner.com/details/github-planet/19334
+- **Demo Stage — Grand Prize** （最優秀賞）
+- **Geek CAMP Vol.14 (技育CAMP) — Excellence Award** （優秀賞）
+- **Geek Haku Vol.6 (技育博) — Corporate Award, WingArc1st** （企業賞）
+- **Heroes League 2025 — Finalist** （決勝進出）
+
 ## 🌟 Features
 
 ### 1. A unique planet for every developer
@@ -192,6 +200,12 @@ GitHub Webhook → Express → Socket.IO → Browser
     <img src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet.dev/card.html?username=lenagig&fix=true" alt="lenagig's GitHub Planet" />
   </a>
 </div>
+
+## 📣 Featured Posts
+
+- [Demo Stage Summer — Grand Prize announcement](https://x.com/lena_gig/status/2083880465019338867) — @lena_gig, Aug 2026
+- [CSS Winner — STAR](https://x.com/lena_gig/status/2088272346117455987) — @lena_gig, Aug 2026
+- [Planet 技育展 — qualifier announcement](https://x.com/lena_gig/status/2111454798038159431) — @lena_gig, Oct 2026
 
 ## 🚀 Local Development with Docker
 

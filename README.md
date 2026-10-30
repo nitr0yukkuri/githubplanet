@@ -19,6 +19,14 @@ GitHub Planetは、開発者のGitHub活動を、宇宙空間に浮かぶ3D惑�
 
 この作品の中心は、数字の一覧ではなく、自分の開発履歴を反映した惑星を回転させて表面の質感や言語ごとの表現を観察し、他の開発者の惑星と見比べられることにあります。
 
+## 🏆 受賞歴
+
+- **CSS Winner Star** 受賞（Score 7.5）— https://www.csswinner.com/details/github-planet/19334
+- **Demo Stage 最優秀賞**
+- **技育CAMP Vol.14 優秀賞**
+- **技育博 Vol.6 企業賞（ウイングアーク1st）**
+- **ヒーローズ・リーグ 2025 決勝進出**
+
 ## 🎬 まずは1分で体験
 
 [ログイン不要のデモを開く](https://githubplanet.dev/demo?showcase=typescript)
@@ -103,13 +111,12 @@ GitHub Push Webhook → Express → Socket.IO → 閲覧中のブラウザに流
 | Java | 土壌と地表ダスト | `java-planet-soil.js` |
 | Kotlin | 結晶・コア・電気的な線 | `kotlin-planet-crystal.js` |
 | Perl | 海洋を思わせる地表表現 | `perl-planet-ocean.js` |
-| Python | 構造的な地表と軌跡 | `python-planet-structure.js` |
 | Rust | 砂漠地形と砂塵 | `rust-planet-desert.js` |
 | Ruby | 太陽熱・コロナ・エンバー | `ruby-planet-solar.js` |
 
 対応言語のカタログと色定義は、専用レンダラーの一覧とは別に `src/domain/planet/constants.js` で管理しています。未登録言語でも、色と名前のフォールバックによって惑星データを保持できます。
 
-Python向けの表現では、構造的な地表とそれに対応する軌跡を表示します。
+2位・3位の言語は、主言語にかかわらず、言語色を持つ共通の軌跡として惑星の周囲を巡ります。
 
 ## 言語別ショーケース
 
@@ -183,14 +190,6 @@ Python向けの表現では、構造的な地表とそれに対応する軌跡�
       <strong>Ruby — Burning Ruby</strong><br>
       <a href="https://githubplanet.dev/card.html?showcase=ruby&amp;fix=true">
         <img width="400" alt="Ruby showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_ruby.gif">
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="50%" colspan="2">
-      <strong>Python — Paired Orbital Trails</strong><br>
-      <a href="https://githubplanet.dev/card.html?showcase=python&amp;fix=true">
-        <img width="400" alt="Python showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_python.gif">
       </a>
     </td>
   </tr>
@@ -339,6 +338,12 @@ test/                             Node.jsテスト
 ```
 
 依存方向は`Presentation → Application → Domain`を基本とし、外部サービスの具体的な通信は`Infrastructure`に閉じ込めます。起動時はDBがある場合に適用済みマイグレーションを検証し、実行は`npm run migrate`で別に行います。
+
+## 📣 紹介ポスト
+
+- [DemoStage Summer 最優秀賞の受賞報告](https://x.com/lena_gig/status/2083880465019338867)（@lena_gig、2026年8月）
+- [CSS Winner STAR 獲得の投稿](https://x.com/lena_gig/status/2088272346117455987)（@lena_gig、2026年8月）
+- [プラネット技育展 予選進出の報告](https://x.com/lena_gig/status/2111454798038159431)（@lena_gig、2026年10月）
 
 ## セットアップ
 

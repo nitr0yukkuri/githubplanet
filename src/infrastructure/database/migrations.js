@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { safeErrorMetadata } from '../../shared/error-metadata.js';
 
 const DEFAULT_MIGRATIONS_DIRECTORY = fileURLToPath(
     new URL('../../../migrations/', import.meta.url)
@@ -193,7 +194,7 @@ export async function runDatabaseMigrations(pool, {
             await client.query(
                 'SELECT pg_advisory_unlock(hashtext($1))',
                 [MIGRATION_LOCK_NAME]
-            ).catch((error) => logger.warn(`[DB] migration lockの解放に失敗しました: ${error.message}`));
+            ).catch((error) => logger.warn('[DB] migration lockの解放に失敗しました:', safeErrorMetadata(error)));
         }
         client.release();
     }

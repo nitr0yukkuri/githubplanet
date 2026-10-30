@@ -56,4 +56,3 @@ test('updates on a seamless eighteen-second cycle', () => {
     updateXmlPlanetNesting(material, 22500);
     assert.equal(material.userData.xmlNestingUniforms.xmlNestingTime.value, 0.25);
 });
-

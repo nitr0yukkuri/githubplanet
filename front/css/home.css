@@ -18,6 +18,38 @@ body {
     z-index: 1; /* UIより下に配置 */
 }
 
+#webgl-fallback {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    background: radial-gradient(ellipse at 50% 46%, rgba(36, 39, 70, 0.7), #05060b 72%);
+    pointer-events: none;
+}
+
+#webgl-fallback[hidden] {
+    display: none;
+}
+
+.webgl-fallback-planet {
+    width: min(42vw, 250px);
+    aspect-ratio: 1;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 28%, #fff 0%, var(--planet-fallback-color, #808080) 9%, #292b45 58%, #080a12 100%);
+    box-shadow: 0 0 55px var(--planet-fallback-color, #808080), inset -20px -18px 36px rgba(0, 0, 0, 0.75);
+}
+
+#webgl-fallback p {
+    max-width: 28rem;
+    margin: 0 1rem;
+    color: #c6c8d8;
+    text-align: center;
+}
+
 /* UI要素の共通スタイル */
 .ui-button {
     background-color: rgba(255, 255, 255, 0.7); /* ★ 白ベースに変更 */
@@ -363,6 +395,35 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 30px; /* テキストとボタンの間隔 */
+}
+
+#planet-load-error-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transform: translate(-50%, -50%);
+    padding: 1rem 1.25rem;
+    border: 1px solid rgba(180, 150, 255, 0.6);
+    border-radius: 0.75rem;
+    background: rgba(10, 12, 24, 0.92);
+    color: #f4f0ff;
+}
+
+#planet-load-error-container[hidden] {
+    display: none;
+}
+
+#retry-planet-load-btn {
+    border: 1px solid #b99cff;
+    border-radius: 999px;
+    padding: 0.5rem 0.9rem;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
 }
 
 /* ★ 最小限の変更点: 未ログイン時テキストのスタイル ★ */
@@ -998,4 +1059,15 @@ html[lang="en"] .planet-title {
     line-height: 1.7;
     margin-bottom: 30px;
     text-align: left;
+}
+
+/* 初回案内中のGPU負荷を避け、狭い画面でも開始操作を画面内に収める。 */
+.welcome-modal {
+    box-sizing: border-box;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+}
+
+.home-introduction #canvas-container {
+    background: #03030b url('/front/img/skybox/preview.webp') center / cover no-repeat;
 }

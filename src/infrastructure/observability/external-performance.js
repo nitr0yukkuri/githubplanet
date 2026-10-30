@@ -1,3 +1,5 @@
+import { safeErrorMetadata } from '../../shared/error-metadata.js';
+
 function nowNanoseconds() {
     return process.hrtime.bigint();
 }
@@ -47,12 +49,13 @@ export function measureExternalOperation(reporter, operation, execute, details =
             return result;
         })
         .catch((error) => {
+            const metadata = safeErrorMetadata(error);
             reportSafely(reporter, {
                 operation,
                 ...details,
                 durationMs: elapsedMilliseconds(startedAt),
                 outcome: 'error',
-                errorCode: error?.code || error?.response?.status || 'unknown'
+                errorCode: metadata.errorCode !== 'unknown' ? metadata.errorCode : metadata.status || 'unknown'
             });
             throw error;
         });

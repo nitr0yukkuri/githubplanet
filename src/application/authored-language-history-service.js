@@ -1,4 +1,5 @@
 import { buildAuthoredLanguageHistory } from '../domain/planet/authored-language-history.js';
+import { safeErrorMetadata } from '../shared/error-metadata.js';
 
 const SCAN_TTL_MS = 6 * 60 * 60 * 1_000;
 const DEFAULT_RETRY_MS = 5 * 60 * 1_000;
@@ -36,9 +37,13 @@ export function createAuthoredLanguageHistoryService({ repository, githubClient 
         inFlightScans.add(key);
         try {
             const savedKeys = await repository.findAuthoredLanguageCommitKeys(githubId);
-            const knownCommits = new Set(savedKeys.map(({ repositoryFullName, commitSha }) => (
-                `${repositoryFullName.toLowerCase()}:${commitSha.toLowerCase()}`
-            )));
+            const knownCommits = new Set(savedKeys.flatMap(({ repositoryFullName, commitSha }) => {
+                const normalizedSha = commitSha.toLowerCase();
+                return [
+                    `${repositoryFullName.toLowerCase()}:${normalizedSha}`,
+                    normalizedSha
+                ];
+            }));
             const progress = await githubClient.scanHistoricalAuthoredLanguageCommits({
                 login,
                 accessToken,
@@ -59,11 +64,11 @@ export function createAuthoredLanguageHistoryService({ repository, githubClient 
         } catch (error) {
             await repository.failAuthoredLanguageHistoryScan(
                 githubId,
-                error.message,
+                JSON.stringify(safeErrorMetadata(error)),
                 error.retryAfterMs || DEFAULT_RETRY_MS,
                 error.scanProgress || error.progress || null
-            ).catch((saveError) => console.warn('[Language History] Could not save scan failure:', saveError.message));
-            console.warn(`[Language History] Scan failed for ${login}:`, error.message);
+            ).catch((saveError) => console.warn('[Language History] Could not save scan failure:', safeErrorMetadata(saveError)));
+            console.warn('[Language History] Scan failed:', safeErrorMetadata(error));
         } finally {
             inFlightScans.delete(key);
         }

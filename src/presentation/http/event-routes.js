@@ -1,7 +1,10 @@
 import crypto from 'crypto';
+import { safeErrorMetadata } from '../../shared/error-metadata.js';
 
 export function registerEventRoutes(app, {
     geminiClient,
+    languageColorService,
+    generatePlanetName,
     meteorService,
     systemApiKey,
     webhookSecret,
@@ -37,7 +40,7 @@ export function registerEventRoutes(app, {
             const result = await meteorService.emitManualMeteor(req.body);
             res.json({ success: true, color: result.color });
         } catch (error) {
-            console.error('[Manual Meteor Error]', error);
+            console.error('[Manual Meteor Error]', safeErrorMetadata(error));
             res.status(500).json({ error: 'Failed' });
         }
     });
@@ -65,7 +68,7 @@ export function registerEventRoutes(app, {
                     const payloadHash = crypto.createHash('sha256').update(req.rawBody).digest('hex');
                     isNewDelivery = await webhookDeliveryStore.claimGithubWebhookDelivery(deliveryId, payloadHash);
                 } catch (error) {
-                    console.error('[Webhook Delivery Store Error]', error);
+                    console.error('[Webhook Delivery Store Error]', safeErrorMetadata(error));
                     return res.status(503).send('Webhook delivery could not be recorded');
                 }
                 if (!isNewDelivery) return res.status(200).send('OK');
@@ -76,9 +79,9 @@ export function registerEventRoutes(app, {
 
             // GitHubへのACK速度は維持しつつ、業務処理はApplicationのユースケースに委譲する。
             meteorService.processWebhook(payload)
-                .catch((error) => console.error('[Webhook Async Error]', error));
+                .catch((error) => console.error('[Webhook Async Error]', safeErrorMetadata(error)));
         } catch (error) {
-            console.error('[Webhook Error]', error);
+            console.error('[Webhook Error]', safeErrorMetadata(error));
             if (!res.headersSent) res.status(500).send('Error');
         }
     });
@@ -90,7 +93,7 @@ export function registerEventRoutes(app, {
 
     app.get('/api/debug-color/:lang', requireAuthorization, async (req, res) => {
         const mainLanguage = req.params.lang;
-        const color = await geminiClient.resolveLanguageColor(mainLanguage);
+        const color = await languageColorService.resolveLanguageColor(mainLanguage);
         res.json({ target_language: mainLanguage, generated_color: color });
     });
 
@@ -98,13 +101,7 @@ export function registerEventRoutes(app, {
         const mainLanguage = req.params.lang;
         const planetColor = req.query.color || '#808080';
         const totalCommits = parseInt(req.query.commits || '100');
-        const suffix = totalCommits > 1000 ? '帝星' : totalCommits > 500 ? '巨星' : '星';
-        const prompt = `Programming language: ${mainLanguage}. Color: ${planetColor}.
-    Generate a cool Japanese planet name in the format: "[Adjective][ColorName]の${suffix}".
-    The adjective should describe the nature of "${mainLanguage}". The color name should describe the color "${planetColor}".
-    Example: "JavaScript" -> "柔軟な黄金の${suffix}".
-    Return ONLY the name string.`;
-        const generatedName = await geminiClient.ask(prompt);
+        const generatedName = await generatePlanetName({ mainLanguage, planetColor, totalCommits });
 
         res.json({
             input_language: mainLanguage,

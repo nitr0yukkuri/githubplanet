@@ -20,12 +20,13 @@
     <link href="https://githubplanet.dev/" rel="alternate" hreflang="ja">
     <link href="https://githubplanet.dev/en" rel="alternate" hreflang="en">
     <link href="https://githubplanet.dev/" rel="alternate" hreflang="x-default">
-    <link rel="icon" href="/front/img/favicon.png" type="image/png">
+    <link rel="icon" href="/front/img/favicon-96.png" sizes="96x96" type="image/png">
     <link rel="apple-touch-icon" sizes="180x180" href="/front/img/apple-touch-icon.png">
     <link id="app-manifest" rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#000000">
     <link rel="stylesheet" href="/front/css/home.css">
     <link rel="stylesheet" href="/front/css/responsive.css">
+    <link rel="stylesheet" href="/front/css/site-noscript.css">
 
     <script defer src="/front/js/analytics.js"></script>
     <script>
@@ -40,8 +41,11 @@
     <div class="achievement-container">
 
         <div id="welcome-modal" class="welcome-modal" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
-            <img src="/front/img/GitHubPlanet_logo.png" alt="GitHub Planet Logo" class="welcome-logo" width="350"
-                height="auto">
+            <picture>
+                <source srcset="/front/img/GitHubPlanet_logo-700.webp" type="image/webp">
+                <img src="/front/img/GitHubPlanet_logo.png" alt="GitHub Planet Logo" class="welcome-logo" width="1980"
+                    height="684" decoding="async" fetchpriority="high">
+            </picture>
             <h2 id="welcome-title" data-i18n="home.welcomeTitle">GitHub Planetへようこそ</h2>
             <p style="margin-bottom: 15px;" data-i18n-html="home.welcomeBody">
                 これはあなたのGitHubでの活動に応じて育つ惑星を楽しめる<br>サイトです。使用言語とコントリビューション数によって惑星の色や輝きなどが変わり、自分だけの星を育てられます。
@@ -54,13 +58,22 @@
             <button type="button" class="ok-button" id="welcome-ok-btn">OK</button>
         </div>
 
-        <div id="canvas-container"></div>
+        <div id="canvas-container">
+            <div id="webgl-fallback" role="status" aria-live="polite" hidden>
+                <div class="webgl-fallback-planet" aria-hidden="true"></div>
+                <p data-i18n="home.webglUnavailable">3D表示を利用できませんが、惑星情報は表示されています。</p>
+            </div>
+        </div>
 
-        <div id="main-ui-wrapper" style="display: none;">
+        <div id="main-ui-wrapper" data-nosnippet style="display: none;">
 
             <div id="not-logged-in-container">
                 <p id="not-logged-in-text" data-i18n="home.empty">まだ何もありません...</p>
                 <a href="/login" id="login-button" data-i18n="home.login">星を誕生させる</a>
+            </div>
+            <div id="planet-load-error-container" role="alert" aria-live="polite" hidden>
+                <p data-i18n="home.loadError">惑星データを読み込めませんでした。</p>
+                <button id="retry-planet-load-btn" type="button" data-i18n="home.retry">再試行</button>
             </div>
 
             <div class="ui-top-left">
@@ -157,6 +170,8 @@
 
     </div>
 
+    <!-- site-noscript -->
+
     <script type="importmap">
     {
         "imports": {
@@ -168,7 +183,7 @@
     }
     </script>
 
-    <script type="module" src="/front/js/home.js"></script>
+    <script type="module" src="/front/js/home-bootstrap.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

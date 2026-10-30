@@ -1,7 +1,27 @@
-import { MAX_TOTAL_COMMITS, MAX_WEEKLY_COMMITS, TITLE_REWARDS } from '../domain/planet/constants.js';
-import { checkAchievements, clampCommitCount, generatePlanetName } from '../domain/planet/planet.js';
+import { resolvePlanetIdentity } from './planet-identity.js';
+import { derivePlanetProgression } from './planet-progression.js';
+import { derivePlanetStats } from './planet-stats.js';
+import { LANGUAGE_COLORS } from '../domain/planet/constants.js';
+import { calculatePlanetSizeFactor, generatePlanetName } from '../domain/planet/planet.js';
+import { safeErrorMetadata } from '../shared/error-metadata.js';
 
-export function createPlanetService({ repository, githubClient, geminiClient, geminiApiKey }) {
+export function createPlanetService({ repository, githubClient, geminiClient, languageColorService, geminiApiKey }) {
+    async function refreshAuthenticatedUser(accessToken, previousUser) {
+        if (!accessToken) throw new Error('GitHub access token is required');
+
+        const user = await githubClient.getAuthenticatedUser(accessToken);
+        if (!user?.id || !user.login) throw new Error('GitHub returned an incomplete user profile');
+        if (previousUser?.id && String(user.id) !== String(previousUser.id)) {
+            throw new Error('Authenticated GitHub user does not match the active session');
+        }
+
+        if (previousUser?.login !== user.login && repository?.updateUsernameByGithubId) {
+            // GitHub ID is stable across renames; only synchronize the mutable login after token verification.
+            await repository.updateUsernameByGithubId(user.id, user.login);
+        }
+        return user;
+    }
+
     async function updateAndSavePlanetData(user, accessToken) {
         console.log(`[GraphQL] Fetching data for user: ${user.login}`);
 
@@ -9,143 +29,88 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
         try {
             userData = await githubClient.getPlanetSource(user.login, accessToken);
         } catch (error) {
-            console.error('[GraphQL] データ取得失敗:', error.message);
+            console.error('[GraphQL] データ取得失敗:', safeErrorMetadata(error));
             throw error;
         }
 
-        const ownedRepos = userData.ownedRepositories || [];
-        const contributedRepos = userData.contributedRepositories || [];
-        const hasMergedExternalPullRequest = (userData.mergedPullRequests || []).some((pullRequest) => {
-            const ownerLogin = pullRequest.repositoryOwnerLogin;
-            return ownerLogin && ownerLogin.toLowerCase() !== user.login.toLowerCase();
-        });
-        // 未マージPRやStarだけでは、実際に作品へ採用された開発貢献とは言えないため対象外にする。
-        const hasMergedGithubPlanetPullRequest = (userData.mergedPullRequests || []).some((pullRequest) => (
-            pullRequest.repositoryNameWithOwner?.toLowerCase() === 'nitr0yukkuri/githubplanet'
-        ));
-        const starredCount = userData.starredRepositoryCount || 0;
-        const observedTotalContributions = userData.totalContributions || 0;
-        let totalCommits = observedTotalContributions;
-        let weeklyCommits = 0;
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-        for (const contribution of userData.dailyContributions || []) {
-            if (new Date(contribution.date) >= oneWeekAgo) weeklyCommits += contribution.count;
-        }
-
-        totalCommits = clampCommitCount(totalCommits, MAX_TOTAL_COMMITS);
-        weeklyCommits = clampCommitCount(weeklyCommits, MAX_WEEKLY_COMMITS);
-
-        const languageStats = {};
-        let receivedStars = 0;
-        // 主言語と軌跡は公開所有repo/forkで計算し、参加先全体の言語構成が混ざるのを防ぐ。
-        for (const repo of ownedRepos) {
-            for (const languageEntry of repo.languages || []) {
-                const language = languageEntry.language === 'Sass' ? 'CSS' : languageEntry.language;
-                languageStats[language] = (languageStats[language] || 0) + languageEntry.bytes;
-            }
-            if (repo.receivedStars) receivedStars += repo.receivedStars;
-        }
-
-        let mainLanguage = 'Unknown';
-        let maxBytes = 0;
-        for (const [language, bytes] of Object.entries(languageStats)) {
-            if (bytes > maxBytes) {
-                maxBytes = bytes;
-                mainLanguage = language;
-            }
-        }
+        const stats = derivePlanetStats(userData, user);
 
         let existingData = null;
-        let existingAchievements = {};
-        let unlockedTitles = { prefixes: ['名もなき'], suffixes: ['旅人'] };
-        let activeTitle = { prefix: '名もなき', suffix: '旅人' };
         if (repository) {
             try {
                 existingData = await repository.findByGithubId(user.id);
-                if (existingData) {
-                    existingAchievements = existingData.achievements || {};
-                    unlockedTitles = existingData.unlockedTitles || unlockedTitles;
-                    activeTitle = existingData.activeTitle || activeTitle;
-                }
             } catch (error) {
-                console.error('[DB] 既存データ取得エラー:', error.message);
+                console.error('[DB] 既存データ取得エラー:', safeErrorMetadata(error));
             }
         }
 
-        let planetColor = '#808080';
-        let planetName = generatePlanetName(mainLanguage, '#808080', totalCommits);
-        let shouldAskGeminiColor = true;
-        let shouldAskGeminiName = true;
-        if (existingData) {
-            if (existingData.mainLanguage === mainLanguage && existingData.planetColor) {
-                planetColor = existingData.planetColor;
-                shouldAskGeminiColor = false;
-            }
-            if (existingData.mainLanguage === mainLanguage && existingData.planetName) {
-                const oldName = existingData.planetName;
-                if (!oldName.includes('未知の') && !oldName.includes('神秘')) {
-                    planetName = oldName;
-                    shouldAskGeminiName = false;
-                }
-            }
-        }
+        // I/Oの順序はここに固定し、集計・個性・進捗の仕様変更が互いの実装へ波及しないようにする。
+        const identity = await resolvePlanetIdentity({
+            mainLanguage: stats.mainLanguage,
+            totalCommits: stats.totalCommits,
+            existingData,
+            geminiClient,
+            languageColorService,
+            geminiApiKey
+        });
+        const progression = derivePlanetProgression({
+            existingData,
+            stats,
+            enabled: Boolean(repository)
+        });
 
-        if (shouldAskGeminiColor) planetColor = await geminiClient.resolveLanguageColor(mainLanguage);
-        let planetSizeFactor = 1.0 + Math.min(1.0, Math.log10(Math.max(1, totalCommits)) / 2.5);
-        planetSizeFactor = parseFloat(planetSizeFactor.toFixed(2));
-
-        if (geminiApiKey && shouldAskGeminiName) {
-            planetName = generatePlanetName(mainLanguage, planetColor, totalCommits);
-            if (planetName.includes('未知の') || planetName.includes('神秘')) {
-                console.log(`[Gemini] 暫定名 "${planetName}" をかっこいい名前に修正します...`);
-                const suffix = totalCommits > 1000 ? '帝星' : totalCommits > 500 ? '巨星' : '星';
-                const prompt = `Programming language: ${mainLanguage}. Color: ${planetColor}.
-            Generate a cool Japanese planet name in the format: "[Adjective][ColorName]の${suffix}".
-            The adjective should describe the nature of "${mainLanguage}". The color name should describe the color "${planetColor}".
-            Example: "JavaScript" -> "柔軟な黄金の${suffix}".
-            Return ONLY the name string.`;
-                const aiName = await geminiClient.ask(prompt);
-                if (aiName) planetName = aiName.replace(/(\r\n|\n|\r)/gm, '');
-            } else {
-                console.log('[Gemini] 名前生成スキップ: キャッシュまたはデフォルト名を採用');
-            }
-        } else {
-            console.log('[Gemini] 名前生成スキップ: 既存のかっこいい名前を再利用');
-        }
-
-        let achievements = {};
         if (repository) {
-            achievements = checkAchievements(existingAchievements, {
-                totalCommits,
-                weeklyCommits,
-                languagesCount: Object.keys(languageStats).length,
-                languageStats,
-                hasContributedToOthers: contributedRepos.length > 0,
-                hasMergedExternalPullRequest,
-                hasMergedGithubPlanetPullRequest,
-                totalStars: starredCount + receivedStars,
-                createdAt: user.created_at
-            });
-            for (const key of Object.keys(achievements)) {
-                const reward = TITLE_REWARDS[key];
-                if (!reward) continue;
-                if (!unlockedTitles.prefixes.includes(reward.prefix)) unlockedTitles.prefixes.push(reward.prefix);
-                if (!unlockedTitles.suffixes.includes(reward.suffix)) unlockedTitles.suffixes.push(reward.suffix);
-            }
-
             await repository.save({
-                githubId: user.id, username: user.login, planetColor, planetSizeFactor, mainLanguage,
-                languageStats, totalCommits, achievements, planetName, weeklyCommits, unlockedTitles, activeTitle
+                githubId: user.id,
+                username: user.login,
+                planetColor: identity.planetColor,
+                planetSizeFactor: identity.planetSizeFactor,
+                mainLanguage: stats.mainLanguage,
+                languageStats: stats.languageStats,
+                totalCommits: stats.totalCommits,
+                achievements: progression.achievements,
+                planetName: identity.planetName,
+                weeklyCommits: stats.weeklyCommits,
+                unlockedTitles: progression.unlockedTitles,
+                activeTitle: progression.activeTitle
             });
         }
 
         return {
-            mainLanguage, planetColor, languageStats, totalCommits, weeklyCommits, planetSizeFactor,
-            planetName, achievements, unlockedTitles, activeTitle,
-            observedTotalContributions,
+            mainLanguage: stats.mainLanguage,
+            planetColor: identity.planetColor,
+            languageStats: stats.languageStats,
+            totalCommits: stats.totalCommits,
+            weeklyCommits: stats.weeklyCommits,
+            planetSizeFactor: identity.planetSizeFactor,
+            planetName: identity.planetName,
+            achievements: progression.achievements,
+            unlockedTitles: progression.unlockedTitles,
+            activeTitle: progression.activeTitle,
+            observedTotalContributions: stats.observedTotalContributions,
             isNewPlanet: !existingData
+        };
+    }
+
+    async function createPublicPreview(username) {
+        const publicSource = await githubClient.getPublicPlanetSource(username);
+        const user = { login: publicSource.username || username };
+        const stats = derivePlanetStats(publicSource, user);
+        const planetColor = LANGUAGE_COLORS[stats.mainLanguage] || '#808080';
+
+        // 匿名プレビューは公開repoの概算だけを使い、貢献数や実績を推測して表示しない。
+        return {
+            username: user.login,
+            planetColor,
+            planetSizeFactor: calculatePlanetSizeFactor(0),
+            mainLanguage: stats.mainLanguage,
+            languageStats: stats.languageStats,
+            totalCommits: 0,
+            weeklyCommits: 0,
+            planetName: generatePlanetName(stats.mainLanguage, planetColor, 0),
+            achievements: {},
+            activeTitle: { prefix: '名もなき', suffix: '旅人' },
+            isPublicPreview: true
         };
     }
 
@@ -160,5 +125,6 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
         });
     }
 
-    return { updateAndSavePlanetData, recordLoginProgress };
+    return { refreshAuthenticatedUser, updateAndSavePlanetData, createPublicPreview, recordLoginProgress };
 }
+

@@ -10,8 +10,8 @@ test('registers every language feature behind one frontend boundary', () => {
     assert.deepEqual(
         planetFeatures.map((feature) => feature.id),
         [
-            'c', 'css', 'cpp', 'elm', 'go', 'swift', 'vue',
-            'typescript', 'javascript', 'java', 'kotlin', 'perl', 'rust', 'ruby', 'python', 'xml'
+            'c', 'css', 'cpp', 'elm', 'go', 'shell', 'swift', 'vue',
+            'typescript', 'javascript', 'java', 'kotlin', 'perl', 'rust', 'ruby', 'xml'
         ]
     );
 
@@ -30,9 +30,11 @@ test('resolves exact language features without cross-matching', () => {
     assert.equal(resolvePlanetFeature({ mainLanguage: ' Perl ' }).id, 'perl');
     assert.equal(resolvePlanetFeature({ mainLanguage: 'C++' }).id, 'cpp');
     assert.equal(resolvePlanetFeature({ mainLanguage: 'JavaScript' }).id, 'javascript');
-    assert.equal(resolvePlanetFeature({ mainLanguage: ' Python ' }).id, 'python');
     assert.equal(resolvePlanetFeature({ mainLanguage: ' XML ' }).id, 'xml');
     assert.equal(resolvePlanetFeature({ mainLanguage: 'XML-like' }), null);
+    assert.equal(resolvePlanetFeature({ mainLanguage: ' Python ' }), null);
+    assert.equal(resolvePlanetFeature({ mainLanguage: ' Shell ' }).id, 'shell');
+    assert.equal(resolvePlanetFeature({ mainLanguage: 'Bash' }), null);
     assert.equal(resolvePlanetFeature({ mainLanguage: 'Unknown' }), null);
 });
 
@@ -85,7 +87,7 @@ class FakeTubeGeometry {
     dispose() { this.disposed = true; }
 }
 
-test('shares secondary language trails with Python and updates historical ranks in place', () => {
+test('keeps shared trails and historical ranks for Python without a dedicated feature', () => {
     const THREE = {
         AdditiveBlending: 'additive',
         CatmullRomCurve3: FakeCurve,
@@ -105,15 +107,22 @@ test('shares secondary language trails with Python and updates historical ranks 
             mainLanguage: 'Python',
             languageStats: { Python: 70, Rust: 20, TypeScript: 10 }
         },
-        radius: 4
+        radius: 4,
+        direction: -1
     });
     const trailGroup = runtime.sceneObjects[0];
     const [second, third] = trailGroup.children;
     const secondGeometry = second.geometry;
 
-    assert.equal(runtime.id, 'python');
+    assert.equal(runtime.id, null);
+    assert.equal(runtime.material, null);
+    assert.equal(runtime.rotationMultiplier, 1);
     assert.equal(runtime.sceneObjects.length, 1);
     assert.deepEqual([second.userData.language, third.userData.language], ['Rust', 'TypeScript']);
+    assert.deepEqual([
+        second.material.uniforms.trailSpeed.value,
+        third.material.uniforms.trailSpeed.value
+    ], [1, 1]);
 
     runtime.setLanguageComposition({
         mainLanguage: 'Python',
@@ -124,8 +133,11 @@ test('shares secondary language trails with Python and updates historical ranks 
     assert.equal(second.geometry, secondGeometry);
     assert.notEqual(second.material.uniforms.trailColor.value.value, '#dea584');
     assert.equal(second.material.uniforms.trailWidthDelta.value !== 0, true);
-});
 
+    runtime.setLanguageComposition({ mainLanguage: 'Python', languageStats: { Python: 100 } });
+    assert.equal(second.visible, false);
+    assert.equal(third.visible, false);
+});
 
 test('disposes GPU resources for shared language trails', () => {
     const THREE = {

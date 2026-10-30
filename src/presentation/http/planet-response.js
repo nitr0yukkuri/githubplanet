@@ -2,6 +2,7 @@ import { MAX_TOTAL_COMMITS, MAX_WEEKLY_COMMITS } from '../../domain/planet/const
 import { clampCommitCount, generatePlanetName } from '../../domain/planet/planet.js';
 
 export function toPlanetResponse(planet) {
+    const githubId = String(planet.githubId ?? '').trim();
     const totalCommits = clampCommitCount(planet.totalCommits, MAX_TOTAL_COMMITS);
     const languageStats = planet.languageStats || {};
     const hasStats = Object.keys(languageStats).length > 0;
@@ -15,6 +16,10 @@ export function toPlanetResponse(planet) {
 
     return {
         username: planet.username,
+        ...(/^[1-9]\d*$/.test(githubId) ? { githubId } : {}),
+        ...(typeof planet.githubProfileVerified === 'boolean'
+            ? { githubProfileVerified: planet.githubProfileVerified }
+            : {}),
         planetColor,
         planetSizeFactor: parseFloat(planet.planetSizeFactor),
         mainLanguage,
@@ -23,6 +28,7 @@ export function toPlanetResponse(planet) {
         weeklyCommits: clampCommitCount(planet.weeklyCommits, MAX_WEEKLY_COMMITS),
         planetName: planet.planetName || generatePlanetName(mainLanguage, planetColor, totalCommits),
         achievements: planet.achievements || {},
-        activeTitle: planet.activeTitle || { prefix: '名もなき', suffix: '旅人' }
+        activeTitle: planet.activeTitle || { prefix: '名もなき', suffix: '旅人' },
+        ...(planet.isPublicPreview ? { isPublicPreview: true } : {})
     };
 }

@@ -1,25 +1,28 @@
+import { calculateStarCount, createPlanetDisposalResources, disposePlanetObject } from './planet-scene-resources.js';
+import { createHomeApi } from './home/api-client.js';
+import { createLanguageHistoryController } from './home/language-history-controller.js';
+import { updatePlanetDetails } from './home/planet-details.js';
+import { showLocalAchievementPreview, showPlanetProgressToast } from './home/progress-notice.js';
+import { spawnMeteor } from './home/meteor.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import anime from 'animejs';
 import { io } from 'socket.io-client';
 import { createPlanetFeatureRuntime } from './planet-features/registry.js';
-import { createPlanetLanguageHistory } from './planet-language-history.js';
-import { applyI18n, localizedPath, localizedPlanetName, localizedTitle, t } from './i18n.js';
-import { DEFAULT_SHOWCASE_SLUG, resolveHomeRoute } from './home-route.js';
+import { applyI18n, localizedPath, t } from './i18n.js';
+import { resolveHomeRoute } from './home-route.js';
+import { createWebGLRenderer } from './webgl-renderer.js';
 
-const MAX_STAR_COUNT = 120;
 const BASE_PLANET_ROTATION_SPEED = 0.001;
-// API停止時に画面を無期限でローディング状態にしないための上限。通常時の表示・動きは変えない。
-const HOME_API_TIMEOUT_MS = 15_000;
 
 let scene, camera, renderer, controls, planetGroup;
+let webglAvailable = false;
 let planetFeatureRuntime = null;
 let planetLoadGeneration = 0;
 let planetTexturePromise = null;
 let activePlanetReveal = null;
 let currentPlanetData = null;
-let planetLanguageHistory = null;
-let planetLanguageHistoryRequest = 0;
+let planetSearchRequestGeneration = 0;
 
 let welcomeModal, okButton, mainUiWrapper;
 let isFetchingRandomPlanet = false;
@@ -74,16 +77,6 @@ function recordHomeAnimationFrame(frameStartedAt) {
     }
 }
 
-async function fetchHomeApi(input, options = {}, timeoutMs = HOME_API_TIMEOUT_MS) {
-    const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
-    try {
-        return await fetch(input, { ...options, signal: controller.signal });
-    } finally {
-        window.clearTimeout(timeoutId);
-    }
-}
-
 // WebSocketを先に試し、失敗時はPollingへ切り替えて通知を維持する。
 // Firebase HostingのCloud Run rewriteではUpgradeヘッダーが届かないため、流星接続だけCloud Run直URLへ送る。
 const realtimeSocketOrigin = window.location.hostname === 'githubplanet.dev'
@@ -110,6 +103,29 @@ const isShowcaseRoute = homeRoute.mode === 'showcase';
 const isDemoRoute = homeRoute.mode === 'demo';
 const isPublicPlanetRoute = isShowcaseRoute || isDemoRoute;
 
+const homeApi = createHomeApi();
+const fetchHomeApi = homeApi.fetchApi;
+const fetchShowcasePlanetData = (slug = homeRoute.showcaseSlug) => homeApi.fetchShowcase(slug);
+const languageHistoryController = createLanguageHistoryController({
+    fetchApi: fetchHomeApi,
+    getCurrentPlanet: () => currentPlanetData,
+    getLoggedInUsername: () => loggedInUsername,
+    isPublicPlanetRoute: () => isPublicPlanetRoute,
+    translate: t,
+    onSelect: (selection) => {
+        if (!currentPlanetData) return;
+        // 履歴として保存した言語構成だけ差し替え、現在の活動量や称号は保つ。
+        void loadPlanet({
+            ...currentPlanetData,
+            mainLanguage: selection.mainLanguage,
+            planetColor: selection.planetColor,
+            languageStats: selection.languagePercentages
+        }, { historySelection: true }).catch((error) => {
+            console.warn('[Planet language history] Failed to load selection:', error.message);
+        });
+    }
+});
+
 function toggleLoading(show) {
     if (!loadingOverlay) return;
     if (show) {
@@ -121,131 +137,30 @@ function toggleLoading(show) {
     }
 }
 
-function showPlanetProgressToast(progressNotice = {}) {
-    const achievementIds = Array.isArray(progressNotice.newlyUnlockedAchievementIds)
-        ? progressNotice.newlyUnlockedAchievementIds
-        : [];
-    const contributionDelta = Math.max(0, Number(progressNotice.contributionDelta) || 0);
-    if (achievementIds.length === 0 && contributionDelta === 0) return;
-
-    document.querySelector('.achievement-unlock-toast')?.remove();
-
-    const toast = document.createElement('aside');
-    toast.className = 'achievement-unlock-toast';
-    toast.setAttribute('role', 'status');
-    toast.setAttribute('aria-live', 'polite');
-
-    const header = document.createElement('div');
-    header.className = 'achievement-unlock-header';
-
-    const title = document.createElement('strong');
-    title.textContent = achievementIds.length > 0
-        ? t('home.newAchievementsTitle', { count: achievementIds.length })
-        : t('home.contributionGrowthTitle', {
-            count: new Intl.NumberFormat(document.documentElement.lang || undefined).format(contributionDelta)
-        });
-
-    const closeButton = document.createElement('button');
-    closeButton.className = 'achievement-unlock-close';
-    closeButton.type = 'button';
-    closeButton.textContent = '×';
-    closeButton.setAttribute('aria-label', t('home.closeAchievementNotice'));
-    closeButton.title = t('home.closeAchievementNotice');
-
-    const dismiss = () => {
-        toast.classList.remove('is-visible');
-        window.setTimeout(() => toast.remove(), 220);
-    };
-
-    closeButton.addEventListener('click', dismiss);
-    header.append(title, closeButton);
-    toast.append(header);
-
-    if (achievementIds.length > 0) {
-        const names = document.createElement('p');
-        names.className = 'achievement-unlock-names';
-        const visibleIds = achievementIds.slice(0, 3);
-        names.textContent = visibleIds
-            .map((id) => t(`achievements.names.${id}`))
-            .join(' / ');
-        if (achievementIds.length > visibleIds.length) {
-            names.textContent += ` ${t('home.newAchievementsMore', {
-                count: achievementIds.length - visibleIds.length
-            })}`;
-        }
-
-        const link = document.createElement('a');
-        link.className = 'achievement-unlock-link';
-        link.href = localizedPath('/achievements');
-        link.textContent = t('home.viewAchievements');
-        toast.append(names, link);
-    }
-    document.body.appendChild(toast);
-    window.requestAnimationFrame(() => toast.classList.add('is-visible'));
-    window.setTimeout(dismiss, 7000);
-}
-
-function showLocalAchievementPreview() {
-    const isLocal = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
-    const isPreview = new URLSearchParams(window.location.search).has('preview-achievement');
-    if (!isLocal || !isPreview) return;
-
-    showPlanetProgressToast({
-        contributionDelta: 128,
-        newlyUnlockedAchievementIds: [
-            'FIRST_PLANET',
-            'FIRST_COMMIT',
-            'COMMIT_100',
-            'POLYGLOT_PIONEER'
-        ]
-    });
-}
-
 async function fetchMyPlanetData() {
-    try {
-        const res = await fetchHomeApi(`/api/me?t=${Date.now()}`, { cache: 'no-store' });
+    const res = await fetchHomeApi(`/api/me?t=${Date.now()}`, { cache: 'no-store' });
 
-        if (!res.ok) return null;
-        const data = await res.json();
-        showPlanetProgressToast(data.progressNotice);
-
-        if (data.planetData && data.user) {
-            loggedInUsername = data.user.login; // ★追加: ログインユーザー名を保存
-            data.planetData.username = data.user.login;
-
-            // ★修正: どの惑星を見ていても、カード作成は常に自分のユーザー名で行うように固定
-            const cardLink = document.getElementById('card-link');
-            if (cardLink) {
-                cardLink.href = `${localizedPath('/card.html')}?username=${loggedInUsername}`;
-                cardLink.hidden = false;
-            }
-
-            return data.planetData;
-        }
-        return null;
-
-    } catch (e) { return null; }
-}
-
-async function fetchShowcasePlanetData(showcaseSlug = homeRoute.showcaseSlug) {
-    try {
-        const res = await fetchHomeApi(
-            `/api/planets/showcase/${encodeURIComponent(showcaseSlug)}?t=${Date.now()}`,
-            { cache: 'no-store' }
-        );
-        if (res.ok) return await res.json();
-
-        if (showcaseSlug !== DEFAULT_SHOWCASE_SLUG) {
-            const fallback = await fetchHomeApi(
-                `/api/planets/showcase/${DEFAULT_SHOWCASE_SLUG}?t=${Date.now()}`,
-                { cache: 'no-store' }
-            );
-            return fallback.ok ? await fallback.json() : null;
-        }
-        return null;
-    } catch (e) {
-        return null;
+    if (res.status === 401) return null;
+    if (!res.ok) throw new Error(`Planet data request failed (${res.status})`);
+    const data = await res.json();
+    if (!data.user || !data.planetData) {
+        throw new Error('Authenticated planet data is incomplete');
     }
+    showPlanetProgressToast(data.progressNotice);
+
+    loggedInUsername = data.user.login;
+    data.planetData.username = data.user.login;
+    data.planetData.githubId = data.user.id;
+    data.planetData.githubProfileVerified = data.githubProfileVerified === true;
+    data.planetData.githubProfileUrl = data.githubProfileVerified === true ? data.user.html_url : null;
+
+    const cardLink = document.getElementById('card-link');
+    if (cardLink) {
+        cardLink.href = `${localizedPath('/card.html')}?username=${loggedInUsername}`;
+        cardLink.hidden = false;
+    }
+
+    return data.planetData;
 }
 
 function updateShowcaseCta() {
@@ -284,130 +199,6 @@ async function resolveShowcaseCtaTarget() {
     }
 }
 
-function updatePlanetDetails(data) {
-    const stats = document.getElementById('lang-stats-container');
-    const commits = document.getElementById('commit-count-val');
-    const name = document.getElementById('planet-name-val');
-    const title = document.getElementById('planet-title-val');
-
-    console.log('updatePlanetDetails called with:', data);
-
-    if (stats) {
-        stats.innerHTML = '';
-
-        if (data.languageStats) {
-            const entries = Object.entries(data.languageStats);
-
-            if (entries.length > 0) {
-                const total = entries.reduce((sum, [, bytes]) => sum + bytes, 0);
-
-                if (total > 0) {
-                    entries
-                        .sort(([, a], [, b]) => b - a)
-                        .slice(0, 3)
-                        .forEach(([lang, bytes]) => {
-                            const p = document.createElement('p');
-                            const rawPercentage = (bytes / total) * 100;
-                            const percentage = rawPercentage <= 1
-                                ? rawPercentage.toFixed(1)
-                                : Math.round(rawPercentage);
-                            p.append(document.createTextNode(lang));
-                            const percentageLabel = document.createElement('span');
-                            percentageLabel.textContent = `${percentage}%`;
-                            p.appendChild(percentageLabel);
-                            stats.appendChild(p);
-                        });
-                }
-            }
-        }
-    }
-
-    if (commits) {
-        const commitCount = (data.totalCommits !== null && data.totalCommits !== undefined) ? data.totalCommits : 0;
-        commits.textContent = commitCount;
-    }
-
-    if (title) {
-        if (data.activeTitle) {
-            title.textContent = localizedTitle(data.activeTitle);
-        } else {
-            title.textContent = '';
-        }
-    }
-
-    if (name) {
-        name.textContent = localizedPlanetName(data);
-    }
-}
-
-async function updatePlanetLanguageHistory(data) {
-    const requestId = ++planetLanguageHistoryRequest;
-    const element = document.getElementById('planet-language-history');
-    if (!element) return;
-    if (!planetLanguageHistory) {
-        planetLanguageHistory = createPlanetLanguageHistory({
-            element,
-            translate: t,
-            onSelect: (selection) => {
-                if (!currentPlanetData) return;
-                // 履歴として保存した言語構成だけ差し替え、現在の活動量や称号は保つ。
-                void loadPlanet({
-                    ...currentPlanetData,
-                    mainLanguage: selection.mainLanguage,
-                    planetColor: selection.planetColor,
-                    languageStats: selection.languagePercentages
-                }, { historySelection: true }).catch((error) => {
-                    console.warn('[Planet language history] Failed to load selection:', error.message);
-                });
-            }
-        });
-    }
-
-    const isOwnPlanet = Boolean(
-        loggedInUsername
-        && data?.username
-        && loggedInUsername.toLowerCase() === data.username.toLowerCase()
-    );
-    if (!isOwnPlanet || isPublicPlanetRoute) {
-        planetLanguageHistory.hide();
-        return;
-    }
-
-    try {
-        const response = await fetchHomeApi('/api/me/language-history', { cache: 'no-store' });
-        if (requestId !== planetLanguageHistoryRequest) return;
-        if (!response.ok) {
-            planetLanguageHistory.hide();
-            return;
-        }
-        const payload = await response.json();
-        if (requestId !== planetLanguageHistoryRequest || currentPlanetData !== data) return;
-        planetLanguageHistory.show(payload.history, data);
-    } catch {
-        // 履歴が取得できない時も現在の惑星表示を維持する。
-        if (requestId === planetLanguageHistoryRequest) planetLanguageHistory.hide();
-    }
-}
-
-function calculateStarCount(totalCommits) {
-    let starCount = 0;
-    let commitsUsed = 0;
-    let requiredCommitsPerStar = 10;
-    const costIncreaseStep = 10;
-    const levelUpThreshold = 5;
-
-    while (starCount < MAX_STAR_COUNT) {
-        const currentLevelCost = requiredCommitsPerStar + (Math.floor(starCount / levelUpThreshold) * costIncreaseStep);
-        if (totalCommits >= commitsUsed + currentLevelCost) {
-            starCount++;
-            commitsUsed += currentLevelCost;
-        } else {
-            break;
-        }
-    }
-    return starCount;
-}
-
 function loadPlanetTexture() {
     if (cachedPlanetTexture) return Promise.resolve(cachedPlanetTexture);
     if (planetTexturePromise) return planetTexturePromise;
@@ -429,44 +220,14 @@ function loadPlanetTexture() {
     return planetTexturePromise;
 }
 
-function disposeObject(obj, resources = {
-    geometries: new Set(),
-    materials: new Set(),
-    textures: new Set()
-}) {
-    if (!obj) return;
-
-    if (obj.children) {
-        for (let i = obj.children.length - 1; i >= 0; i--) {
-            disposeObject(obj.children[i], resources);
-            obj.remove(obj.children[i]);
-        }
+function showHomeWebGLFallback(color) {
+    const fallback = document.getElementById('webgl-fallback');
+    if (!fallback) return;
+    if (/^#[\da-f]{6}$/i.test(color || '')) {
+        fallback.style.setProperty('--planet-fallback-color', color);
     }
-
-    if (obj.geometry && !resources.geometries.has(obj.geometry)) {
-        resources.geometries.add(obj.geometry);
-        obj.geometry.dispose();
-    }
-
-    if (obj.material) {
-        const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
-        materials.forEach((material) => {
-            if (!material || resources.materials.has(material)) return;
-            resources.materials.add(material);
-
-            [material.map, material.aoMap].forEach((texture) => {
-                if (
-                    texture
-                    && texture !== cachedPlanetTexture
-                    && !resources.textures.has(texture)
-                ) {
-                    resources.textures.add(texture);
-                    texture.dispose();
-                }
-            });
-            material.dispose();
-        });
-    }
+    fallback.hidden = false;
+    if (renderer?.domElement) renderer.domElement.hidden = true;
 }
 
 function cancelActivePlanetReveal() {
@@ -489,7 +250,7 @@ async function loadPlanet(data, { historySelection = false } = {}) {
 
     if (!historySelection) {
         currentPlanetData = data;
-        void updatePlanetLanguageHistory(data);
+        void languageHistoryController.update(data);
     }
 
     recordHomePerformance('loadPlanet:start');
@@ -523,12 +284,20 @@ async function loadPlanet(data, { historySelection = false } = {}) {
     planetRotationSpeed = basePlanetRotationSpeed;
 
     if (ownerDisplay && data.username) {
-        ownerDisplay.textContent = t('home.ownerPlanet', { username: data.username });
+        ownerDisplay.textContent = data.isPublicPreview
+            ? t('home.publicPreviewOwner', { username: data.username })
+            : t('home.ownerPlanet', { username: data.username });
         ownerDisplay.style.display = 'inline-block';
     }
-    if (profileLink && data.username) {
-        profileLink.href = `https://github.com/${data.username}`;
+    if (profileLink && data.username && data.githubProfileVerified !== false) {
+        profileLink.href = data.githubProfileUrl
+            || (data.githubId
+                ? `/github-profile/${encodeURIComponent(data.githubId)}`
+                : `https://github.com/${encodeURIComponent(data.username)}`);
         profileLink.style.display = 'flex';
+    } else if (profileLink) {
+        profileLink.removeAttribute('href');
+        profileLink.style.display = 'none';
     }
 
     // ★修正: 他人の惑星を見ているときでも自分のカードを作れるよう、ここではカードリンクを書き換えない
@@ -537,8 +306,19 @@ async function loadPlanet(data, { historySelection = false } = {}) {
     updatePlanetDetails(data);
     recordHomePerformance('loadPlanet:details-ready');
 
+    const message = document.getElementById('not-logged-in-container');
+    if (message) {
+        message.style.display = 'none';
+        if (isShowcaseRoute) updateShowcaseCta();
+    }
+
+    if (!webglAvailable) {
+        showHomeWebGLFallback(data.planetColor);
+        return;
+    }
+
     if (planetGroup) {
-        disposeObject(planetGroup);
+        disposePlanetObject(planetGroup, createPlanetDisposalResources([cachedPlanetTexture]));
         scene.remove(planetGroup);
         planetGroup = undefined;
     }
@@ -549,6 +329,7 @@ async function loadPlanet(data, { historySelection = false } = {}) {
     const tex = await loadPlanetTexture();
     recordHomePerformance('loadPlanet:texture-ready');
     if (loadGeneration !== planetLoadGeneration) return;
+    if (!webglAvailable) return;
 
     const geo = new THREE.SphereGeometry(4, 32, 32);
     planetFeatureRuntime = createPlanetFeatureRuntime({
@@ -752,152 +533,10 @@ async function loadPlanet(data, { historySelection = false } = {}) {
 
     planetGroup.rotation.x = Math.PI * 0.4; planetGroup.rotation.y = Math.PI * 0.1;
 
-    const msg = document.getElementById('not-logged-in-container');
-    if (msg) {
-        msg.style.display = 'none';
-        if (isShowcaseRoute) updateShowcaseCta();
-    }
     controls.enabled = true;
     recordHomePerformance('loadPlanet:scene-ready', {
         featureId: planetFeatureRuntime?.id ?? null,
         sceneChildren: scene?.children.length ?? null
-    });
-}
-
-function spawnMeteor(data) {
-    if (!scene || !camera) return;
-
-    // ★追加: サーバーから scale を受け取る（なければ 1.0）
-    const scale = data.scale || 1.0;
-
-    const baseColor = new THREE.Color(data.color || '#ffffff');
-    const meteorGroup = new THREE.Group();
-    meteorGroup.renderOrder = 9999;
-
-    const starShape = new THREE.Shape();
-    const points = 5;
-    const outerRadius = 0.7;
-    const innerRadius = 0.35;
-
-    for (let i = 0; i < points * 2; i++) {
-        const angle = (i * Math.PI) / points;
-        const radius = i % 2 === 0 ? outerRadius : innerRadius;
-        const x = Math.sin(angle) * radius;
-        const y = Math.cos(angle) * radius;
-        if (i === 0) starShape.moveTo(x, y);
-        else starShape.lineTo(x, y);
-    }
-    starShape.closePath();
-
-    const headGeo = new THREE.ExtrudeGeometry(starShape, {
-        depth: 0.15,
-        bevelEnabled: false
-    });
-    headGeo.center();
-
-    const headMat = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.0,
-        blending: THREE.AdditiveBlending,
-        depthTest: true,
-        depthWrite: true,
-        fog: false
-    });
-    const head = new THREE.Mesh(headGeo, headMat);
-    meteorGroup.add(head);
-
-    const tailLength = 60;
-    const glowGeo = new THREE.CylinderGeometry(1.0, 0.0, tailLength * 0.9, 16, 1, true);
-    glowGeo.translate(0, -tailLength / 2 + 0.5, 0);
-    glowGeo.rotateX(Math.PI / 2);
-
-    const glowMat = new THREE.MeshBasicMaterial({
-        color: baseColor,
-        transparent: true,
-        opacity: 0.0,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-        depthTest: true,
-        fog: false
-    });
-    const glow = new THREE.Mesh(glowGeo, glowMat);
-    meteorGroup.add(glow);
-
-    const startZ = -60 - Math.random() * 40;
-    const startY = 30 + Math.random() * 20;
-
-    const localStart = new THREE.Vector3(120, startY, startZ);
-    const localEnd = new THREE.Vector3(-120, startY - 10, startZ);
-
-    const startPos = localStart.applyQuaternion(camera.quaternion).add(camera.position);
-    const endPos = localEnd.applyQuaternion(camera.quaternion).add(camera.position);
-
-    meteorGroup.position.copy(startPos);
-    meteorGroup.lookAt(endPos);
-    meteorGroup.scale.set(0, 0, 0);
-
-    scene.add(meteorGroup);
-
-    // ★修正: 重厚感の演出 (scale > 3.0 なら遅くする)
-    let baseDuration = 1000 + Math.random() * 500;
-    if (scale > 3.0) {
-        baseDuration = baseDuration * 2.5; // 巨大な場合は2.5倍の時間をかけてゆっくり飛ぶ
-    }
-    const duration = baseDuration;
-
-    // ★修正: scale を適用
-    anime({
-        targets: meteorGroup.scale,
-        x: scale,
-        y: scale,
-        z: scale,
-        easing: 'easeOutElastic(1, .6)',
-        duration: 400
-    });
-
-    anime({
-        targets: head.material,
-        opacity: 1.0,
-        easing: 'easeOutQuad',
-        duration: 200
-    });
-    anime({
-        targets: glow.material,
-        opacity: 0.8,
-        easing: 'easeOutQuad',
-        duration: 200
-    });
-
-    anime({
-        targets: meteorGroup.position,
-        x: endPos.x,
-        y: endPos.y,
-        z: endPos.z,
-        easing: 'linear',
-        duration: duration,
-        update: (anim) => {
-            const progress = anim.progress;
-            if (progress > 85) {
-                const fade = 1.0 - ((progress - 85) / 15);
-                head.material.opacity = fade;
-                glow.material.opacity = 0.8 * fade;
-            }
-        },
-        complete: () => {
-            scene.remove(meteorGroup);
-            headGeo.dispose(); headMat.dispose();
-            glowGeo.dispose(); glowMat.dispose();
-        }
-    });
-
-    // 回転アニメーションの時間も合わせる
-    anime({
-        targets: head.rotation,
-        z: Math.PI * 10,
-        easing: 'linear',
-        duration: duration
     });
 }
 
@@ -940,28 +579,49 @@ async function init() {
 
     scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x000000, 10, 50);
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.z = 25;
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    document.getElementById('canvas-container').appendChild(renderer.domElement);
-    controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.autoRotate = false;
-
-    controls.enablePan = false;
-    controls.zoomSpeed = 4.0;
-    controls.minDistance = 20;
-    controls.maxDistance = 32;
+    try {
+        renderer = createWebGLRenderer(THREE, { antialias: true });
+        if (!renderer) throw new Error('WebGL is unavailable');
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.autoRotate = false;
+        controls.enablePan = false;
+        controls.zoomSpeed = 4.0;
+        controls.minDistance = 20;
+        controls.maxDistance = 32;
+        webglAvailable = true;
+        renderer.domElement.addEventListener('webglcontextlost', (event) => {
+            event.preventDefault();
+            webglAvailable = false;
+            controls?.dispose();
+            controls = null;
+            showHomeWebGLFallback(currentPlanetData?.planetColor);
+        });
+    } catch (error) {
+        console.warn('[Home] WebGL initialization unavailable:', error.message);
+        controls?.dispose();
+        controls = null;
+        renderer?.dispose();
+        renderer?.domElement?.remove();
+        renderer = null;
+        showHomeWebGLFallback();
+    }
 
     scene.add(new THREE.AmbientLight(0x888888, 2));
     const pl = new THREE.PointLight(0xffffff, 25, 1000); pl.position.set(20, 10, 5); scene.add(pl);
     const dl = new THREE.DirectionalLight(0xffffff, 0.4); dl.position.set(50, 15, 10); scene.add(dl);
-    new THREE.CubeTextureLoader().setPath('/front/img/skybox/').load(['right.webp', 'left.webp', 'top.webp', 'bottom.webp', 'front.webp', 'back.webp'], (tex) => scene.background = tex);
+    if (webglAvailable) {
+        new THREE.CubeTextureLoader().setPath('/front/img/skybox/').load(['right.webp', 'left.webp', 'top.webp', 'bottom.webp', 'front.webp', 'back.webp'], (tex) => scene.background = tex);
+    }
 
     socket.on('meteor', (data) => {
         if (document.hidden) return;
 
         console.log('Meteor received:', data);
-        spawnMeteor(data);
+        spawnMeteor({ scene, camera, webglAvailable }, data);
     });
 
     let resizeFrame = null;
@@ -969,16 +629,19 @@ async function init() {
         if (resizeFrame !== null) return;
         resizeFrame = window.requestAnimationFrame(() => {
             resizeFrame = null;
+            if (!renderer || !camera) return;
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
     });
 
-    animate();
+    if (webglAvailable) animate();
 
-    const hasVisited = localStorage.getItem('githubPlanetVisited');
-    const shouldShowWelcome = isExhibitionRoute || (!isPublicPlanetRoute && !hasVisited);
+    const hasVisited = isPublicPlanetRoute || document.body.dataset.welcomeAccepted === 'true'
+        || localStorage.getItem('githubPlanetVisited');
+    const shouldShowWelcome = document.body.dataset.welcomeAccepted !== 'true'
+        && (isExhibitionRoute || (!isPublicPlanetRoute && !hasVisited));
 
     if (shouldShowWelcome) {
         if (welcomeModal) {
@@ -1012,6 +675,8 @@ async function loadMainContent() {
             ? await fetchShowcasePlanetData()
             : await fetchMyPlanetData();
         const notLoggedInContainer = document.getElementById('not-logged-in-container');
+        const loadErrorContainer = document.getElementById('planet-load-error-container');
+        if (loadErrorContainer) loadErrorContainer.hidden = true;
 
         if (notLoggedInContainer) {
             if (data) {
@@ -1022,7 +687,7 @@ async function loadMainContent() {
                 notLoggedInContainer.style.display = isPublicPlanetRoute ? 'none' : 'flex';
                 const returnButton = document.getElementById('return-my-planet-btn');
                 if (returnButton) returnButton.style.display = 'none';
-                controls.enabled = false;
+                if (controls) controls.enabled = false;
             }
         }
 
@@ -1030,6 +695,17 @@ async function loadMainContent() {
         if (isShowcaseRoute) void resolveShowcaseCtaTarget();
     } catch (e) {
         console.error('Initial load failed:', e);
+        const notLoggedInContainer = document.getElementById('not-logged-in-container');
+        const loadErrorContainer = document.getElementById('planet-load-error-container');
+        if (!isPublicPlanetRoute && notLoggedInContainer) notLoggedInContainer.style.display = 'none';
+        if (loadErrorContainer) loadErrorContainer.hidden = false;
+        const retryButton = document.getElementById('retry-planet-load-btn');
+        if (retryButton) {
+            retryButton.onclick = () => {
+                toggleLoading(true);
+                void loadMainContent();
+            };
+        }
     } finally {
         // ★追加: 処理が終わったら（成功・失敗にかかわらず）ローディングを消す
         toggleLoading(false);
@@ -1037,6 +713,7 @@ async function loadMainContent() {
 }
 
 function animate() {
+    if (!renderer || !webglAvailable) return;
     const frameStartedAt = isHomePerformanceEnabled() ? performance.now() : null;
     requestAnimationFrame(animate);
     if (planetGroup) planetGroup.rotation.z += planetRotationSpeed;
@@ -1072,12 +749,15 @@ function setupUI() {
         const username = prompt(t('home.promptUsername'));
         if (!username || username.trim() === '') return;
 
+        const searchGeneration = ++planetSearchRequestGeneration;
         toggleLoading(true);
 
         try {
-            const res = await fetchHomeApi(`/api/planets/user/${username.trim()}?t=${Date.now()}`, { cache: 'no-store' });
+            const res = await fetchHomeApi(`/api/planets/user/${encodeURIComponent(username.trim())}?t=${Date.now()}`, { cache: 'no-store' });
+            if (searchGeneration !== planetSearchRequestGeneration) return;
             if (res.ok) {
                 const planetData = await res.json();
+                if (searchGeneration !== planetSearchRequestGeneration) return;
                 console.log('取得したユーザーデータ:', planetData);
                 await loadPlanet(planetData);
 
@@ -1098,10 +778,11 @@ function setupUI() {
                 alert(t('home.searchError'));
             }
         } catch (e) {
+            if (searchGeneration !== planetSearchRequestGeneration) return;
             console.error('Error fetching user planet:', e);
             alert(t('home.networkError'));
         } finally {
-            toggleLoading(false);
+            if (searchGeneration === planetSearchRequestGeneration) toggleLoading(false);
         }
     });
 

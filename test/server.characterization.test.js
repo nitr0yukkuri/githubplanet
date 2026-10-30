@@ -77,7 +77,7 @@ test('serves locale-correct source documents for Japanese and English home route
     const englishAliasHtml = await englishAlias.text();
 
     assert.match(japaneseHtml, /<html lang="ja">/);
-    assert.match(japaneseHtml, /GitHubの活動履歴から/);
+    assert.match(japaneseHtml, /GitHubの活動を3Dの惑星/);
     for (const html of [englishHtml, englishAliasHtml]) {
         assert.match(html, /<html lang="en">/);
         assert.match(html, /Generate your own planet from your GitHub activity\./);
