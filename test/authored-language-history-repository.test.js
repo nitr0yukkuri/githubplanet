@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createPlanetRepository } from '../src/infrastructure/database/planet-repository.js';
+import { createAuthoredLanguageHistoryRepository } from '../src/infrastructure/database/authored-language-history-repository.js';
 
 test('persists commit batches idempotently and claims scans only after their cooldown', async () => {
     const queries = [];
-    const repository = createPlanetRepository({
+    const repository = createAuthoredLanguageHistoryRepository({
         async query(sql, params) {
             queries.push({ sql, params });
             if (sql.includes('RETURNING *')) return { rows: [{ scan_status: 'running', api_requests: 0 }] };
@@ -35,7 +35,7 @@ test('persists commit batches idempotently and claims scans only after their coo
 
 test('records budget-limited scans as partial and schedules their next scan', async () => {
     const queries = [];
-    const repository = createPlanetRepository({
+    const repository = createAuthoredLanguageHistoryRepository({
         async query(sql, params) {
             queries.push({ sql, params });
             return { rows: [{ scan_status: 'partial', api_requests: 800, request_budget_reached: true }] };
@@ -63,3 +63,21 @@ test('records budget-limited scans as partial and schedules their next scan', as
     ]);
 });
 
+
+test('returns commit SHAs with authored language history rows for domain deduplication', async () => {
+    const repository = createAuthoredLanguageHistoryRepository({
+        async query() {
+            return { rows: [{
+                commit_sha: 'abc123',
+                authored_at: '2025-01-01T00:00:00Z',
+                language_added_lines: { TypeScript: 4 }
+            }] };
+        }
+    });
+
+    assert.deepEqual(await repository.findAuthoredLanguageCommits(41), [{
+        commitSha: 'abc123',
+        authoredAt: '2025-01-01T00:00:00Z',
+        languageAdditions: { TypeScript: 4 }
+    }]);
+});

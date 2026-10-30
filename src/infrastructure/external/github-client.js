@@ -60,7 +60,7 @@ const MERGED_PULL_REQUESTS_QUERY = `
 
 import { measureExternalOperation } from '../observability/external-performance.js';
 import { createGithubAuthoredLanguageHistoryClient } from './github-authored-language-history.js';
-import { EXTENSION_MAP } from '../../domain/planet/constants.js';
+import { EXTENSION_MAP } from '../../domain/planet/language-extensions.js';
 
 const GITHUB_API_TIMEOUT_MS = 10_000;
 

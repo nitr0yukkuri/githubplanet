@@ -33,7 +33,4 @@ With descriptions: [full gallery](README.en.md)
   <tr>
     <td align="center"><strong>Ruby</strong><br><a href="https://githubplanet.dev/card.html?showcase=ruby&amp;fix=true"><img width="800" alt="Ruby showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_ruby.gif"></a></td>
   </tr>
-  <tr>
-    <td align="center"><strong>Python</strong><br><a href="https://githubplanet.dev/card.html?showcase=python&amp;fix=true"><img width="800" alt="Python showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_python.gif"></a></td>
-  </tr>
 </table>

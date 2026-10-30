@@ -101,13 +101,4 @@ This is the gallery of language showcase planet cards. Every card uses fixed dat
       </a>
     </td>
   </tr>
-  <tr>
-    <td align="center" colspan="2">
-      <strong>Python — Paired Orbital Trails</strong><br>
-      <sub>Rust and TypeScript trails follow separate paths and disappear behind the planet.</sub><br>
-      <a href="https://githubplanet.dev/card.html?showcase=python&amp;fix=true">
-        <img width="400" alt="Python showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_python.gif">
-      </a>
-    </td>
-  </tr>
 </table>

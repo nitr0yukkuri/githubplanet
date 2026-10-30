@@ -21,7 +21,8 @@ export function registerPageRoutes(app, {
         'index.html': 'GitHub Planet',
         'achievements.html': 'Achievements - GitHub Planet',
         'settings.html': 'Settings - GitHub Planet',
-        'card.html': 'GitHub Planet Card'
+        'card.html': 'GitHub Planet Card',
+        '404.html': '404 - Planet Not Found'
     };
     // 公開ページのクロールごとに同期I/Oが発生しないよう、テンプレートは起動時に読み込む。
     const pageCache = new Map([
@@ -32,15 +33,21 @@ export function registerPageRoutes(app, {
     const seo = createPageSeo({ publicBaseUrl: normalizedPublicBaseUrl, showcasePages });
     app.use(seo.middleware);
 
+    function addScriptNonce(html, req) {
+        if (!req.cspNonce) return html;
+        // script-srcのnonce許可を、HTMLテンプレート内と後挿入された全scriptで共有する。
+        return html.replace(/<script(?=[\s>])/gi, `<script nonce="${req.cspNonce}"`);
+    }
+
     function sendPage(req, res, fileName) {
+        res.setHeader('Cache-Control', 'no-store');
         const isEnglish = /^\/(en|english)(\/|$)/.test(req.path);
         let html = pageCache.get(fileName);
 
         if (fileName === 'index.html') {
             const page = seo.resolveHomePage(req);
             if (!page) {
-                res.setHeader('X-Robots-Tag', 'noindex, follow');
-                return res.status(404).type('html').send(pageCache.get('404.html'));
+                return sendNotFound(req, res);
             }
             if (!page.indexable) res.setHeader('X-Robots-Tag', 'noindex, follow');
             html = seo.renderHome(html, page);
@@ -52,7 +59,14 @@ export function registerPageRoutes(app, {
             }
         }
 
-        res.type('html').send(html);
+        res.type('html').send(addScriptNonce(html, req));
+    }
+
+    function sendNotFound(req, res) {
+        // 一般404と廃止カードも同じ描画経路に通し、翻訳scriptだけnonceが欠ける状態を防ぐ。
+        res.setHeader('X-Robots-Tag', 'noindex, follow');
+        res.status(404);
+        return sendPage(req, res, '404.html');
     }
 
     function generateSignature(username) {
@@ -160,7 +174,14 @@ export function registerPageRoutes(app, {
     });
 
     app.get(['/card', '/card.html', '/en/card', '/en/card.html', '/english/card', '/english/card.html'], (req, res) => {
-        const { username, fix } = req.query;
+        const { username, fix, showcase } = req.query;
+        if (showcase !== undefined) {
+            const slug = typeof showcase === 'string' ? showcase.trim().toLowerCase() : '';
+            // 廃止したショーケースで空のカードを出さず、ページ取得時点で404にする。
+            if (!showcasePages.some((planet) => planet.slug === slug)) {
+                return sendNotFound(req, res);
+            }
+        }
         const loggedInUser = req.session.planetData?.user?.login;
 
         if (!username && !fix) {
@@ -185,7 +206,8 @@ export function registerPageRoutes(app, {
     });
 
     app.get(['/sender', '/en/sender', '/english/sender'], (req, res) => {
-        res.type('html').send(pageCache.get('sender.html'));
+        res.setHeader('Cache-Control', 'no-store');
+        res.type('html').send(addScriptNonce(pageCache.get('sender.html'), req));
     });
 
     app.get(['/achievements', '/en/achievements', '/english/achievements'], (req, res) => {
@@ -195,4 +217,5 @@ export function registerPageRoutes(app, {
     app.get(['/settings', '/en/settings', '/english/settings'], (req, res) => {
         sendPage(req, res, 'settings.html');
     });
+    return { sendNotFound };
 }

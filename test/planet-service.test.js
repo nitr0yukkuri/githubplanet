@@ -34,7 +34,7 @@ test('orchestrates GitHub aggregation, domain rules, and persistence', async () 
         resolveLanguageColor: async (language) => language === 'TypeScript' ? '#007acc' : '#808080',
         ask: async () => null
     };
-    const service = createPlanetService({ repository, githubClient, geminiClient, geminiApiKey: '' });
+    const service = createPlanetService({ repository, githubClient, geminiClient, languageColorService: geminiClient, geminiApiKey: '' });
     const result = await service.updateAndSavePlanetData({
         id: 1,
         login: 'tester',
@@ -97,8 +97,10 @@ test('reuses the existing color, name, title, and achievements for the same lang
     const service = createPlanetService({
         repository,
         githubClient: { getPlanetSource: async () => createSource() },
+        languageColorService: {
+            resolveLanguageColor: async () => { colorCalls++; return '#ffffff'; }
+        },
         geminiClient: {
-            resolveLanguageColor: async () => { colorCalls++; return '#ffffff'; },
             ask: async () => null
         },
         geminiApiKey: 'configured'
