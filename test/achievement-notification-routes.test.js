@@ -8,7 +8,8 @@ function createRouteHarness() {
     return {
         routes,
         app: {
-            get(paths, handler) {
+            get(paths, ...routeHandlers) {
+                const handler = routeHandlers.at(-1);
                 for (const path of Array.isArray(paths) ? paths : [paths]) {
                     routes.set(`GET ${path}`, handler);
                 }
@@ -39,6 +40,11 @@ function createResponse() {
             this.body = body;
             return this;
         },
+        set(name, value) {
+            this.headers ||= {};
+            this.headers[name] = value;
+            return this;
+        },
         redirect(target) {
             this.redirectTarget = target;
             return this;
@@ -46,42 +52,66 @@ function createResponse() {
     };
 }
 
-test('stores login progress once after a successful login', async () => {
+test('stores login progress once after the first successful planet load', async () => {
     const { app, routes } = createRouteHarness();
+    let planetUpdateCalls = 0;
+    let progressCalls = 0;
+    const planetService = {
+        async updateAndSavePlanetData() {
+            planetUpdateCalls += 1;
+            return {
+                mainLanguage: 'Go',
+                achievements: { FIRST_PLANET: { id: 'FIRST_PLANET' } },
+                observedTotalContributions: 128,
+                isNewPlanet: false
+            };
+        },
+        async recordLoginProgress(githubId, data) {
+            progressCalls += 1;
+            assert.equal(githubId, 1);
+            assert.equal(data.observedTotalContributions, 128);
+            return {
+                contributionDelta: 28,
+                newlyUnlockedAchievementIds: ['FIRST_PLANET']
+            };
+        }
+    };
     registerAuthRoutes(app, {
         githubClient: {
             exchangeCode: async () => 'token',
             getAuthenticatedUser: async () => ({ id: 1, login: 'tester' })
         },
-        planetService: {
-            updateAndSavePlanetData: async () => ({
-                mainLanguage: 'Go',
-                achievements: { FIRST_PLANET: { id: 'FIRST_PLANET' } },
-                observedTotalContributions: 128,
-                isNewPlanet: false
-            }),
-            recordLoginProgress: async () => ({
-                contributionDelta: 28,
-                newlyUnlockedAchievementIds: ['FIRST_PLANET']
-            })
-        },
+        planetService,
         clientId: 'client',
         callbackUrl: 'http://localhost/callback'
     });
+    registerPlanetRoutes(app, { planetService, cacheDuration: 60_000 });
 
     const req = {
         query: { code: 'code', state: 'state' },
         session: { code_verifier: 'verifier', oauth_state: 'state', login_return_to: '/en' }
     };
+    req.session.save = (callback) => callback(null);
     const res = createResponse();
     await routes.get('GET /callback')(req, res);
 
-    assert.deepEqual(req.session.pendingProgressNotice, {
+    assert.equal(planetUpdateCalls, 0);
+    assert.equal(progressCalls, 0);
+    assert.equal(req.session.planetData.planetData, null);
+    const firstMeResponse = createResponse();
+    await routes.get('GET /api/me')(req, firstMeResponse);
+    assert.deepEqual(firstMeResponse.body.progressNotice, {
         contributionDelta: 28,
         newlyUnlockedAchievementIds: ['FIRST_PLANET']
     });
     assert.equal('observedTotalContributions' in req.session.planetData.planetData, false);
     assert.equal('isNewPlanet' in req.session.planetData.planetData, false);
+    const secondMeResponse = createResponse();
+    await routes.get('GET /api/me')(req, secondMeResponse);
+    assert.equal(req.session.pendingProgressNotice, undefined);
+    assert.equal(secondMeResponse.body.progressNotice.contributionDelta, 0);
+    assert.equal(planetUpdateCalls, 1);
+    assert.equal(progressCalls, 1);
     assert.equal(res.redirectTarget, '/en');
     assert.equal('oauth_state' in req.session, false);
 });
@@ -270,15 +300,13 @@ test('records callback processing failures without exposing error messages', asy
     registerAuthRoutes(app, {
         githubClient: {
             async exchangeCode() { return 'access-token'; },
-            async getAuthenticatedUser() { return { id: 1, login: 'tester' }; }
-        },
-        planetService: {
-            async updateAndSavePlanetData() {
+            async getAuthenticatedUser() {
                 const error = new Error('database response included secret-token');
                 error.code = 'ERR_DATABASE';
                 throw error;
             }
         },
+        planetService: {},
         clientId: 'client',
         callbackUrl: 'https://githubplanet.dev/callback',
         logger: {
@@ -344,4 +372,44 @@ test('returns pending login progress once and consumes it', async () => {
         contributionDelta: 0,
         newlyUnlockedAchievementIds: []
     });
+});
+
+test('returns language history only for the authenticated account', async () => {
+    const { app, routes } = createRouteHarness();
+    const requestedIds = [];
+    registerPlanetRoutes(app, {
+        planetService: {},
+        planetQueryService: {
+            async getLanguageHistoryByGithubId(githubId) {
+                requestedIds.push(githubId);
+                return [{
+                    capturedAt: '2025-01-01T00:00:00.000Z',
+                    mainLanguage: 'JavaScript',
+                    planetColor: '#f1e05a',
+                    languagePercentages: { JavaScript: 100 }
+                }];
+            }
+        },
+        cacheDuration: 60_000
+    });
+
+    const unauthorizedResponse = createResponse();
+    await routes.get('GET /api/me/language-history')({ session: {} }, unauthorizedResponse);
+    assert.equal(unauthorizedResponse.statusCode, 401);
+    assert.deepEqual(requestedIds, []);
+
+    const response = createResponse();
+    await routes.get('GET /api/me/language-history')({
+        session: { planetData: { user: { id: 42 } } }
+    }, response);
+    assert.deepEqual(response.body, {
+        history: [{
+            capturedAt: '2025-01-01T00:00:00.000Z',
+            mainLanguage: 'JavaScript',
+            planetColor: '#f1e05a',
+            languagePercentages: { JavaScript: 100 }
+        }]
+    });
+    assert.equal(response.headers['Cache-Control'], 'private, no-store');
+    assert.deepEqual(requestedIds, [42]);
 });

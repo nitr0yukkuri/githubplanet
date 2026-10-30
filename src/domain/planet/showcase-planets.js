@@ -5,15 +5,16 @@ const SHOWCASE_WEEKLY_COMMITS = 24;
 const SHOWCASE_PLANETS = Object.freeze({
     css: createShowcasePlanet('CSS', '#563d7c', 'Directional Color Flow'),
     cpp: createShowcasePlanet('C++', '#f34b7d', 'Idle Plasma Globe'),
+    elm: createShowcasePlanet('Elm', '#3f9b55', 'Wind Meadow'),
     go: createShowcasePlanet('Go', '#00ADD8', 'Atmospheric Wind'),
     typescript: createShowcasePlanet('TypeScript', '#007acc', 'Defensive Typed Shell'),
     javascript: createShowcasePlanet('JavaScript', '#f0db4f', 'Reactive Golden Surface'),
     java: createShowcasePlanet('Java', '#b07219', 'Java Roast'),
     kotlin: createShowcasePlanet('Kotlin', '#A97BFF', 'Electric Spark'),
+    perl: createShowcasePlanet('Perl', '#087d96', 'Ocean Current'),
     rust: createShowcasePlanet('Rust', '#dea584', 'Desert Dust World'),
     vue: createShowcasePlanet('Vue', '#41b883', 'Gentle Reactive Wind'),
-    ruby: createShowcasePlanet('Ruby', '#CC342D', 'Burning Ruby'),
-    python: createShowcasePlanet('Python', '#306998', 'Paired Orbital Trails')
+    ruby: createShowcasePlanet('Ruby', '#CC342D', 'Burning Ruby')
 });
 
 function createShowcasePlanet(mainLanguage, planetColor, planetName) {

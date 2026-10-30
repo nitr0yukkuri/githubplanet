@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { createPageSeo } from './page-seo.js';
 
 const DEFAULT_PUBLIC_BASE_URL = 'https://githubplanet.dev';
 const SOURCE_PUBLIC_BASE_URL = 'https://githubplanet.dev';
@@ -10,47 +11,64 @@ export function registerPageRoutes(app, {
     isProduction,
     systemApiKey,
     sessionSecret,
-    publicBaseUrl = DEFAULT_PUBLIC_BASE_URL
+    publicBaseUrl = DEFAULT_PUBLIC_BASE_URL,
+    cardCaptureBaseUrl = isProduction ? publicBaseUrl : undefined,
+    showcasePages = [],
+    threeAssetBasePath = '/vendor/three'
 }) {
     const normalizedPublicBaseUrl = publicBaseUrl.replace(/\/+$/, '');
+    const normalizedCardCaptureBaseUrl = cardCaptureBaseUrl?.replace(/\/+$/, '');
     const pageTitles = {
         'index.html': 'GitHub Planet',
         'achievements.html': 'Achievements - GitHub Planet',
         'settings.html': 'Settings - GitHub Planet',
-        'card.html': 'GitHub Planet Card'
+        'card.html': 'GitHub Planet Card',
+        '404.html': '404 - Planet Not Found'
     };
-    const pageCache = new Map();
+    // 公開ページのクロールごとに同期I/Oが発生しないよう、テンプレートは起動時に読み込む。
+    const pageCache = new Map([
+        'index.html', 'achievements.html', 'settings.html', 'card.html', '404.html', 'sender.html'
+    ].map((fileName) => [fileName, fs.readFileSync(path.join(rootDirectory, fileName), 'utf8')
+        .replaceAll(SOURCE_PUBLIC_BASE_URL, normalizedPublicBaseUrl)
+        .replaceAll('/vendor/three/', `${threeAssetBasePath}/`)]));
+    const favicon = fs.readFileSync(path.join(rootDirectory, 'front/img/favicon-96.png'));
+    const seo = createPageSeo({ publicBaseUrl: normalizedPublicBaseUrl, showcasePages });
+    app.use(seo.middleware);
+
+    function addScriptNonce(html, req) {
+        if (!req.cspNonce) return html;
+        // script-srcのnonce許可を、HTMLテンプレート内と後挿入された全scriptで共有する。
+        return html.replace(/<script(?=[\s>])/gi, `<script nonce="${req.cspNonce}"`);
+    }
 
     function sendPage(req, res, fileName) {
+        res.setHeader('Cache-Control', 'no-store');
         const isEnglish = /^\/(en|english)(\/|$)/.test(req.path);
-        let html = isProduction ? pageCache.get(fileName) : undefined;
-        if (!html) {
-            html = fs.readFileSync(path.join(rootDirectory, fileName), 'utf8');
-            html = html
-                .replaceAll(SOURCE_PUBLIC_BASE_URL, normalizedPublicBaseUrl)
-                .replaceAll(DEFAULT_PUBLIC_BASE_URL, normalizedPublicBaseUrl);
-            if (isProduction) {
-                pageCache.set(fileName, html);
+        let html = pageCache.get(fileName);
+
+        if (fileName === 'index.html') {
+            const page = seo.resolveHomePage(req);
+            if (!page) {
+                return sendNotFound(req, res);
+            }
+            if (!page.indexable) res.setHeader('X-Robots-Tag', 'noindex, follow');
+            html = seo.renderHome(html, page);
+        } else {
+            html = seo.renderUtility(html);
+            if (isEnglish) {
+                html = html.replace('<html lang="ja">', '<html lang="en">')
+                    .replace(/<title>[^<]*<\/title>/, `<title>${pageTitles[fileName]}</title>`);
             }
         }
 
-        if (!isEnglish) {
-            return res.type('html').send(html);
-        }
+        res.type('html').send(addScriptNonce(html, req));
+    }
 
-        html = html
-            .replace('<html lang="ja">', '<html lang="en">')
-            .replace(/<title>[^<]*<\/title>/, `<title>${pageTitles[fileName]}</title>`);
-
-        if (fileName === 'index.html') {
-            html = html
-                .replace('GitHubの活動履歴からあなただけの惑星を生成しよう。', 'Generate your own planet from your GitHub activity.')
-                .replaceAll('あなたのコードが、星になる。GitHubの活動履歴からあなただけの惑星を生成しよう。', 'Your code becomes a star. Generate your own planet from your GitHub activity.')
-                .replace(`content="${normalizedPublicBaseUrl}/"`, `content="${normalizedPublicBaseUrl}/en"`)
-                .replace(`href="${normalizedPublicBaseUrl}/" rel="canonical"`, `href="${normalizedPublicBaseUrl}/en" rel="canonical"`);
-        }
-
-        res.type('html').send(html);
+    function sendNotFound(req, res) {
+        // 一般404と廃止カードも同じ描画経路に通し、翻訳scriptだけnonceが欠ける状態を防ぐ。
+        res.setHeader('X-Robots-Tag', 'noindex, follow');
+        res.status(404);
+        return sendPage(req, res, '404.html');
     }
 
     function generateSignature(username) {
@@ -75,11 +93,30 @@ export function registerPageRoutes(app, {
         sendPage(req, res, 'index.html');
     });
 
+
+    app.get('/robots.txt', (_req, res) => {
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        const sitemapUrl = new URL('/sitemap.xml', normalizedPublicBaseUrl).href;
+        res.type('text/plain').send([
+            'User-agent: *',
+            'Allow: /',
+            'Sitemap: ' + sitemapUrl
+        ].join('\n') + '\n');
+    });
+
+    app.get('/sitemap.xml', (_req, res) => {
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.type('application/xml').send(seo.sitemap());
+    });
+
+
     app.get([
         '/exhibition',
         '/en/exhibition',
         '/english/exhibition',
         '/demo',
+        '/en/demo',
+        '/english/demo',
         '/showcase',
         '/en/showcase',
         '/english/showcase',
@@ -90,20 +127,25 @@ export function registerPageRoutes(app, {
         sendPage(req, res, 'index.html');
     });
 
+    // 親が隠しディレクトリでも正規ファイルを返せるよう、rootと相対パスを分ける。
     app.get('/manifest.json', (req, res) => {
         res.type('application/manifest+json');
-        res.sendFile(path.join(rootDirectory, 'manifest.json'));
+        res.sendFile('manifest.json', { root: rootDirectory });
     });
 
     app.get('/manifest-en.json', (req, res) => {
         res.type('application/manifest+json');
-        res.sendFile(path.join(rootDirectory, 'manifest-en.json'));
+        res.sendFile('manifest-en.json', { root: rootDirectory });
+    });
+
+    app.get('/favicon.ico', (_req, res) => {
+        res.type('image/png').send(favicon);
     });
 
     app.get('/sw.js', (req, res) => {
         res.setHeader('Cache-Control', 'no-cache');
         res.type('application/javascript');
-        res.sendFile(path.join(rootDirectory, 'sw.js'));
+        res.sendFile('sw.js', { root: rootDirectory });
     });
 
     app.get('/api/card/:username', (req, res) => {
@@ -118,20 +160,31 @@ export function registerPageRoutes(app, {
         }
 
         const targetUsername = (systemApiKey && apiKey === systemApiKey) ? username : loggedInUser;
-        let protocol = req.headers['x-forwarded-proto'] || req.protocol;
-        if (req.get('host') && req.get('host').includes('onrender.com')) protocol = 'https';
-
-        const host = req.headers['x-forwarded-host'] || req.get('host');
         const timestamp = Date.now();
         const signature = generateSignature(targetUsername);
-        const targetUrl = `${protocol}://${host}/card.html?username=${targetUsername}&fix=true&ts=${timestamp}&sig=${signature}`;
+        if (!normalizedCardCaptureBaseUrl) {
+            return res.status(503).send('Card capture base URL is not configured');
+        }
+        const canonicalCardUrl = new URL('/card.html', normalizedCardCaptureBaseUrl);
+        canonicalCardUrl.searchParams.set('username', targetUsername);
+        canonicalCardUrl.searchParams.set('fix', 'true');
+        canonicalCardUrl.searchParams.set('ts', String(timestamp));
+        canonicalCardUrl.searchParams.set('sig', signature);
+        const targetUrl = canonicalCardUrl.href;
 
         console.log(`[Card] Redirecting generation for: ${targetUrl}`);
         res.redirect(`https://image.thum.io/get/png/width/800/crop/400/noanimate/wait/3/${targetUrl}`);
     });
 
     app.get(['/card', '/card.html', '/en/card', '/en/card.html', '/english/card', '/english/card.html'], (req, res) => {
-        const { username, fix } = req.query;
+        const { username, fix, showcase } = req.query;
+        if (showcase !== undefined) {
+            const slug = typeof showcase === 'string' ? showcase.trim().toLowerCase() : '';
+            // 廃止したショーケースで空のカードを出さず、ページ取得時点で404にする。
+            if (!showcasePages.some((planet) => planet.slug === slug)) {
+                return sendNotFound(req, res);
+            }
+        }
         const loggedInUser = req.session.planetData?.user?.login;
 
         if (!username && !fix) {
@@ -156,7 +209,8 @@ export function registerPageRoutes(app, {
     });
 
     app.get(['/sender', '/en/sender', '/english/sender'], (req, res) => {
-        res.sendFile(path.join(rootDirectory, 'sender.html'));
+        res.setHeader('Cache-Control', 'no-store');
+        res.type('html').send(addScriptNonce(pageCache.get('sender.html'), req));
     });
 
     app.get(['/achievements', '/en/achievements', '/english/achievements'], (req, res) => {
@@ -166,4 +220,5 @@ export function registerPageRoutes(app, {
     app.get(['/settings', '/en/settings', '/english/settings'], (req, res) => {
         sendPage(req, res, 'settings.html');
     });
+    return { sendNotFound };
 }

@@ -7,7 +7,12 @@ test('pins browser dependencies and loads the optimized skybox', () => {
     const homeScript = fs.readFileSync('front/js/home.js', 'utf8');
 
     assert.doesNotMatch(html, /@latest/);
-    assert.match(html, /three@0\.160\.0/);
+    const cardHtml = fs.readFileSync('card.html', 'utf8');
+    const manifest = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+    assert.match(manifest.dependencies.three, /^\d+\.\d+\.\d+$/);
+    for (const pageHtml of [html, cardHtml]) {
+        assert.match(pageHtml, /"three": "\/vendor\/three\/build\/three\.module\.js"/);
+    }
     assert.match(html, /animejs@3\.2\.2/);
     assert.doesNotMatch(html, /rel="preload" href="\/front\/img\/2k_mars\.jpg"/);
     assert.match(homeScript, /right\.webp.*left\.webp.*top\.webp.*bottom\.webp.*front\.webp.*back\.webp/);
@@ -16,6 +21,14 @@ test('pins browser dependencies and loads the optimized skybox', () => {
         .map((name) => fs.statSync(`front/img/skybox/${name}.webp`).size)
         .reduce((sum, size) => sum + size, 0);
     assert.ok(totalBytes < 3_000_000, `optimized skybox is ${totalBytes} bytes`);
+});
+
+test('hides the GitHub profile button when the backend cannot verify its identity', () => {
+    const homeScript = fs.readFileSync('front/js/home.js', 'utf8');
+
+    assert.match(homeScript, /data\.githubProfileVerified !== false/);
+    assert.match(homeScript, /profileLink\.removeAttribute\('href'\)/);
+    assert.match(homeScript, /github-profile\/\$\{encodeURIComponent\(data\.githubId\)\}/);
 });
 
 test('uses the optimized shared background and excludes legacy images from Cloud Run', () => {

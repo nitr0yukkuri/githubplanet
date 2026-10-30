@@ -9,15 +9,16 @@ import {
 const EXPECTED_SHOWCASES = {
     css: 'CSS',
     cpp: 'C++',
+    elm: 'Elm',
     go: 'Go',
     typescript: 'TypeScript',
     javascript: 'JavaScript',
     java: 'Java',
     kotlin: 'Kotlin',
+    perl: 'Perl',
     rust: 'Rust',
     vue: 'Vue',
-    ruby: 'Ruby',
-    python: 'Python'
+    ruby: 'Ruby'
 };
 
 const EXPECTED_CARD_CAPTIONS = {
@@ -28,6 +29,10 @@ const EXPECTED_CARD_CAPTIONS = {
     cpp: {
         ja: '球体の周囲でプラズマ状の光が脈打つ。',
         en: 'Plasma-like light pulses around the globe.'
+    },
+    elm: {
+        ja: '森と草地がつながる地表が、風にわずかに揺れる。',
+        en: 'Connected forest and meadow regions shift gently in the wind.'
     },
     go: {
         ja: '風に沿う大気の層が惑星を包み込む。',
@@ -49,6 +54,10 @@ const EXPECTED_CARD_CAPTIONS = {
         ja: '結晶の核を縁の電気的な光が彩る。',
         en: 'A crystal-like core glows as electric filaments crackle along the rim.'
     },
+    perl: {
+        ja: '深い青の海に、ゆるやかな潮流と控えめな反射が広がる。',
+        en: 'A deep blue ocean carries gentle currents and restrained reflections.'
+    },
     rust: {
         ja: '赤褐色の砂漠地形に細かな砂塵が漂う。',
         en: 'Rust-red desert relief carries fine, drifting dust.'
@@ -60,10 +69,6 @@ const EXPECTED_CARD_CAPTIONS = {
     ruby: {
         ja: '熱いコロナの中で、火の粉が上昇する。',
         en: 'A hot corona glows above the surface as ember-like sparks rise.'
-    },
-    python: {
-        ja: '青と黄の二本が別軌道を巡り、裏側では惑星に隠れる。',
-        en: 'Blue and yellow trails follow separate paths and disappear behind the planet.'
     }
 };
 
@@ -80,7 +85,7 @@ test('provides deterministic feature planets without database records', () => {
         assert.match(planet.username, /^SHOWCASE_/);
     }
     assert.equal(getShowcasePlanet('unknown'), undefined);
-    assert.equal(getShowcasePlanet('python').planetName, 'Paired Orbital Trails');
+    assert.equal(getShowcasePlanet('python'), undefined);
 });
 
 test('documents every production showcase card in the card gallery', async () => {
@@ -100,6 +105,9 @@ test('documents every production showcase card in the card gallery', async () =>
     const updateWorkflow = await readFile(
         new URL('../.github/workflows/update-card.yml', import.meta.url),
         'utf8'
+    );
+    const cardsOnlyReadme = await readFile(
+        new URL('../docs/cards/README.cards-only.en.md', import.meta.url), 'utf8'
     );
 
     for (const slug of Object.keys(EXPECTED_SHOWCASES)) {
@@ -122,8 +130,17 @@ test('documents every production showcase card in the card gallery', async () =>
         assert.ok(englishCardReadme.includes(captions.en), `Missing English caption for ${slug}`);
     }
 
-    assert.match(cardReadme, /Python — 対をなす軌道光/);
-    assert.match(englishCardReadme, /Python — Paired Orbital Trails/);
+    const showcaseSlugs = new Set(listShowcasePlanets().map(({ slug }) => slug));
+    for (const source of [readme, englishReadme, cardReadme, englishCardReadme, cardsOnlyReadme, updateWorkflow]) {
+        for (const [, slug] of source.matchAll(/(?:showcase=|showcase_)([a-z0-9_-]+)/gi)) {
+            assert.ok(showcaseSlugs.has(slug.toLowerCase()), `Unknown showcase reference: ${slug}`);
+        }
+    }
+    const expectedGifCount = showcaseSlugs.size + 1;
+    assert.deepEqual(
+        [...updateWorkflow.matchAll(/wc -l\)" -eq (\d+)/g)].map((match) => Number(match[1])),
+        [expectedGifCount, expectedGifCount]
+    );
     assert.match(readme, /docs\/cards\/README\.md/);
     assert.match(englishReadme, /docs\/cards\/README\.en\.md/);
     assert.match(readme, /raw\.githubusercontent\.com\/GitHubユーザー名/);

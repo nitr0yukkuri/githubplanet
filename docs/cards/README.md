@@ -1,5 +1,7 @@
 # GitHub Planet カードギャラリー
 
+説明文なしの一覧: [カードだけを見る](README.cards-only.md)
+
 言語別ショーケース惑星のカード一覧です。すべて固定データを使い、本番環境の読み取り専用ショーケースAPIから生成しています。各カードに日本語の表現名と、見た目の特徴を添えています。
 
 <table>
@@ -16,6 +18,22 @@
       <sub>Idle Plasma Globe — 球体の周囲でプラズマ状の光が脈打つ。</sub><br>
       <a href="https://githubplanet.dev/card.html?showcase=cpp&amp;fix=true">
         <img width="400" alt="C++ showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_cpp.gif">
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <strong>Elm — Wind Meadow</strong><br>
+      <sub>森と草地がつながる地表が、風にわずかに揺れる。</sub><br>
+      <a href="https://githubplanet.dev/card.html?showcase=elm&amp;fix=true">
+        <img width="400" alt="Elm showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_elm.gif">
+      </a>
+    </td>
+    <td align="center">
+      <strong>Perl — Ocean Current</strong><br>
+      <sub>深い青の海に、ゆるやかな潮流と控えめな反射が広がる。</sub><br>
+      <a href="https://githubplanet.dev/card.html?showcase=perl&amp;fix=true">
+        <img width="400" alt="Perl showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_perl.gif">
       </a>
     </td>
   </tr>
@@ -80,15 +98,6 @@
       <sub>Burning Ruby — 熱いコロナの中で、火の粉が上昇する。</sub><br>
       <a href="https://githubplanet.dev/card.html?showcase=ruby&amp;fix=true">
         <img width="400" alt="Ruby showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_ruby.gif">
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" colspan="2">
-      <strong>Python — 対をなす軌道光</strong><br>
-      <sub>Paired Orbital Trails — 青と黄の二本が別軌道を巡り、裏側では惑星に隠れる。</sub><br>
-      <a href="https://githubplanet.dev/card.html?showcase=python&amp;fix=true">
-        <img width="400" alt="Python showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_python.gif">
       </a>
     </td>
   </tr>

@@ -143,6 +143,25 @@ canvas {
     z-index: 0;
 }
 
+/* CSSカードだけに控えめなスペクトル光を足し、READMEの紫・緑・青の雰囲気に合わせる。 */
+#card-container[data-card-theme="css-spectrum"] .bg-gradient {
+    background:
+        linear-gradient(
+            112deg,
+            transparent 0%,
+            rgba(255, 91, 128, 0.17) 13%,
+            rgba(255, 174, 82, 0.15) 27%,
+            rgba(239, 226, 105, 0.13) 40%,
+            rgba(102, 202, 144, 0.14) 54%,
+            rgba(91, 177, 226, 0.16) 68%,
+            rgba(129, 124, 232, 0.15) 82%,
+            rgba(207, 116, 224, 0.14) 94%,
+            transparent 100%
+        ),
+        radial-gradient(ellipse 48% 86% at 28% 53%, rgba(99, 76, 164, 0.18), transparent 75%),
+        linear-gradient(112deg, #171622 0%, #0d1117 100%);
+}
+
 .stars {
     position: absolute;
     width: 100%; height: 100%;
@@ -157,6 +176,40 @@ canvas {
     top: 0; left: 0;
     width: 100%; height: 100%;
     z-index: 1;
+}
+
+#card-webgl-fallback {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    width: 42%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    color: #c6c8d8;
+    text-align: center;
+    pointer-events: none;
+}
+
+#card-webgl-fallback[hidden] {
+    display: none;
+}
+
+.card-webgl-fallback-planet {
+    width: min(22vw, 150px);
+    aspect-ratio: 1;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 28%, #fff 0%, var(--planet-fallback-color, #808080) 9%, #292b45 58%, #080a12 100%);
+    box-shadow: 0 0 34px var(--planet-fallback-color, #808080), inset -13px -12px 24px rgba(0, 0, 0, 0.75);
+}
+
+#card-webgl-fallback p {
+    max-width: 15rem;
+    margin: 0 0.75rem;
+    font-size: 0.75rem;
 }
 
 .card-content {
@@ -269,6 +322,17 @@ canvas {
 }
 
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+/* 動きを減らす設定では点滅や幅の遷移を止める。 */
+@media (prefers-reduced-motion: reduce) {
+    .sys-status {
+        animation: none;
+    }
+
+    .bar-fill {
+        transition: none;
+    }
+}
 
 .share-container {
     width: 100%;
@@ -435,4 +499,12 @@ body.is-screenshot #card-container {
     
     max-width: none !important;
     aspect-ratio: auto !important;
+}
+
+/* CSSカードのプロフィール画像にも通常表示と同じ背景色を残す。 */
+html.is-screenshot #card-container[data-card-theme="css-spectrum"] .bg-gradient,
+body.is-screenshot #card-container[data-card-theme="css-spectrum"] .bg-gradient,
+html.is-screenshot #card-container[data-card-theme="css-spectrum"] .stars,
+body.is-screenshot #card-container[data-card-theme="css-spectrum"] .stars {
+    display: block !important;
 }

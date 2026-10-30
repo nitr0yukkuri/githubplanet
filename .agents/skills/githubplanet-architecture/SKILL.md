@@ -114,6 +114,13 @@ HTTP/WebSocket入口の輸送責務を担当する。
 
 特に設定値と公開URLは一箇所で解決する。callback、canonical、OGP、README、デプロイ先の既定値が別ホストを指さないよう、環境変数未設定時の認証経路をテストする。
 
+### ローカル GitHub OAuth の切り分け
+
+ローカルで「不正なリクエストです」や `missing_code_verifier` が出たら、まず認証開始時とcallback時のホスト名を照合する。`localhost` と `127.0.0.1` は別ホストなので、ログイン開始時のsession cookieがcallbackへ送られない。さらに `/login` がGitHubへ渡す `redirect_uri`、実際のcallback URL、GitHub OAuth Appに登録したcallback URLをscheme・host・port・pathまで完全一致させる。ローカルだけcallbackを変える場合は `CALLBACK_URL` を使い、本番の既定値をローカル都合で変えない。
+
+切り分けでは、サーバーログのOAuth callback拒否理由、ログイン開始時の `Set-Cookie`、callbackリクエストにsession cookieが含まれるかを順に見る。DBなしのローカル起動でsession storeがMemoryStoreなら、プロセス再起動や別プロセスへのcallback振り分けでPKCE verifierが失われるため、認証往復中は同じサーバープロセスを保つ。ブラウザーの一般的な `404` 表示だけではOAuth失敗と判断せず、失敗したリクエストのURLを特定する。`/favicon.ico` など静的ファイルの404はcallback/sessionエラーと別に扱う。
+
+
 ## 安全なリファクタリング順序
 
 1. 既存HTTP、repository、外部client、frontendのcharacterization/contract testを追加する。

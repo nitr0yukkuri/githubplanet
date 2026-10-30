@@ -1,10 +1,12 @@
+import { applyCardLanguageTheme, getCardAccentColor } from './card-language-theme.js';
+import { calculateStarCount, createPlanetDisposalResources, disposePlanetObject } from './planet-scene-resources.js';
 // front/js/card.js
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { createPlanetFeatureRuntime, resolvePlanetFeature } from './planet-features/registry.js';
+import { createPlanetFeatureRuntime } from './planet-features/registry.js';
 import { applyI18n, localizedPath, localizedPlanetName } from './i18n.js';
+import { createWebGLRenderer } from './webgl-renderer.js';
 
-const MAX_STAR_COUNT = 120;
 const CARD_DATA_TIMEOUT_MS = 6000;
 const PUBLIC_DEPLOY_URL = 'https://githubplanet.dev';
 
@@ -13,6 +15,11 @@ const showcaseSlug = params.get('showcase');
 const username = params.get('username')
     || (showcaseSlug ? `SHOWCASE_${showcaseSlug.toUpperCase()}` : 'nitr0yukkuri');
 const isScreenshotMode = params.has('fix');
+const motionPreference = window.matchMedia?.('(prefers-reduced-motion: reduce)') || null;
+
+function prefersReducedMotion() {
+    return motionPreference?.matches === true;
+}
 
 applyI18n();
 
@@ -50,7 +57,7 @@ if (!isScreenshotMode) {
     const pageUrl = `${PUBLIC_DEPLOY_URL}${localizedPath('/card.html')}?${cardQuery}`;
     const captureUrl = `${pageUrl}&fix=true`;
     const staticCardUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${captureUrl}`;
-    const mdText = `[![GitHub Planet](${staticCardUrl})](${pageUrl})`;
+    const mdText = `[![GitHub Planet](${staticCardUrl})](${captureUrl})`;
 
     if (markdownCode) markdownCode.textContent = mdText;
     if (copyBtn) {
@@ -76,48 +83,74 @@ if (isScreenshotMode) {
     camera.position.set(6.0, 0, 10.0);
 }
 
-const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-renderer.setSize(width, height);
-const rendererPixelRatio = Math.min(window.devicePixelRatio, 2);
-renderer.setPixelRatio(rendererPixelRatio);
-canvasContainer.appendChild(renderer.domElement);
+let renderer = createWebGLRenderer(THREE, { alpha: true, antialias: true });
+let webglAvailable = Boolean(renderer);
+let controls = null;
+let animationFrameId = null;
+let previousFrameTimestamp = null;
+let animationElapsedMs = 0;
+const rendererPixelRatio = Math.min(window.devicePixelRatio || 1, 2);
 
-if (isScreenshotMode) {
+if (renderer) {
+    try {
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(rendererPixelRatio);
+        canvasContainer.appendChild(renderer.domElement);
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.enableZoom = false;
+        controls.autoRotate = false;
+        controls.enabled = false;
+        controls.target.set(3.5, 0, 0);
+        controls.update();
+        renderer.domElement.addEventListener('webglcontextlost', (event) => {
+            event.preventDefault();
+            webglAvailable = false;
+            stopAnimation();
+            controls?.dispose();
+            controls = null;
+            showCardWebGLFallback();
+        });
+    } catch (error) {
+        console.warn('[Card] WebGL initialization unavailable:', error.message);
+        controls?.dispose();
+        controls = null;
+        renderer?.dispose();
+        renderer?.domElement?.remove();
+        renderer = null;
+        webglAvailable = false;
+    }
+}
+
+if (!webglAvailable) showCardWebGLFallback();
+
+if (renderer && isScreenshotMode) {
     window.addEventListener('resize', () => {
+        if (!renderer || !webglAvailable) return;
         const w = window.innerWidth;
         const h = 400;
         renderer.setSize(w, h);
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
+        scheduleAnimationFrame();
     });
 }
 
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.05;
-controls.enableZoom = false;
-controls.autoRotate = false;
-controls.enabled = false;
-
-if (isScreenshotMode) {
-    controls.target.set(3.5, 0, 0);
-} else {
-    controls.target.set(3.5, 0, 0);
-}
-controls.update();
-
-if (!isScreenshotMode) {
+if (renderer && !isScreenshotMode) {
     window.addEventListener('resize', () => {
+        if (!renderer || !webglAvailable) return;
         const w = containerElement ? containerElement.clientWidth : 800;
         const h = containerElement ? containerElement.clientHeight : 400;
         renderer.setSize(w, h);
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
+        scheduleAnimationFrame();
     });
 }
 
 const textureLoader = new THREE.TextureLoader();
-const planetTexture = textureLoader.load('/front/img/2k_mars.jpg');
+const planetTexture = webglAvailable ? textureLoader.load('/front/img/2k_mars.jpg') : null;
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
 scene.add(ambientLight);
@@ -167,61 +200,34 @@ async function init() {
     }
 }
 
-// Featureの静的テーマをカード要素に反映し、通常表示と画像出力で同じ配色を保つ。
-function applyCardLanguageTheme(data) {
-    if (!containerElement) return;
-    const theme = resolvePlanetFeature(data)?.cardTheme;
-    if (!theme) {
-        containerElement.removeAttribute('data-card-theme');
-        [
-            '--planet-card-atmosphere',
-            '--planet-card-highlight',
-            '--planet-card-border',
-            '--planet-card-glow',
-            '--planet-card-atmosphere-position',
-            '--planet-card-highlight-position'
-        ].forEach((property) => containerElement.style.removeProperty(property));
-        return;
+function showCardWebGLFallback(color) {
+    const fallback = document.getElementById('card-webgl-fallback');
+    if (!fallback) return;
+    if (/^#[\da-f]{6}$/i.test(color || '')) {
+        fallback.style.setProperty('--planet-fallback-color', color);
     }
-
-    containerElement.dataset.cardTheme = theme.id;
-    const planetColor = /^#[\da-f]{6}$/i.test(data.planetColor || '') ? data.planetColor : theme.atmosphere;
-    containerElement.style.setProperty('--planet-card-atmosphere', colorWithAlpha(planetColor, 0.24));
-    containerElement.style.setProperty('--planet-card-highlight', colorWithAlpha(theme.highlight, 0.12));
-    containerElement.style.setProperty('--planet-card-border', colorWithAlpha(theme.accent, 0.32));
-    containerElement.style.setProperty('--planet-card-glow', colorWithAlpha(theme.atmosphere, 0.18));
-    containerElement.style.setProperty('--planet-card-atmosphere-position', theme.atmospherePosition);
-    containerElement.style.setProperty('--planet-card-highlight-position', theme.highlightPosition);
-}
-
-function colorWithAlpha(hexColor, alpha) {
-    const match = /^#([\da-f]{6})$/i.exec(hexColor);
-    if (!match) return 'transparent';
-
-    const value = Number.parseInt(match[1], 16);
-    const red = (value >> 16) & 255;
-    const green = (value >> 8) & 255;
-    const blue = value & 255;
-    return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+    fallback.hidden = false;
+    if (renderer?.domElement) renderer.domElement.hidden = true;
 }
 
 function updateUI(data) {
-    applyCardLanguageTheme(data);
+    applyCardLanguageTheme(containerElement, data);
     usernameDisplay.textContent = data.username || username;
     planetNameSub.textContent = localizedPlanetName(data).toUpperCase();
 
-    const duration = isScreenshotMode ? 0 : 1500;
+    const duration = isScreenshotMode || prefersReducedMotion() ? 0 : 1500;
     animateValue(commitsVal, 0, data.totalCommits || 0, duration);
 
     mainLangStat.textContent = (data.mainLanguage || 'UNKNOWN').toUpperCase();
 
-    if (data.planetColor) {
-        langBar.style.background = data.planetColor;
-        langBar.style.boxShadow = `0 0 10px ${data.planetColor}`;
-        if (sysStatus) sysStatus.style.color = data.planetColor;
-        if (idLabel) idLabel.style.color = data.planetColor;
+    const cardAccentColor = getCardAccentColor(data);
+    if (cardAccentColor) {
+        langBar.style.background = cardAccentColor;
+        langBar.style.boxShadow = `0 0 10px ${cardAccentColor}`;
+        if (sysStatus) sysStatus.style.color = cardAccentColor;
+        if (idLabel) idLabel.style.color = cardAccentColor;
     }
-    setTimeout(() => { langBar.style.width = '100%'; }, isScreenshotMode ? 0 : 100);
+    setTimeout(() => { langBar.style.width = '100%'; }, isScreenshotMode || prefersReducedMotion() ? 0 : 100);
 }
 
 function animateValue(obj, start, end, duration) {
@@ -241,76 +247,22 @@ function animateValue(obj, start, end, duration) {
     window.requestAnimationFrame(step);
 }
 
-function calculateStarCount(totalCommits) {
-    let starCount = 0;
-    let commitsUsed = 0;
-    let requiredCommitsPerStar = 10;
-    const costIncreaseStep = 10;
-    const levelUpThreshold = 5;
-
-    while (starCount < MAX_STAR_COUNT) {
-        const currentLevelCost = requiredCommitsPerStar + (Math.floor(starCount / levelUpThreshold) * costIncreaseStep);
-        if (totalCommits >= commitsUsed + currentLevelCost) {
-            starCount++;
-            commitsUsed += currentLevelCost;
-        } else {
-            break;
-        }
-    }
-    return starCount;
-}
-
-function disposeObject(object, resources = {
-    geometries: new Set(),
-    materials: new Set(),
-    textures: new Set()
-}) {
-    if (!object) return;
-    for (let index = object.children?.length - 1; index >= 0; index--) {
-        const child = object.children[index];
-        disposeObject(child, resources);
-        object.remove(child);
-    }
-
-    if (object.geometry && !resources.geometries.has(object.geometry)) {
-        resources.geometries.add(object.geometry);
-        object.geometry.dispose();
-    }
-
-    const materials = Array.isArray(object.material) ? object.material : [object.material];
-    materials.forEach((material) => {
-        if (!material || resources.materials.has(material)) return;
-        resources.materials.add(material);
-
-        [material.map, material.aoMap].forEach((texture) => {
-            if (
-                texture
-                && texture !== planetTexture
-                && !resources.textures.has(texture)
-            ) {
-                resources.textures.add(texture);
-                texture.dispose();
-            }
-        });
-        material.dispose();
-    });
-}
-
 function createPlanet(data) {
-    const resources = {
-        geometries: new Set(),
-        materials: new Set(),
-        textures: new Set()
-    };
+    if (!webglAvailable) {
+        showCardWebGLFallback(data.planetColor);
+        return;
+    }
+    const resources = createPlanetDisposalResources([planetTexture]);
     while (planetGroup.children.length > 0) {
         const child = planetGroup.children[0];
-        disposeObject(child, resources);
+        disposePlanetObject(child, resources);
         planetGroup.remove(child);
     }
     planetFeatureRuntime = null;
     cardRotationMultiplier = 1;
 
     const baseSize = Math.min(1.3 * (data.planetSizeFactor || 1), 6.0);
+    const cardAccentColor = getCardAccentColor(data);
 
     const geometry = new THREE.SphereGeometry(baseSize, 64, 64);
     geometry.setAttribute('uv2', new THREE.BufferAttribute(geometry.attributes.uv.array, 2));
@@ -328,7 +280,7 @@ function createPlanet(data) {
     cardRotationMultiplier = planetFeatureRuntime?.rotationMultiplier || 1;
 
     const material = planetFeatureRuntime?.material || new THREE.MeshStandardMaterial({
-            color: data.planetColor || 0xffffff,
+            color: cardAccentColor || 0xffffff,
             aoMap: planetTexture,
             aoMapIntensity: 1.5,
             roughness: 0.8,
@@ -442,7 +394,8 @@ function createPlanet(data) {
         const aura = new THREE.Mesh(auraGeo, auraMat);
         planetGroup.add(aura);
     }
-    if (planetFeatureRuntime?.id !== 'java') addParticles(data.planetColor);
+    if (planetFeatureRuntime?.id !== 'java') addParticles(cardAccentColor);
+    scheduleAnimationFrame();
 }
 
 function addParticles(color) {
@@ -470,19 +423,77 @@ function addParticles(color) {
 
 const CARD_PLANET_ROTATION_SPEED = 0.005;
 const BASE_PLANET_ROTATION_SPEED = 0.001;
+const CARD_FRAME_DURATION_MS = 1000 / 60;
+const MAX_CARD_FRAME_DELTA_MS = 100;
 
-function animate() {
-    requestAnimationFrame(animate);
-    const cardRotationSpeed = CARD_PLANET_ROTATION_SPEED * cardRotationMultiplier;
-    planetGroup.rotation.y -= cardRotationSpeed;
-    const now = performance.now();
-    planetFeatureRuntime?.update(now, {
-        rotationSpeed: cardRotationSpeed,
-        baseRotationSpeed: BASE_PLANET_ROTATION_SPEED,
-        camera
-    });
-    renderer.render(scene, camera);
+function stopAnimation() {
+    if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    previousFrameTimestamp = null;
 }
 
-animate();
+function scheduleAnimationFrame() {
+    if (!renderer || !webglAvailable || document.hidden || animationFrameId !== null) return;
+    animationFrameId = window.requestAnimationFrame(animate);
+}
+
+function animate(timestamp) {
+    animationFrameId = null;
+    if (!renderer || !webglAvailable) return;
+    if (document.hidden) {
+        previousFrameTimestamp = null;
+        return;
+    }
+
+    const elapsedMs = previousFrameTimestamp === null
+        ? 0
+        : Math.min(timestamp - previousFrameTimestamp, MAX_CARD_FRAME_DELTA_MS);
+    previousFrameTimestamp = timestamp;
+    const frameScale = elapsedMs / CARD_FRAME_DURATION_MS;
+    const reduceMotion = prefersReducedMotion();
+    const cardRotationSpeed = reduceMotion
+        ? 0
+        : CARD_PLANET_ROTATION_SPEED * cardRotationMultiplier * frameScale;
+
+    // 60fps時の既存速度を保ちつつFPS差をなくし、タブ復帰直後の急回転を防ぐ。
+    // OSの動きを減らす設定では惑星とシェーダーの時間を止め、静止フレームだけ描画する。
+    if (!reduceMotion) {
+        planetGroup.rotation.y -= cardRotationSpeed;
+        animationElapsedMs += elapsedMs;
+    }
+    if (elapsedMs > 0) {
+        planetFeatureRuntime?.update(animationElapsedMs, {
+            rotationSpeed: cardRotationSpeed,
+            baseRotationSpeed: reduceMotion ? 0 : BASE_PLANET_ROTATION_SPEED * frameScale,
+            camera
+        });
+    }
+    renderer.render(scene, camera);
+
+    if (!reduceMotion) scheduleAnimationFrame();
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        stopAnimation();
+        return;
+    }
+    scheduleAnimationFrame();
+});
+
+if (motionPreference) {
+    const handleMotionPreferenceChange = () => {
+        stopAnimation();
+        scheduleAnimationFrame();
+    };
+    if (typeof motionPreference.addEventListener === 'function') {
+        motionPreference.addEventListener('change', handleMotionPreferenceChange);
+    } else {
+        motionPreference.addListener?.(handleMotionPreferenceChange);
+    }
+}
+
+scheduleAnimationFrame();
 init();

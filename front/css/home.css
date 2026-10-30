@@ -18,6 +18,38 @@ body {
     z-index: 1; /* UIより下に配置 */
 }
 
+#webgl-fallback {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    background: radial-gradient(ellipse at 50% 46%, rgba(36, 39, 70, 0.7), #05060b 72%);
+    pointer-events: none;
+}
+
+#webgl-fallback[hidden] {
+    display: none;
+}
+
+.webgl-fallback-planet {
+    width: min(42vw, 250px);
+    aspect-ratio: 1;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 28%, #fff 0%, var(--planet-fallback-color, #808080) 9%, #292b45 58%, #080a12 100%);
+    box-shadow: 0 0 55px var(--planet-fallback-color, #808080), inset -20px -18px 36px rgba(0, 0, 0, 0.75);
+}
+
+#webgl-fallback p {
+    max-width: 28rem;
+    margin: 0 1rem;
+    color: #c6c8d8;
+    text-align: center;
+}
+
 /* UI要素の共通スタイル */
 .ui-button {
     background-color: rgba(255, 255, 255, 0.7); /* ★ 白ベースに変更 */
@@ -365,6 +397,35 @@ body {
     gap: 30px; /* テキストとボタンの間隔 */
 }
 
+#planet-load-error-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transform: translate(-50%, -50%);
+    padding: 1rem 1.25rem;
+    border: 1px solid rgba(180, 150, 255, 0.6);
+    border-radius: 0.75rem;
+    background: rgba(10, 12, 24, 0.92);
+    color: #f4f0ff;
+}
+
+#planet-load-error-container[hidden] {
+    display: none;
+}
+
+#retry-planet-load-btn {
+    border: 1px solid #b99cff;
+    border-radius: 999px;
+    padding: 0.5rem 0.9rem;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
 /* ★ 最小限の変更点: 未ログイン時テキストのスタイル ★ */
 #not-logged-in-text {
     color: #e0e0e0;
@@ -635,6 +696,137 @@ html[lang="en"] .planet-title {
     z-index: 1; /* パネルより手前 */
 }
 
+.planet-language-history {
+    --language-history-accent: #403d61;
+    --language-history-track: rgba(255, 255, 255, 0.32);
+    position: fixed;
+    left: 50%;
+    bottom: max(14px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 6;
+    width: min(440px, calc(100vw - 64px));
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.75rem;
+    text-shadow: 0 1px 4px #000;
+}
+
+.planet-language-history[hidden] {
+    display: none;
+}
+
+#planet-language-history-slider {
+    width: 100%;
+    height: 32px;
+    margin: 0;
+    padding: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    cursor: ew-resize;
+    touch-action: pan-y;
+}
+
+#planet-language-history-slider::-webkit-slider-runnable-track {
+    height: 8px;
+    border-radius: 999px;
+    box-shadow: 0 0 0 1px #fff;
+    background: linear-gradient(
+        to right,
+        var(--language-history-accent) 0%,
+        var(--language-history-accent) var(--language-history-progress, 100%),
+        var(--language-history-track) var(--language-history-progress, 100%),
+        var(--language-history-track) 100%
+    );
+}
+
+#planet-language-history-slider::-moz-range-track {
+    height: 8px;
+    border-radius: 999px;
+    box-shadow: 0 0 0 1px #fff;
+    background: var(--language-history-track);
+}
+
+#planet-language-history-slider::-moz-range-progress {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--language-history-accent);
+}
+
+#planet-language-history-slider::-webkit-slider-thumb {
+    width: 12px;
+    height: 12px;
+    margin-top: -2px;
+    appearance: none;
+    -webkit-appearance: none;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #170633;
+}
+
+#planet-language-history-slider::-moz-range-thumb {
+    box-sizing: border-box;
+    width: 12px;
+    height: 12px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #170633;
+}
+
+#planet-language-history-slider:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+/* 年ラベルと丸をスライダーの停止位置に合わせる。 */
+.planet-language-history-years {
+    position: relative;
+    width: calc(100% - 12px);
+    height: 16px;
+    margin: 0 6px;
+    pointer-events: none;
+}
+
+.planet-language-history-year {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 0.62rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 14px;
+    white-space: nowrap;
+}
+
+.planet-language-history-year::before {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    width: 12px;
+    height: 12px;
+    box-sizing: border-box;
+    transform: translateX(-50%);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 50%;
+    background: var(--language-history-accent);
+    content: "";
+}
+
+.planet-language-history-year[data-selected="true"] {
+    color: #fff;
+    font-weight: 700;
+}
+
+.planet-language-history-year[data-selected="true"]::before {
+    border: 2px solid #fff;
+    background: #fff;
+}
+
 /* 矢印SVGのスタイル */
 .arrow-icon {
     width: 24px;
@@ -867,4 +1059,15 @@ html[lang="en"] .planet-title {
     line-height: 1.7;
     margin-bottom: 30px;
     text-align: left;
+}
+
+/* 初回案内中のGPU負荷を避け、狭い画面でも開始操作を画面内に収める。 */
+.welcome-modal {
+    box-sizing: border-box;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+}
+
+.home-introduction #canvas-container {
+    background: #03030b url('/front/img/skybox/preview.webp') center / cover no-repeat;
 }

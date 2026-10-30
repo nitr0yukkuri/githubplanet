@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { safeErrorMetadata } from '../../shared/error-metadata.js';
 
 function base64URLEncode(value) {
     return value.toString('base64')
@@ -31,22 +32,13 @@ function hasCookie(req, cookieName) {
     return header.split(';').some((cookie) => cookie.trim().startsWith(`${cookieName}=`));
 }
 
-function safeErrorMetadata(error) {
-    const errorName = typeof error?.name === 'string' && /^[A-Za-z][A-Za-z0-9]{0,63}$/.test(error.name)
-        ? error.name
-        : 'Error';
-    const errorCode = typeof error?.code === 'string' && /^[A-Z0-9_]{1,64}$/.test(error.code)
-        ? error.code
-        : 'unknown';
-    return { errorName, errorCode };
-}
-
 export function registerAuthRoutes(app, {
     githubClient,
     planetService,
     clientId,
     callbackUrl,
     sessionCookieName,
+    authorizationUrl = 'https://github.com/login/oauth/authorize',
     logger = console
 }) {
     app.get(['/login', '/en/login', '/english/login'], (req, res) => {
@@ -59,7 +51,7 @@ export function registerAuthRoutes(app, {
         const codeChallenge = base64URLEncode(sha256(codeVerifier));
         const state = crypto.randomBytes(16).toString('hex');
         req.session.oauth_state = state;
-        const authUrl = new URL('https://github.com/login/oauth/authorize');
+        const authUrl = new URL(authorizationUrl);
         authUrl.searchParams.set('client_id', clientId);
         authUrl.searchParams.set('redirect_uri', callbackUrl);
         authUrl.searchParams.set('scope', 'read:user');
@@ -110,21 +102,23 @@ export function registerAuthRoutes(app, {
         try {
             const accessToken = await githubClient.exchangeCode(code, codeVerifier);
             const user = await githubClient.getAuthenticatedUser(accessToken);
-            const updatedPlanetData = await planetService.updateAndSavePlanetData(user, accessToken);
-            const progressNotice = await planetService.recordLoginProgress(user.id, updatedPlanetData);
-            const {
-                observedTotalContributions,
-                isNewPlanet,
-                ...planetData
-            } = updatedPlanetData;
-
+            // 初回の惑星取得が失敗しても認証状態を保てるよう、先にセッションへ保存する。
             req.session.github_token = accessToken;
-            req.session.last_updated = Date.now();
-            req.session.planetData = { user, planetData };
-            req.session.pendingProgressNotice = progressNotice;
+            req.session.last_updated = 0;
+            req.session.planetData = { user, planetData: null };
+            delete req.session.pendingProgressNotice;
 
             delete req.session.login_return_to;
-            res.redirect(loginReturnTo);
+            req.session.save((error) => {
+                if (error) {
+                    logger.error(JSON.stringify({
+                        event: 'oauth.session.save_failed',
+                        ...safeErrorMetadata(error)
+                    }));
+                    return res.status(503).send('ログイン状態を保存できませんでした。もう一度お試しください。');
+                }
+                res.redirect(loginReturnTo);
+            });
         } catch (error) {
             logger.error(JSON.stringify({
                 event: 'oauth.callback.processing_failed',

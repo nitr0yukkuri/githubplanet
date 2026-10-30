@@ -20,6 +20,9 @@ const translations = {
             welcomeBody: 'これはあなたのGitHubでの活動に応じて育つ惑星を楽しめる<br>サイトです。使用言語とコントリビューション数によって惑星の色や輝きなどが変わり、自分だけの星を育てられます。<br>人の惑星を見に行くこともできます。<br>ログインしなくても、左上のボタンから他の開発者の惑星を見に行けます。<br>賑やかな宇宙を目指して日頃の開発を頑張りましょう！',
             empty: 'まだ何もありません...',
             login: '星を誕生させる',
+            loadError: '惑星データを読み込めませんでした。通信状態を確認して再試行してください。',
+            retry: '再試行',
+            webglUnavailable: '3D表示を利用できませんが、惑星情報は表示されています。',
             showcaseCta: '自分の惑星を見に行く',
             searchPlanet: '惑星を探す',
             menu: 'メニュー',
@@ -30,7 +33,11 @@ const translations = {
             nextRandom: '違う星を見に行く',
             statusTitle: '星のステータス',
             contributions: 'コントリビューション',
+            publicPreviewOwner: '{username} の公開リポジトリからの概算プレビュー',
             toggleDetails: '詳細パネルの切り替え',
+            languageHistoryRegion: '惑星の言語履歴',
+            languageHistoryLabel: '惑星の言語履歴を選ぶ',
+            languageHistoryNow: '現在',
             visitUser: '誰かの星を見に行く',
             visitRandom: 'ランダムで星を見に行く',
             returnMine: '自分の星に戻る',
@@ -134,6 +141,7 @@ const translations = {
         },
         card: {
             pageTitle: 'GitHub Planet Card',
+            webglUnavailable: '3D表示を利用できません。',
             language: 'LANGUAGE',
             contributions: 'CONTRIBUTIONS',
             systemStatus: 'SYSTEM STATUS',
@@ -169,6 +177,9 @@ const translations = {
             welcomeBody: 'GitHub Planet turns your GitHub activity into a growing planet.<br>Your languages and contribution count shape its color, glow, and character, so you can raise a star that is uniquely yours.<br>You can also visit other people\'s planets.<br>No sign-in required. Use the button in the top-left corner to explore other developers\' planets.<br>Keep building, and help this little universe grow brighter.',
             empty: 'Nothing here yet...',
             login: 'Create Planet',
+            loadError: 'Planet data could not be loaded. Check your connection and try again.',
+            retry: 'Retry',
+            webglUnavailable: '3D rendering is unavailable, but planet details are still shown.',
             showcaseCta: 'View My Planet',
             searchPlanet: 'Find a planet',
             menu: 'Menu',
@@ -179,7 +190,11 @@ const translations = {
             nextRandom: 'Next random planet',
             statusTitle: 'Star Status',
             contributions: 'Contributions',
+            publicPreviewOwner: 'Estimate based on {username}’s public repositories',
             toggleDetails: 'Toggle details panel',
+            languageHistoryRegion: 'Planet language history',
+            languageHistoryLabel: 'Select a point in the planet language history',
+            languageHistoryNow: 'Now',
             visitUser: 'Visit a user planet',
             visitRandom: 'Visit a random planet',
             returnMine: 'Back to my planet',
@@ -283,6 +298,7 @@ const translations = {
         },
         card: {
             pageTitle: 'GitHub Planet Card',
+            webglUnavailable: '3D rendering is unavailable.',
             language: 'LANGUAGE',
             contributions: 'CONTRIBUTIONS',
             systemStatus: 'SYSTEM STATUS',
@@ -428,7 +444,9 @@ function applyLocalizedLinks(root) {
 
     document.querySelectorAll('[data-home-language]').forEach((link) => {
         const language = link.dataset.homeLanguage;
-        link.href = `${language === 'en' ? '/en' : '/'}${window.location.search}${window.location.hash}`;
+        const pagePath = window.location.pathname.replace(/^\/(en|english)(?=\/|$)/, '') || '/';
+        const targetPath = language === 'en' ? `/en${pagePath === '/' ? '' : pagePath}` : pagePath;
+        link.href = `${targetPath}${window.location.search}${window.location.hash}`;
         const isActive = language === getLanguage();
         link.classList.toggle('is-active', isActive);
         if (isActive) link.setAttribute('aria-current', 'page');
@@ -439,7 +457,10 @@ function applyLocalizedLinks(root) {
 export function applyI18n(root = document) {
     const lang = getLanguage();
     document.documentElement.lang = lang;
-    document.title = t(document.body?.dataset.i18nTitle || 'home.pageTitle');
+    // ページ固有の検索タイトルを、共通UIの翻訳でホームのタイトルへ戻さない。
+    if (document.body?.dataset.seoTitle !== 'true') {
+        document.title = t(document.body?.dataset.i18nTitle || 'home.pageTitle');
+    }
 
     root.querySelectorAll('[data-i18n]').forEach((element) => {
         element.textContent = t(element.dataset.i18n);
