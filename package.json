@@ -3,14 +3,14 @@
     "axios": "^1.13.2",
     "compression": "^1.8.1",
     "connect-pg-simple": "^10.0.0",
-    "dotenv": "^18.0.9",
+    "dotenv": "^17.2.3",
     "express": "^5.3.0",
-    "express-session": "^1.19.0",
-    "pg": "^8.23.1",
+    "express-rate-limit": "^8.7.1",
+    "express-session": "^1.18.2",
+    "pg": "^8.16.3",
     "pngjs": "^7.0.0",
-    "socket.io": "^4.8.4",
-    "three": "0.186.1",
-    "express-rate-limit": "^8.7.1"
+    "socket.io": "^4.7.2",
+    "three": "0.160.0"
   },
   "type": "module",
   "scripts": {

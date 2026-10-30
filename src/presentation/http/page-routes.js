@@ -125,14 +125,15 @@ export function registerPageRoutes(app, {
         sendPage(req, res, 'index.html');
     });
 
+    // 親が隠しディレクトリでも正規ファイルを返せるよう、rootと相対パスを分ける。
     app.get('/manifest.json', (req, res) => {
         res.type('application/manifest+json');
-        res.sendFile(path.join(rootDirectory, 'manifest.json'));
+        res.sendFile('manifest.json', { root: rootDirectory });
     });
 
     app.get('/manifest-en.json', (req, res) => {
         res.type('application/manifest+json');
-        res.sendFile(path.join(rootDirectory, 'manifest-en.json'));
+        res.sendFile('manifest-en.json', { root: rootDirectory });
     });
 
     app.get('/favicon.ico', (_req, res) => {
@@ -142,7 +143,7 @@ export function registerPageRoutes(app, {
     app.get('/sw.js', (req, res) => {
         res.setHeader('Cache-Control', 'no-cache');
         res.type('application/javascript');
-        res.sendFile(path.join(rootDirectory, 'sw.js'));
+        res.sendFile('sw.js', { root: rootDirectory });
     });
 
     app.get('/api/card/:username', (req, res) => {

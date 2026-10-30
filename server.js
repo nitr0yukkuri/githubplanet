@@ -37,6 +37,8 @@ import { safeErrorMetadata } from './src/shared/error-metadata.js';
 
 const DATA_CACHE_DURATION = 60 * 60 * 1000;
 const app = express();
+// Express 5の既定parser変更で、配列入力を拒否する既存の境界検証を変えない。
+app.set('query parser', 'extended');
 const port = parseInt(process.env.PORT) || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
 const sessionSecret = process.env.SESSION_SECRET;
