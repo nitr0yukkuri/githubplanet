@@ -24,7 +24,7 @@ test('builds an anonymous public preview from public repository metadata without
     });
     const planetService = createPlanetService({
         githubClient,
-        geminiClient: { async resolveLanguageColor() { throw new Error('must not call Gemini'); } }
+        languageColorService: { async resolveLanguageColor() { throw new Error('must not call Gemini'); } }
     });
     const repository = { async findByUsername() { return null; } };
     const queryService = createPlanetQueryService({
@@ -127,8 +127,7 @@ test('returns the 0x3EF8 cached planet without exposing its unverified profile U
     const planetQueryService = createPlanetQueryService({
         repository: {
             async findByUsername() { return storedPlanet; },
-            async updateUsernameByGithubId() {},
-            async reserveGithubProfileLookup() { return { allowed: true, retryAfterMs: 0 }; }
+            async updateUsernameByGithubId() {}
         },
         githubClient,
         planetService: {},
@@ -196,7 +195,7 @@ test('redirects profile links through the immutable ID and reports unavailable p
     assert.equal(unavailableProfileResponse.statusCode, 410);
 });
 
-test('returns the retry delay when the anonymous profile lookup budget is exhausted', async () => {
+test('preserves GitHub rate-limit retry delay for a profile lookup', async () => {
     const handlers = new Map();
     const app = {
         get(paths, handler) {
@@ -204,7 +203,7 @@ test('returns the retry delay when the anonymous profile lookup budget is exhaus
         },
         post() {}
     };
-    const rateLimited = Object.assign(new Error('lookup budget exhausted'), {
+    const rateLimited = Object.assign(new Error('GitHub rate limit reached'), {
         response: { status: 429 },
         retryAfterMs: 12_000
     });

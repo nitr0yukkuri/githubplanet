@@ -1,6 +1,6 @@
-export function createMeteorService({ geminiClient, extensionMap, emitMeteor, logger = console }) {
+export function createMeteorService({ languageColorService, extensionMap, emitMeteor, logger = console }) {
     async function emitManualMeteor({ language, color, scale }) {
-        const finalColor = color || await geminiClient.resolveLanguageColor(language || 'Unknown');
+        const finalColor = color || await languageColorService.resolveLanguageColor(language || 'Unknown');
         const finalScale = scale > 1.5 ? 1.5 : (scale || 1.0);
         const resolvedLanguage = language || 'Manual';
 
@@ -31,7 +31,7 @@ export function createMeteorService({ geminiClient, extensionMap, emitMeteor, lo
                 }
             }
 
-            const resolvedColor = await geminiClient.resolveLanguageColor(targetLanguage);
+            const resolvedColor = await languageColorService.resolveLanguageColor(targetLanguage);
             logger.log(`[Webhook] Commit: ${commit.id.substring(0, 7)} -> Scale: ${meteorScale.toFixed(2)}, Lines: ${totalLines}`);
             emitMeteor({ color: resolvedColor, language: targetLanguage, scale: meteorScale });
         }

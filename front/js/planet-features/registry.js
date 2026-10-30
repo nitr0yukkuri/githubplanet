@@ -18,7 +18,8 @@ import { createLanguageCompositionTrails } from '../language-composition-trails.
 
 const CARD_THEMES = Object.freeze({
     c: Object.freeze({ id: 'c-steel', accent: '#c3d0d7', atmosphere: '#728491', highlight: '#b6c3ca', atmospherePosition: '25% 50%', highlightPosition: '75% 32%' }),
-    css: Object.freeze({ id: 'css-spectrum', accent: '#d7bcff', atmosphere: '#7040b3', highlight: '#f4d2ff', atmospherePosition: '72% 28%', highlightPosition: '34% 62%' }),
+    // 惑星の色相が巡ってもカードUIの色は固定し、通常表示と画像出力で揃える。
+    css: Object.freeze({ id: 'css-spectrum', usePlanetColor: false, accent: '#d7bcff', atmosphere: '#7040b3', highlight: '#f4d2ff', atmospherePosition: '72% 28%', highlightPosition: '34% 62%' }),
     cpp: Object.freeze({ id: 'cpp-plasma', accent: '#ff9bb9', atmosphere: '#b62f67', highlight: '#ffcae0', atmospherePosition: '48% 72%', highlightPosition: '65% 28%' }),
     elm: Object.freeze({ id: 'elm-meadow', accent: '#a8e0a4', atmosphere: '#315938', highlight: '#d4efc2', atmospherePosition: '28% 62%', highlightPosition: '76% 36%' }),
     go: Object.freeze({ id: 'go-wind', accent: '#79e1f6', atmosphere: '#008cae', highlight: '#c2fbff', atmospherePosition: '22% 42%', highlightPosition: '74% 66%' }),
@@ -360,8 +361,7 @@ export function createPlanetFeatureRuntime({
     const languageTrails = createLanguageCompositionTrails({
         THREE,
         data,
-        radius,
-        direction
+        radius
     });
     if (!feature && !languageTrails) return null;
 
