@@ -5,7 +5,6 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
-import session from 'express-session';
 import { Server } from 'socket.io';
 import { chromium } from 'playwright';
 import { createPlanetQueryService } from '../src/application/planet-query-service.js';
@@ -13,7 +12,7 @@ import { registerPlanetRoutes } from '../src/presentation/http/planet-routes.js'
 
 // 本番への負荷やDB更新を避け、観測したAPI待ちをローカルの固定遅延で再現する。
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const baseline = process.env.HOME_PERF_BASELINE || 'df97b57ef828d45fc9a35aa116fecedede72919e';
+const baseline = process.env.HOME_PERF_BASELINE || '199e77a5ad5b21ae369a79699d0233b2f36eeacd';
 const samples = Number(process.env.HOME_PERF_SAMPLES || 10);
 assert.ok(Number.isInteger(samples) && samples >= 0 && samples <= 50);
 const out = path.join(root, 'artifacts/home-login-performance');
@@ -25,6 +24,11 @@ const savedPlanet = { githubId: user.id, username: user.login, mainLanguage: 'Ty
     totalCommits: 4626, weeklyCommits: 25, planetSizeFactor: 1.4, planetName: '堅牢な蒼穹の帝星',
     achievements: {}, activeTitle: { prefix: '古参の', suffix: '架け橋' } };
 const freshPlanet = { ...savedPlanet, totalCommits: 4629 };
+const vendorFiles = new Map(await Promise.all([
+    ['three/build/three.module.js', 'node_modules/three/build/three.module.js'],
+    ['three/examples/jsm/controls/OrbitControls.js', 'node_modules/three/examples/jsm/controls/OrbitControls.js'],
+    ['socket.js', 'node_modules/socket.io/client-dist/socket.io.esm.min.js']
+].map(async ([url, file]) => [url, await readFile(path.join(root, file), 'utf8')])));
 let anime;
 try { anime = await readFile(path.join(out, 'anime-3.2.2.js'), 'utf8'); }
 catch {
@@ -40,6 +44,7 @@ try {
         const app = express();
         let requests = 0;
         let scenario = 'normal';
+        let benchmarkSession = {};
         const source = file => variant === 'before'
             ? execFileSync('git', ['show', `${baseline}:${file}`], { cwd: root, encoding: 'utf8' })
             : null;
@@ -51,8 +56,9 @@ try {
         let html = source('index.html') || await readFile(path.join(root, 'index.html'), 'utf8');
         for (const [from, to] of replacements) html = html.replaceAll(from, to);
         app.get('/benchmark/vendor/anime.js', (_req, res) => res.type('js').send(anime));
-        app.get('/benchmark/vendor/socket.js', (_req, res) => res.sendFile(path.join(root, 'node_modules/socket.io/client-dist/socket.io.esm.min.js')));
-        app.use('/benchmark/vendor/three', express.static(path.join(root, 'node_modules/three')));
+        for (const [url, body] of vendorFiles) {
+            app.get(`/benchmark/vendor/${url}`, (_req, res) => res.type('js').send(body));
+        }
         app.get('/front/js/analytics.js', (_req, res) => res.type('js').send(''));
         if (variant === 'before') {
             for (const file of ['front/js/home.js', 'front/js/home-bootstrap.js', 'front/js/i18n.js', 'front/js/planet-scene-resources.js', 'front/css/home.css']) {
@@ -73,9 +79,11 @@ try {
             }
         }
         app.use('/front', express.static(path.join(root, 'front'), { maxAge: '30d' }));
-        app.use(session({ secret: 'isolated-performance-session', resave: false, saveUninitialized: false }));
+        // 一度に1ページだけの固定遅延計測なので、実認証やHTTP用Cookieを発行せず模擬セッションを共有する。
+        app.use((req, _res, next) => { req.session = benchmarkSession; next(); });
         app.get('/benchmark/login', (req, res) => {
             scenario = String(req.query.scenario || 'normal');
+            req.session = benchmarkSession = {};
             req.session.github_token = 'isolated-performance-token';
             req.session.planetData = { user, planetData: null };
             req.session.last_updated = 0;
