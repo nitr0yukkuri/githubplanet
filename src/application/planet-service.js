@@ -5,7 +5,7 @@ import { LANGUAGE_COLORS } from '../domain/planet/constants.js';
 import { calculatePlanetSizeFactor, generatePlanetName } from '../domain/planet/planet.js';
 import { safeErrorMetadata } from '../shared/error-metadata.js';
 
-export function createPlanetService({ repository, githubClient, geminiClient, geminiApiKey }) {
+export function createPlanetService({ repository, githubClient, geminiClient, languageColorService, geminiApiKey }) {
     async function refreshAuthenticatedUser(accessToken, previousUser) {
         if (!accessToken) throw new Error('GitHub access token is required');
 
@@ -50,6 +50,7 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
             totalCommits: stats.totalCommits,
             existingData,
             geminiClient,
+            languageColorService,
             geminiApiKey
         });
         const progression = derivePlanetProgression({

@@ -7,7 +7,6 @@ import * as java from '../java-planet-soil.js';
 import * as javascript from '../javascript-planet-reactivity.js';
 import * as kotlin from '../kotlin-planet-crystal.js';
 import * as perl from '../perl-planet-ocean.js';
-import * as python from '../python-planet-structure.js';
 import * as ruby from '../ruby-planet-solar.js';
 import * as rust from '../rust-planet-desert.js';
 import * as shell from '../shell-planet-clouds.js';
@@ -18,7 +17,8 @@ import { createLanguageCompositionTrails } from '../language-composition-trails.
 
 const CARD_THEMES = Object.freeze({
     c: Object.freeze({ id: 'c-steel', accent: '#c3d0d7', atmosphere: '#728491', highlight: '#b6c3ca', atmospherePosition: '25% 50%', highlightPosition: '75% 32%' }),
-    css: Object.freeze({ id: 'css-spectrum', accent: '#d7bcff', atmosphere: '#7040b3', highlight: '#f4d2ff', atmospherePosition: '72% 28%', highlightPosition: '34% 62%' }),
+    // 惑星の色相が巡ってもカードUIの色は固定し、通常表示と画像出力で揃える。
+    css: Object.freeze({ id: 'css-spectrum', usePlanetColor: false, accent: '#d7bcff', atmosphere: '#7040b3', highlight: '#f4d2ff', atmospherePosition: '72% 28%', highlightPosition: '34% 62%' }),
     cpp: Object.freeze({ id: 'cpp-plasma', accent: '#ff9bb9', atmosphere: '#b62f67', highlight: '#ffcae0', atmospherePosition: '48% 72%', highlightPosition: '65% 28%' }),
     elm: Object.freeze({ id: 'elm-meadow', accent: '#a8e0a4', atmosphere: '#315938', highlight: '#d4efc2', atmospherePosition: '28% 62%', highlightPosition: '76% 36%' }),
     go: Object.freeze({ id: 'go-wind', accent: '#79e1f6', atmosphere: '#008cae', highlight: '#c2fbff', atmospherePosition: '22% 42%', highlightPosition: '74% 66%' }),
@@ -30,8 +30,7 @@ const CARD_THEMES = Object.freeze({
     kotlin: Object.freeze({ id: 'kotlin-crystal', accent: '#d1b9ff', atmosphere: '#754db4', highlight: '#eee1ff', atmospherePosition: '52% 44%', highlightPosition: '86% 52%' }),
     perl: Object.freeze({ id: 'perl-ocean', accent: '#7ee0ec', atmosphere: '#087d96', highlight: '#c9ffff', atmospherePosition: '20% 44%', highlightPosition: '78% 62%' }),
     rust: Object.freeze({ id: 'rust-desert', accent: '#dea584', atmosphere: '#a95433', highlight: '#ffcf9b', atmospherePosition: '30% 72%', highlightPosition: '75% 42%' }),
-    ruby: Object.freeze({ id: 'ruby-hearth', accent: '#ff9386', atmosphere: '#9f3028', highlight: '#ffc0a7', atmospherePosition: '24% 38%', highlightPosition: '68% 62%' }),
-    python: Object.freeze({ id: 'python-trails', accent: '#ffd43b', atmosphere: '#306998', highlight: '#ffe389', atmospherePosition: '30% 56%', highlightPosition: '74% 36%' })
+    ruby: Object.freeze({ id: 'ruby-hearth', accent: '#ff9386', atmosphere: '#9f3028', highlight: '#ffc0a7', atmospherePosition: '24% 38%', highlightPosition: '68% 62%' })
 });
 
 const FEATURE_DEFINITIONS = [
@@ -314,17 +313,6 @@ const FEATURE_DEFINITIONS = [
             ruby.updateRubyPlanetSolar(material, now);
             ruby.updateRubyPlanetSolar(objects.corona, now, camera);
         }
-    },
-    {
-        id: 'python',
-        language: 'Python',
-        cardTheme: CARD_THEMES.python,
-        module: python,
-        matches: python.isPythonPlanet,
-        rotationMultiplier: 0.4,
-        createMaterial: ({ THREE, planetTexture }) => (
-            python.createPythonPlanetMaterial(THREE, planetTexture)
-        )
     }
 ];
 
@@ -360,8 +348,7 @@ export function createPlanetFeatureRuntime({
     const languageTrails = createLanguageCompositionTrails({
         THREE,
         data,
-        radius,
-        direction
+        radius
     });
     if (!feature && !languageTrails) return null;
 
@@ -413,7 +400,6 @@ export * from '../java-planet-soil.js';
 export * from '../javascript-planet-reactivity.js';
 export * from '../kotlin-planet-crystal.js';
 export * from '../perl-planet-ocean.js';
-export * from '../python-planet-structure.js';
 export * from '../ruby-planet-solar.js';
 export * from '../rust-planet-desert.js';
 export * from '../swift-planet-feathers.js';

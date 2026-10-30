@@ -41,6 +41,8 @@ const LANGUAGE_COLORS = Object.freeze({
 
 const TRAIL_CYCLE_SECONDS = 9;
 const TRAIL_MAX_FRAME_SECONDS = 0.08;
+// home/cardで惑星の自転方向が異なっても、順位を示す軌跡の進行方向は揃える。
+const TRAIL_DIRECTION = 1;
 const TRAIL_ORBIT_SCALE = 1.34;
 const TRAIL_MIN_WIDTH_SCALE = 0.016;
 const TRAIL_SHARE_WIDTH_SCALE = 0.06;
@@ -118,7 +120,7 @@ function calculateTubeRadius(radius, entry) {
     return minimumRadius + (maximumRadius - minimumRadius) * share;
 }
 
-function createTrail(THREE, entry, path, radius, index, direction, timeUniform) {
+function createTrail(THREE, entry, path, radius, index, timeUniform) {
     const tubeRadius = calculateTubeRadius(radius, entry);
     const geometry = new THREE.TubeGeometry(
         createTrailCurve(THREE, radius, path), 160, tubeRadius, 5, true
@@ -130,7 +132,7 @@ function createTrail(THREE, entry, path, radius, index, direction, timeUniform) 
             trailWidthDelta: { value: 0 },
             trailTime: timeUniform,
             trailOffset: { value: index === 0 ? 0 : 0.5 },
-            trailSpeed: { value: direction }
+            trailSpeed: { value: TRAIL_DIRECTION }
         },
         vertexShader: `
             uniform float trailWidthDelta;
@@ -180,17 +182,16 @@ function createTrail(THREE, entry, path, radius, index, direction, timeUniform) 
     return { mesh, material };
 }
 
-export function createLanguageCompositionTrails({ THREE, data, radius, direction = 1 }) {
+export function createLanguageCompositionTrails({ THREE, data, radius }) {
     const rankedLanguages = rankPlanetLanguages(data?.languageStats, data?.mainLanguage);
     if (!Number.isFinite(radius) || radius <= 0 || rankedLanguages.length === 0) return null;
 
     const group = new THREE.Group();
     group.name = 'secondary-language-trails';
     const trailTime = { value: 0 };
-    const trailDirection = direction < 0 ? -1 : 1;
     const tracks = TRAIL_PATHS.map((path, index) => {
         const entry = rankedLanguages[index + 1] || { language: '', share: 0 };
-        const track = createTrail(THREE, entry, path, radius, index, trailDirection, trailTime);
+        const track = createTrail(THREE, entry, path, radius, index, trailTime);
         track.mesh.visible = Boolean(entry.language);
         group.add(track.mesh);
         return track;

@@ -36,7 +36,7 @@ for (const locale of ['ja', 'en']) {
     for (const sample of [null, ...showcases]) {
         const path = sample ? `/showcase/${sample.slug}` : '/';
         const localizedPath = locale === 'en' ? `/en${path === '/' ? '' : path}` : path;
-        test(`serves complete ${locale} search metadata and readable content at ${localizedPath}`, async () => {
+        test(`serves ${locale} search metadata and readable content without the about disclosure at ${localizedPath}`, async () => {
             const response = await fetch(`${baseUrl}${localizedPath}`);
             assert.equal(response.status, 200);
             const html = await response.text();
@@ -53,8 +53,7 @@ for (const locale of ['ja', 'en']) {
             assert.equal(tagContent(html, 'name', 'twitter:image'), `${publicBaseUrl}/front/img/social-preview.png`);
             assert.equal(tagContent(html, 'property', 'og:image:width'), '1200');
             assert.equal(tagContent(html, 'property', 'og:image:height'), '630');
-            assert.equal((html.match(/<h1\b/g) || []).length, 1);
-            assert.match(html, /id="site-information"/);
+            assert.doesNotMatch(html, /id="site-information"|<summary\b/);
             assert.match(html, /<noscript>/);
             assert.match(html, /data-seo-title="true"/);
             assert.doesNotMatch(html, /<meta[^>]+data-i18n/);
@@ -67,12 +66,8 @@ for (const locale of ['ja', 'en']) {
                 assert.ok(html.includes(`href="${publicBaseUrl}${target}" rel="alternate" hreflang="${targetLocale}"`));
                 assert.ok(html.includes(`href="${target}" data-home-language="${targetLocale}"`));
             }
-            for (const target of showcases) {
-                assert.ok(html.includes(`href="${locale === 'en' ? '/en' : ''}/showcase/${target.slug}"`));
-            }
             if (sample) {
                 assert.ok(html.includes(sample.mainLanguage));
-                assert.match(html, locale === 'ja' ? /実在ユーザーのデータではなく/ : /not a live GitHub profile/);
             } else {
                 assert.match(html, locale === 'ja' ? /公開リポジトリの言語構成/ : /languages in public repositories/);
             }
@@ -110,7 +105,8 @@ test('never redirects user-controlled query or encoded paths to another origin',
 
 test('returns real 404s for unknown showcase names and never publishes their canonical URLs', async () => {
     for (const path of ['/showcase/unknown', '/en/showcase/unknown', '/?showcase=unknown', '/showcase/toString',
-        '/SHOWCASE/unknown', '/EN/SHOWCASE/unknown']) {
+        '/SHOWCASE/unknown', '/EN/SHOWCASE/unknown',
+        '/showcase/python', '/en/showcase/python', '/demo?showcase=python']) {
         const response = await fetch(`${baseUrl}${path}`);
         assert.equal(response.status, 404, path);
         assert.match(response.headers.get('x-robots-tag'), /noindex/);
@@ -118,6 +114,24 @@ test('returns real 404s for unknown showcase names and never publishes their can
         assert.doesNotMatch(html, /rel="canonical"/);
         assert.match(html, /404/);
     }
+});
+
+test('removed and invalid showcase cards return 404 without rendering a card', async () => {
+    for (const path of ['/card.html?showcase=python&fix=true', '/en/card.html?showcase=python&fix=true',
+        '/card.html?showcase=python', '/card.html?showcase=unknown&fix=true', '/card.html?showcase[]=typescript&fix=true']) {
+        const response = await fetch(`${baseUrl}${path}`);
+        assert.equal(response.status, 404, path);
+        assert.match(response.headers.get('x-robots-tag'), /noindex/);
+        const html = await response.text();
+        assert.match(html, /404/);
+        assert.doesNotMatch(html, /id="card-container"|id="planet-canvas"/);
+    }
+});
+
+test('serves a remaining showcase card', async () => {
+    const response = await fetch(`${baseUrl}/card.html?showcase=typescript&fix=true`);
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), /id="card-container"/);
 });
 
 test('keeps account screens, APIs, personal cards, and preview variants out of search', async () => {
@@ -149,7 +163,7 @@ test('keeps source content identical for crawlers and browsers regardless of lan
     }
 });
 
-test('uses accurate effect descriptions and matching visible showcase breadcrumbs', async () => {
+test('keeps accurate effect descriptions and structured breadcrumbs without an about disclosure', async () => {
     for (const [locale, effect] of [['ja', '紫色の放電'], ['en', 'purple electrical sparks']]) {
         const path = `${locale === 'en' ? '/en' : ''}/showcase/kotlin`;
         const html = await (await fetch(baseUrl + path)).text();
@@ -161,8 +175,7 @@ test('uses accurate effect descriptions and matching visible showcase breadcrumb
         assert.deepEqual(breadcrumbs.itemListElement.map(({ position, item }) => [position, item]), [
             [1, publicBaseUrl + (locale === 'en' ? '/en' : '/')], [2, publicBaseUrl + path]
         ]);
-        assert.match(html, /class="site-breadcrumbs"/);
-        assert.ok(html.includes(`aria-current="page">${page.name}</a>`));
+        assert.doesNotMatch(html, /id="site-information"|class="site-breadcrumbs"|<summary\b/);
         assert.match(html, /id="main-ui-wrapper"[^>]+data-nosnippet/);
         assert.equal(graph[0].alternateName, 'GitHubPlanet');
     }
