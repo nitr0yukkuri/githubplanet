@@ -209,6 +209,11 @@ async function startGithubMock() {
 async function startApp() {
     const app = express();
     app.disable('x-powered-by');
+    app.use((req, res, next) => {
+        req.cspNonce = crypto.randomBytes(18).toString('base64');
+        res.setHeader('Content-Security-Policy', `script-src 'self' 'nonce-${req.cspNonce}' https://cdn.jsdelivr.net https://www.googletagmanager.com`);
+        next();
+    });
     app.use(express.json({
         verify: (req, _res, buffer) => { req.rawBody = Buffer.from(buffer); }
     }));
@@ -292,7 +297,7 @@ async function startApp() {
         logger: { log() {}, error() {}, warn() {} }
     });
 
-    registerPageRoutes(app, {
+    const pageRoutes = registerPageRoutes(app, {
         rootDirectory: projectRoot,
         isProduction: true,
         systemApiKey: 'isolated-e2e-system-key',
@@ -333,6 +338,7 @@ async function startApp() {
         requireWebhookSignature: true
     });
 
+    app.use(pageRoutes.sendNotFound);
     io = new Server(appServer, { cors: { origin: baseUrl } });
     meteorIo = io;
 }
@@ -520,6 +526,29 @@ after(async () => {
     io?.close();
     await Promise.all([closeServer(appServer), closeServer(githubMockServer)]);
     await pool?.end();
+});
+
+test('general and retired-card 404 pages run translations under nonce CSP', { timeout: 60000 }, async () => {
+    const { page, close, assertNoPageErrors } = await openPage();
+    const violations = [];
+    page.on('console', (message) => {
+        if (/violates.*Content Security Policy|Refused to execute inline script/i.test(message.text())) violations.push(message.text());
+    });
+    try {
+        for (const [route, label, destination] of [
+            ['/missing-page', '宇宙へ戻る', '/'],
+            ['/en/missing-page', 'Return to the planet', '/en'],
+            ['/card.html?showcase=python&fix=true', '宇宙へ戻る', '/'],
+            ['/en/card.html?showcase=python&fix=true', 'Return to the planet', '/en']
+        ]) {
+            const response = await page.goto(`${baseUrl}${route}`);
+            assert.equal(response.status(), 404);
+            await page.waitForFunction((text) => document.querySelector('.return-btn')?.textContent === text, label);
+            assert.equal(await page.locator('.return-btn').getAttribute('href'), destination);
+        }
+        assertNoPageErrors();
+        assert.deepEqual(violations, []);
+    } finally { await close(); }
 });
 
 test('shared Markdown opens the card in a clean anonymous browser without a 403', { timeout: 60_000 }, async () => {
