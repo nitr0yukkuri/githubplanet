@@ -160,7 +160,15 @@ export function registerPageRoutes(app, {
     });
 
     app.get(['/card', '/card.html', '/en/card', '/en/card.html', '/english/card', '/english/card.html'], (req, res) => {
-        const { username, fix } = req.query;
+        const { username, fix, showcase } = req.query;
+        if (showcase !== undefined) {
+            const slug = typeof showcase === 'string' ? showcase.trim().toLowerCase() : '';
+            // 廃止したショーケースで空のカードを出さず、ページ取得時点で404にする。
+            if (!showcasePages.some((planet) => planet.slug === slug)) {
+                res.setHeader('X-Robots-Tag', 'noindex, follow');
+                return res.status(404).type('html').send(pageCache.get('404.html'));
+            }
+        }
         const loggedInUser = req.session.planetData?.user?.login;
 
         if (!username && !fix) {

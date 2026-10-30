@@ -10,8 +10,7 @@ const EFFECTS = {
     perl: ['青い海と海流を思わせる表現', 'a blue ocean with moving currents'],
     rust: ['砂漠のような地表を砂塵が巡る表現', 'dust drifting over a desert-like surface'],
     vue: ['緑の惑星の周りを穏やかな風が巡る表現', 'gentle wind circulating around a green planet'],
-    ruby: ['赤い惑星に炎のような光が広がる表現', 'fiery light spreading over a red planet'],
-    python: ['2本の軌跡が惑星の周囲を巡る表現', 'paired orbital trails around the planet']
+    ruby: ['赤い惑星に炎のような光が広がる表現', 'fiery light spreading over a red planet']
 };
 
 const COPY = {

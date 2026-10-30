@@ -105,7 +105,8 @@ test('never redirects user-controlled query or encoded paths to another origin',
 
 test('returns real 404s for unknown showcase names and never publishes their canonical URLs', async () => {
     for (const path of ['/showcase/unknown', '/en/showcase/unknown', '/?showcase=unknown', '/showcase/toString',
-        '/SHOWCASE/unknown', '/EN/SHOWCASE/unknown']) {
+        '/SHOWCASE/unknown', '/EN/SHOWCASE/unknown',
+        '/showcase/python', '/en/showcase/python', '/demo?showcase=python']) {
         const response = await fetch(`${baseUrl}${path}`);
         assert.equal(response.status, 404, path);
         assert.match(response.headers.get('x-robots-tag'), /noindex/);
@@ -113,6 +114,24 @@ test('returns real 404s for unknown showcase names and never publishes their can
         assert.doesNotMatch(html, /rel="canonical"/);
         assert.match(html, /404/);
     }
+});
+
+test('removed and invalid showcase cards return 404 without rendering a card', async () => {
+    for (const path of ['/card.html?showcase=python&fix=true', '/en/card.html?showcase=python&fix=true',
+        '/card.html?showcase=python', '/card.html?showcase=unknown&fix=true', '/card.html?showcase[]=typescript&fix=true']) {
+        const response = await fetch(`${baseUrl}${path}`);
+        assert.equal(response.status, 404, path);
+        assert.match(response.headers.get('x-robots-tag'), /noindex/);
+        const html = await response.text();
+        assert.match(html, /404/);
+        assert.doesNotMatch(html, /id="card-container"|id="planet-canvas"/);
+    }
+});
+
+test('serves a remaining showcase card', async () => {
+    const response = await fetch(`${baseUrl}/card.html?showcase=typescript&fix=true`);
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), /id="card-container"/);
 });
 
 test('keeps account screens, APIs, personal cards, and preview variants out of search', async () => {

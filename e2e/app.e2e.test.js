@@ -15,7 +15,7 @@ import { chromium } from 'playwright';
 import { LANGUAGE_COLORS } from '../src/domain/planet/constants.js';
 import { EXTENSION_MAP } from '../src/domain/planet/language-extensions.js';
 import { requestPlanetName } from '../src/application/planet-name-generator.js';
-import { listShowcasePlanets } from '../src/domain/planet/showcase-planets.js';
+import { getShowcasePlanet, listShowcasePlanets } from '../src/domain/planet/showcase-planets.js';
 import { createMeteorService } from '../src/application/meteor-service.js';
 import { createPlanetQueryService } from '../src/application/planet-query-service.js';
 import { createPlanetService } from '../src/application/planet-service.js';
@@ -558,7 +558,7 @@ test('shared Markdown opens the card in a clean anonymous browser without a 403'
     }
 });
 
-test('all language showcase cards render their data and Python trail shaders keep advancing', { timeout: 180_000 }, async () => {
+test('showcase cards render without WebGL fallback and shared trail shader time advances', { timeout: 180_000 }, async () => {
     const { page, close, assertNoPageErrors } = await openPage();
     await page.addInitScript(() => {
         window.__e2eTrailShaderSeen = false;
@@ -608,21 +608,27 @@ test('all language showcase cards render their data and Python trail shaders kee
             assert.equal(await page.locator('#card-webgl-fallback').isVisible(), false, `${showcase.slug}: WebGL should be active`);
         }
 
-        const python = listShowcasePlanets().find(({ slug }) => slug === 'python');
-        assert.deepEqual(python.languageStats, { Python: 70, Rust: 20, TypeScript: 10 });
-        await page.goto(`${baseUrl}/card.html?showcase=python&fix=true`);
+        // 専用演出のない言語でも、共通軌跡のシェーダーのコンパイルと時間更新を確認する。
+        await page.route(`${baseUrl}/api/planets/user/e2e-trails`, (route) => route.fulfill({
+            json: {
+                username: 'e2e-trails',
+                planetColor: '#306998',
+                planetSizeFactor: 2,
+                mainLanguage: 'Python',
+                languageStats: { Python: 70, Rust: 20, TypeScript: 10 },
+                totalCommits: 2000,
+                weeklyCommits: 24,
+                planetName: 'Shared Language Trails'
+            }
+        }));
+        await page.goto(`${baseUrl}/card.html?username=e2e-trails&fix=true`);
+        await page.waitForFunction(() => document.getElementById('main-lang-stat')?.textContent === 'PYTHON');
+        assert.equal(await page.locator('#card-webgl-fallback').isVisible(), false);
+        assert.equal(await page.locator('#card-container').getAttribute('data-card-theme'), null);
         await page.waitForFunction(() => (
             window.__e2eTrailShaderSeen
             && new Set(window.__e2eTrailTimes).size > 1
         ), { timeout: 15_000 });
-        const trailRuntime = await page.evaluate(() => ({
-            shaderSeen: window.__e2eTrailShaderSeen,
-            distinctTimeValues: new Set(window.__e2eTrailTimes).size,
-            updateCount: window.__e2eTrailTimes.length
-        }));
-        assert.ok(trailRuntime.shaderSeen, 'WebGL should compile the secondary-language trail shader');
-        assert.ok(trailRuntime.distinctTimeValues > 1, 'trailTime should advance across rendered frames');
-        assert.ok(trailRuntime.updateCount > 2);
         assertNoPageErrors();
     } finally {
         await close();
@@ -632,7 +638,13 @@ test('all language showcase cards render their data and Python trail shaders kee
 test('Japanese and English mobile showcases fit the viewport and display the fixed planet data', { timeout: 60_000 }, async () => {
     const { page, close, assertNoPageErrors } = await openPage({ viewport: { width: 390, height: 844 } });
     try {
-        for (const [route, language] of [['/showcase/python', 'ja'], ['/en/showcase/python', 'en']]) {
+        await page.route((url) => url.pathname === '/api/planets/showcase/typescript', (route) => route.fulfill({
+            json: {
+                ...getShowcasePlanet('typescript'),
+                languageStats: { TypeScript: 70, Rust: 20, Python: 10 }
+            }
+        }));
+        for (const [route, language] of [['/showcase/typescript', 'ja'], ['/en/showcase/typescript', 'en']]) {
             const response = await page.goto(`${baseUrl}${route}`);
             assert.equal(response.status(), 200);
             await page.waitForFunction(() => (
@@ -641,9 +653,11 @@ test('Japanese and English mobile showcases fit the viewport and display the fix
             ));
             assert.equal(await page.locator('html').getAttribute('lang'), language);
             assert.equal(await page.locator('#planet-name-val').isVisible(), true);
+            assert.equal(await page.locator('#canvas-container canvas').isVisible(), true);
+            assert.equal(await page.locator('#webgl-fallback').isVisible(), false);
             assert.deepEqual(
                 await page.locator('#lang-stats-container p').allTextContents(),
-                ['Python70%', 'Rust20%', 'TypeScript10%']
+                ['TypeScript70%', 'Rust20%', 'Python10%']
             );
             const dimensions = await page.evaluate(() => ({
                 viewport: document.documentElement.clientWidth,
@@ -730,7 +744,7 @@ test('a signed GitHub webhook reaches the other browser over live Socket.IO', { 
             predicate: (message) => message.text().startsWith('Realtime meteor connected'),
             timeout: 15_000
         });
-        await receiver.page.goto(`${baseUrl}/showcase/python`);
+        await receiver.page.goto(`${baseUrl}/showcase/go`);
         await sender.page.goto(`${baseUrl}/showcase/typescript`);
         await Promise.all([receiverConnected, senderConnected]);
 

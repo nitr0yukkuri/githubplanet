@@ -7,7 +7,6 @@ import * as java from '../java-planet-soil.js';
 import * as javascript from '../javascript-planet-reactivity.js';
 import * as kotlin from '../kotlin-planet-crystal.js';
 import * as perl from '../perl-planet-ocean.js';
-import * as python from '../python-planet-structure.js';
 import * as ruby from '../ruby-planet-solar.js';
 import * as rust from '../rust-planet-desert.js';
 import * as shell from '../shell-planet-clouds.js';
@@ -31,8 +30,7 @@ const CARD_THEMES = Object.freeze({
     kotlin: Object.freeze({ id: 'kotlin-crystal', accent: '#d1b9ff', atmosphere: '#754db4', highlight: '#eee1ff', atmospherePosition: '52% 44%', highlightPosition: '86% 52%' }),
     perl: Object.freeze({ id: 'perl-ocean', accent: '#7ee0ec', atmosphere: '#087d96', highlight: '#c9ffff', atmospherePosition: '20% 44%', highlightPosition: '78% 62%' }),
     rust: Object.freeze({ id: 'rust-desert', accent: '#dea584', atmosphere: '#a95433', highlight: '#ffcf9b', atmospherePosition: '30% 72%', highlightPosition: '75% 42%' }),
-    ruby: Object.freeze({ id: 'ruby-hearth', accent: '#ff9386', atmosphere: '#9f3028', highlight: '#ffc0a7', atmospherePosition: '24% 38%', highlightPosition: '68% 62%' }),
-    python: Object.freeze({ id: 'python-trails', accent: '#ffd43b', atmosphere: '#306998', highlight: '#ffe389', atmospherePosition: '30% 56%', highlightPosition: '74% 36%' })
+    ruby: Object.freeze({ id: 'ruby-hearth', accent: '#ff9386', atmosphere: '#9f3028', highlight: '#ffc0a7', atmospherePosition: '24% 38%', highlightPosition: '68% 62%' })
 });
 
 const FEATURE_DEFINITIONS = [
@@ -315,17 +313,6 @@ const FEATURE_DEFINITIONS = [
             ruby.updateRubyPlanetSolar(material, now);
             ruby.updateRubyPlanetSolar(objects.corona, now, camera);
         }
-    },
-    {
-        id: 'python',
-        language: 'Python',
-        cardTheme: CARD_THEMES.python,
-        module: python,
-        matches: python.isPythonPlanet,
-        rotationMultiplier: 0.4,
-        createMaterial: ({ THREE, planetTexture }) => (
-            python.createPythonPlanetMaterial(THREE, planetTexture)
-        )
     }
 ];
 
@@ -413,7 +400,6 @@ export * from '../java-planet-soil.js';
 export * from '../javascript-planet-reactivity.js';
 export * from '../kotlin-planet-crystal.js';
 export * from '../perl-planet-ocean.js';
-export * from '../python-planet-structure.js';
 export * from '../ruby-planet-solar.js';
 export * from '../rust-planet-desert.js';
 export * from '../swift-planet-feathers.js';
