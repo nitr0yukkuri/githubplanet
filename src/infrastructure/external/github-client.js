@@ -60,7 +60,7 @@ const MERGED_PULL_REQUESTS_QUERY = `
 
 import { measureExternalOperation } from '../observability/external-performance.js';
 import { createGithubAuthoredLanguageHistoryClient } from './github-authored-language-history.js';
-import { EXTENSION_MAP } from '../../domain/planet/constants.js';
+import { EXTENSION_MAP } from '../../domain/planet/language-extensions.js';
 
 const GITHUB_API_TIMEOUT_MS = 10_000;
 
@@ -106,9 +106,28 @@ export function createGithubClient({
     callbackUrl,
     onRequestTiming,
     parallelPlanetSourceRequests = true,
+    publicRequestGate,
     githubApiBaseUrl = 'https://api.github.com',
     githubOAuthBaseUrl = 'https://github.com'
 }) {
+    const appAuth = clientId && clientSecret ? { username: clientId, password: clientSecret } : undefined;
+    async function publicRestGet(pathname, { accessToken, params } = {}) {
+        const operation = () => axios.get(endpoint(githubApiBaseUrl, pathname), {
+            ...(params ? { params } : {}),
+            headers: { Accept: 'application/vnd.github+json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+            ...(!accessToken && appAuth ? { auth: appAuth } : {}),
+            timeout: GITHUB_API_TIMEOUT_MS
+        });
+        try { return await (!accessToken && publicRequestGate ? publicRequestGate.run(operation) : operation()); }
+        catch (error) {
+            const headers = error.response?.headers || {};
+            if (error.response?.status === 429 || (error.response?.status === 403
+                && (String(headers['x-ratelimit-remaining']) === '0' || headers['retry-after']))) {
+                error.code = 'GITHUB_RATE_LIMITED';
+            }
+            throw error;
+        }
+    }
     const authoredLanguageHistoryClient = createGithubAuthoredLanguageHistoryClient({
         axios,
         extensionMap: EXTENSION_MAP,
@@ -166,13 +185,7 @@ export function createGithubClient({
 
         async getUser(username, accessToken) {
             return measureExternalOperation(onRequestTiming, 'get_user', async () => {
-                const response = await axios.get(endpoint(githubApiBaseUrl, `/users/${encodeURIComponent(username)}`), {
-                    headers: {
-                        Accept: 'application/vnd.github+json',
-                        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
-                    },
-                    timeout: GITHUB_API_TIMEOUT_MS
-                });
+                const response = await publicRestGet(`/users/${encodeURIComponent(username)}`, { accessToken });
                 return response.data;
             }, { provider: 'github' });
         },
@@ -183,16 +196,7 @@ export function createGithubClient({
                 if (!/^[1-9]\d*$/.test(normalizedAccountId)) {
                     throw new TypeError('Invalid GitHub account ID');
                 }
-                const response = await axios.get(
-                    endpoint(githubApiBaseUrl, `/user/${normalizedAccountId}`),
-                    {
-                        headers: {
-                            Accept: 'application/vnd.github+json',
-                            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
-                        },
-                        timeout: GITHUB_API_TIMEOUT_MS
-                    }
-                );
+                const response = await publicRestGet(`/user/${encodeURIComponent(normalizedAccountId)}`, { accessToken });
                 return response.data;
             }, { provider: 'github' });
         },
@@ -200,14 +204,9 @@ export function createGithubClient({
         async getPublicPlanetSource(username) {
             return measureExternalOperation(onRequestTiming, 'get_public_planet_source', async () => {
                 try {
-                    const response = await axios.get(
-                        endpoint(githubApiBaseUrl, `/users/${encodeURIComponent(username)}/repos`),
-                        {
-                            params: { per_page: 100, sort: 'updated', type: 'owner' },
-                            headers: { Accept: 'application/vnd.github+json' },
-                            timeout: GITHUB_API_TIMEOUT_MS
-                        }
-                    );
+                    const response = await publicRestGet(`/users/${encodeURIComponent(username)}/repos`, {
+                        params: { per_page: 100, sort: 'updated', type: 'owner' }
+                    });
                     const repositories = Array.isArray(response.data) ? response.data : [];
                     return {
                         username: repositories[0]?.owner?.login || username,

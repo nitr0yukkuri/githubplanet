@@ -47,36 +47,6 @@ test('updates a renamed account by immutable GitHub ID', async () => {
     assert.deepEqual(calls[0][1], [42, 'new-login']);
 });
 
-test('reserves anonymous GitHub lookups per HMAC client key in PostgreSQL', async () => {
-    const calls = [];
-    let requestCount = 0;
-    const windowStartedAt = new Date();
-    const repository = createPlanetRepository({
-        async query(sql, params = []) {
-            calls.push([sql, params]);
-            if (sql.includes('INSERT INTO github_profile_lookup_quota')) {
-                requestCount += 1;
-                return { rows: [{ request_count: requestCount, window_started_at: windowStartedAt }] };
-            }
-            return { rows: [] };
-        }
-    });
-
-    const requesterKey = 'a'.repeat(64);
-    const firstReservation = await repository.reserveGithubProfileLookup(requesterKey, 2, 3_600_000);
-    assert.equal(firstReservation.allowed, true);
-    assert.ok(firstReservation.retryAfterMs > 0 && firstReservation.retryAfterMs <= 3_600_000);
-    assert.equal((await repository.reserveGithubProfileLookup(requesterKey, 2, 3_600_000)).allowed, true);
-    assert.equal((await repository.reserveGithubProfileLookup(requesterKey, 2, 3_600_000)).allowed, false);
-
-    const reservation = calls.find(([sql]) => sql.includes('INSERT INTO github_profile_lookup_quota'));
-    assert.deepEqual(reservation[1], [requesterKey, 3_600_000]);
-    assert.match(reservation[0], /ON CONFLICT \(quota_key\) DO UPDATE/);
-    assert.match(reservation[0], /quota\.request_count \+ 1/);
-    assert.doesNotMatch(reservation[1].join(' '), /203\.0\.113\./);
-    await assert.rejects(repository.reserveGithubProfileLookup('203.0.113.1', 2, 3_600_000), /Invalid anonymous GitHub lookup key/);
-});
-
 test('maps persisted planet columns into the application model', async () => {
     const databaseRow = {
         github_id: 42,
@@ -277,29 +247,6 @@ test('refreshes the cached count in the background when the table grows', async 
     assert.ok(indexedRandomQuery);
 });
 
-test('loads persisted language colors in one startup query', async () => {
-    const calls = [];
-    const repository = createPlanetRepository({
-        async query(sql) {
-            calls.push(sql);
-            if (sql.includes('language_color_cache')) {
-                return { rows: [
-                    { language: 'NewLanguage', color: '#123456' },
-                    { language: 'OtherLanguage', color: '#abcdef' }
-                ] };
-            }
-            return { rows: [] };
-        }
-    });
-
-    assert.deepEqual(await repository.loadLanguageColorCache(), {
-        NewLanguage: '#123456',
-        OtherLanguage: '#abcdef'
-    });
-    assert.equal(calls.length, 1);
-    assert.match(calls[0], /SELECT language, color FROM language_color_cache/i);
-});
-
 test('loads language history in chronological order for one GitHub account', async () => {
     const calls = [];
     const rows = [{
@@ -369,20 +316,28 @@ test('records and advances the owner login baseline in one transaction', async (
     assert.deepEqual(calls[2][1], [1, 128, '["FIRST_PLANET","COMMIT_100"]']);
 });
 
-test('returns commit SHAs with authored language history rows for domain deduplication', async () => {
+test('rolls back and releases the locked login baseline when its update fails', async () => {
+    const operations = [];
+    const failure = new Error('update failed');
     const repository = createPlanetRepository({
-        async query() {
-            return { rows: [{
-                commit_sha: 'abc123',
-                authored_at: '2025-01-01T00:00:00Z',
-                language_added_lines: { TypeScript: 4 }
-            }] };
+        async connect() {
+            return {
+                async query(sql) {
+                    operations.push(sql.trim());
+                    if (sql.includes('SELECT last_login_contributions')) {
+                        assert.match(sql, /FOR UPDATE/);
+                        return { rows: [{ last_login_contributions: 100, notified_achievement_ids: [] }] };
+                    }
+                    if (sql.includes('UPDATE planets')) throw failure;
+                    return { rows: [] };
+                },
+                release() { operations.push('RELEASE'); }
+            };
         }
     });
-
-    assert.deepEqual(await repository.findAuthoredLanguageCommits(41), [{
-        commitSha: 'abc123',
-        authoredAt: '2025-01-01T00:00:00Z',
-        languageAdditions: { TypeScript: 4 }
-    }]);
+    await assert.rejects(repository.recordLoginProgress(1, {
+        currentContributions: 128, currentAchievementIds: [], notifyCurrentAchievements: false
+    }), (error) => error === failure);
+    assert.deepEqual(operations.slice(-2), ['ROLLBACK', 'RELEASE']);
+    assert.equal(operations.includes('COMMIT'), false);
 });

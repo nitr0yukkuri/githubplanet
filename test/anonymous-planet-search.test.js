@@ -25,7 +25,7 @@ test('builds an anonymous public preview from public repository metadata without
     });
     const planetService = createPlanetService({
         githubClient,
-        geminiClient: { async resolveLanguageColor() { throw new Error('must not call Gemini'); } }
+        languageColorService: { async resolveLanguageColor() { throw new Error('must not call Gemini'); } }
     });
     const repository = { async findByUsername() { return null; } };
     const queryService = createPlanetQueryService({
@@ -78,7 +78,9 @@ test('blocks an anonymous public preview before calling GitHub when its per-clie
     let upstreamCalls = 0;
     const queryService = createPlanetQueryService({
         repository: {
-            async findByUsername() { return null; },
+            async findByUsername() { return null; }
+        },
+        anonymousLookupStore: {
             async reserveGithubProfileLookup() {
                 return { allowed: false, retryAfterMs: 15_000 };
             }
@@ -104,7 +106,9 @@ test('blocks an anonymous profile redirect before calling GitHub when its per-cl
     let upstreamCalls = 0;
     const queryService = createPlanetQueryService({
         repository: {
-            async findByGithubId() { return { githubId: '12345', username: 'sample-user' }; },
+            async findByGithubId() { return { githubId: '12345', username: 'sample-user' }; }
+        },
+        anonymousLookupStore: {
             async reserveGithubProfileLookup() {
                 return { allowed: false, retryAfterMs: 30_000 };
             }

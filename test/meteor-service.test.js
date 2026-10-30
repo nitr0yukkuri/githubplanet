@@ -6,7 +6,7 @@ function createHarness() {
     const emissions = [];
     const logs = [];
     const service = createMeteorService({
-        geminiClient: {
+        languageColorService: {
             async resolveLanguageColor(language) { return language === 'JavaScript' ? '#f0db4f' : '#808080'; }
         },
         extensionMap: { js: 'JavaScript', ts: 'TypeScript' },

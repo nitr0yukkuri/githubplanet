@@ -1,3 +1,9 @@
+import { createMeteorBus } from '../src/infrastructure/realtime/meteor-bus.js';
+import { createMeteorEventStore } from '../src/infrastructure/database/meteor-event-store.js';
+import { createMemoryMeteorStore } from '../test/fixtures/meteor-store.js';
+import { createWebhookDeliveryService } from '../src/application/webhook-delivery-service.js';
+import { createWebhookWorker } from '../src/infrastructure/realtime/webhook-worker.js';
+import { createMemoryWebhookStore } from '../test/fixtures/webhook-store.js';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
@@ -12,13 +18,17 @@ import express from 'express';
 import session from 'express-session';
 import { Server } from 'socket.io';
 import { chromium } from 'playwright';
-import { DATA_CACHE_DURATION, EXTENSION_MAP, LANGUAGE_COLORS } from '../src/domain/planet/constants.js';
+import { LANGUAGE_COLORS } from '../src/domain/planet/constants.js';
+import { EXTENSION_MAP } from '../src/domain/planet/language-extensions.js';
+import { requestPlanetName } from '../src/application/planet-name-generator.js';
 import { listShowcasePlanets } from '../src/domain/planet/showcase-planets.js';
 import { createMeteorService } from '../src/application/meteor-service.js';
 import { createPlanetQueryService } from '../src/application/planet-query-service.js';
 import { createPlanetService } from '../src/application/planet-service.js';
 import { runDatabaseMigrations } from '../src/infrastructure/database/migrations.js';
+import { createWebhookDeliveryStore } from '../src/infrastructure/database/webhook-delivery-store.js';
 import { createPlanetRepository } from '../src/infrastructure/database/planet-repository.js';
+import { createAnonymousGithubQuotaStore } from '../src/infrastructure/database/anonymous-github-quota-store.js';
 import { createPostgresPool } from '../src/infrastructure/database/postgres.js';
 import { createGithubClient } from '../src/infrastructure/external/github-client.js';
 import { registerAuthRoutes } from '../src/presentation/http/auth-routes.js';
@@ -26,6 +36,7 @@ import { registerEventRoutes } from '../src/presentation/http/event-routes.js';
 import { registerPageRoutes } from '../src/presentation/http/page-routes.js';
 import { registerPlanetRoutes } from '../src/presentation/http/planet-routes.js';
 
+const DATA_CACHE_DURATION = 60 * 60 * 1000;
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const E2E_DATABASE_NAME = 'githubplanet_e2e';
 const E2E_SESSION_SECRET = 'isolated-e2e-session-secret';
@@ -40,14 +51,22 @@ let githubMockServer;
 let sessionStore;
 let browser;
 let io;
+let webhookWorker;
+let meteorBus;
+const memoryMeteorStore = createMemoryMeteorStore();
+function makeMeteorBus() { return createMeteorBus({
+    store: pool ? createMeteorEventStore(pool) : memoryMeteorStore,
+    emit: (payload) => io.emit('meteor', payload), intervalMs: 25
+}); }
 let baseUrl;
 let githubMockBaseUrl;
 let callbackUrl;
 let socketIoClientModule;
 let oauthCodeSequence = 0;
+let githubQuotaLimited = false;
 const oauthChallenges = new Map();
 const contexts = new Set();
-const inMemoryWebhookDeliveries = new Set();
+const memoryWebhookStore = createMemoryWebhookStore();
 
 function assertSafeE2eDatabaseUrl(connectionString) {
     if (!connectionString) {
@@ -175,6 +194,7 @@ async function startGithubMock() {
     });
 
     app.get('/users/:login', (req, res) => {
+        if (githubQuotaLimited) return res.set('x-ratelimit-remaining', '0').status(403).json({ message: 'API rate limit exceeded' });
         if (req.params.login.toLowerCase() !== 'e2e-user') {
             return res.status(404).json({ message: 'Not Found' });
         }
@@ -242,18 +262,22 @@ async function startApp() {
     });
     const repository = pool ? createPlanetRepository(pool, { randomQueryStrategy: 'legacy' }) : undefined;
     const geminiClient = {
-        async ask() { return null; },
+        async ask() { return null; }
+    };
+    const languageColorService = {
         async resolveLanguageColor(language) { return LANGUAGE_COLORS[language] || '#808080'; }
     };
     const planetService = createPlanetService({
         repository,
         githubClient,
         geminiClient,
+        languageColorService,
         geminiApiKey: ''
     });
     const planetQueryService = repository
         ? createPlanetQueryService({
             repository,
+            anonymousLookupStore: createAnonymousGithubQuotaStore(pool),
             githubClient,
             planetService,
             cacheDuration: DATA_CACHE_DURATION
@@ -277,11 +301,10 @@ async function startApp() {
             async saveActiveTitle() { return false; }
         };
 
-    let meteorIo;
     const meteorService = createMeteorService({
-        geminiClient,
+        languageColorService,
         extensionMap: EXTENSION_MAP,
-        emitMeteor: (payload) => meteorIo?.emit('meteor', payload),
+        emitMeteor: (payload, key) => meteorBus.publish(payload, key),
         logger: { log() {}, error() {}, warn() {} }
     });
 
@@ -304,28 +327,37 @@ async function startApp() {
         logger: { error() {}, warn() {} }
     });
     registerPlanetRoutes(app, {
+        sessionSecret: E2E_SESSION_SECRET,
         planetService,
         planetQueryService,
         cacheDuration: DATA_CACHE_DURATION
     });
+    const webhookDeliveryService = createWebhookDeliveryService({
+        store: pool ? createWebhookDeliveryStore(pool) : memoryWebhookStore, meteorService
+    });
+    webhookWorker = createWebhookWorker({ service: webhookDeliveryService, intervalMs: 25 });
     registerEventRoutes(app, {
+        generatePlanetName: (input) => requestPlanetName(geminiClient.ask, input),
         geminiClient,
+        languageColorService,
         meteorService,
         systemApiKey: 'isolated-e2e-system-key',
         webhookSecret: E2E_WEBHOOK_SECRET,
-        webhookDeliveryStore: repository || {
-            async claimGithubWebhookDelivery(deliveryId) {
-                if (inMemoryWebhookDeliveries.has(deliveryId)) return false;
-                inMemoryWebhookDeliveries.add(deliveryId);
-                return true;
-            }
-        },
+        webhookDeliveryService,
+        onWebhookAccepted: () => webhookWorker.kick(),
         requireInternalAuth: true,
         requireWebhookSignature: true
     });
 
     io = new Server(appServer, { cors: { origin: baseUrl } });
-    meteorIo = io;
+    meteorBus = makeMeteorBus();
+    io.on('connection', (socket) => {
+        socket.on('disconnect', () => meteorBus.unsubscribe(socket.id));
+        void meteorBus.subscribe(socket.id).then(() => {
+            if (socket.connected) webhookWorker.kick(); else meteorBus.unsubscribe(socket.id);
+        });
+    });
+    webhookWorker.start();
 }
 
 function createAnimeTestModule() {
@@ -467,12 +499,18 @@ async function login(page) {
 }
 
 async function resetTestDatabase() {
-    if (pool) await pool.query('TRUNCATE TABLE planets, "session", github_webhook_deliveries CASCADE');
+    githubQuotaLimited = false;
+    await webhookWorker?.stop();
+    await meteorBus?.stop();
+    if (pool) await pool.query('TRUNCATE TABLE planets, "session", github_webhook_deliveries, meteor_events CASCADE');
     await new Promise((resolve, reject) => {
         sessionStore.clear((error) => error ? reject(error) : resolve());
     });
     oauthChallenges.clear();
-    inMemoryWebhookDeliveries.clear();
+    memoryWebhookStore.clear();
+    memoryMeteorStore.clear();
+    meteorBus = makeMeteorBus();
+    webhookWorker?.start();
 }
 
 before(async () => {
@@ -506,6 +544,8 @@ beforeEach(async () => {
 }, { timeout: 30_000 });
 
 after(async () => {
+    await webhookWorker?.stop();
+    await meteorBus?.stop();
     await Promise.all([...contexts].map((context) => context.close().catch(() => undefined)));
     await browser?.close();
     io?.close();
@@ -675,9 +715,9 @@ test('a saved title survives reload and OAuth re-login from PostgreSQL', {
         const saveResponse = firstBrowser.page.waitForResponse((response) => (
             response.url().endsWith('/api/save-title')
         ));
-        const alert = firstBrowser.page.waitForEvent('dialog');
-        await firstBrowser.page.locator('#save-btn').click();
-        (await alert).accept();
+        // clickは遷移完了まで待つため、同期アラートを別のPromiseで先に閉じる。
+        const alertAccepted = firstBrowser.page.waitForEvent('dialog').then((dialog) => dialog.accept());
+        await Promise.all([firstBrowser.page.locator('#save-btn').click(), alertAccepted]);
         assert.equal((await saveResponse).status(), 200);
 
         const storedTitle = await pool.query('SELECT active_title FROM planets WHERE github_id = $1', [githubUser().id]);
@@ -761,5 +801,30 @@ test('a signed GitHub webhook reaches the other browser over live Socket.IO', { 
         receiver.assertNoPageErrors();
     } finally {
         await Promise.all([sender.close(), receiver.close()]);
+    }
+});
+
+test('stored cards keep real statistics and show SNAPSHOT when GitHub identity lookup is rate limited', {
+    skip: !process.env.E2E_DATABASE_URL, timeout: 60000
+}, async () => {
+    const owner = await openPage(), visitor = await openPage();
+    try {
+        await login(owner.page);
+        githubQuotaLimited = true;
+        await visitor.page.goto(`${baseUrl}/card.html?username=e2e-user&fix=true`);
+        await visitor.page.locator('.sys-status').filter({ hasText: 'SNAPSHOT' }).waitFor();
+        assert.equal(await visitor.page.locator('#main-lang-stat').textContent(), 'JAVASCRIPT');
+        assert.equal(await visitor.page.locator('#commits-val').textContent(), '1');
+        const response = await visitor.page.request.get(`${baseUrl}/api/planets/user/e2e-user`);
+        assert.equal(response.status(), 200);
+        const data = await response.json();
+        assert.equal(data.isStoredSnapshot, true);
+        assert.equal(data.githubProfileVerified, false);
+        assert.equal(data.totalCommits, 1);
+        assert.ok(data.snapshotCapturedAt);
+        visitor.assertNoPageErrors();
+    } finally {
+        githubQuotaLimited = false;
+        await Promise.all([owner.close(), visitor.close()]);
     }
 });

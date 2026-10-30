@@ -3,10 +3,13 @@ import { safeErrorMetadata } from '../../shared/error-metadata.js';
 
 export function registerEventRoutes(app, {
     geminiClient,
+    languageColorService,
+    generatePlanetName,
     meteorService,
     systemApiKey,
     webhookSecret,
-    webhookDeliveryStore,
+    webhookDeliveryService,
+    onWebhookAccepted = () => {},
     requireInternalAuth = false,
     requireWebhookSignature = false
 }) {
@@ -57,27 +60,28 @@ export function registerEventRoutes(app, {
                 if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(deliveryId)) {
                     return res.status(400).send('Invalid delivery ID');
                 }
-                if (typeof webhookDeliveryStore?.claimGithubWebhookDelivery !== 'function') {
+                if (typeof webhookDeliveryService?.accept !== 'function') {
                     return res.status(503).send('Webhook delivery store is unavailable');
                 }
 
-                let isNewDelivery;
                 try {
                     const payloadHash = crypto.createHash('sha256').update(req.rawBody).digest('hex');
-                    isNewDelivery = await webhookDeliveryStore.claimGithubWebhookDelivery(deliveryId, payloadHash);
+                    await webhookDeliveryService.accept(deliveryId, payloadHash, req.body);
                 } catch (error) {
                     console.error('[Webhook Delivery Store Error]', safeErrorMetadata(error));
+                    if (error instanceof TypeError) return res.status(400).send('Invalid webhook payload');
                     return res.status(503).send('Webhook delivery could not be recorded');
                 }
-                if (!isNewDelivery) return res.status(200).send('OK');
+                // 200はDBへ再試行可能な仕事を保存できたことを示し、処理完了とは区別する。
+                res.status(200).send('OK');
+                onWebhookAccepted();
+                return;
             }
 
             const payload = req.body;
+            // DBなしの開発用経路も、応答後に失敗を握りつぶさない。
+            await meteorService.processWebhook(payload);
             res.status(200).send('OK');
-
-            // GitHubへのACK速度は維持しつつ、業務処理はApplicationのユースケースに委譲する。
-            meteorService.processWebhook(payload)
-                .catch((error) => console.error('[Webhook Async Error]', safeErrorMetadata(error)));
         } catch (error) {
             console.error('[Webhook Error]', safeErrorMetadata(error));
             if (!res.headersSent) res.status(500).send('Error');
@@ -91,7 +95,7 @@ export function registerEventRoutes(app, {
 
     app.get('/api/debug-color/:lang', requireAuthorization, async (req, res) => {
         const mainLanguage = req.params.lang;
-        const color = await geminiClient.resolveLanguageColor(mainLanguage);
+        const color = await languageColorService.resolveLanguageColor(mainLanguage);
         res.json({ target_language: mainLanguage, generated_color: color });
     });
 
@@ -99,13 +103,7 @@ export function registerEventRoutes(app, {
         const mainLanguage = req.params.lang;
         const planetColor = req.query.color || '#808080';
         const totalCommits = parseInt(req.query.commits || '100');
-        const suffix = totalCommits > 1000 ? '帝星' : totalCommits > 500 ? '巨星' : '星';
-        const prompt = `Programming language: ${mainLanguage}. Color: ${planetColor}.
-    Generate a cool Japanese planet name in the format: "[Adjective][ColorName]の${suffix}".
-    The adjective should describe the nature of "${mainLanguage}". The color name should describe the color "${planetColor}".
-    Example: "JavaScript" -> "柔軟な黄金の${suffix}".
-    Return ONLY the name string.`;
-        const generatedName = await geminiClient.ask(prompt);
+        const generatedName = await generatePlanetName({ mainLanguage, planetColor, totalCommits });
 
         res.json({
             input_language: mainLanguage,

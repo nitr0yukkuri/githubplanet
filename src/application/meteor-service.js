@@ -1,19 +1,19 @@
-export function createMeteorService({ geminiClient, extensionMap, emitMeteor, logger = console }) {
+export function createMeteorService({ languageColorService, extensionMap, emitMeteor, logger = console }) {
     async function emitManualMeteor({ language, color, scale }) {
-        const finalColor = color || await geminiClient.resolveLanguageColor(language || 'Unknown');
+        const finalColor = color || await languageColorService.resolveLanguageColor(language || 'Unknown');
         const finalScale = scale > 1.5 ? 1.5 : (scale || 1.0);
         const resolvedLanguage = language || 'Manual';
 
         logger.log(`[Manual Meteor] Language: ${language}, Color: ${finalColor}, Scale: ${finalScale}`);
-        emitMeteor({ color: finalColor, language: resolvedLanguage, scale: finalScale });
+        await emitMeteor({ color: finalColor, language: resolvedLanguage, scale: finalScale });
         return { color: finalColor };
     }
 
-    async function processWebhook(payload) {
+    async function processWebhook(payload, { eventKey } = {}) {
         if (!payload || !payload.repository || !Array.isArray(payload.commits)) return;
         const repositoryLanguage = payload.repository.language || 'Unknown';
 
-        for (const commit of payload.commits) {
+        for (const [index, commit] of payload.commits.entries()) {
             let targetLanguage = repositoryLanguage;
             const files = [...(commit.added || []), ...(commit.modified || [])];
             const totalLines = parseInt(commit.total_lines || 0, 10);
@@ -31,9 +31,10 @@ export function createMeteorService({ geminiClient, extensionMap, emitMeteor, lo
                 }
             }
 
-            const resolvedColor = await geminiClient.resolveLanguageColor(targetLanguage);
+            const resolvedColor = await languageColorService.resolveLanguageColor(targetLanguage);
             logger.log(`[Webhook] Commit: ${commit.id.substring(0, 7)} -> Scale: ${meteorScale.toFixed(2)}, Lines: ${totalLines}`);
-            emitMeteor({ color: resolvedColor, language: targetLanguage, scale: meteorScale });
+            await emitMeteor({ color: resolvedColor, language: targetLanguage, scale: meteorScale },
+                eventKey ? `${eventKey}:${index}` : undefined);
         }
     }
 
