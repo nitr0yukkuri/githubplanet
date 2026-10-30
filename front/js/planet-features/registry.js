@@ -13,6 +13,7 @@ import * as shell from '../shell-planet-clouds.js';
 import * as swift from '../swift-planet-feathers.js';
 import * as typescript from '../typescript-planet-shell.js';
 import * as vue from '../vue-planet-circulation.js';
+import * as xml from '../xml-planet-nesting.js';
 import { createLanguageCompositionTrails } from '../language-composition-trails.js';
 
 const CARD_THEMES = Object.freeze({
@@ -313,6 +314,16 @@ const FEATURE_DEFINITIONS = [
             ruby.updateRubyPlanetSolar(material, now);
             ruby.updateRubyPlanetSolar(objects.corona, now, camera);
         }
+    },
+    {
+        id: 'xml',
+        language: 'XML',
+        module: xml,
+        matches: xml.isXmlPlanet,
+        createMaterial: ({ THREE, planetTexture }) => (
+            xml.createXmlPlanetMaterial(THREE, planetTexture)
+        ),
+        update: ({ material, now }) => xml.updateXmlPlanetNesting(material, now)
     }
 ];
 

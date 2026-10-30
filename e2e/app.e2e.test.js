@@ -786,3 +786,53 @@ test('a signed GitHub webhook reaches the other browser over live Socket.IO', { 
         await Promise.all([sender.close(), receiver.close()]);
     }
 });
+
+test('XML surface compiles and animates in both home and card', { timeout: 60_000 }, async (t) => {
+    const { page, close, assertNoPageErrors } = await openPage();
+    const shaderErrors = [];
+    page.on('console', (message) => {
+        if (message.type() === 'error' && /WebGLProgram|VALIDATE_STATUS|shader error/i.test(message.text())) {
+            shaderErrors.push(message.text());
+        }
+    });
+    await page.addInitScript(() => {
+        window.__xmlTimes = [];
+        const prototype = window.WebGL2RenderingContext?.prototype;
+        if (!prototype) return;
+        const locations = new Set();
+        const getLocation = prototype.getUniformLocation;
+        const setFloat = prototype.uniform1f;
+        prototype.getUniformLocation = function (program, name) {
+            const location = getLocation.call(this, program, name);
+            if (name === 'xmlNestingTime' && location) locations.add(location);
+            return location;
+        };
+        prototype.uniform1f = function (location, value) {
+            if (locations.has(location)) window.__xmlTimes.push(value);
+            return setFloat.call(this, location, value);
+        };
+    });
+    const fixture = {
+        username: 'e2e-xml', mainLanguage: 'XML', planetColor: '#285a76',
+        planetSizeFactor: 2, languageStats: { XML: 70, TypeScript: 20, Rust: 10 },
+        totalCommits: 2000, weeklyCommits: 24, planetName: 'XML Integration Fixture'
+    };
+    await page.route((url) => ['/api/planets/showcase/typescript', '/api/planets/user/e2e-xml'].includes(url.pathname),
+        (route) => route.fulfill({ json: fixture }));
+    try {
+        for (const pathname of ['/showcase/typescript', '/card.html?username=e2e-xml&fix=true']) {
+            await page.goto(baseUrl + pathname);
+            await page.waitForFunction(() => new Set(window.__xmlTimes).size > 1);
+            if (pathname.startsWith('/card')) {
+                assert.equal(await page.locator('#main-lang-stat').textContent(), 'XML');
+                assert.equal(await page.locator('#card-webgl-fallback').isVisible(), false);
+            }
+            assert.deepEqual(shaderErrors, [], 'XML shader must link successfully');
+            assertNoPageErrors();
+        }
+        const revision = await page.evaluate(async () => (await import('/vendor/three/build/three.module.js')).REVISION);
+        t.diagnostic(`XML home/card rendered with Three revision ${revision}`);
+    } finally {
+        await close();
+    }
+});
