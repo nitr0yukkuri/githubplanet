@@ -209,6 +209,7 @@ async function startGithubMock() {
 async function startApp() {
     const app = express();
     app.disable('x-powered-by');
+    app.set('query parser', 'extended');
     app.use((req, res, next) => {
         req.cspNonce = crypto.randomBytes(18).toString('base64');
         res.setHeader('Content-Security-Policy', `script-src 'self' 'nonce-${req.cspNonce}' https://cdn.jsdelivr.net https://www.googletagmanager.com`);
@@ -230,10 +231,10 @@ async function startApp() {
 
     app.use('/front', express.static(path.join(projectRoot, 'front')));
     app.get('/vendor/three/build/three.module.js', (_req, res) => {
-        res.sendFile(path.join(projectRoot, 'node_modules/three/build/three.module.js'));
+        res.sendFile('build/three.module.js', { root: path.join(projectRoot, 'node_modules/three') });
     });
     app.get('/vendor/three/examples/jsm/controls/OrbitControls.js', (_req, res) => {
-        res.sendFile(path.join(projectRoot, 'node_modules/three/examples/jsm/controls/OrbitControls.js'));
+        res.sendFile('examples/jsm/controls/OrbitControls.js', { root: path.join(projectRoot, 'node_modules/three') });
     });
 
     appServer = http.createServer(app);

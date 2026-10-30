@@ -30,6 +30,9 @@ export function registerPageRoutes(app, {
     ].map((fileName) => [fileName, fs.readFileSync(path.join(rootDirectory, fileName), 'utf8')
         .replaceAll(SOURCE_PUBLIC_BASE_URL, normalizedPublicBaseUrl)]));
     const favicon = fs.readFileSync(path.join(rootDirectory, 'front/img/favicon-96.png'));
+    // デプロイ中に変わらない小さな公開ファイルも、アクセスごとのファイルI/Oを避ける。
+    const staticPageAssets = new Map(['manifest.json', 'manifest-en.json', 'sw.js']
+        .map((fileName) => [fileName, fs.readFileSync(path.join(rootDirectory, fileName))]));
     const seo = createPageSeo({ publicBaseUrl: normalizedPublicBaseUrl, showcasePages });
     app.use(seo.middleware);
 
@@ -125,24 +128,24 @@ export function registerPageRoutes(app, {
         sendPage(req, res, 'index.html');
     });
 
-    app.get('/manifest.json', (req, res) => {
+    app.get('/manifest.json', (_req, res) => {
         res.type('application/manifest+json');
-        res.sendFile(path.join(rootDirectory, 'manifest.json'));
+        res.send(staticPageAssets.get('manifest.json'));
     });
 
-    app.get('/manifest-en.json', (req, res) => {
+    app.get('/manifest-en.json', (_req, res) => {
         res.type('application/manifest+json');
-        res.sendFile(path.join(rootDirectory, 'manifest-en.json'));
+        res.send(staticPageAssets.get('manifest-en.json'));
     });
 
     app.get('/favicon.ico', (_req, res) => {
         res.type('image/png').send(favicon);
     });
 
-    app.get('/sw.js', (req, res) => {
+    app.get('/sw.js', (_req, res) => {
         res.setHeader('Cache-Control', 'no-cache');
         res.type('application/javascript');
-        res.sendFile(path.join(rootDirectory, 'sw.js'));
+        res.send(staticPageAssets.get('sw.js'));
     });
 
     app.get('/api/card/:username', (req, res) => {

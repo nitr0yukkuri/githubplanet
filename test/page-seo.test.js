@@ -13,6 +13,7 @@ let baseUrl;
 
 before(async () => {
     const app = express();
+    app.set('query parser', 'extended');
     app.use('/front', express.static('front'));
     app.use((req, _res, next) => { req.session = {}; next(); });
     registerPageRoutes(app, {
