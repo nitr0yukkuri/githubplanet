@@ -4,43 +4,52 @@ import { createGithubClient } from '../src/infrastructure/external/github-client
 
 test('maps the GraphQL response into the application planet-source model', async () => {
     const requests = [];
+    let activeRequests = 0;
+    let maxConcurrentRequests = 0;
     const axios = {
         async post(url, body, config) {
+            activeRequests += 1;
+            maxConcurrentRequests = Math.max(maxConcurrentRequests, activeRequests);
+            await new Promise((resolve) => setImmediate(resolve));
             requests.push({ url, body, config });
-            if (body.query.includes('RepositoryData')) {
-                return { data: { data: { user: {
-                    starredRepositories: { totalCount: 4 },
-                    repositories: { nodes: [{
-                        name: 'owned',
-                        stargazerCount: 3,
-                        languages: { edges: [{ size: 70, node: { name: 'TypeScript' } }] }
-                    }] },
-                    repositoriesContributedTo: { nodes: [{
-                        name: 'contributed',
-                        languages: { edges: [{ size: 20, node: { name: 'CSS' } }] }
-                    }] }
-                } } } };
-            }
-            if (body.query.includes('AnnualContributions')) {
-                return { data: { data: { user: {
-                    contributionsCollection: { contributionCalendar: { totalContributions: 123 } }
-                } } } };
-            }
-            if (body.query.includes('MergedPullRequests')) {
-                return { data: { data: { user: {
-                    pullRequests: { nodes: [{ repository: {
-                        nameWithOwner: 'someone-else/project',
-                        owner: { login: 'someone-else' }
-                    } }] }
-                } } } };
-            }
-            return { data: { data: { user: {
-                contributionsCollection: {
-                    contributionCalendar: {
-                        weeks: [{ contributionDays: [{ contributionCount: 7, date: '2026-07-18' }] }]
-                    }
+            try {
+                if (body.query.includes('RepositoryData')) {
+                    return { data: { data: { user: {
+                        starredRepositories: { totalCount: 4 },
+                        repositories: { nodes: [{
+                            name: 'owned',
+                            stargazerCount: 3,
+                            languages: { edges: [{ size: 70, node: { name: 'TypeScript' } }] }
+                        }] },
+                        repositoriesContributedTo: { nodes: [{
+                            name: 'contributed',
+                            languages: { edges: [{ size: 20, node: { name: 'CSS' } }] }
+                        }] }
+                    } } } };
                 }
-            } } } };
+                if (body.query.includes('AnnualContributions')) {
+                    return { data: { data: { user: {
+                        contributionsCollection: { contributionCalendar: { totalContributions: 123 } }
+                    } } } };
+                }
+                if (body.query.includes('MergedPullRequests')) {
+                    return { data: { data: { user: {
+                        pullRequests: { nodes: [{ repository: {
+                            nameWithOwner: 'someone-else/project',
+                            owner: { login: 'someone-else' }
+                        } }] }
+                    } } } };
+                }
+                return { data: { data: { user: {
+                    contributionsCollection: {
+                        contributionCalendar: {
+                            weeks: [{ contributionDays: [{ contributionCount: 7, date: '2026-07-18' }] }]
+                        }
+                    }
+                } } } };
+            } finally {
+                activeRequests -= 1;
+            }
         }
     };
     const client = createGithubClient({ axios });
@@ -48,6 +57,7 @@ test('maps the GraphQL response into the application planet-source model', async
     const source = await client.getPlanetSource('tester', 'token');
 
     assert.equal(requests.length, 4);
+    assert.equal(maxConcurrentRequests, 4);
     assert.deepEqual(requests.map(({ config }) => config.timeout), [10_000, 10_000, 10_000, 10_000]);
     assert.deepEqual(requests.map(({ body }) => body.variables.login), ['tester', 'tester', 'tester', 'tester']);
     assert.match(requests[2].body.query, /pullRequests\(first: 100, states: MERGED/);
@@ -137,13 +147,13 @@ test('reports GitHub request timings without changing the response shape', async
 
     await client.getPlanetSource('tester', 'token');
 
-    assert.deepEqual(timings.map(({ operation }) => operation), [
+    assert.deepEqual(timings.map(({ operation }) => operation).sort(), [
         'RepositoryData',
         'AnnualContributions',
         'MergedPullRequests',
         'RecentContributions',
         'get_planet_source'
-    ]);
+    ].sort());
     assert.ok(timings.every(({ provider, outcome, durationMs }) => (
         provider === 'github' && outcome === 'success' && durationMs >= 0
     )));
