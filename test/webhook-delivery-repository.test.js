@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createPlanetRepository } from '../src/infrastructure/database/planet-repository.js';
+import { createWebhookDeliveryStore } from '../src/infrastructure/database/webhook-delivery-store.js';
 
 test('claims a GitHub webhook delivery once and periodically removes expired IDs', async () => {
     const claimed = new Set();
@@ -18,7 +18,7 @@ test('claims a GitHub webhook delivery once and periodically removes expired IDs
             return { rowCount: 0, rows: [] };
         }
     };
-    const repository = createPlanetRepository(pool, { randomQueryStrategy: 'legacy' });
+    const repository = createWebhookDeliveryStore(pool);
     const firstId = '123e4567-e89b-12d3-a456-426614174000';
     const secondId = '123e4567-e89b-12d3-a456-426614174001';
     const firstPayloadHash = 'a'.repeat(64);
@@ -33,12 +33,12 @@ test('claims a GitHub webhook delivery once and periodically removes expired IDs
 
 test('rejects invalid GitHub webhook delivery IDs before querying the database', async () => {
     let queryCount = 0;
-    const repository = createPlanetRepository({
+    const repository = createWebhookDeliveryStore({
         async query() {
             queryCount += 1;
             return { rowCount: 0, rows: [] };
         }
-    }, { randomQueryStrategy: 'legacy' });
+    });
 
     await assert.rejects(
         repository.claimGithubWebhookDelivery('../not-a-uuid', 'a'.repeat(64)),

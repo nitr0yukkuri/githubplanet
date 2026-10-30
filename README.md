@@ -492,7 +492,7 @@ npm run perf:random-http
 
 GIF生成ではPlaywrightでカードを録画し、FFmpegで`800x266`のGIFへ変換します。生成物が10 MiB以下であることを確認してから公開します。
 
-公式プロフィールカードは、毎日の録画前にGitHubから惑星データを更新します。認証トークンはリポジトリSecretではなく、[Actions Environments設定](https://github.com/nitr0yukkuri/githubplanet/settings/environments)で`official-card`環境を作成し、Deployment branchesを`main`だけに制限したうえで、Environment secret `CARD_REFRESH_TOKEN`に登録してください。値にはプロフィール所有者本人が発行したfine-grained personal access tokenを使い、User permissionsの`Starring`を`Read`に設定してください。Repository permissionsと他のAccount permissionsは付与しません。Classic PATや`repo`／`public_repo`権限は使いません。公開リポジトリのデータだけを取得し、private/internal contributionの集計値は含めません。トークンはActions内からHTTPSで送られ、ログや生成物には含めません。未設定または更新失敗時はGIFを公開せず、古いデータを新しいカードとして扱いません。日次実行はUTC 00:00の予定です。
+公式プロフィールカードのGitHubデータ同期は明示的な有効化後に動作します。初期状態は保存済みデータで従来のGIF録画を継続します。設定完了後、Environment variable `OFFICIAL_CARD_REFRESH_ENABLED` を `true` にすると、毎日の録画前にGitHubから惑星データを更新します。認証トークンはリポジトリSecretではなく、[Actions Environments設定](https://github.com/nitr0yukkuri/githubplanet/settings/environments)で`official-card`環境を作成し、Deployment branchesを`main`だけに制限したうえで、Environment secret `CARD_REFRESH_TOKEN`に登録してください。値にはプロフィール所有者本人が発行したfine-grained personal access tokenを使い、User permissionsの`Starring`を`Read`に設定してください。Repository permissionsと他のAccount permissionsは付与しません。Classic PATや`repo`／`public_repo`権限は使いません。公開リポジトリのデータだけを取得し、private/internal contributionの集計値は含めません。トークンはActions内からHTTPSで送られ、ログや生成物には含めません。有効化後にSecretが未設定、または更新に失敗した場合はGIFを公開せず、古いデータを新しいカードとして扱いません。日次実行はUTC 00:00の予定です。
 
 ## セキュリティと運用上の注意
 

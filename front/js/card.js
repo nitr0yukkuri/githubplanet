@@ -1,11 +1,12 @@
+import { applyCardLanguageTheme, getCardAccentColor } from './card-language-theme.js';
+import { calculateStarCount, createPlanetDisposalResources, disposePlanetObject } from './planet-scene-resources.js';
 // front/js/card.js
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { createPlanetFeatureRuntime, resolvePlanetFeature } from './planet-features/registry.js';
+import { createPlanetFeatureRuntime } from './planet-features/registry.js';
 import { applyI18n, localizedPath, localizedPlanetName } from './i18n.js';
 import { createWebGLRenderer } from './webgl-renderer.js';
 
-const MAX_STAR_COUNT = 120;
 const CARD_DATA_TIMEOUT_MS = 6000;
 const PUBLIC_DEPLOY_URL = 'https://githubplanet.dev';
 
@@ -199,46 +200,6 @@ async function init() {
     }
 }
 
-// Featureの静的テーマをカード要素に反映し、通常表示と画像出力で同じ配色を保つ。
-function applyCardLanguageTheme(data) {
-    if (!containerElement) return;
-    const feature = resolvePlanetFeature(data);
-    const theme = feature?.cardTheme;
-    if (!theme) {
-        containerElement.removeAttribute('data-card-theme');
-        [
-            '--planet-card-atmosphere',
-            '--planet-card-highlight',
-            '--planet-card-border',
-            '--planet-card-glow',
-            '--planet-card-atmosphere-position',
-            '--planet-card-highlight-position'
-        ].forEach((property) => containerElement.style.removeProperty(property));
-        return;
-    }
-
-    containerElement.dataset.cardTheme = theme.id;
-    const planetColor = /^#[\da-f]{6}$/i.test(data.planetColor || '') ? data.planetColor : theme.atmosphere;
-    const atmosphereColor = feature.id === 'css' ? theme.atmosphere : planetColor;
-    containerElement.style.setProperty('--planet-card-atmosphere', colorWithAlpha(atmosphereColor, 0.24));
-    containerElement.style.setProperty('--planet-card-highlight', colorWithAlpha(theme.highlight, 0.12));
-    containerElement.style.setProperty('--planet-card-border', colorWithAlpha(theme.accent, 0.32));
-    containerElement.style.setProperty('--planet-card-glow', colorWithAlpha(theme.atmosphere, 0.18));
-    containerElement.style.setProperty('--planet-card-atmosphere-position', theme.atmospherePosition);
-    containerElement.style.setProperty('--planet-card-highlight-position', theme.highlightPosition);
-}
-
-function colorWithAlpha(hexColor, alpha) {
-    const match = /^#([\da-f]{6})$/i.exec(hexColor);
-    if (!match) return 'transparent';
-
-    const value = Number.parseInt(match[1], 16);
-    const red = (value >> 16) & 255;
-    const green = (value >> 8) & 255;
-    const blue = value & 255;
-    return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
-}
-
 function showCardWebGLFallback(color) {
     const fallback = document.getElementById('card-webgl-fallback');
     if (!fallback) return;
@@ -249,16 +210,8 @@ function showCardWebGLFallback(color) {
     if (renderer?.domElement) renderer.domElement.hidden = true;
 }
 
-function getCardAccentColor(data) {
-    const feature = resolvePlanetFeature(data);
-    const featureAccent = feature?.id === 'css' ? feature.cardTheme?.accent : null;
-
-    // CSS惑星は色相が巡るため、カードUIは固定テーマ色にして色揺れを防ぐ。
-    return /^#[\da-f]{6}$/i.test(featureAccent || '') ? featureAccent : data.planetColor;
-}
-
 function updateUI(data) {
-    applyCardLanguageTheme(data);
+    applyCardLanguageTheme(containerElement, data);
     usernameDisplay.textContent = data.username || username;
     planetNameSub.textContent = localizedPlanetName(data).toUpperCase();
 
@@ -294,74 +247,15 @@ function animateValue(obj, start, end, duration) {
     window.requestAnimationFrame(step);
 }
 
-function calculateStarCount(totalCommits) {
-    let starCount = 0;
-    let commitsUsed = 0;
-    let requiredCommitsPerStar = 10;
-    const costIncreaseStep = 10;
-    const levelUpThreshold = 5;
-
-    while (starCount < MAX_STAR_COUNT) {
-        const currentLevelCost = requiredCommitsPerStar + (Math.floor(starCount / levelUpThreshold) * costIncreaseStep);
-        if (totalCommits >= commitsUsed + currentLevelCost) {
-            starCount++;
-            commitsUsed += currentLevelCost;
-        } else {
-            break;
-        }
-    }
-    return starCount;
-}
-
-function disposeObject(object, resources = {
-    geometries: new Set(),
-    materials: new Set(),
-    textures: new Set()
-}) {
-    if (!object) return;
-    for (let index = object.children?.length - 1; index >= 0; index--) {
-        const child = object.children[index];
-        disposeObject(child, resources);
-        object.remove(child);
-    }
-
-    if (object.geometry && !resources.geometries.has(object.geometry)) {
-        resources.geometries.add(object.geometry);
-        object.geometry.dispose();
-    }
-
-    const materials = Array.isArray(object.material) ? object.material : [object.material];
-    materials.forEach((material) => {
-        if (!material || resources.materials.has(material)) return;
-        resources.materials.add(material);
-
-        [material.map, material.aoMap].forEach((texture) => {
-            if (
-                texture
-                && texture !== planetTexture
-                && !resources.textures.has(texture)
-            ) {
-                resources.textures.add(texture);
-                texture.dispose();
-            }
-        });
-        material.dispose();
-    });
-}
-
 function createPlanet(data) {
     if (!webglAvailable) {
         showCardWebGLFallback(data.planetColor);
         return;
     }
-    const resources = {
-        geometries: new Set(),
-        materials: new Set(),
-        textures: new Set()
-    };
+    const resources = createPlanetDisposalResources([planetTexture]);
     while (planetGroup.children.length > 0) {
         const child = planetGroup.children[0];
-        disposeObject(child, resources);
+        disposePlanetObject(child, resources);
         planetGroup.remove(child);
     }
     planetFeatureRuntime = null;

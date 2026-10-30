@@ -61,11 +61,10 @@ test('keeps a stable existing identity without calling Gemini again', async () =
             planetColor: '#123456',
             planetName: '既存の惑星名'
         },
+        languageColorService: {
+            async resolveLanguageColor() { calls.push('color'); return '#ffffff'; }
+        },
         geminiClient: {
-            async resolveLanguageColor() {
-                calls.push('color');
-                return '#ffffff';
-            },
             async ask() {
                 calls.push('name');
                 return '別の名前';
@@ -88,10 +87,8 @@ test('contains Gemini color and name decisions inside planet identity resolution
         mainLanguage: 'NewLanguage',
         totalCommits: 600,
         existingData: null,
+        languageColorService: { async resolveLanguageColor() { return '#123456'; } },
         geminiClient: {
-            async resolveLanguageColor() {
-                return '#123456';
-            },
             async ask(value) {
                 prompt = value;
                 return '新しい惑星名\n';

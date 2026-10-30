@@ -23,6 +23,24 @@ function createSource() {
     };
 }
 
+test('does not generate or save a new identity when the existing planet cannot be read', async () => {
+    const failure = Object.assign(new Error('read connection reset'), { code: 'ECONNRESET' });
+    let writes = 0, colorCalls = 0;
+    const service = createPlanetService({
+        repository: {
+            async findByGithubId() { throw failure; },
+            async save() { writes++; }
+        },
+        githubClient: { getPlanetSource: async () => createSource() },
+        languageColorService: { async resolveLanguageColor() { colorCalls++; return '#007acc'; } },
+        geminiClient: { ask: async () => null },
+        geminiApiKey: ''
+    });
+    await assert.rejects(service.updateAndSavePlanetData({ id: 1, login: 'tester' }, 'token'), (error) => error === failure);
+    assert.equal(writes, 0);
+    assert.equal(colorCalls, 0);
+});
+
 test('orchestrates GitHub aggregation, domain rules, and persistence', async () => {
     let saved;
     const repository = {
@@ -34,7 +52,7 @@ test('orchestrates GitHub aggregation, domain rules, and persistence', async () 
         resolveLanguageColor: async (language) => language === 'TypeScript' ? '#007acc' : '#808080',
         ask: async () => null
     };
-    const service = createPlanetService({ repository, githubClient, geminiClient, geminiApiKey: '' });
+    const service = createPlanetService({ repository, githubClient, geminiClient, languageColorService: geminiClient, geminiApiKey: '' });
     const result = await service.updateAndSavePlanetData({
         id: 1,
         login: 'tester',
@@ -97,8 +115,10 @@ test('reuses the existing color, name, title, and achievements for the same lang
     const service = createPlanetService({
         repository,
         githubClient: { getPlanetSource: async () => createSource() },
+        languageColorService: {
+            resolveLanguageColor: async () => { colorCalls++; return '#ffffff'; }
+        },
         geminiClient: {
-            resolveLanguageColor: async () => { colorCalls++; return '#ffffff'; },
             ask: async () => null
         },
         geminiApiKey: 'configured'
@@ -179,27 +199,4 @@ test('rejects an authenticated identity change that does not match the session I
         service.refreshAuthenticatedUser('token', { id: 42, login: 'old-user' }),
         /does not match the active session/
     );
-});
-
-test('does not overwrite existing planet progress when the stored planet cannot be read', async () => {
-    let saveCalls = 0;
-    const databaseError = new Error('database read failed');
-    const service = createPlanetService({
-        repository: {
-            async findByGithubId() { throw databaseError; },
-            async save() { saveCalls++; }
-        },
-        githubClient: { async getPlanetSource() { return createSource(); } },
-        geminiClient: {
-            async resolveLanguageColor() { return '#123456'; },
-            async ask() { return null; }
-        },
-        geminiApiKey: ''
-    });
-
-    await assert.rejects(
-        service.updateAndSavePlanetData({ id: 42, login: 'tester', created_at: '2020-01-01T00:00:00.000Z' }, 'token'),
-        (error) => error === databaseError
-    );
-    assert.equal(saveCalls, 0);
 });

@@ -5,7 +5,7 @@ import { LANGUAGE_COLORS } from '../domain/planet/constants.js';
 import { calculatePlanetSizeFactor, generatePlanetName } from '../domain/planet/planet.js';
 import { safeErrorMetadata } from '../shared/error-metadata.js';
 
-export function createPlanetService({ repository, githubClient, geminiClient, geminiApiKey }) {
+export function createPlanetService({ repository, githubClient, geminiClient, languageColorService, geminiApiKey }) {
     async function refreshAuthenticatedUser(accessToken, previousUser) {
         if (!accessToken) throw new Error('GitHub access token is required');
 
@@ -41,7 +41,7 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
                 existingData = await repository.findByGithubId(user.id);
             } catch (error) {
                 console.error('[DB] 既存データ取得エラー:', safeErrorMetadata(error));
-                // 既存の個性・実績・称号を読めない状態で保存すると、初期値で上書きするため更新を中断する。
+                // 読取障害を未登録と扱うと、過去の実績や報酬を初期値で上書きしてしまう。
                 throw error;
             }
         }
@@ -52,6 +52,7 @@ export function createPlanetService({ repository, githubClient, geminiClient, ge
             totalCommits: stats.totalCommits,
             existingData,
             geminiClient,
+            languageColorService,
             geminiApiKey
         });
         const progression = derivePlanetProgression({
