@@ -23,6 +23,24 @@ function createSource() {
     };
 }
 
+test('does not generate or save a new identity when the existing planet cannot be read', async () => {
+    const failure = Object.assign(new Error('read connection reset'), { code: 'ECONNRESET' });
+    let writes = 0, colorCalls = 0;
+    const service = createPlanetService({
+        repository: {
+            async findByGithubId() { throw failure; },
+            async save() { writes++; }
+        },
+        githubClient: { getPlanetSource: async () => createSource() },
+        languageColorService: { async resolveLanguageColor() { colorCalls++; return '#007acc'; } },
+        geminiClient: { ask: async () => null },
+        geminiApiKey: ''
+    });
+    await assert.rejects(service.updateAndSavePlanetData({ id: 1, login: 'tester' }, 'token'), (error) => error === failure);
+    assert.equal(writes, 0);
+    assert.equal(colorCalls, 0);
+});
+
 test('orchestrates GitHub aggregation, domain rules, and persistence', async () => {
     let saved;
     const repository = {

@@ -41,6 +41,8 @@ export function createPlanetService({ repository, githubClient, geminiClient, la
                 existingData = await repository.findByGithubId(user.id);
             } catch (error) {
                 console.error('[DB] 既存データ取得エラー:', safeErrorMetadata(error));
+                // 読取障害を未登録と扱うと、過去の実績や報酬を初期値で上書きしてしまう。
+                throw error;
             }
         }
 
