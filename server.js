@@ -29,6 +29,7 @@ import { registerAuthRoutes } from './src/presentation/http/auth-routes.js';
 import { createCanonicalHostRedirect } from './src/presentation/http/canonical-host-redirect.js';
 import { registerEventRoutes } from './src/presentation/http/event-routes.js';
 import { registerPageRoutes } from './src/presentation/http/page-routes.js';
+import { registerVendorRoutes } from './src/presentation/http/vendor-routes.js';
 import { registerPlanetRoutes } from './src/presentation/http/planet-routes.js';
 import { createRandomPerformanceReporter } from './src/presentation/http/random-performance.js';
 import { createExternalPerformanceReporter } from './src/infrastructure/observability/external-performance.js';
@@ -177,7 +178,7 @@ const authoredLanguageHistoryService = planetRepository ? createAuthoredLanguage
 
 app.use('/front/img', express.static(path.join(__dirname, 'front/img'), { maxAge: '30d' }));
 app.use('/front', express.static(path.join(__dirname, 'front'), { maxAge: 0 }));
-app.use('/vendor/three', express.static(path.join(__dirname, 'node_modules/three'), { maxAge: '30d' }));
+const vendorAssets = registerVendorRoutes(app, { rootDirectory: __dirname });
 
 const PgSession = connectPgSimple(session);
 app.use(randomPerformance.beforeSessionMiddleware);
@@ -198,6 +199,7 @@ app.use(session({
 app.use(randomPerformance.middleware);
 
 const pageRoutes = registerPageRoutes(app, {
+    ...vendorAssets,
     rootDirectory: __dirname,
     isProduction,
     systemApiKey: process.env.SYSTEM_API_KEY,
