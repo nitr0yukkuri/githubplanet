@@ -1,4 +1,4 @@
-import { calculateStarCount, createPlanetDisposalResources, disposePlanetObject } from './planet-scene-resources.js';
+import { calculateStarCount, canReusePlanetScene, createPlanetDisposalResources, disposePlanetObject } from './planet-scene-resources.js';
 import { createHomeApi } from './home/api-client.js';
 import { createLanguageHistoryController } from './home/language-history-controller.js';
 import { updatePlanetDetails } from './home/planet-details.js';
@@ -19,9 +19,11 @@ let scene, camera, renderer, controls, planetGroup;
 let webglAvailable = false;
 let planetFeatureRuntime = null;
 let planetLoadGeneration = 0;
+let renderedPlanetGeneration = 0;
 let planetTexturePromise = null;
 let activePlanetReveal = null;
 let currentPlanetData = null;
+let initialPlanetLoad = null;
 let planetSearchRequestGeneration = 0;
 
 let welcomeModal, okButton, mainUiWrapper;
@@ -142,7 +144,10 @@ async function fetchMyPlanetData() {
 
     if (res.status === 401) return null;
     if (!res.ok) throw new Error(`Planet data request failed (${res.status})`);
-    const data = await res.json();
+    return applyMyPlanetData(await res.json());
+}
+
+function applyMyPlanetData(data) {
     if (!data.user || !data.planetData) {
         throw new Error('Authenticated planet data is incomplete');
     }
@@ -161,6 +166,35 @@ async function fetchMyPlanetData() {
     }
 
     return data.planetData;
+}
+
+function setPlanetRefreshStatus(state) {
+    const status = document.getElementById('planet-refresh-status');
+    if (status) {
+        status.hidden = !state;
+        status.textContent = state ? t(`home.${state}`) : '';
+    }
+    document.getElementById('planet-details-panel')?.setAttribute('aria-busy', String(state === 'refreshing'));
+}
+
+function finishInitialRefresh(requests) {
+    const loadGeneration = planetLoadGeneration;
+    const searchGeneration = planetSearchRequestGeneration;
+    setPlanetRefreshStatus('refreshing');
+    void requests.current.then(async result => {
+        // 更新を待つ間に他人の惑星や履歴を選んだ場合、その選択を遅い応答で戻さない。
+        if (planetLoadGeneration !== loadGeneration || planetSearchRequestGeneration !== searchGeneration) return;
+        if (result.error || !result.data) {
+            setPlanetRefreshStatus('refreshFailed');
+            return;
+        }
+        const data = applyMyPlanetData(result.data);
+        await loadPlanet(data, { animateReveal: false });
+        recordHomePerformance('initial:current-ready');
+    }).catch(error => {
+        if (planetLoadGeneration === loadGeneration) setPlanetRefreshStatus('refreshFailed');
+        console.warn('[Home] Current planet refresh failed:', error.message);
+    });
 }
 
 function updateShowcaseCta() {
@@ -240,7 +274,7 @@ function cancelActivePlanetReveal() {
     activePlanetReveal = null;
 }
 
-async function loadPlanet(data, { historySelection = false } = {}) {
+async function loadPlanet(data, { historySelection = false, animateReveal = true } = {}) {
     const ownerDisplay = document.getElementById('planet-owner-display');
     const profileLink = document.getElementById('github-profile-link');
     if (ownerDisplay) ownerDisplay.style.display = 'none';
@@ -248,7 +282,9 @@ async function loadPlanet(data, { historySelection = false } = {}) {
 
     if (!data) return;
 
+    const previousData = currentPlanetData;
     if (!historySelection) {
+        setPlanetRefreshStatus(null);
         currentPlanetData = data;
         void languageHistoryController.update(data);
     }
@@ -256,7 +292,6 @@ async function loadPlanet(data, { historySelection = false } = {}) {
     recordHomePerformance('loadPlanet:start');
 
     const loadGeneration = ++planetLoadGeneration;
-    cancelActivePlanetReveal();
 
     console.log('loadPlanet called with data:', data);
 
@@ -317,6 +352,15 @@ async function loadPlanet(data, { historySelection = false } = {}) {
         return;
     }
 
+    // 数値や称号だけの更新でGPU資源を破棄すると、登場演出のやり直しやシェーダー再コンパイルが発生する。
+    if (!animateReveal && planetGroup && canReusePlanetScene(previousData, data)) {
+        planetRotationSpeed = basePlanetRotationSpeed * (planetFeatureRuntime?.rotationMultiplier || 1);
+        recordHomePerformance('loadPlanet:scene-reused');
+        return;
+    }
+
+    cancelActivePlanetReveal();
+    const previousRotation = !animateReveal ? planetGroup?.rotation.clone() : null;
     if (planetGroup) {
         disposePlanetObject(planetGroup, createPlanetDisposalResources([cachedPlanetTexture]));
         scene.remove(planetGroup);
@@ -466,6 +510,14 @@ async function loadPlanet(data, { historySelection = false } = {}) {
         planetGroup.add(aura);
     }
 
+    if (!animateReveal) {
+        planetGroup.scale.setScalar(s);
+        if (previousRotation) planetGroup.rotation.copy(previousRotation);
+        scene.add(planetGroup);
+        controls.enabled = true;
+        return;
+    }
+
     const shockwaveGeo = new THREE.SphereGeometry(1, 32, 32);
     const shockwaveMat = new THREE.MeshBasicMaterial({
         color: new THREE.Color(data.planetColor ? data.planetColor : 0xffffff),
@@ -540,7 +592,8 @@ async function loadPlanet(data, { historySelection = false } = {}) {
     });
 }
 
-async function init() {
+export async function init(options = {}) {
+    initialPlanetLoad = options.initialPlanetLoad || null;
     applyI18n();
 
     welcomeModal = document.getElementById('welcome-modal');
@@ -671,9 +724,13 @@ async function loadMainContent() {
     // toggleLoading(true);
 
     try {
-        const data = isPublicPlanetRoute
-            ? await fetchShowcasePlanetData()
-            : await fetchMyPlanetData();
+        const requests = initialPlanetLoad;
+        initialPlanetLoad = null;
+        const initial = requests ? await requests.first : null;
+        if (initial?.error) throw initial.error;
+        const data = initial
+            ? (initial.data ? applyMyPlanetData(initial.data) : null)
+            : isPublicPlanetRoute ? await fetchShowcasePlanetData() : await fetchMyPlanetData();
         const notLoggedInContainer = document.getElementById('not-logged-in-container');
         const loadErrorContainer = document.getElementById('planet-load-error-container');
         if (loadErrorContainer) loadErrorContainer.hidden = true;
@@ -682,6 +739,8 @@ async function loadMainContent() {
             if (data) {
                 // 既にログイン済みなら惑星を表示
                 await loadPlanet(data);
+                recordHomePerformance('initial:scene-ready', { fromSaved: initial?.fromSaved === true });
+                if (initial?.fromSaved) finishInitialRefresh(requests);
             } else {
                 // 未ログインなら「星を誕生させる」画面を表示
                 notLoggedInContainer.style.display = isPublicPlanetRoute ? 'none' : 'flex';
@@ -725,7 +784,13 @@ function animate() {
     });
     controls.update();
     renderer.render(scene, camera);
-    if (frameStartedAt !== null) recordHomeAnimationFrame(frameStartedAt);
+    if (frameStartedAt !== null) {
+        if (planetGroup?.parent === scene && planetGroup.scale.x > 0.01 && renderedPlanetGeneration !== planetLoadGeneration) {
+            renderedPlanetGeneration = planetLoadGeneration;
+            recordHomePerformance('loadPlanet:planet-visible');
+        }
+        recordHomeAnimationFrame(frameStartedAt);
+    }
 }
 
 function setupUI() {
@@ -887,5 +952,3 @@ function setupUI() {
         });
     }
 }
-
-init();

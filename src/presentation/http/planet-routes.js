@@ -45,7 +45,7 @@ export function registerPlanetRoutes(app, {
         String(username || '').trim().toLowerCase()
     );
     // /api/me verifies the GitHub profile, so cap repeated upstream calls per stable account ID.
-    const authenticatedMeRateLimit = rateLimit({
+    const createMeRateLimit = () => rateLimit({
         windowMs: 15 * 60 * 1000,
         limit: 100,
         standardHeaders: true,
@@ -55,6 +55,9 @@ export function registerPlanetRoutes(app, {
             return userId ? `github-user:${userId}` : ipKeyGenerator(req.ip);
         }
     });
+    const authenticatedMeRateLimit = createMeRateLimit();
+    // 保存値の先読みで、GitHub更新用の既存リクエスト枠を消費しない。
+    const savedPlanetRateLimit = createMeRateLimit();
 
     app.get('/github-profile/:githubId', async (req, res) => {
         if (!/^[1-9]\d*$/.test(String(req.params.githubId || ''))) {
@@ -79,6 +82,26 @@ export function registerPlanetRoutes(app, {
             }
             console.error('[GitHub Profile Redirect] Lookup failed:', safeErrorMetadata(error));
             return res.status(502).send('GitHub profile could not be verified.');
+        }
+    });
+
+    app.get('/api/me/planet-preview', savedPlanetRateLimit, async (req, res) => {
+        res.setHeader('Cache-Control', 'private, no-store');
+        const user = req.session.planetData?.user;
+        if (!user?.id) return res.status(401).json({ error: 'Not logged in' });
+
+        try {
+            // 最新値の更新と実績記録は/api/meで完了させ、初回描画だけは保存済みの自分の惑星で始める。
+            const saved = await planetQueryService?.getSavedPlanetByGithubId(user.id);
+            if (!saved) return res.status(404).json({ error: 'No saved planet' });
+            return res.json({
+                user,
+                planetData: toPlanetResponse({ ...saved, username: user.login }),
+                githubProfileVerified: false
+            });
+        } catch (error) {
+            console.warn('[Planet Preview] Saved planet unavailable:', safeErrorMetadata(error));
+            return res.status(503).json({ error: 'Saved planet is temporarily unavailable' });
         }
     });
 

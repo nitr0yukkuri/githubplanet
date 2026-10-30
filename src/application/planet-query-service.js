@@ -177,6 +177,11 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         return repository.findLanguageHistoryByGithubId(githubId);
     }
 
+    async function getSavedPlanetByGithubId(githubId) {
+        if (!/^[1-9]\d*$/.test(String(githubId ?? ''))) return null;
+        return repository.findByGithubId(githubId);
+    }
+
     async function getGithubProfileUrlById(githubId) {
         const normalizedGithubId = String(githubId ?? '').trim();
         if (!/^[1-9]\d*$/.test(normalizedGithubId)
@@ -201,6 +206,7 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
 
     return {
         getByUsername,
+        getSavedPlanetByGithubId,
         getGithubProfileUrlById,
         getLanguageHistoryByGithubId,
         getRandom,

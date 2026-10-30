@@ -43,6 +43,41 @@ function createResponse() {
     };
 }
 
+test('saved preview reads only the signed-in stable ID without refreshing GitHub or changing the session', async () => {
+    const app = createRouteApp();
+    registerPlanetRoutes(app, {
+        planetQueryService: { async getSavedPlanetByGithubId(id) {
+            assert.equal(id, 42);
+            return { githubId: 42, username: 'old-login', mainLanguage: 'TypeScript',
+                languageStats: { TypeScript: 70 }, planetColor: '#007acc', totalCommits: 10, planetSizeFactor: 1 };
+        } },
+        planetService: { refreshAuthenticatedUser() { assert.fail('preview must not call GitHub'); } }
+    });
+    const session = { planetData: { user: { id: 42, login: 'current-login' }, planetData: null }, last_updated: 0 };
+    const original = structuredClone(session);
+    const res = createResponse();
+    await app.handlers.get('GET /api/me/planet-preview')({ session, query: { githubId: 999 } }, res);
+    assert.equal(res.body.planetData.githubId, '42');
+    assert.equal(res.body.planetData.username, 'current-login');
+    assert.equal(res.body.githubProfileVerified, false);
+    assert.equal(res.headers['Cache-Control'], 'private, no-store');
+    assert.deepEqual(session, original);
+});
+
+test('preview requires authentication and preserves the fresh path for new users or read failures', async () => {
+    for (const [session, query, expected] of [
+        [{}, () => assert.fail('anonymous database lookup'), 401],
+        [{ planetData: { user: { id: 42 } } }, async () => null, 404],
+        [{ planetData: { user: { id: 42 } } }, async () => { throw new Error('offline'); }, 503]
+    ]) {
+        const app = createRouteApp();
+        registerPlanetRoutes(app, { planetQueryService: { getSavedPlanetByGithubId: query } });
+        const res = createResponse();
+        await app.handlers.get('GET /api/me/planet-preview')({ session }, res);
+        assert.equal(res.statusCode, expected);
+    }
+});
+
 test('OAuth callback saves the authenticated session before requesting planet data', async () => {
     const app = createRouteApp();
     let saved = false;
