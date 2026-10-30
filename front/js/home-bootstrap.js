@@ -1,5 +1,6 @@
 import { applyI18n, t } from './i18n.js';
 import { resolveHomeRoute } from './home-route.js';
+import { startInitialPlanetLoad } from './home/initial-planet-load.js';
 
 applyI18n();
 const route = resolveHomeRoute(window.location.pathname, window.location.search);
@@ -11,7 +12,21 @@ const welcome = document.getElementById('welcome-modal');
 const button = document.getElementById('welcome-ok-btn');
 
 async function startHome() {
-    await import('./home.js');
+    // APIと画像を3D依存モジュールの後から取り始めると、独立した待ち時間が直列に積み上がる。
+    const initialPlanetLoad = route.mode === 'normal' || route.mode === 'exhibition'
+        ? startInitialPlanetLoad()
+        : null;
+    const preloadTexture = () => {
+        const texture = new Image();
+        texture.src = '/front/img/2k_mars.jpg';
+    };
+    if (initialPlanetLoad) {
+        void initialPlanetLoad.first.then(result => { if (result.data) preloadTexture(); });
+    } else {
+        preloadTexture();
+    }
+    const { init } = await import('./home.js');
+    await init({ initialPlanetLoad });
 }
 
 if (needsIntroduction && welcome && button) {

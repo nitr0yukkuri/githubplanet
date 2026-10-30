@@ -1,5 +1,15 @@
 const MAX_STAR_COUNT = 120;
 
+export function canReusePlanetScene(previous, next) {
+    if (!previous || !next) return false;
+    const languages = data => Object.entries(data.languageStats || {}).sort(([a], [b]) => a.localeCompare(b));
+    return previous.mainLanguage === next.mainLanguage
+        && previous.planetColor === next.planetColor
+        && previous.planetSizeFactor === next.planetSizeFactor
+        && calculateStarCount(previous.totalCommits || 0) === calculateStarCount(next.totalCommits || 0)
+        && JSON.stringify(languages(previous)) === JSON.stringify(languages(next));
+}
+
 export function calculateStarCount(totalCommits) {
     let starCount = 0;
     let commitsUsed = 0;

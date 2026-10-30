@@ -1,7 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
-import { calculateStarCount, createPlanetDisposalResources, disposePlanetObject } from '../front/js/planet-scene-resources.js';
+import { calculateStarCount, canReusePlanetScene, createPlanetDisposalResources, disposePlanetObject } from '../front/js/planet-scene-resources.js';
+
+test('reuses the scene for text/activity changes while rebuilding changed language visuals or star thresholds', () => {
+    const previous = { mainLanguage: 'TypeScript', planetColor: '#007acc', planetSizeFactor: 1.4,
+        totalCommits: 50, languageStats: { TypeScript: 70, CSS: 30 } };
+    assert.equal(canReusePlanetScene(previous, { ...previous, totalCommits: 51, weeklyCommits: 20,
+        planetName: 'new title', languageStats: { CSS: 30, TypeScript: 70 } }), true);
+    for (const change of [{ totalCommits: 70 }, { planetColor: '#ff0000' }, { mainLanguage: 'CSS' },
+        { planetSizeFactor: 2 }, { languageStats: { TypeScript: 80, CSS: 20 } }]) {
+        assert.equal(canReusePlanetScene(previous, { ...previous, ...change }), false);
+    }
+    assert.equal(canReusePlanetScene(null, previous), false);
+});
 
 test('keeps the shared star count thresholds and upper bound', () => {
     for (const [commits, count] of [[0, 0], [9, 0], [10, 1], [49, 4], [50, 5], [69, 5], [70, 6], [14999, 119], [15000, 120], [Infinity, 120]]) {

@@ -523,6 +523,16 @@ body {
     /* position, top, left, transform, z-index は親コンテナに移動 */
 }
 
+#planet-refresh-status {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    color: #ddd;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
 /* GitHub プロフィールリンクボタン */
 .github-link {
     width: 44px; /* ★ 変更点: 44px -> 50px */
