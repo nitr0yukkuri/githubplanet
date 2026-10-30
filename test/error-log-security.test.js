@@ -115,7 +115,6 @@ test('a failed rename sync keeps the verified profile URL without logging creden
     const service = createPlanetQueryService({
         repository: {
             async findByGithubId() { return { githubId: 42, username: 'old-user' }; },
-            async reserveGithubProfileLookup() { return { allowed: true }; },
             async updateUsernameByGithubId() { throw secretError(); }
         },
         githubClient: { async getUserById() { return { id: 42, login: 'new-user' }; } },

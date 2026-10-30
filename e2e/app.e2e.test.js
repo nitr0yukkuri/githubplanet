@@ -12,20 +12,25 @@ import express from 'express';
 import session from 'express-session';
 import { Server } from 'socket.io';
 import { chromium } from 'playwright';
-import { DATA_CACHE_DURATION, EXTENSION_MAP, LANGUAGE_COLORS } from '../src/domain/planet/constants.js';
-import { listShowcasePlanets } from '../src/domain/planet/showcase-planets.js';
+import { LANGUAGE_COLORS } from '../src/domain/planet/constants.js';
+import { EXTENSION_MAP } from '../src/domain/planet/language-extensions.js';
+import { requestPlanetName } from '../src/application/planet-name-generator.js';
+import { getShowcasePlanet, listShowcasePlanets } from '../src/domain/planet/showcase-planets.js';
 import { createMeteorService } from '../src/application/meteor-service.js';
 import { createPlanetQueryService } from '../src/application/planet-query-service.js';
 import { createPlanetService } from '../src/application/planet-service.js';
 import { runDatabaseMigrations } from '../src/infrastructure/database/migrations.js';
+import { createWebhookDeliveryStore } from '../src/infrastructure/database/webhook-delivery-store.js';
 import { createPlanetRepository } from '../src/infrastructure/database/planet-repository.js';
 import { createPostgresPool } from '../src/infrastructure/database/postgres.js';
 import { createGithubClient } from '../src/infrastructure/external/github-client.js';
 import { registerAuthRoutes } from '../src/presentation/http/auth-routes.js';
 import { registerEventRoutes } from '../src/presentation/http/event-routes.js';
 import { registerPageRoutes } from '../src/presentation/http/page-routes.js';
+import { registerVendorRoutes } from '../src/presentation/http/vendor-routes.js';
 import { registerPlanetRoutes } from '../src/presentation/http/planet-routes.js';
 
+const DATA_CACHE_DURATION = 60 * 60 * 1000;
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const E2E_DATABASE_NAME = 'githubplanet_e2e';
 const E2E_SESSION_SECRET = 'isolated-e2e-session-secret';
@@ -205,6 +210,12 @@ async function startGithubMock() {
 async function startApp() {
     const app = express();
     app.disable('x-powered-by');
+    app.set('query parser', 'extended');
+    app.use((req, res, next) => {
+        req.cspNonce = crypto.randomBytes(18).toString('base64');
+        res.setHeader('Content-Security-Policy', `script-src 'self' 'nonce-${req.cspNonce}' https://cdn.jsdelivr.net https://www.googletagmanager.com`);
+        next();
+    });
     app.use(express.json({
         verify: (req, _res, buffer) => { req.rawBody = Buffer.from(buffer); }
     }));
@@ -220,12 +231,7 @@ async function startApp() {
     }));
 
     app.use('/front', express.static(path.join(projectRoot, 'front')));
-    app.get('/vendor/three/build/three.module.js', (_req, res) => {
-        res.sendFile(path.join(projectRoot, 'node_modules/three/build/three.module.js'));
-    });
-    app.get('/vendor/three/examples/jsm/controls/OrbitControls.js', (_req, res) => {
-        res.sendFile(path.join(projectRoot, 'node_modules/three/examples/jsm/controls/OrbitControls.js'));
-    });
+    const vendorAssets = registerVendorRoutes(app, { rootDirectory: projectRoot });
 
     appServer = http.createServer(app);
     const address = await listen(appServer);
@@ -242,13 +248,16 @@ async function startApp() {
     });
     const repository = pool ? createPlanetRepository(pool, { randomQueryStrategy: 'legacy' }) : undefined;
     const geminiClient = {
-        async ask() { return null; },
+        async ask() { return null; }
+    };
+    const languageColorService = {
         async resolveLanguageColor(language) { return LANGUAGE_COLORS[language] || '#808080'; }
     };
     const planetService = createPlanetService({
         repository,
         githubClient,
         geminiClient,
+        languageColorService,
         geminiApiKey: ''
     });
     const planetQueryService = repository
@@ -279,13 +288,14 @@ async function startApp() {
 
     let meteorIo;
     const meteorService = createMeteorService({
-        geminiClient,
+        languageColorService,
         extensionMap: EXTENSION_MAP,
         emitMeteor: (payload) => meteorIo?.emit('meteor', payload),
         logger: { log() {}, error() {}, warn() {} }
     });
 
-    registerPageRoutes(app, {
+    const pageRoutes = registerPageRoutes(app, {
+        ...vendorAssets,
         rootDirectory: projectRoot,
         isProduction: true,
         systemApiKey: 'isolated-e2e-system-key',
@@ -309,11 +319,13 @@ async function startApp() {
         cacheDuration: DATA_CACHE_DURATION
     });
     registerEventRoutes(app, {
+        generatePlanetName: (input) => requestPlanetName(geminiClient.ask, input),
         geminiClient,
+        languageColorService,
         meteorService,
         systemApiKey: 'isolated-e2e-system-key',
         webhookSecret: E2E_WEBHOOK_SECRET,
-        webhookDeliveryStore: repository || {
+        webhookDeliveryStore: (pool && createWebhookDeliveryStore(pool)) || {
             async claimGithubWebhookDelivery(deliveryId) {
                 if (inMemoryWebhookDeliveries.has(deliveryId)) return false;
                 inMemoryWebhookDeliveries.add(deliveryId);
@@ -324,6 +336,7 @@ async function startApp() {
         requireWebhookSignature: true
     });
 
+    app.use(pageRoutes.sendNotFound);
     io = new Server(appServer, { cors: { origin: baseUrl } });
     meteorIo = io;
 }
@@ -513,6 +526,29 @@ after(async () => {
     await pool?.end();
 });
 
+test('general and retired-card 404 pages run translations under nonce CSP', { timeout: 60000 }, async () => {
+    const { page, close, assertNoPageErrors } = await openPage();
+    const violations = [];
+    page.on('console', (message) => {
+        if (/violates.*Content Security Policy|Refused to execute inline script/i.test(message.text())) violations.push(message.text());
+    });
+    try {
+        for (const [route, label, destination] of [
+            ['/missing-page', '宇宙へ戻る', '/'],
+            ['/en/missing-page', 'Return to the planet', '/en'],
+            ['/card.html?showcase=python&fix=true', '宇宙へ戻る', '/'],
+            ['/en/card.html?showcase=python&fix=true', 'Return to the planet', '/en']
+        ]) {
+            const response = await page.goto(`${baseUrl}${route}`);
+            assert.equal(response.status(), 404);
+            await page.waitForFunction((text) => document.querySelector('.return-btn')?.textContent === text, label);
+            assert.equal(await page.locator('.return-btn').getAttribute('href'), destination);
+        }
+        assertNoPageErrors();
+        assert.deepEqual(violations, []);
+    } finally { await close(); }
+});
+
 test('shared Markdown opens the card in a clean anonymous browser without a 403', { timeout: 60_000 }, async () => {
     const firstBrowser = await openPage();
     const anonymousBrowser = await openPage();
@@ -549,7 +585,7 @@ test('shared Markdown opens the card in a clean anonymous browser without a 403'
     }
 });
 
-test('all language showcase cards render their data and Python trail shaders keep advancing', { timeout: 180_000 }, async () => {
+test('showcase cards render without WebGL fallback and shared trail shader time advances', { timeout: 180_000 }, async () => {
     const { page, close, assertNoPageErrors } = await openPage();
     await page.addInitScript(() => {
         window.__e2eTrailShaderSeen = false;
@@ -599,21 +635,27 @@ test('all language showcase cards render their data and Python trail shaders kee
             assert.equal(await page.locator('#card-webgl-fallback').isVisible(), false, `${showcase.slug}: WebGL should be active`);
         }
 
-        const python = listShowcasePlanets().find(({ slug }) => slug === 'python');
-        assert.deepEqual(python.languageStats, { Python: 70, Rust: 20, TypeScript: 10 });
-        await page.goto(`${baseUrl}/card.html?showcase=python&fix=true`);
+        // 専用演出のない言語でも、共通軌跡のシェーダーのコンパイルと時間更新を確認する。
+        await page.route(`${baseUrl}/api/planets/user/e2e-trails`, (route) => route.fulfill({
+            json: {
+                username: 'e2e-trails',
+                planetColor: '#306998',
+                planetSizeFactor: 2,
+                mainLanguage: 'Python',
+                languageStats: { Python: 70, Rust: 20, TypeScript: 10 },
+                totalCommits: 2000,
+                weeklyCommits: 24,
+                planetName: 'Shared Language Trails'
+            }
+        }));
+        await page.goto(`${baseUrl}/card.html?username=e2e-trails&fix=true`);
+        await page.waitForFunction(() => document.getElementById('main-lang-stat')?.textContent === 'PYTHON');
+        assert.equal(await page.locator('#card-webgl-fallback').isVisible(), false);
+        assert.equal(await page.locator('#card-container').getAttribute('data-card-theme'), null);
         await page.waitForFunction(() => (
             window.__e2eTrailShaderSeen
             && new Set(window.__e2eTrailTimes).size > 1
         ), { timeout: 15_000 });
-        const trailRuntime = await page.evaluate(() => ({
-            shaderSeen: window.__e2eTrailShaderSeen,
-            distinctTimeValues: new Set(window.__e2eTrailTimes).size,
-            updateCount: window.__e2eTrailTimes.length
-        }));
-        assert.ok(trailRuntime.shaderSeen, 'WebGL should compile the secondary-language trail shader');
-        assert.ok(trailRuntime.distinctTimeValues > 1, 'trailTime should advance across rendered frames');
-        assert.ok(trailRuntime.updateCount > 2);
         assertNoPageErrors();
     } finally {
         await close();
@@ -623,7 +665,13 @@ test('all language showcase cards render their data and Python trail shaders kee
 test('Japanese and English mobile showcases fit the viewport and display the fixed planet data', { timeout: 60_000 }, async () => {
     const { page, close, assertNoPageErrors } = await openPage({ viewport: { width: 390, height: 844 } });
     try {
-        for (const [route, language] of [['/showcase/python', 'ja'], ['/en/showcase/python', 'en']]) {
+        await page.route((url) => url.pathname === '/api/planets/showcase/typescript', (route) => route.fulfill({
+            json: {
+                ...getShowcasePlanet('typescript'),
+                languageStats: { TypeScript: 70, Rust: 20, Python: 10 }
+            }
+        }));
+        for (const [route, language] of [['/showcase/typescript', 'ja'], ['/en/showcase/typescript', 'en']]) {
             const response = await page.goto(`${baseUrl}${route}`);
             assert.equal(response.status(), 200);
             await page.waitForFunction(() => (
@@ -632,9 +680,11 @@ test('Japanese and English mobile showcases fit the viewport and display the fix
             ));
             assert.equal(await page.locator('html').getAttribute('lang'), language);
             assert.equal(await page.locator('#planet-name-val').isVisible(), true);
+            assert.equal(await page.locator('#canvas-container canvas').isVisible(), true);
+            assert.equal(await page.locator('#webgl-fallback').isVisible(), false);
             assert.deepEqual(
                 await page.locator('#lang-stats-container p').allTextContents(),
-                ['Python70%', 'Rust20%', 'TypeScript10%']
+                ['TypeScript70%', 'Rust20%', 'Python10%']
             );
             const dimensions = await page.evaluate(() => ({
                 viewport: document.documentElement.clientWidth,
@@ -675,9 +725,9 @@ test('a saved title survives reload and OAuth re-login from PostgreSQL', {
         const saveResponse = firstBrowser.page.waitForResponse((response) => (
             response.url().endsWith('/api/save-title')
         ));
-        const alert = firstBrowser.page.waitForEvent('dialog');
-        await firstBrowser.page.locator('#save-btn').click();
-        (await alert).accept();
+        // clickは遷移完了まで待つため、同期アラートを別のPromiseで先に閉じる。
+        const alertAccepted = firstBrowser.page.waitForEvent('dialog').then((dialog) => dialog.accept());
+        await Promise.all([firstBrowser.page.locator('#save-btn').click(), alertAccepted]);
         assert.equal((await saveResponse).status(), 200);
 
         const storedTitle = await pool.query('SELECT active_title FROM planets WHERE github_id = $1', [githubUser().id]);
@@ -721,7 +771,7 @@ test('a signed GitHub webhook reaches the other browser over live Socket.IO', { 
             predicate: (message) => message.text().startsWith('Realtime meteor connected'),
             timeout: 15_000
         });
-        await receiver.page.goto(`${baseUrl}/showcase/python`);
+        await receiver.page.goto(`${baseUrl}/showcase/go`);
         await sender.page.goto(`${baseUrl}/showcase/typescript`);
         await Promise.all([receiverConnected, senderConnected]);
 

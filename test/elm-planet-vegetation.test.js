@@ -96,7 +96,7 @@ test('injects into the installed Three.js standard shader chunks', () => {
 
     material.onBeforeCompile(shader);
 
-    assert.equal(THREE_RUNTIME.REVISION, '160');
+    assert.equal(THREE_RUNTIME.REVISION, '186');
     assert.match(shader.vertexShader, /varying vec3 vElmSurfacePosition;/);
     assert.match(shader.vertexShader, /vElmSurfacePosition = normalize\(position\)/);
     assert.match(shader.fragmentShader, /uniform float elmVegetationTime;/);

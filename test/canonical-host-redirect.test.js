@@ -10,7 +10,7 @@ async function withRedirectServer(callback) {
         publicBaseUrl: 'https://githubplanet.dev/',
         isProduction: true
     }));
-    app.all('*', (req, res) => res.status(200).send('handled'));
+    app.all('/{*remaining}', (req, res) => res.status(200).send('handled'));
 
     const server = app.listen(0, '127.0.0.1');
     await new Promise((resolve, reject) => {
