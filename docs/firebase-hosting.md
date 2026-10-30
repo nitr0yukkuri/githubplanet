@@ -5,11 +5,11 @@
 ## コードで確認したこと
 
 - 本番のセッションCookieは`__session`。Hostingが他のCookieを除去してもOAuthのstateとPKCE verifierを保持する。
-- `test/firebase-session-proxy.test.js`はローカルのHTTPプロキシでCookie除去と転送ヘッダーを再現し、`/en/login`→`/callback`→`/api/me`を実行する。GitHub・本番DBには接続しない。
+- `e2e/firebase-session-proxy.test.js`はローカルのHTTPプロキシでCookie除去と転送ヘッダーを再現し、`/en/login`→`/callback`→`/api/me`を実行する。GitHub・本番DBには接続しない。
 - canonical redirectは転送元の公開ホストを使用し、Cloud Runの内部ホストへ戻すループを起こさない。
 
 ```sh
-node --test test/firebase-session-proxy.test.js test/canonical-host-redirect.test.js
+node --test e2e/firebase-session-proxy.test.js test/firebase-hosting-session.test.js test/canonical-host-redirect.test.js
 ```
 
 ## 実配信前の確認
