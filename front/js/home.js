@@ -172,9 +172,13 @@ function finishInitialRefresh(requests) {
     const loadGeneration = planetLoadGeneration;
     const searchGeneration = planetSearchRequestGeneration;
     void requests.current.then(async result => {
+        if (result.error) {
+            console.warn('[Home] Current planet refresh failed:', result.error.message);
+            return;
+        }
         // 更新を待つ間に他人の惑星や履歴を選んだ場合、その選択を遅い応答で戻さない。
         if (planetLoadGeneration !== loadGeneration || planetSearchRequestGeneration !== searchGeneration) return;
-        if (result.error || !result.data) return;
+        if (!result.data) return;
         const data = applyMyPlanetData(result.data);
         await loadPlanet(data, { animateReveal: false });
         recordHomePerformance('initial:current-ready');
