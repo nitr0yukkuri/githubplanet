@@ -381,7 +381,8 @@ async function loadPlanet(data, { historySelection = false, animateReveal = true
         planetTexture: tex,
         data,
         radius: 4,
-        direction: 1
+        direction: 1,
+        trailColorProfile: 'home'
     });
     planetRotationSpeed = basePlanetRotationSpeed
         * (planetFeatureRuntime?.rotationMultiplier || 1);
