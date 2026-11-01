@@ -1,6 +1,6 @@
 # GitHub Planet カードギャラリー
 
-説明文なしの一覧: [カードだけを見る](README.cards-only.md)
+説明文なしの一覧: [一列](README.cards-only.md) | [二列](README.cards-only-2-column.md)
 
 言語別ショーケース惑星のカード一覧です。すべて固定データを使い、本番環境の読み取り専用ショーケースAPIから生成しています。各カードに日本語の表現名と、見た目の特徴を添えています。
 
