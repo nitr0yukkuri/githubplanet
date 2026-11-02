@@ -144,6 +144,24 @@ test('keeps card access rules unchanged', async () => {
     );
 });
 
+test('limits ordinary JSON while accepting larger GitHub webhook payloads', async () => {
+    const ordinaryPayload = JSON.stringify({ data: 'x'.repeat(1_050_000) });
+    const rejected = await fetch(baseUrl + '/api/save-title', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: ordinaryPayload
+    });
+    assert.equal(rejected.status, 413);
+
+    const webhookPayload = JSON.stringify({ padding: 'x'.repeat(1_050_000) });
+    const accepted = await fetch(baseUrl + '/webhook', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: webhookPayload
+    });
+    assert.equal(accepted.status, 200);
+});
+
 test('keeps unauthenticated API responses unchanged', async () => {
     const me = await fetch(`${baseUrl}/api/me`);
     const saveTitle = await fetch(`${baseUrl}/api/save-title`, {
