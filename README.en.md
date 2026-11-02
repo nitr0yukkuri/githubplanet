@@ -5,7 +5,7 @@
     <img src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/profile_card.gif" width="800" alt="nitr0yukkuri's GitHub Planet. Click to open the public planet preview">
   </a>
   <p>
-    <a href="https://githubplanet.dev/demo?showcase=typescript">Try the login-free demo</a> ·
+    <a href="https://githubplanet.dev/card.html?showcase=typescript">Try the login-free demo</a> ·
     <a href="https://github.com/nitr0yukkuri/githubplanet">View source · Star on GitHub</a> ·
     <a href="CONTRIBUTING.md">Contribute</a>
   </p>
@@ -19,7 +19,7 @@
 
 Use the login-free demo to experience a planet generated from deterministic showcase data.
 
-[Open the login-free demo](https://githubplanet.dev/demo?showcase=typescript)
+[Open the login-free demo](https://githubplanet.dev/card.html?showcase=typescript)
 
 1. Open the demo
 2. Explore the planet's color, surface, scale, and rotation
