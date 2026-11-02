@@ -1,8 +1,8 @@
 <p align="right"><a href="README.md">日本語</a> | <strong>English</strong></p>
 
 <div align="center">
-  <a href="https://githubplanet.dev/card.html?username=nitr0yukkuri">
-    <img src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/profile_card.gif" width="800" alt="nitr0yukkuri's GitHub Planet. Click to open the interactive planet card">
+  <a href="https://githubplanet.dev/card.html?username=nitr0yukkuri&amp;fix=true">
+    <img src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/profile_card.gif" width="800" alt="nitr0yukkuri's GitHub Planet. Click to open the public planet preview">
   </a>
   <p>
     <a href="https://githubplanet.dev/demo?showcase=typescript">Try the login-free demo</a> ·
@@ -11,7 +11,7 @@
   </p>
   <h1>🪐 GitHub Planet</h1>
   <p><strong>GitHub Planet transforms your GitHub activity into a unique 3D planet you can explore and share.</strong></p>
-  <p><a href="https://githubplanet.dev/">Live product</a> · <a href="https://githubplanet.dev/showcase/typescript">Showcase</a> · <a href="https://githubplanet.dev/card.html?username=nitr0yukkuri">Interactive planet card</a></p>
+  <p><a href="https://githubplanet.dev/">Live product</a> · <a href="https://githubplanet.dev/showcase/typescript">Showcase</a> · <a href="https://githubplanet.dev/card.html?username=nitr0yukkuri&amp;fix=true">Public planet preview</a></p>
 </div>
 
 ---
@@ -194,7 +194,7 @@ GitHub Webhook → Express → Socket.IO → Browser
 **[@lenagig](https://github.com/lenagig)**
 
 <div align="center">
-  <a href="https://githubplanet.dev/card.html?username=lenagig">
+  <a href="https://githubplanet.dev/card.html?username=lenagig&amp;fix=true">
     <img src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet.dev/card.html?username=lenagig&fix=true" alt="lenagig's GitHub Planet" />
   </a>
 </div>
