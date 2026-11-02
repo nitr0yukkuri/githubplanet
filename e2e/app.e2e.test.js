@@ -539,17 +539,17 @@ test('shared Markdown opens the card in a clean anonymous browser without a 403'
         const publicUrl = new URL(match[1]);
         assert.equal(publicUrl.hostname, 'githubplanet.dev');
         assert.equal(publicUrl.pathname, '/card.html');
-        assert.equal(publicUrl.searchParams.has('fix'), false);
+        assert.equal(publicUrl.searchParams.get('fix'), 'true');
 
-        // Markdownのクリック先は操作可能なカードなので、隔離した匿名ブラウザーでも共有UIを表示する。
+        // 公開共有リンクは保護された通常カードではなく、匿名アクセスできるキャプチャ表示を開く。
         const anonymousResponse = await anonymousBrowser.page.goto(
             `${baseUrl}${publicUrl.pathname}${publicUrl.search}`
         );
-        assert.equal(anonymousResponse.status(), 200, 'the public interactive card URL must not be forbidden');
+        assert.equal(anonymousResponse.status(), 200, 'the public screenshot URL must not be forbidden');
         await anonymousBrowser.page.waitForFunction(() => (
             document.getElementById('main-lang-stat')?.textContent === 'PYTHON'
         ));
-        assert.equal(await anonymousBrowser.page.locator('#share-section').isVisible(), true);
+        assert.equal(await anonymousBrowser.page.locator('#share-section').isVisible(), false);
         assert.equal(await anonymousBrowser.page.locator('#planet-canvas canvas').count(), 1);
         firstBrowser.assertNoPageErrors();
         anonymousBrowser.assertNoPageErrors();
