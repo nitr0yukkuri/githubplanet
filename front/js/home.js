@@ -168,31 +168,21 @@ function applyMyPlanetData(data) {
     return data.planetData;
 }
 
-function setPlanetRefreshStatus(state) {
-    const status = document.getElementById('planet-refresh-status');
-    if (status) {
-        status.hidden = !state;
-        status.textContent = state ? t(`home.${state}`) : '';
-    }
-    document.getElementById('planet-details-panel')?.setAttribute('aria-busy', String(state === 'refreshing'));
-}
-
 function finishInitialRefresh(requests) {
     const loadGeneration = planetLoadGeneration;
     const searchGeneration = planetSearchRequestGeneration;
-    setPlanetRefreshStatus('refreshing');
     void requests.current.then(async result => {
-        // 更新を待つ間に他人の惑星や履歴を選んだ場合、その選択を遅い応答で戻さない。
-        if (planetLoadGeneration !== loadGeneration || planetSearchRequestGeneration !== searchGeneration) return;
-        if (result.error || !result.data) {
-            setPlanetRefreshStatus('refreshFailed');
+        if (result.error) {
+            console.warn('[Home] Current planet refresh failed:', result.error.message);
             return;
         }
+        // 更新を待つ間に他人の惑星や履歴を選んだ場合、その選択を遅い応答で戻さない。
+        if (planetLoadGeneration !== loadGeneration || planetSearchRequestGeneration !== searchGeneration) return;
+        if (!result.data) return;
         const data = applyMyPlanetData(result.data);
         await loadPlanet(data, { animateReveal: false });
         recordHomePerformance('initial:current-ready');
     }).catch(error => {
-        if (planetLoadGeneration === loadGeneration) setPlanetRefreshStatus('refreshFailed');
         console.warn('[Home] Current planet refresh failed:', error.message);
     });
 }
@@ -284,7 +274,6 @@ async function loadPlanet(data, { historySelection = false, animateReveal = true
 
     const previousData = currentPlanetData;
     if (!historySelection) {
-        setPlanetRefreshStatus(null);
         currentPlanetData = data;
         void languageHistoryController.update(data);
     }
