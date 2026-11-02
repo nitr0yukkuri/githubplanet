@@ -4,7 +4,7 @@ import { calculateStarCount, createPlanetDisposalResources, disposePlanetObject 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createPlanetFeatureRuntime } from './planet-features/registry.js';
-import { applyI18n, localizedPath, localizedPlanetName } from './i18n.js';
+import { applyI18n, localizedPath, localizedPlanetName, t } from './i18n.js';
 import { createWebGLRenderer } from './webgl-renderer.js';
 
 const CARD_DATA_TIMEOUT_MS = 6000;
@@ -42,6 +42,8 @@ const idLabel = document.querySelector('.id-label');
 const shareSection = document.getElementById('share-section');
 const markdownCode = document.getElementById('markdown-code');
 const copyBtn = document.getElementById('copy-btn');
+const copyStatus = document.getElementById('copy-status');
+let copyStatusTimeoutId = null;
 
 if (isScreenshotMode && containerElement && containerElement.parentNode !== document.body) {
     document.body.appendChild(containerElement);
@@ -61,8 +63,28 @@ if (!isScreenshotMode) {
 
     if (markdownCode) markdownCode.textContent = mdText;
     if (copyBtn) {
-        copyBtn.addEventListener('click', () => {
-            navigator.clipboard.writeText(mdText);
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(mdText);
+                if (copyStatus) {
+                    copyStatus.textContent = t('card.copySuccess');
+                    copyStatus.dataset.copyState = 'success';
+                }
+            } catch (error) {
+                console.warn('[Card] Markdown copy failed:', error);
+                if (copyStatus) {
+                    copyStatus.textContent = t('card.copyFailure');
+                    copyStatus.dataset.copyState = 'error';
+                }
+            }
+
+            if (copyStatus) {
+                window.clearTimeout(copyStatusTimeoutId);
+                copyStatusTimeoutId = window.setTimeout(() => {
+                    copyStatus.textContent = '';
+                    delete copyStatus.dataset.copyState;
+                }, 4000);
+            }
         });
     }
 } else {
