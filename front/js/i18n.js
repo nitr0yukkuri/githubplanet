@@ -148,8 +148,10 @@ const translations = {
             contributions: 'CONTRIBUTIONS',
             systemStatus: 'SYSTEM STATUS',
             online: '● ONLINE',
-            share: '👇 URLをコピーしてGitHubのプロフィールに貼り付けよう',
-            copy: 'Copy'
+            share: '👇 MarkdownをコピーしてGitHubプロフィールのREADMEに貼り付けよう',
+            copy: 'Copy',
+            copySuccess: 'Markdownをコピーしました。GitHubプロフィールのREADMEに貼り付けてください。',
+            copyFailure: 'コピーできませんでした。表示されたMarkdownを選択してコピーしてください。'
         },
         notFound: {
             pageTitle: '404 - Planet Not Found',
@@ -307,8 +309,10 @@ const translations = {
             contributions: 'CONTRIBUTIONS',
             systemStatus: 'SYSTEM STATUS',
             online: '● ONLINE',
-            share: '👇 Copy the URL below and paste it into your GitHub profile.',
-            copy: 'Copy'
+            share: '👇 Copy the Markdown and add it to your GitHub profile README.',
+            copy: 'Copy',
+            copySuccess: 'Markdown copied. Paste it into your GitHub profile README.',
+            copyFailure: 'Could not copy. Select and copy the Markdown shown above.'
         },
         notFound: {
             pageTitle: '404 - Planet Not Found',
