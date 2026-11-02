@@ -5,7 +5,7 @@
     <img src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/profile_card.gif" width="800" alt="nitr0yukkuri のGitHub Planet。クリックして公開惑星プレビューを開く">
   </a>
   <p>
-    <a href="https://githubplanet.dev/demo?showcase=typescript">ログイン不要のデモ</a> ·
+    <a href="https://githubplanet.dev/card.html?showcase=typescript">ログイン不要のデモ</a> ·
     <a href="https://github.com/nitr0yukkuri/githubplanet">ソースコードを見る・GitHubでStarする</a> ·
     <a href="CONTRIBUTING.md">開発に参加する</a>
   </p>
@@ -13,7 +13,7 @@
   <p>GitHubの活動履歴を、ひとつの生きた3D惑星として観測するWebアプリケーション。</p>
   <p>
     <a href="https://githubplanet.dev/">Live product</a> ·
-    <a href="https://githubplanet.dev/showcase/typescript">Showcase</a> ·
+    <a href="https://githubplanet.dev/card.html?showcase=typescript">Showcase</a> ·
     <a href="https://githubplanet.dev/card.html?username=nitr0yukkuri&amp;fix=true">Public planet preview</a>
   </p>
 </div>
@@ -36,7 +36,7 @@ GitHub Planetは、開発者のGitHub活動を、宇宙空間に浮かぶ3D惑�
 
 ## 🎬 まずは1分で体験
 
-[ログイン不要のデモを開く](https://githubplanet.dev/demo?showcase=typescript)
+[ログイン不要のデモを開く](https://githubplanet.dev/card.html?showcase=typescript)
 
 1. デモを開く
 2. 惑星の色・表面・大きさ・回転を見る
