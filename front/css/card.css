@@ -352,6 +352,23 @@ canvas {
     font-family: var(--font-jp);
 }
 
+.copy-status {
+    display: block;
+    min-height: 1.25em;
+    margin-top: 8px;
+    color: #a8e6a3;
+    font-size: 0.85rem;
+    text-align: left;
+}
+
+.copy-status:empty {
+    visibility: hidden;
+}
+
+.copy-status[data-copy-state="error"] {
+    color: #ffb4ab;
+}
+
 .code-box {
     background: #0d1117; 
     padding: 12px 18px;
