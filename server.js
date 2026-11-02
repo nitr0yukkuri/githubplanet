@@ -14,6 +14,8 @@ import { listShowcasePlanets } from './src/domain/planet/showcase-planets.js';
 import { createLanguageColorService } from './src/application/language-color-service.js';
 import { requestPlanetName } from './src/application/planet-name-generator.js';
 import { createMeteorService } from './src/application/meteor-service.js';
+import { createWebhookDeliveryService } from './src/application/webhook-delivery-service.js';
+import { createWebhookWorker } from './src/infrastructure/realtime/webhook-worker.js';
 import { LANGUAGE_COLORS } from './src/domain/planet/constants.js';
 import { EXTENSION_MAP } from './src/domain/planet/language-extensions.js';
 import { createAuthoredLanguageHistoryRepository } from './src/infrastructure/database/authored-language-history-repository.js';
@@ -159,6 +161,13 @@ const meteorService = createMeteorService({
     extensionMap: EXTENSION_MAP,
     emitMeteor: (payload) => io.emit('meteor', payload)
 });
+const webhookDeliveryService = pool ? createWebhookDeliveryService({
+    store: createWebhookDeliveryStore(pool), meteorService
+}) : undefined;
+const webhookWorker = webhookDeliveryService ? createWebhookWorker({
+    service: webhookDeliveryService,
+    isActive: () => Boolean(io?.engine.clientsCount)
+}) : undefined;
 const planetQueryService = planetRepository ? createPlanetQueryService({
     repository: planetRepository,
     githubClient,
@@ -234,7 +243,8 @@ registerEventRoutes(app, {
     meteorService,
     systemApiKey: process.env.SYSTEM_API_KEY,
     webhookSecret,
-    webhookDeliveryStore: createWebhookDeliveryStore(pool),
+    webhookDeliveryService,
+    onWebhookAccepted: () => webhookWorker?.kick(),
     requireInternalAuth: isProduction,
     requireWebhookSignature: isProduction
 });
@@ -253,6 +263,8 @@ const server = app.listen(port, '0.0.0.0', () => {
 
 // Cloud Run直URLへ切り替えたPollingフォールバックは、公開サイトのOriginだけ許可する。
 io = new Server(server, { cors: { origin: publicBaseUrl } });
+// CPUが抑制された後や別インスタンスで受信した仕事も、接続中のworkerがDBから回収する。
+webhookWorker?.start();
 // HTTPログの400だけでは拒否理由が分からないため、WebSocket失敗の必要項目だけ記録する。
 io.engine.on('connection_error', (error) => {
     const request = error.req;
@@ -265,6 +277,7 @@ io.engine.on('connection_error', (error) => {
     });
 });
 io.on('connection', (socket) => {
+    webhookWorker?.kick();
     console.log('[Socket.IO] Client connected', {
         transport: socket.conn.transport.name
     });

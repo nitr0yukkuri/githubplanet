@@ -8,7 +8,8 @@ export function registerEventRoutes(app, {
     meteorService,
     systemApiKey,
     webhookSecret,
-    webhookDeliveryStore,
+    webhookDeliveryService,
+    onWebhookAccepted = () => {},
     requireInternalAuth = false,
     requireWebhookSignature = false
 }) {
@@ -59,27 +60,28 @@ export function registerEventRoutes(app, {
                 if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(deliveryId)) {
                     return res.status(400).send('Invalid delivery ID');
                 }
-                if (typeof webhookDeliveryStore?.claimGithubWebhookDelivery !== 'function') {
+                if (typeof webhookDeliveryService?.accept !== 'function') {
                     return res.status(503).send('Webhook delivery store is unavailable');
                 }
 
-                let isNewDelivery;
                 try {
                     const payloadHash = crypto.createHash('sha256').update(req.rawBody).digest('hex');
-                    isNewDelivery = await webhookDeliveryStore.claimGithubWebhookDelivery(deliveryId, payloadHash);
+                    await webhookDeliveryService.accept(deliveryId, payloadHash, req.body);
                 } catch (error) {
                     console.error('[Webhook Delivery Store Error]', safeErrorMetadata(error));
+                    if (error instanceof TypeError) return res.status(400).send('Invalid webhook payload');
                     return res.status(503).send('Webhook delivery could not be recorded');
                 }
-                if (!isNewDelivery) return res.status(200).send('OK');
+                // 200はDBへ再試行可能な仕事を保存できたことを示し、処理完了とは区別する。
+                res.status(200).send('OK');
+                onWebhookAccepted();
+                return;
             }
 
             const payload = req.body;
+            // DBなしの開発用経路も、応答後に失敗を握りつぶさない。
+            await meteorService.processWebhook(payload);
             res.status(200).send('OK');
-
-            // GitHubへのACK速度は維持しつつ、業務処理はApplicationのユースケースに委譲する。
-            meteorService.processWebhook(payload)
-                .catch((error) => console.error('[Webhook Async Error]', safeErrorMetadata(error)));
         } catch (error) {
             console.error('[Webhook Error]', safeErrorMetadata(error));
             if (!res.headersSent) res.status(500).send('Error');
