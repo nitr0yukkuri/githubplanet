@@ -541,7 +541,7 @@ test('shared Markdown opens the card in a clean anonymous browser without a 403'
         assert.equal(publicUrl.pathname, '/card.html');
         assert.equal(publicUrl.searchParams.get('fix'), 'true');
 
-        // Markdownには本番URLが入るため、同じパスを隔離したローカル本番相当サーバーで開く。
+        // 公開共有リンクは保護された通常カードではなく、匿名アクセスできるキャプチャ表示を開く。
         const anonymousResponse = await anonymousBrowser.page.goto(
             `${baseUrl}${publicUrl.pathname}${publicUrl.search}`
         );

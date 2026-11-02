@@ -1,13 +1,20 @@
 <p align="right"><strong>日本語</strong> | <a href="README.en.md">English</a></p>
 
 <div align="center">
-  <img src="front/img/GitHubPlanet_logo.png" width="420" alt="GitHub Planet Logo">
+  <a href="https://githubplanet.dev/card.html?username=nitr0yukkuri&amp;fix=true">
+    <img src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/profile_card.gif" width="800" alt="nitr0yukkuri のGitHub Planet。クリックして公開惑星プレビューを開く">
+  </a>
+  <p>
+    <a href="https://githubplanet.dev/card.html?showcase=typescript">ログイン不要のデモ</a> ·
+    <a href="https://github.com/nitr0yukkuri/githubplanet">ソースコードを見る・GitHubでStarする</a> ·
+    <a href="CONTRIBUTING.md">開発に参加する</a>
+  </p>
   <h1>🪐 GitHub Planet</h1>
   <p>GitHubの活動履歴を、ひとつの生きた3D惑星として観測するWebアプリケーション。</p>
   <p>
     <a href="https://githubplanet.dev/">Live product</a> ·
-    <a href="https://githubplanet.dev/showcase/typescript">Showcase</a> ·
-    <a href="https://githubplanet.dev/card.html?showcase=typescript&amp;fix=true">Planet card</a>
+    <a href="https://githubplanet.dev/card.html?showcase=typescript">Showcase</a> ·
+    <a href="https://githubplanet.dev/card.html?username=nitr0yukkuri&amp;fix=true">Public planet preview</a>
   </p>
 </div>
 
@@ -29,7 +36,7 @@ GitHub Planetは、開発者のGitHub活動を、宇宙空間に浮かぶ3D惑�
 
 ## 🎬 まずは1分で体験
 
-[ログイン不要のデモを開く](https://githubplanet.dev/demo?showcase=typescript)
+[ログイン不要のデモを開く](https://githubplanet.dev/card.html?showcase=typescript)
 
 1. デモを開く
 2. 惑星の色・表面・大きさ・回転を見る
@@ -502,11 +509,7 @@ GIF生成ではPlaywrightでカードを録画し、FFmpegで`800x266`のGIFへ�
 - Frontend / design: [@lenagig](https://github.com/lenagig)
 
 <div align="center">
-  <a href="https://githubplanet.dev/">
-    <img width="720" alt="nitr0yukkuri's planet card" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/profile_card.gif">
-  </a>
-  <br>
-  <a href="https://githubplanet.dev/">
+  <a href="https://githubplanet.dev/card.html?username=lenagig&amp;fix=true">
     <img width="720" alt="lenagig's planet card" src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet.dev/card.html?username=lenagig&amp;fix=true">
   </a>
 </div>

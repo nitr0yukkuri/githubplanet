@@ -57,6 +57,7 @@ if (!isScreenshotMode) {
     const pageUrl = `${PUBLIC_DEPLOY_URL}${localizedPath('/card.html')}?${cardQuery}`;
     const captureUrl = `${pageUrl}&fix=true`;
     const staticCardUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${captureUrl}`;
+    // 本番では他ユーザーの通常カードURLを保護するため、公開共有リンクはキャプチャ表示へ向ける。
     const mdText = `[![GitHub Planet](${staticCardUrl})](${captureUrl})`;
 
     if (markdownCode) markdownCode.textContent = mdText;

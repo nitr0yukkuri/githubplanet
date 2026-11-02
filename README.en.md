@@ -1,20 +1,25 @@
 <p align="right"><a href="README.md">日本語</a> | <strong>English</strong></p>
 
-<img src="front/img/GitHubPlanet_logo.png" width="80%" alt="GitHub Planet Logo">
-
-<br>
-
-# 🪐 GitHub Planet
-
-**GitHub Planet is a web application that transforms each user's GitHub activity into a unique 3D planet.** Your development history becomes a living world floating in space.
+<div align="center">
+  <a href="https://githubplanet.dev/card.html?username=nitr0yukkuri&amp;fix=true">
+    <img src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/profile_card.gif" width="800" alt="nitr0yukkuri's GitHub Planet. Click to open the public planet preview">
+  </a>
+  <p>
+    <a href="https://githubplanet.dev/card.html?showcase=typescript">Try the login-free demo</a> ·
+    <a href="https://github.com/nitr0yukkuri/githubplanet">View source · Star on GitHub</a> ·
+    <a href="CONTRIBUTING.md">Contribute</a>
+  </p>
+  <h1>🪐 GitHub Planet</h1>
+  <p><strong>GitHub Planet transforms your GitHub activity into a unique 3D planet you can explore and share.</strong></p>
+  <p><a href="https://githubplanet.dev/">Live product</a> · <a href="https://githubplanet.dev/showcase/typescript">Showcase</a> · <a href="https://githubplanet.dev/card.html?username=nitr0yukkuri&amp;fix=true">Public planet preview</a></p>
+</div>
 
 ---
-
 ## 🎬 Try the one-minute demo first
 
 Use the login-free demo to experience a planet generated from deterministic showcase data.
 
-[Open the login-free demo](https://githubplanet.dev/demo?showcase=typescript)
+[Open the login-free demo](https://githubplanet.dev/card.html?showcase=typescript)
 
 1. Open the demo
 2. Explore the planet's color, surface, scale, and rotation
@@ -184,19 +189,12 @@ GitHub Webhook → Express → Socket.IO → Browser
 
 **[@nitr0yukkuri](https://github.com/nitr0yukkuri)**
 
-<div align="center">
-  <p><strong>@nitr0yukkuri</strong></p>
-  <a href="https://githubplanet.dev/">
-    <img src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/profile_card.gif" alt="nitr0yukkuri's GitHub Planet" />
-  </a>
-</div>
-
 ### Frontend & Design
 
 **[@lenagig](https://github.com/lenagig)**
 
 <div align="center">
-  <a href="https://githubplanet.dev/">
+  <a href="https://githubplanet.dev/card.html?username=lenagig&amp;fix=true">
     <img src="https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet.dev/card.html?username=lenagig&fix=true" alt="lenagig's GitHub Planet" />
   </a>
 </div>

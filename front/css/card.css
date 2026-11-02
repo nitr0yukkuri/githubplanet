@@ -352,6 +352,18 @@ canvas {
     font-family: var(--font-jp);
 }
 
+.share-container .card-source-link {
+    margin: 0 0 14px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.card-source-link a {
+    color: #b8d7ff;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
 .code-box {
     background: #0d1117; 
     padding: 12px 18px;
