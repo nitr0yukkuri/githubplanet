@@ -248,6 +248,36 @@ body {
     opacity: 0.8;
 }
 
+.home-oss-link {
+    position: fixed;
+    right: 112px;
+    bottom: 20px;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 104px;
+    height: 38px;
+    box-sizing: border-box;
+    padding: 0 10px;
+    border: 2px solid #ffffff;
+    border-radius: 8px;
+    background-color: #170633;
+    color: #ffffff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    opacity: 0.9;
+    text-decoration: none;
+    transition: background-color 0.2s, opacity 0.2s;
+}
+
+.home-oss-link:hover,
+.home-oss-link:focus-visible {
+    background-color: #403d61;
+    opacity: 1;
+    outline: none;
+}
+
 .home-language-switcher a {
     display: flex;
     align-items: center;

@@ -57,7 +57,8 @@ if (!isScreenshotMode) {
     const pageUrl = `${PUBLIC_DEPLOY_URL}${localizedPath('/card.html')}?${cardQuery}`;
     const captureUrl = `${pageUrl}&fix=true`;
     const staticCardUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${captureUrl}`;
-    const mdText = `[![GitHub Planet](${staticCardUrl})](${captureUrl})`;
+    // fix=trueは画像生成専用なので、カードをクリックしたら操作可能な通常URLを開く。
+    const mdText = `[![GitHub Planet](${staticCardUrl})](${pageUrl})`;
 
     if (markdownCode) markdownCode.textContent = mdText;
     if (copyBtn) {

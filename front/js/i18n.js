@@ -29,6 +29,7 @@ const translations = {
             achievements: '実績',
             settings: '設定',
             card: 'カード',
+            sourceCode: 'ソース・Star',
             githubProfile: 'GitHubプロフィールを見る',
             nextRandom: '違う星を見に行く',
             statusTitle: '星のステータス',
@@ -149,7 +150,8 @@ const translations = {
             systemStatus: 'SYSTEM STATUS',
             online: '● ONLINE',
             share: '👇 URLをコピーしてGitHubのプロフィールに貼り付けよう',
-            copy: 'Copy'
+            copy: 'Copy',
+            sourceCode: 'GitHubでソースを見る・Starする'
         },
         notFound: {
             pageTitle: '404 - Planet Not Found',
@@ -188,6 +190,7 @@ const translations = {
             achievements: 'Achievements',
             settings: 'Settings',
             card: 'Card',
+            sourceCode: 'Source / Star',
             githubProfile: 'View GitHub profile',
             nextRandom: 'Next random planet',
             statusTitle: 'Star Status',
@@ -308,7 +311,8 @@ const translations = {
             systemStatus: 'SYSTEM STATUS',
             online: '● ONLINE',
             share: '👇 Copy the URL below and paste it into your GitHub profile.',
-            copy: 'Copy'
+            copy: 'Copy',
+            sourceCode: 'View source and star on GitHub'
         },
         notFound: {
             pageTitle: '404 - Planet Not Found',
