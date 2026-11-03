@@ -1,6 +1,13 @@
 <p align="right"><strong>日本語</strong> | <a href="README.en.md">English</a></p>
 
 <div align="center">
+  <a href="https://githubplanet.dev/demo?showcase=typescript">
+    <img width="800" alt="動くTypeScript惑星のプレビュー" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_typescript.gif">
+  </a>
+  <p><a href="https://githubplanet.dev/demo?showcase=typescript">ログイン不要のデモを試す</a> · <a href="https://github.com/nitr0yukkuri/githubplanet">⭐ GitHubでStar</a></p>
+</div>
+
+<div align="center">
   <img src="front/img/GitHubPlanet_logo.png" width="420" alt="GitHub Planet Logo">
   <h1>🪐 GitHub Planet</h1>
   <p>GitHubの活動履歴を、ひとつの生きた3D惑星として観測するWebアプリケーション。</p>
