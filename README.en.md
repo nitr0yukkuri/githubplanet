@@ -1,5 +1,12 @@
 <p align="right"><a href="README.md">日本語</a> | <strong>English</strong></p>
 
+<div align="center">
+  <a href="https://githubplanet.dev/demo?showcase=typescript">
+    <img width="800" alt="Animated TypeScript planet preview" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_typescript.gif">
+  </a>
+  <p><a href="https://githubplanet.dev/demo?showcase=typescript">Try the login-free demo</a> · <a href="https://github.com/nitr0yukkuri/githubplanet">⭐ Star on GitHub</a></p>
+</div>
+
 <img src="front/img/GitHubPlanet_logo.png" width="80%" alt="GitHub Planet Logo">
 
 <br>
