@@ -2,8 +2,8 @@ name: Refresh Public Planet History
 
 on:
   schedule:
-    # Queue work is persisted in PostgreSQL, so missed Actions ticks do not lose profiles.
-    - cron: '7,22,37,52 * * * *'
+    # Durable queue; stagger checks and limit each run to one profile.
+    - cron: '3-58/5 * * * *'
   workflow_dispatch:
 
 permissions:
