@@ -1,0 +1,36 @@
+name: Refresh Public Planet History
+
+on:
+  schedule:
+    # Queue work is persisted in PostgreSQL, so missed Actions ticks do not lose profiles.
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refresh-public-planet-history
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Refresh one due public history
+        env:
+          SYSTEM_API_KEY: ${{ secrets.SYSTEM_API_KEY }}
+          HISTORY_REFRESH_URL: https://githubplanet.dev/api/system/planet-history/refresh
+        run: |
+          if [ -z "$SYSTEM_API_KEY" ]; then
+            echo "::error::Configure the SYSTEM_API_KEY repository secret to match the Cloud Run environment."
+            exit 1
+          fi
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "X-API-Key: $SYSTEM_API_KEY" \
+            --header "Accept: application/json" \
+            --max-time 240 \
+            "$HISTORY_REFRESH_URL"
