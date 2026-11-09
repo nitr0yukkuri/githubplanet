@@ -28,6 +28,7 @@ import { createPlanetService } from '../src/application/planet-service.js';
 import { runDatabaseMigrations } from '../src/infrastructure/database/migrations.js';
 import { createWebhookDeliveryStore } from '../src/infrastructure/database/webhook-delivery-store.js';
 import { createPlanetRepository } from '../src/infrastructure/database/planet-repository.js';
+import { createAnonymousGithubQuotaStore } from '../src/infrastructure/database/anonymous-github-quota-store.js';
 import { createPostgresPool } from '../src/infrastructure/database/postgres.js';
 import { createGithubClient } from '../src/infrastructure/external/github-client.js';
 import { registerAuthRoutes } from '../src/presentation/http/auth-routes.js';
@@ -276,6 +277,7 @@ async function startApp() {
     const planetQueryService = repository
         ? createPlanetQueryService({
             repository,
+            anonymousLookupStore: createAnonymousGithubQuotaStore(pool),
             githubClient,
             planetService,
             cacheDuration: DATA_CACHE_DURATION
@@ -325,6 +327,7 @@ async function startApp() {
         logger: { error() {}, warn() {} }
     });
     registerPlanetRoutes(app, {
+        sessionSecret: E2E_SESSION_SECRET,
         planetService,
         planetQueryService,
         cacheDuration: DATA_CACHE_DURATION

@@ -30,6 +30,7 @@ import { createGeminiClient } from './src/infrastructure/external/gemini-client.
 import { createGithubClient } from './src/infrastructure/external/github-client.js';
 import { createGithubPublicRateGate } from './src/infrastructure/external/github-public-rate-gate.js';
 import { createGithubPublicQuotaStore } from './src/infrastructure/database/github-public-quota-store.js';
+import { createAnonymousGithubQuotaStore } from './src/infrastructure/database/anonymous-github-quota-store.js';
 import { registerAuthRoutes } from './src/presentation/http/auth-routes.js';
 import { createCanonicalHostRedirect } from './src/presentation/http/canonical-host-redirect.js';
 import { registerEventRoutes } from './src/presentation/http/event-routes.js';
@@ -181,6 +182,7 @@ const webhookWorker = webhookDeliveryService ? createWebhookWorker({
 }) : undefined;
 const planetQueryService = planetRepository ? createPlanetQueryService({
     repository: planetRepository,
+    anonymousLookupStore: createAnonymousGithubQuotaStore(pool),
     githubClient,
     planetService,
     cacheDuration: DATA_CACHE_DURATION
@@ -239,7 +241,8 @@ registerPlanetRoutes(app, {
         .filter(Boolean),
     cacheDuration: DATA_CACHE_DURATION,
     randomHistoryStorage: process.env.RANDOM_HISTORY_STORAGE || 'cookie',
-    randomPerformance
+    randomPerformance,
+    sessionSecret: effectiveSessionSecret
 });
 
 let io;
