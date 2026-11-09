@@ -224,3 +224,53 @@ test('preserves GitHub rate-limit retry delay for a profile lookup', async () =>
     assert.equal(response.statusCode, 429);
     assert.equal(response.headers['Retry-After'], '12');
 });
+
+test('public planet URL parameters cannot forge stored contributions or identity', async () => {
+    const routes = new Map();
+    const app = {
+        get(paths, handler) {
+            for (const path of Array.isArray(paths) ? paths : [paths]) routes.set(path, handler);
+        },
+        post() {}
+    };
+    const calls = [];
+    registerPlanetRoutes(app, {
+        planetService: {},
+        planetQueryService: {
+            async getByUsername(username, token, sessionGithubId) {
+                calls.push([username, token, sessionGithubId]);
+                return {
+                    username: 'victim',
+                    githubId: 101,
+                    mainLanguage: 'Go',
+                    planetColor: '#00add8',
+                    languageStats: { Go: 100 },
+                    totalCommits: 7,
+                    weeklyCommits: 2,
+                    planetSizeFactor: 1,
+                    planetName: 'Legitimate planet'
+                };
+            }
+        },
+        cacheDuration: 60_000
+    });
+
+    const response = {
+        statusCode: 200,
+        status(code) { this.statusCode = code; return this; },
+        json(body) { this.body = body; return this; }
+    };
+
+    await routes.get('/api/planets/user/:username')({
+        params: { username: 'victim' },
+        query: { totalCommits: '99999', githubId: '999', username: 'attacker', mainLanguage: 'Rust' },
+        session: { github_token: 'visitor-token', planetData: { user: { id: 202 } } }
+    }, response);
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(calls, [['victim', 'visitor-token', 202]]);
+    assert.equal(response.body.totalCommits, 7);
+    assert.equal(response.body.username, 'victim');
+    assert.equal(response.body.githubId, '101');
+    assert.equal(response.body.mainLanguage, 'Go');
+});
