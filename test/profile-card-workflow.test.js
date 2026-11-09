@@ -52,6 +52,18 @@ test('copies static public card URLs without requiring a generated GIF', async (
     assert.doesNotMatch(cardScript, /window\.location\.origin/);
 });
 
+test('renders unavailable contributions honestly for anonymous public previews', async () => {
+    const [cardScript, cardHtml] = await Promise.all([
+        readFile(new URL('../front/js/card.js', import.meta.url), 'utf8'),
+        readFile(new URL('../card.html', import.meta.url), 'utf8')
+    ]);
+
+    assert.match(cardScript, /data\.isPublicPreview \|\| !Number\.isFinite\(data\.totalCommits\)/);
+    assert.match(cardScript, /commitsVal\.textContent = '—'/);
+    assert.match(cardScript, /totalCommits: null/);
+    assert.match(cardHtml, /id="commits-val">—<\/span>/);
+});
+
 test('shows the animated owner card in both READMEs', async () => {
     const [readme, englishReadme] = await Promise.all([
         readFile(new URL('../README.md', import.meta.url), 'utf8'),
