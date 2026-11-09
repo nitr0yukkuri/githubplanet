@@ -313,3 +313,74 @@ test('coalesces repeated GitHub identity checks for a stored username', async ()
     assert.equal(second, row);
     assert.equal(githubLookups, 1);
 });
+
+test('authenticated visitors cannot refresh or register someone else\'s planet', async () => {
+    const stale = { githubId: 101, username: 'victim', lastUpdated: '2000-01-01T00:00:00Z' };
+    const calls = [];
+    const service = createPlanetQueryService({
+        repository: {
+            async findByUsername() { return stale; },
+            async updateUsernameByGithubId() { calls.push('rename'); },
+            async findByGithubId() { calls.push('readById'); return stale; }
+        },
+        githubClient: {
+            async getUser() { return { id: 101, login: 'victim' }; }
+        },
+        planetService: {
+            async updateAndSavePlanetData() { calls.push('refresh'); }
+        },
+        cacheDuration: 60_000
+    });
+
+    assert.equal(await service.getByUsername('victim', 'visitor-token', 202), stale);
+    assert.deepEqual(calls, []);
+
+    // Missing verified session identity is not permission to update either.
+    assert.equal(await service.getByUsername('victim', 'token-without-session-id'), stale);
+    assert.deepEqual(calls, []);
+});
+
+test('authenticated visitors still receive public previews for unregistered accounts', async () => {
+    const preview = { username: 'unregistered', isPublicPreview: true };
+    let writes = 0;
+    const service = createPlanetQueryService({
+        repository: {
+            async findByUsername() { return null; },
+            async findByGithubId() { writes += 1; return null; }
+        },
+        githubClient: {
+            async getUser() { return { id: 101, login: 'unregistered' }; }
+        },
+        planetService: {
+            async updateAndSavePlanetData() { writes += 1; },
+            async createPublicPreview() { return preview; }
+        },
+        cacheDuration: 60_000
+    });
+
+    assert.equal(await service.getByUsername('unregistered', 'visitor-token', 202), preview);
+    assert.equal(writes, 0);
+});
+
+test('the authenticated owner may refresh their own planet after GitHub ID verification', async () => {
+    const stale = { githubId: 101, username: 'owner', lastUpdated: '2000-01-01T00:00:00Z' };
+    const updated = { ...stale, totalCommits: 123, lastUpdated: new Date().toISOString() };
+    const calls = [];
+    const service = createPlanetQueryService({
+        repository: {
+            async findByUsername() { return stale; },
+            async findByGithubId() { return updated; },
+            async updateUsernameByGithubId() { throw new Error('unexpected rename'); }
+        },
+        githubClient: {
+            async getUser() { return { id: 101, login: 'owner' }; }
+        },
+        planetService: {
+            async updateAndSavePlanetData(user, token) { calls.push([user.id, token]); }
+        },
+        cacheDuration: 60_000
+    });
+
+    assert.equal(await service.getByUsername('owner', 'owner-token', 101), updated);
+    assert.deepEqual(calls, [[101, 'owner-token']]);
+});
