@@ -4,6 +4,43 @@ import test from 'node:test';
 import pg from 'pg';
 import { runDatabaseMigrations } from '../src/infrastructure/database/migrations.js';
 import { createWebhookDeliveryStore } from '../src/infrastructure/database/webhook-delivery-store.js';
+import { createMeteorEventStore } from '../src/infrastructure/database/meteor-event-store.js';
+
+test('PostgreSQL meteor stream deduplicates jobs and serializes sequence allocation with commits', {
+    skip: !process.env.TEST_DATABASE_URL, timeout: 60000
+}, async () => {
+    const url = new URL(process.env.TEST_DATABASE_URL);
+    assert.ok(['localhost', '127.0.0.1', '[::1]'].includes(url.hostname));
+    assert.equal(url.pathname, '/githubplanet_e2e');
+    const pool = new pg.Pool({ connectionString: url.href, max: 4 });
+    const keys = [crypto.randomUUID(), crypto.randomUUID()];
+    let transaction, second;
+    try {
+        await runDatabaseMigrations(pool, { logger: { log() {}, warn() {} } });
+        const store = createMeteorEventStore(pool), cursor = await store.latestId();
+        transaction = await pool.connect();
+        await transaction.query('BEGIN');
+        const firstStore = createMeteorEventStore({ query: (...args) => transaction.query(...args) });
+        const payload = { color: '#007acc', language: 'TypeScript', scale: 1 };
+        const firstId = await firstStore.append(keys[0], payload);
+        let secondCommitted = false;
+        second = store.append(keys[1], payload).then((id) => { secondCommitted = true; return id; });
+        await new Promise((resolve) => setTimeout(resolve, 30));
+        assert.equal(secondCommitted, false, 'second writer cannot commit past an uncommitted event');
+        assert.deepEqual(await store.readAfter(cursor), []);
+        await transaction.query('COMMIT');
+        const secondId = await second;
+        assert.ok(BigInt(firstId) < BigInt(secondId));
+        assert.equal(await store.append(keys[0], payload), null, 'retry does not add another event');
+        const events = await store.readAfter(cursor);
+        assert.deepEqual(events.map((event) => event.id), [firstId, secondId]);
+    } finally {
+        if (transaction) { await transaction.query('ROLLBACK').catch(() => {}); transaction.release(); }
+        await second?.catch(() => {});
+        await pool.query('DELETE FROM meteor_events WHERE event_key = ANY($1::text[])', [keys]).catch(() => {});
+        await pool.end();
+    }
+});
 
 test('PostgreSQL atomically enqueues, leases, retries and fences webhook jobs', {
     skip: !process.env.TEST_DATABASE_URL, timeout: 60000

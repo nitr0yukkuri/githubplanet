@@ -16,6 +16,8 @@ import { requestPlanetName } from './src/application/planet-name-generator.js';
 import { createMeteorService } from './src/application/meteor-service.js';
 import { createWebhookDeliveryService } from './src/application/webhook-delivery-service.js';
 import { createWebhookWorker } from './src/infrastructure/realtime/webhook-worker.js';
+import { createMeteorBus } from './src/infrastructure/realtime/meteor-bus.js';
+import { createMeteorEventStore } from './src/infrastructure/database/meteor-event-store.js';
 import { LANGUAGE_COLORS } from './src/domain/planet/constants.js';
 import { EXTENSION_MAP } from './src/domain/planet/language-extensions.js';
 import { createAuthoredLanguageHistoryRepository } from './src/infrastructure/database/authored-language-history-repository.js';
@@ -156,10 +158,11 @@ const planetService = createPlanetService({
     languageColorService,
     geminiApiKey: process.env.GEMINI_API_KEY
 });
+let meteorBus;
 const meteorService = createMeteorService({
     languageColorService,
     extensionMap: EXTENSION_MAP,
-    emitMeteor: (payload) => io.emit('meteor', payload)
+    emitMeteor: (payload, eventKey) => meteorBus ? meteorBus.publish(payload, eventKey) : io.emit('meteor', payload)
 });
 const webhookDeliveryService = pool ? createWebhookDeliveryService({
     store: createWebhookDeliveryStore(pool), meteorService
@@ -263,6 +266,7 @@ const server = app.listen(port, '0.0.0.0', () => {
 
 // Cloud Run直URLへ切り替えたPollingフォールバックは、公開サイトのOriginだけ許可する。
 io = new Server(server, { cors: { origin: publicBaseUrl } });
+meteorBus = pool ? createMeteorBus({ store: createMeteorEventStore(pool), emit: (payload) => io.emit('meteor', payload) }) : undefined;
 // CPUが抑制された後や別インスタンスで受信した仕事も、接続中のworkerがDBから回収する。
 webhookWorker?.start();
 // HTTPログの400だけでは拒否理由が分からないため、WebSocket失敗の必要項目だけ記録する。
@@ -277,7 +281,13 @@ io.engine.on('connection_error', (error) => {
     });
 });
 io.on('connection', (socket) => {
-    webhookWorker?.kick();
+    socket.on('disconnect', () => meteorBus?.unsubscribe(socket.id));
+    if (meteorBus) {
+        void meteorBus.subscribe(socket.id).then(() => {
+            if (socket.connected) webhookWorker?.kick();
+            else meteorBus.unsubscribe(socket.id);
+        }).catch((error) => console.warn('[Meteor bus] Subscription failed:', safeErrorMetadata(error)));
+    } else webhookWorker?.kick();
     console.log('[Socket.IO] Client connected', {
         transport: socket.conn.transport.name
     });
