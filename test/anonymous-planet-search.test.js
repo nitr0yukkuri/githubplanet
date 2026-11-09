@@ -51,6 +51,87 @@ test('builds an anonymous public preview from public repository metadata without
     assert.equal(response.isPublicPreview, true);
 });
 
+test('public profile cards use public source even if the owner has saved private-derived stats', async () => {
+    const calls = [];
+    const publicPreview = {
+        username: 'victim',
+        mainLanguage: 'Go',
+        languageStats: { Go: 200 },
+        totalCommits: 0,
+        isPublicPreview: true
+    };
+    const queryService = createPlanetQueryService({
+        repository: {
+            async findByUsername() { calls.push('saved-read'); throw new Error('must not read saved planet'); }
+        },
+        githubClient: {
+            async getUser() { calls.push('identity'); throw new Error('must not use OAuth identity'); }
+        },
+        planetService: {
+            async createPublicPreview(username) {
+                calls.push(['public-source', username]);
+                return publicPreview;
+            }
+        },
+        cacheDuration: 60_000
+    });
+    const [first, second] = await Promise.all([
+        queryService.getPublicCardPreview('victim'),
+        queryService.getPublicCardPreview('VICTIM')
+    ]);
+    assert.equal(first, publicPreview);
+    assert.equal(second, publicPreview);
+    assert.deepEqual(calls, [['public-source', 'victim']]);
+    assert.equal(toPlanetResponse(first).isPublicPreview, true);
+});
+
+test('anonymous card API never requests authenticated or saved planet data', async () => {
+    const handlers = new Map();
+    const app = {
+        get(paths, handler) {
+            for (const path of Array.isArray(paths) ? paths : [paths]) handlers.set(path, handler);
+        },
+        post() {}
+    };
+    let calledWith;
+    registerPlanetRoutes(app, {
+        planetService: {},
+        planetQueryService: {
+            async getByUsername() { throw new Error('private data endpoint must not be called'); },
+            async getPublicCardPreview(username) {
+                calledWith = username;
+                return {
+                    username: 'victim',
+                    planetColor: '#00add8',
+                    planetSizeFactor: 1,
+                    mainLanguage: 'Go',
+                    languageStats: { Go: 100 },
+                    totalCommits: 0,
+                    weeklyCommits: 0,
+                    isPublicPreview: true
+                };
+            }
+        },
+        cacheDuration: 60_000
+    });
+    const response = {
+        statusCode: 200,
+        headers: {},
+        setHeader(name, value) { this.headers[name] = value; },
+        status(code) { this.statusCode = code; return this; },
+        json(body) { this.body = body; return this; }
+    };
+    await handlers.get('/api/planets/card/:username')({
+        params: { username: 'victim' },
+        session: { github_token: 'private-token', planetData: { user: { id: 123 } } }
+    }, response);
+    assert.equal(response.statusCode, 200);
+    assert.equal(calledWith, 'victim');
+    assert.equal(response.body.isPublicPreview, true);
+    assert.equal(response.body.totalCommits, 0);
+    assert.equal(response.headers['Cache-Control'], 'public, max-age=60');
+});
+
 test('caches missing public profiles briefly and rejects invalid usernames before GitHub calls', async () => {
     let calls = 0;
     const queryService = createPlanetQueryService({

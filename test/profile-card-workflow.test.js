@@ -47,7 +47,10 @@ test('copies static public card URLs without requiring a generated GIF', async (
     assert.match(cardScript, /image\.thum\.io\/get\/width\/800\/crop\/400\/noanimate\/wait\/8/);
     assert.match(cardScript, /PUBLIC_DEPLOY_URL/);
     assert.match(cardScript, /const captureUrl = `\$\{pageUrl\}&fix=true`/);
-    assert.match(cardScript, /\[!\[GitHub Planet\]\(\$\{staticCardUrl\}\)\]\(\$\{pageUrl\}\)/);
+    assert.match(cardScript, /const showcaseUrl = `\$\{PUBLIC_DEPLOY_URL\}\/showcase`/);
+    assert.match(cardScript, /\[!\[GitHub Planet\]\(\$\{staticCardUrl\}\)\]\(\$\{showcaseUrl\}\)/);
+    assert.match(cardScript, /\/api\/planets\/card\/\$\{encodeURIComponent\(username\)\}/);
+    assert.doesNotMatch(cardScript, /\/api\/planets\/user\/\$\{encodeURIComponent\(username\)\}/);
     assert.doesNotMatch(cardScript, /main\/planet-card\.gif/);
     assert.doesNotMatch(cardScript, /window\.location\.origin/);
 });
