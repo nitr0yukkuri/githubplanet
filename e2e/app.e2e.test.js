@@ -629,7 +629,7 @@ test('showcase cards render without WebGL fallback and shared trail shader time 
         }
 
         // 専用演出のない言語でも、共通軌跡のシェーダーのコンパイルと時間更新を確認する。
-        await page.route(`${baseUrl}/api/planets/user/e2e-trails`, (route) => route.fulfill({
+        await page.route(`${baseUrl}/api/planets/card/e2e-trails`, (route) => route.fulfill({
             json: {
                 username: 'e2e-trails',
                 planetColor: '#306998',
