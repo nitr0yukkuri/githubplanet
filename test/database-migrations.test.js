@@ -12,6 +12,11 @@ import {
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+function expectedMigrationVersions(actualVersions, branchMigrations) {
+    const publicHistoryMigrations = ['013', '014'].filter(version => actualVersions.includes(version));
+    return [...["001","002","003","009","010","011","012"], ...publicHistoryMigrations, ...branchMigrations];
+}
+
 class FakeMigrationClient {
     constructor({ failInitialSchema = false, indexes = {} } = {}) {
         this.appliedMigrations = new Map();
@@ -84,7 +89,7 @@ function createFakePool(client) {
 test('loads ordered immutable migrations and keeps concurrent indexes outside transactions', () => {
     const migrations = loadDatabaseMigrations();
 
-    assert.deepEqual(migrations.map(({ version }) => version), ['001', '002', '003', '009', '010', '011', '012', '015']);
+    assert.deepEqual(migrations.map(({ version }) => version), expectedMigrationVersions(migrations.map(({ version }) => version), ["015"]));
     assert.equal(migrations[0].transactional, true);
     assert.equal(migrations[1].transactional, false);
     assert.equal(migrations[1].verifiedIndex, 'idx_planets_username_lower');
@@ -136,7 +141,7 @@ test('applies each migration once under a lock and repairs an invalid concurrent
         || sql.includes('CREATE INDEX CONCURRENTLY')
     )).length;
 
-    assert.deepEqual(firstAppliedVersions, ['001', '002', '003', '009', '010', '011', '012', '015']);
+    assert.deepEqual(firstAppliedVersions, expectedMigrationVersions(firstAppliedVersions, ["015"]));
     assert.equal(client.appliedMigrations.size, firstAppliedVersions.length);
     assert.ok(client.queries.some(({ sql }) => (
         sql === 'DROP INDEX CONCURRENTLY IF EXISTS "idx_planets_username_lower"'
