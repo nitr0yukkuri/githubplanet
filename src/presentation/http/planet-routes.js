@@ -296,7 +296,11 @@ export function registerPlanetRoutes(app, {
         if (!planetQueryService) return res.status(503).json({ error: 'DB unavailable' });
 
         try {
-            const row = await planetQueryService.getByUsername(req.params.username, req.session.github_token);
+            const row = await planetQueryService.getByUsername(
+                req.params.username,
+                req.session?.github_token,
+                req.session?.planetData?.user?.id
+            );
             if (!row) return res.status(404).json({ error: 'Planet not found' });
             res.json(toPlanetResponse(row));
         } catch (error) {
