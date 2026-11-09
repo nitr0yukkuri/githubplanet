@@ -197,8 +197,7 @@ test('resolves a renamed account by GitHub ID after the previous login returns 4
     assert.deepEqual(calls, [
         ['findByUsername', 'old-login'],
         ['getUser', 'old-login'],
-        ['getUserById', '12345'],
-        ['updateUsernameByGithubId', 12345, 'new-login']
+        ['getUserById', '12345']
     ]);
 });
 
@@ -264,8 +263,7 @@ test('resolves the current GitHub profile URL from a saved stable ID', async () 
     assert.equal(await service.getGithubProfileUrlById(12345), 'https://github.com/new-login');
     assert.deepEqual(calls, [
         ['findByGithubId', '12345'],
-        ['getUserById', '12345'],
-        ['updateUsernameByGithubId', '12345', 'new-login']
+        ['getUserById', '12345']
     ]);
 });
 
@@ -383,4 +381,28 @@ test('the authenticated owner may refresh their own planet after GitHub ID verif
 
     assert.equal(await service.getByUsername('owner', 'owner-token', 101), updated);
     assert.deepEqual(calls, [[101, 'owner-token']]);
+});
+
+test('only the authenticated owner may persist a GitHub username rename', async () => {
+    const stored = { githubId: 101, username: 'old-login', lastUpdated: null };
+    const writes = [];
+    const service = createPlanetQueryService({
+        repository: {
+            async findByUsername() { return stored; },
+            async updateUsernameByGithubId(...args) { writes.push(args); }
+        },
+        githubClient: {
+            async getUser() { return { id: 101, login: 'new-login' }; }
+        },
+        planetService: {},
+        cacheDuration: 60_000
+    });
+
+    const visited = await service.getByUsername('old-login', 'visitor-token', 202);
+    assert.equal(visited.username, 'new-login');
+    assert.deepEqual(writes, []);
+
+    const owner = await service.getByUsername('old-login', 'owner-token', 101);
+    assert.equal(owner.username, 'new-login');
+    assert.deepEqual(writes, [[101, 'new-login']]);
 });
