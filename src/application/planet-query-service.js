@@ -111,7 +111,7 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         await planetService.updateAndSavePlanetData(user, accessToken);
     }
 
-    async function getByUsername(username, accessToken) {
+    async function getByUsername(username, accessToken, authenticatedGithubId) {
         let row = await repository.findByUsername(username);
         let user = null;
 
@@ -133,7 +133,14 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
             }
         }
 
-        const shouldUpdate = Boolean(accessToken) && (!row || (row.lastUpdated && isExpired(row.lastUpdated)));
+        // A logged-in visitor may search for any public planet, but their token
+        // must never trigger a write for a different GitHub account. Compare the
+        // immutable GitHub ID resolved from GitHub, not the mutable login name.
+        const isAuthenticatedOwner = Boolean(
+            accessToken && authenticatedGithubId && user
+            && String(user.id) === String(authenticatedGithubId)
+        );
+        const shouldUpdate = isAuthenticatedOwner && (!row || (row.lastUpdated && isExpired(row.lastUpdated)));
         if (shouldUpdate) {
             try {
                 await refresh(user || await resolveGithubUser(username, accessToken), accessToken);
@@ -144,7 +151,7 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
             }
         }
 
-        if (!row && !accessToken) return getPublicPlanetPreview(username);
+        if (!row && !isAuthenticatedOwner) return getPublicPlanetPreview(username);
         return row;
     }
 
