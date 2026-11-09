@@ -127,8 +127,13 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
             if (row && String(user.id) !== String(row.githubId)) {
                 row = await repository.findByGithubId(user.id);
             }
+            // GitHub login names can be renamed. Display the verified current
+            // login, but do not persist it for a non-owner viewing the planet.
             if (row && user.login && user.login !== row.username) {
-                await repository.updateUsernameByGithubId(user.id, user.login);
+                if (accessToken && authenticatedGithubId
+                    && String(user.id) === String(authenticatedGithubId)) {
+                    await repository.updateUsernameByGithubId(user.id, user.login);
+                }
                 row = { ...row, username: user.login };
             }
         }
@@ -200,14 +205,8 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         const login = String(user?.login || '');
         if (!/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(login)) return null;
 
-        if (login !== row.username && typeof repository.updateUsernameByGithubId === 'function') {
-            try {
-                await repository.updateUsernameByGithubId(normalizedGithubId, login);
-            } catch (error) {
-                // 名前の同期に失敗しても、確認できた現在のプロフィールへは転送する。
-                console.warn('[GitHub Profile] Could not save the current login:', safeErrorMetadata(error));
-            }
-        }
+        // Public profile redirects must not mutate saved planet records.
+        // /api/me syncs the owner's verified GitHub login during authentication.
         return `https://github.com/${encodeURIComponent(login)}`;
     }
 
