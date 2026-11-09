@@ -281,6 +281,21 @@ async function startApp() {
                     activeTitle: { prefix: '名もなき', suffix: '旅人' }
                 };
             },
+            async getPublicCardPreview(username) {
+                if (username.toLowerCase() !== 'nitr0yukkuri') return null;
+                return {
+                    username: 'nitr0yukkuri',
+                    planetColor: '#306998',
+                    planetSizeFactor: 1.3,
+                    mainLanguage: 'Python',
+                    languageStats: { Python: 70, Rust: 20, TypeScript: 10 },
+                    totalCommits: 0,
+                    weeklyCommits: 0,
+                    planetName: 'Deterministic Public Preview',
+                    achievements: {},
+                    isPublicPreview: true
+                };
+            },
             async saveActiveTitle() { return false; }
         };
 
@@ -538,17 +553,22 @@ test('shared Markdown opens the card in a clean anonymous browser without a 403'
         assert.ok(match, `expected a profile-card Markdown link, got: ${markdown}`);
         const publicUrl = new URL(match[1]);
         assert.equal(publicUrl.hostname, 'githubplanet.dev');
-        assert.equal(publicUrl.pathname, '/card.html');
-        assert.equal(publicUrl.searchParams.has('fix'), false);
+        assert.equal(publicUrl.pathname, '/showcase');
+        assert.equal(publicUrl.search, '');
 
-        // Markdownには本番URLが入るため、同じパスを隔離したローカル本番相当サーバーで開く。
+        // A profile-card image links to the public showcase.
+        const showcaseResponse = await anonymousBrowser.page.goto(`${baseUrl}${publicUrl.pathname}`);
+        assert.equal(showcaseResponse.status(), 200, 'the showcase must remain public');
+
+        // The card image itself is still rendered from a public-only GitHub preview.
         const anonymousResponse = await anonymousBrowser.page.goto(
-            `${baseUrl}${publicUrl.pathname}${publicUrl.search}`
+            `${baseUrl}/card.html?username=nitr0yukkuri`
         );
-        assert.equal(anonymousResponse.status(), 200, 'the public interactive URL must not be forbidden');
+        assert.equal(anonymousResponse.status(), 200, 'the public card must not be forbidden');
         await anonymousBrowser.page.waitForFunction(() => (
             document.getElementById('main-lang-stat')?.textContent === 'PYTHON'
         ));
+        assert.equal((await anonymousBrowser.page.locator('#commits-val').textContent()).trim(), '—');
         assert.equal(await anonymousBrowser.page.locator('#share-section').isVisible(), true);
         assert.equal(await anonymousBrowser.page.locator('#planet-canvas canvas').count(), 1);
         firstBrowser.assertNoPageErrors();
