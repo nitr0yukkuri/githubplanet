@@ -71,12 +71,12 @@ When a GitHub Push Webhook arrives, the application derives a shooting star's co
 
 The static card is the recommended default. Replace `YOUR_USERNAME` and paste the snippet into your profile `README.md`; no repository files or GitHub Actions setup are required.
 
-Card pages can be opened without signing in. If the owner has not connected GitHub Planet, the card uses public repository metadata to show a preview; its contribution count is shown as **—** (unavailable), not **0**. Sign in as the owner to generate a planet with the contribution count.
+Card pages are viewable without signing in and always use public GitHub repository metadata, not OAuth-derived saved stats. Since the public preview cannot verify an annual contribution count, the card displays **—** (unavailable) rather than a misleading **0**. Clicking the embedded image opens the [showcase](https://githubplanet.dev/showcase).
 
 ### Default (recommended, no GitHub Actions): Static card
 
 ```markdown
-[![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet.dev/card.html?username=YOUR_USERNAME&fix=true)](https://githubplanet.dev/card.html?username=YOUR_USERNAME)
+[![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet.dev/card.html?username=YOUR_USERNAME&fix=true)](https://githubplanet.dev/showcase)
 ```
 
 ### Optional (uses GitHub Actions): Animated GIF card
@@ -133,7 +133,7 @@ jobs:
 After the workflow creates the GIF, replace `YOUR_USERNAME` and paste this animated card into your profile README. The image will be broken until the first workflow run has successfully created `planet-card.gif`.
 
 ```markdown
-[![GitHub Planet](https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_USERNAME/main/planet-card.gif)](https://githubplanet.dev/card.html?username=YOUR_USERNAME)
+[![GitHub Planet](https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_USERNAME/main/planet-card.gif)](https://githubplanet.dev/showcase)
 ```
 
 ## 🪐 Language Feature Showcase
