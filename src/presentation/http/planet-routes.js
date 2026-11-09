@@ -292,31 +292,6 @@ export function registerPlanetRoutes(app, {
         res.json(planet);
     });
 
-    // Unlike the interactive planet endpoint, this card API never reads
-    // OAuth-derived saved stats, private contributions, or session tokens.
-    app.get('/api/planets/card/:username', async (req, res) => {
-        if (typeof planetQueryService?.getPublicCardPreview !== 'function') {
-            return res.status(503).json({ error: 'Public card preview unavailable' });
-        }
-
-        try {
-            const planet = await planetQueryService.getPublicCardPreview(req.params.username);
-            if (!planet) return res.status(404).json({ error: 'Planet not found' });
-            res.setHeader('Cache-Control', 'public, max-age=60');
-            res.json(toPlanetResponse(planet));
-        } catch (error) {
-            console.error('[API /card/:username Error]', safeErrorMetadata(error));
-            if ([403, 429].includes(error.response?.status)) {
-                if (error.retryAfterMs) {
-                    res.setHeader('Retry-After', String(Math.ceil(error.retryAfterMs / 1_000)));
-                }
-                return res.status(429).json({ error: 'GitHub public API rate limit reached' });
-            }
-            if (error.response?.status === 404) return res.status(404).json({ error: 'Planet not found' });
-            res.status(500).json({ error: 'Internal Server Error' });
-        }
-    });
-
     app.get('/api/planets/user/:username', async (req, res) => {
         if (!planetQueryService) return res.status(503).json({ error: 'DB unavailable' });
 

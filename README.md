@@ -238,10 +238,10 @@ http://localhost:3000/demo?showcase=ruby
 
 GitHubプロフィールのREADMEには、静止カードをそのまま貼り付けられます。リポジトリへのファイル追加やGitHub Actionsの設定は不要です。
 
-カードページはログイン不要で開けます。共有カードは本人のログイン状態にかかわらずGitHubの公開リポジトリ情報だけで生成し、OAuthで取得した保存済みの活動データは使用しません。年間コントリビューション数は正確に取得できないため、実際に0件という意味ではなく **—（未取得）** と表示します。プロフィールに埋め込んだ画像をクリックすると [ショーケース](https://githubplanet.dev/showcase) に移動します。
+カードページはログイン不要で開けます。ただし、GitHub Planetに本人がまだログインしていない場合は公開リポジトリの情報からプレビューを生成するため、年間コントリビューション数を正確には取得できません。この場合は実際に0件という意味ではなく、**—（未取得）**と表示します。本人がログインすれば貢献数を反映した惑星を生成できます。
 
 ```markdown
-[![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet.dev/card.html?username=ユーザー名&fix=true)](https://githubplanet.dev/showcase)
+[![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet.dev/card.html?username=ユーザー名&fix=true)](https://githubplanet.dev/card.html?username=ユーザー名)
 ```
 
 ### アニメーションGIFカード（任意、GitHub Actionsを使用）
@@ -296,7 +296,7 @@ file planet-card.gif | grep -q "GIF image data"
 生成したGIFをプロフィールREADMEに表示する場合は、次の形式を使います。
 
 ```markdown
-[![GitHub Planet](https://raw.githubusercontent.com/GitHubユーザー名/GitHubユーザー名/main/planet-card.gif)](https://githubplanet.dev/showcase)
+[![GitHub Planet](https://raw.githubusercontent.com/GitHubユーザー名/GitHubユーザー名/main/planet-card.gif)](https://githubplanet.dev/card.html?username=GitHubユーザー名)
 ```
 
 公式プロフィールカードのGIFは、次のURLから取得できます。
