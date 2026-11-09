@@ -47,6 +47,25 @@ function createHarness(rows = {}) {
     };
 }
 
+test('keeps saved planet data explicitly unverified during quota failure without updating it', async () => {
+    const row = { githubId: 42, username: 'saved-owner', mainLanguage: 'TypeScript', totalCommits: 123,
+        languageStats: { TypeScript: 80, CSS: 20 }, lastUpdated: '2025-01-01' };
+    const service = createPlanetQueryService({ repository: {
+        findByUsername: async () => row,
+        updateUsernameByGithubId() { assert.fail('must not change ownership'); }
+    }, githubClient: { async getUser() { throw Object.assign(new Error('cooldown'), { code: 'GITHUB_RATE_LIMITED' }); } },
+    planetService: { updateAndSavePlanetData() { assert.fail('must not overwrite saved data'); } }, cacheDuration: 60000 });
+    const result = await service.getByUsername('saved-owner');
+    assert.deepEqual(result, { ...row, githubProfileVerified: false, isStoredSnapshot: true });
+});
+
+test('does not turn authentication errors into successful snapshots', async () => {
+    const error = Object.assign(new Error('invalid token'), { response: { status: 401 } });
+    const service = createPlanetQueryService({ repository: { findByUsername: async () => ({ githubId: 42, username: 'saved' }) },
+        githubClient: { async getUser() { throw error; } }, planetService: {}, cacheDuration: 60000 });
+    await assert.rejects(service.getByUsername('saved', 'expired-token'), (received) => received === error);
+});
+
 test('keeps a stored user with no last_updated without refreshing it', async () => {
     const row = { githubId: 1, username: 'tester', lastUpdated: null };
     const { calls, service } = createHarness({ tester: row });

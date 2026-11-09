@@ -20,6 +20,7 @@ export function toPlanetResponse(planet) {
         ...(typeof planet.githubProfileVerified === 'boolean'
             ? { githubProfileVerified: planet.githubProfileVerified }
             : {}),
+        ...(planet.isStoredSnapshot ? { isStoredSnapshot: true, snapshotCapturedAt: planet.lastUpdated || null } : {}),
         planetColor,
         planetSizeFactor: parseFloat(planet.planetSizeFactor),
         mainLanguage,

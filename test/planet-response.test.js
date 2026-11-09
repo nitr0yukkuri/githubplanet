@@ -55,3 +55,17 @@ test('includes the saved GitHub ID so profile links can resolve a renamed login'
 
     assert.equal(response.githubId, '76643867');
 });
+
+test('marks quota fallback as a saved snapshot without losing its statistics', () => {
+    const response = toPlanetResponse({
+        username: 'tester', githubId: 42, planetColor: '#007acc', planetSizeFactor: 1,
+        mainLanguage: 'TypeScript', languageStats: { TypeScript: 100 }, totalCommits: 123,
+        weeklyCommits: 2, githubProfileVerified: false, isStoredSnapshot: true,
+        lastUpdated: '2026-10-01T00:00:00Z'
+    });
+    assert.equal(response.isStoredSnapshot, true);
+    assert.equal(response.githubProfileVerified, false);
+    assert.equal(response.snapshotCapturedAt, '2026-10-01T00:00:00Z');
+    assert.equal(response.totalCommits, 123);
+    assert.deepEqual(response.languageStats, { TypeScript: 100 });
+});

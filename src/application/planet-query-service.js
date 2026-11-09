@@ -115,22 +115,30 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         let row = await repository.findByUsername(username);
         let user = null;
 
-        // 表示名は再利用されるため、保存行を返す前に不変IDで所有者を照合する。
-        if (row || accessToken) {
-            user = await resolveGithubUser(username, accessToken);
-            if (!user && row) {
-                // GitHubは旧プロフィールURLを転送しないため、保存済みIDから現在のログイン名を解決する。
-                user = await resolveGithubUserById(row.githubId, accessToken);
-                if (!user) return { ...row, githubProfileVerified: false };
+        try {
+            // 表示名は再利用されるため、保存行を返す前に不変IDで所有者を照合する。
+            if (row || accessToken) {
+                user = await resolveGithubUser(username, accessToken);
+                if (!user && row) {
+                    // GitHubは旧プロフィールURLを転送しないため、保存済みIDから現在のログイン名を解決する。
+                    user = await resolveGithubUserById(row.githubId, accessToken);
+                    if (!user) return { ...row, githubProfileVerified: false };
+                }
+                if (!user) return null;
+                if (row && String(user.id) !== String(row.githubId)) {
+                    row = await repository.findByGithubId(user.id);
+                }
+                if (row && user.login && user.login !== row.username) {
+                    await repository.updateUsernameByGithubId(user.id, user.login);
+                    row = { ...row, username: user.login };
+                }
             }
-            if (!user) return null;
-            if (row && String(user.id) !== String(row.githubId)) {
-                row = await repository.findByGithubId(user.id);
-            }
-            if (row && user.login && user.login !== row.username) {
-                await repository.updateUsernameByGithubId(user.id, user.login);
-                row = { ...row, username: user.login };
-            }
+        } catch (error) {
+            const isQuotaFailure = ['GITHUB_RATE_LIMITED', 'GITHUB_PUBLIC_QUOTA_EXCEEDED',
+                'GITHUB_PUBLIC_BUDGET_UNAVAILABLE'].includes(error.code);
+            // 名前の所有者を確認できない時は、現在値と偽らず保存時点の惑星として返す。
+            if (row && isQuotaFailure) return { ...row, githubProfileVerified: false, isStoredSnapshot: true };
+            throw error;
         }
 
         const shouldUpdate = Boolean(accessToken) && (!row || (row.lastUpdated && isExpired(row.lastUpdated)));

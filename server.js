@@ -28,6 +28,8 @@ import { assertDatabaseMigrationsApplied } from './src/infrastructure/database/m
 import { createPostgresPool } from './src/infrastructure/database/postgres.js';
 import { createGeminiClient } from './src/infrastructure/external/gemini-client.js';
 import { createGithubClient } from './src/infrastructure/external/github-client.js';
+import { createGithubPublicRateGate } from './src/infrastructure/external/github-public-rate-gate.js';
+import { createGithubPublicQuotaStore } from './src/infrastructure/database/github-public-quota-store.js';
 import { registerAuthRoutes } from './src/presentation/http/auth-routes.js';
 import { createCanonicalHostRedirect } from './src/presentation/http/canonical-host-redirect.js';
 import { registerEventRoutes } from './src/presentation/http/event-routes.js';
@@ -147,6 +149,12 @@ const githubClient = createGithubClient({
     clientId: githubClientId,
     clientSecret: githubClientSecret,
     callbackUrl,
+    publicRequestGate: pool ? createGithubPublicRateGate({
+        store: createGithubPublicQuotaStore(pool),
+        key: githubClientId && githubClientSecret ? `oauth-app:${githubClientId}` : 'unauthenticated',
+        limit: githubClientId && githubClientSecret ? 4500 : 50,
+        reserve: githubClientId && githubClientSecret ? 100 : 5
+    }) : undefined,
     onRequestTiming: process.env.PERF_TRACE_EXTERNAL === 'true'
         ? externalPerformance.record
         : undefined

@@ -9,7 +9,9 @@ const translations = {
             disclaimer: '※GitHub PlanetはGitHub公式とは一切関係ありません。',
             languageToggle: 'EN',
             languageToggleLabel: 'Switch language to English',
-            status: 'ステータス:'
+            status: 'ステータス:',
+            savedSnapshot: '保存時点',
+            savedSnapshotDescription: '保存時点の惑星です。現在のGitHubアカウントとの一致は未確認です。'
         },
         meta: {
             description: 'GitHubの活動履歴からあなただけの惑星を生成しよう。',
@@ -146,6 +148,7 @@ const translations = {
             contributions: 'CONTRIBUTIONS',
             systemStatus: 'SYSTEM STATUS',
             online: '● ONLINE',
+            snapshot: '● SNAPSHOT',
             share: '👇 URLをコピーしてGitHubのプロフィールに貼り付けよう',
             copy: 'Copy'
         },
@@ -166,7 +169,9 @@ const translations = {
             disclaimer: 'GitHub Planet is not affiliated with GitHub.',
             languageToggle: 'JP',
             languageToggleLabel: 'Switch language to Japanese',
-            status: 'Status:'
+            status: 'Status:',
+            savedSnapshot: 'Saved snapshot',
+            savedSnapshotDescription: 'Saved planet snapshot. Current GitHub account ownership could not be verified.'
         },
         meta: {
             description: 'Generate your own planet from your GitHub activity.',
@@ -303,6 +308,7 @@ const translations = {
             contributions: 'CONTRIBUTIONS',
             systemStatus: 'SYSTEM STATUS',
             online: '● ONLINE',
+            snapshot: '● SNAPSHOT',
             share: '👇 Copy the URL below and paste it into your GitHub profile.',
             copy: 'Copy'
         },

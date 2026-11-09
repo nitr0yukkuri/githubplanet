@@ -278,6 +278,10 @@ export function registerPlanetRoutes(app, {
             res.json(toPlanetResponse(row));
         } catch (error) {
             console.error('[API /user/:username Error]', safeErrorMetadata(error));
+            if (error.code === 'GITHUB_PUBLIC_BUDGET_UNAVAILABLE') {
+                res.setHeader('Retry-After', '60');
+                return res.status(503).json({ error: 'GitHub public request budget is temporarily unavailable' });
+            }
             if ([403, 429].includes(error.response?.status)) {
                 if (error.retryAfterMs) {
                     res.setHeader('Retry-After', String(Math.ceil(error.retryAfterMs / 1_000)));
