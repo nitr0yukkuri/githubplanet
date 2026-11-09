@@ -10,11 +10,62 @@ function attribute(tag, name) {
     return tag.match(new RegExp(`(?:^|\\s)${name}=["']([^"']*)["']`, 'i'))?.[1];
 }
 
+function extractTooltipText(markup) {
+    let text = '';
+    let tag = '';
+    let inTag = false;
+    let quote = '';
+    let ignoredTag = '';
+
+    for (const character of String(markup)) {
+        if (!inTag) {
+            if (character === '<') {
+                inTag = true;
+                tag = '';
+                quote = '';
+                text += ' ';
+            } else if (!ignoredTag) {
+                text += character;
+            }
+            continue;
+        }
+
+        if (quote) {
+            if (character === quote) quote = '';
+            continue;
+        }
+        if (character === '"' || character === "'") {
+            quote = character;
+            continue;
+        }
+        if (character !== '>') {
+            tag += character;
+            continue;
+        }
+
+        inTag = false;
+        let index = 0;
+        while (/\s/.test(tag[index] || '')) index++;
+        const closing = tag[index] === '/';
+        if (closing) index++;
+        const nameStart = index;
+        while (/[a-z0-9:-]/i.test(tag[index] || '')) index++;
+        const name = tag.slice(nameStart, index).toLowerCase();
+
+        // Tooltip text is only parsed as a contribution count; active-content bodies are never data.
+        if (!closing && (name === 'script' || name === 'style')) ignoredTag = name;
+        else if (closing && name === ignoredTag) ignoredTag = '';
+        if (!ignoredTag) text += ' ';
+    }
+
+    return text.trim();
+}
+
 export function parsePublicContributionCalendar(html, from, to) {
     const counts = new Map();
     for (const match of String(html).matchAll(/<tool-tip\b([^>]*)>([\s\S]*?)<\/tool-tip>/gi)) {
-        const text = match[2].replace(/<[^>]*>/g, '').trim();
-        const count = text.match(/^(No|\d[\d,]*)(\+)? contributions? on\b/i);
+        const text = extractTooltipText(match[2]);
+        const count = text.match(/^(No|\d[\d,]*)(\+)? contributions?\s+on\b/i);
         if (count && !(count[2] && /^no$/i.test(count[1]))) {
             counts.set(attribute(match[1], 'for'), {
                 contributionCount: /^no$/i.test(count[1]) ? 0 : Number(count[1].replaceAll(',', '')),

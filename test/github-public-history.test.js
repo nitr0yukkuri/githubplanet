@@ -74,6 +74,21 @@ test('reads exact public daily counts instead of estimating activity from color 
     ]);
 });
 
+test('parses visible tooltip text without counting script or style contents', () => {
+    const html = `
+        <td data-date="2025-01-01" id="day-0" data-level="1"></td>
+        <tool-tip for="day-0"><script>999 contributions on a forged date</script><span>2 contributions</span> on January 1st.</tool-tip>
+    `;
+
+    assert.deepEqual(parsePublicContributionCalendar(html, '2025-01-01', '2025-01-01'), [
+        { date: '2025-01-01', contributionCount: 2 }
+    ]);
+    assert.throws(() => parsePublicContributionCalendar(`
+        <td data-date="2025-01-01" id="day-0" data-level="1"></td>
+        <tool-tip for="day-0"><script>999 contributions on a forged date</script></tool-tip>
+    `, '2025-01-01', '2025-01-01'), /unreadable day/i);
+});
+
 test('rejects missing days, missing counts, and changed markup instead of inventing zero activity', () => {
     for (const html of [
         calendar([['2025-01-01', 1]]),
