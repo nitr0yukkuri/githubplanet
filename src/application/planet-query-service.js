@@ -107,6 +107,12 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
         return entry.promise;
     }
 
+    // Shareable cards must only use data fetched from GitHub's public REST API.
+    // Never read the saved OAuth-derived planet or forward a visitor's token.
+    async function getPublicCardPreview(username) {
+        return getPublicPlanetPreview(username);
+    }
+
     async function refresh(user, accessToken) {
         await planetService.updateAndSavePlanetData(user, accessToken);
     }
@@ -212,6 +218,7 @@ export function createPlanetQueryService({ repository, githubClient, planetServi
 
     return {
         getByUsername,
+        getPublicCardPreview,
         getSavedPlanetByGithubId,
         getGithubProfileUrlById,
         getLanguageHistoryByGithubId,
