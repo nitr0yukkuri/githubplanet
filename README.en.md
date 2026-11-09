@@ -71,6 +71,8 @@ When a GitHub Push Webhook arrives, the application derives a shooting star's co
 
 The static card is the recommended default. Replace `YOUR_USERNAME` and paste the snippet into your profile `README.md`; no repository files or GitHub Actions setup are required.
 
+Card pages can be opened without signing in. If the owner has not connected GitHub Planet, the card uses public repository metadata to show a preview; its contribution count is shown as **—** (unavailable), not **0**. Sign in as the owner to generate a planet with the contribution count.
+
 ### Default (recommended, no GitHub Actions): Static card
 
 ```markdown

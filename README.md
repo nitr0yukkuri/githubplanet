@@ -238,6 +238,8 @@ http://localhost:3000/demo?showcase=ruby
 
 GitHubプロフィールのREADMEには、静止カードをそのまま貼り付けられます。リポジトリへのファイル追加やGitHub Actionsの設定は不要です。
 
+カードページはログイン不要で開けます。ただし、GitHub Planetに本人がまだログインしていない場合は公開リポジトリの情報からプレビューを生成するため、年間コントリビューション数を正確には取得できません。この場合は実際に0件という意味ではなく、**—（未取得）**と表示します。本人がログインすれば貢献数を反映した惑星を生成できます。
+
 ```markdown
 [![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet.dev/card.html?username=ユーザー名&fix=true)](https://githubplanet.dev/card.html?username=ユーザー名)
 ```
