@@ -110,18 +110,20 @@ for (const [route, status] of [
     });
 }
 
-test('a failed rename sync keeps the verified profile URL without logging credentials', async (t) => {
+test('public profile redirects never persist a rename or log credentials', async (t) => {
     const logs = captureLogs(t);
+    let writes = 0;
     const service = createPlanetQueryService({
         repository: {
             async findByGithubId() { return { githubId: 42, username: 'old-user' }; },
-            async updateUsernameByGithubId() { throw secretError(); }
+            async updateUsernameByGithubId() { writes += 1; throw secretError(); }
         },
         githubClient: { async getUserById() { return { id: 42, login: 'new-user' }; } },
         planetService: {}, cacheDuration: 60_000
     });
     assert.equal(await service.getGithubProfileUrlById('42'), 'https://github.com/new-user');
-    assertSafeLogs(logs);
+    assert.equal(writes, 0);
+    assert.deepEqual(logs, []);
 });
 
 for (const asyncWebhook of [false, true]) {
