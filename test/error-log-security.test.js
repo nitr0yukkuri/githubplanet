@@ -123,7 +123,7 @@ test('public profile redirects never persist a rename or log credentials', async
     });
     assert.equal(await service.getGithubProfileUrlById('42'), 'https://github.com/new-user');
     assert.equal(writes, 0);
-    assertSafeLogs(logs);
+    assert.deepEqual(logs, []);
 });
 
 for (const asyncWebhook of [false, true]) {
