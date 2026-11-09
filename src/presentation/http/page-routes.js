@@ -179,17 +179,12 @@ export function registerPageRoutes(app, {
             return sendPage(req, res, 'card.html');
         }
 
-        if (fix) {
-            allowPortfolioCardEmbedding(res);
-            return sendPage(req, res, 'card.html');
-        }
-
-        if (!isProduction || (loggedInUser && loggedInUser === username)) {
-            allowPortfolioCardEmbedding(res);
-            return sendPage(req, res, 'card.html');
-        }
-
-        res.status(403).send('Forbidden: This card is private.');
+        // The HTML card only displays planet data already exposed by the public
+        // /api/planets/user/:username endpoint. Captures and interactive views
+        // should follow the same public access rules, even without a session.
+        // Keep /api/card/:username protected because it is a separate capture API.
+        allowPortfolioCardEmbedding(res);
+        return sendPage(req, res, 'card.html');
     });
 
     app.get(['/sender', '/en/sender', '/english/sender'], (req, res) => {
