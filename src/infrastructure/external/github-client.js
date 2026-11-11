@@ -247,45 +247,29 @@ export function createGithubClient({
 
         async getPlanetSource(login, accessToken) {
             return measureExternalOperation(onRequestTiming, 'get_planet_source', async () => {
+                const repositoryData = await requestGraphql(REPOSITORY_DATA_QUERY, { login }, accessToken);
+
                 const to = new Date();
                 const from = new Date(to);
                 from.setDate(from.getDate() - 8);
-                const repositoryQuery = () => requestGraphql(
-                    REPOSITORY_DATA_QUERY,
-                    { login },
-                    accessToken
-                );
-                const annualQuery = () => requestGraphql(
-                    ANNUAL_CONTRIBUTIONS_QUERY,
-                    { login },
-                    accessToken
-                );
-                const pullRequestsQuery = () => requestGraphql(
-                    MERGED_PULL_REQUESTS_QUERY,
-                    { login },
-                    accessToken
-                );
                 const recentQuery = () => requestGraphql(RECENT_CONTRIBUTIONS_QUERY, {
                     login,
                     from: from.toISOString(),
                     to: to.toISOString()
                 }, accessToken);
-                let repositoryData;
                 let annualData;
                 let pullRequestData;
                 let recentData;
                 if (parallelPlanetSourceRequests) {
-                    // 読み取り専用の4クエリは独立しているため、初回惑星表示を直列待ちにしない。
-                    [repositoryData, annualData, pullRequestData, recentData] = await Promise.all([
-                        repositoryQuery(),
-                        annualQuery(),
-                        pullRequestsQuery(),
+                    // 3つは読み取り専用で互いに依存しないため、直列待ちを避けても結果は同じ。
+                    [annualData, pullRequestData, recentData] = await Promise.all([
+                        requestGraphql(ANNUAL_CONTRIBUTIONS_QUERY, { login }, accessToken),
+                        requestGraphql(MERGED_PULL_REQUESTS_QUERY, { login }, accessToken),
                         recentQuery()
                     ]);
                 } else {
-                    repositoryData = await repositoryQuery();
-                    annualData = await annualQuery();
-                    pullRequestData = await pullRequestsQuery();
+                    annualData = await requestGraphql(ANNUAL_CONTRIBUTIONS_QUERY, { login }, accessToken);
+                    pullRequestData = await requestGraphql(MERGED_PULL_REQUESTS_QUERY, { login }, accessToken);
                     recentData = await recentQuery();
                 }
 

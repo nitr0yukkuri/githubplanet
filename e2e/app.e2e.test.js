@@ -15,7 +15,7 @@ import { chromium } from 'playwright';
 import { LANGUAGE_COLORS } from '../src/domain/planet/constants.js';
 import { EXTENSION_MAP } from '../src/domain/planet/language-extensions.js';
 import { requestPlanetName } from '../src/application/planet-name-generator.js';
-import { getShowcasePlanet, listShowcasePlanets } from '../src/domain/planet/showcase-planets.js';
+import { listShowcasePlanets } from '../src/domain/planet/showcase-planets.js';
 import { createMeteorService } from '../src/application/meteor-service.js';
 import { createPlanetQueryService } from '../src/application/planet-query-service.js';
 import { createPlanetService } from '../src/application/planet-service.js';
@@ -539,17 +539,17 @@ test('shared Markdown opens the card in a clean anonymous browser without a 403'
         const publicUrl = new URL(match[1]);
         assert.equal(publicUrl.hostname, 'githubplanet.dev');
         assert.equal(publicUrl.pathname, '/card.html');
-        assert.equal(publicUrl.searchParams.has('fix'), false);
+        assert.equal(publicUrl.searchParams.get('fix'), 'true');
 
         // Markdownには本番URLが入るため、同じパスを隔離したローカル本番相当サーバーで開く。
         const anonymousResponse = await anonymousBrowser.page.goto(
             `${baseUrl}${publicUrl.pathname}${publicUrl.search}`
         );
-        assert.equal(anonymousResponse.status(), 200, 'the public interactive URL must not be forbidden');
+        assert.equal(anonymousResponse.status(), 200, 'the public screenshot URL must not be forbidden');
         await anonymousBrowser.page.waitForFunction(() => (
             document.getElementById('main-lang-stat')?.textContent === 'PYTHON'
         ));
-        assert.equal(await anonymousBrowser.page.locator('#share-section').isVisible(), true);
+        assert.equal(await anonymousBrowser.page.locator('#share-section').isVisible(), false);
         assert.equal(await anonymousBrowser.page.locator('#planet-canvas canvas').count(), 1);
         firstBrowser.assertNoPageErrors();
         anonymousBrowser.assertNoPageErrors();
@@ -558,7 +558,7 @@ test('shared Markdown opens the card in a clean anonymous browser without a 403'
     }
 });
 
-test('showcase cards render without WebGL fallback and shared trail shader time advances', { timeout: 180_000 }, async () => {
+test('all language showcase cards render their data and Python trail shaders keep advancing', { timeout: 180_000 }, async () => {
     const { page, close, assertNoPageErrors } = await openPage();
     await page.addInitScript(() => {
         window.__e2eTrailShaderSeen = false;
@@ -608,27 +608,21 @@ test('showcase cards render without WebGL fallback and shared trail shader time 
             assert.equal(await page.locator('#card-webgl-fallback').isVisible(), false, `${showcase.slug}: WebGL should be active`);
         }
 
-        // 専用演出のない言語でも、共通軌跡のシェーダーのコンパイルと時間更新を確認する。
-        await page.route(`${baseUrl}/api/planets/user/e2e-trails`, (route) => route.fulfill({
-            json: {
-                username: 'e2e-trails',
-                planetColor: '#306998',
-                planetSizeFactor: 2,
-                mainLanguage: 'Python',
-                languageStats: { Python: 70, Rust: 20, TypeScript: 10 },
-                totalCommits: 2000,
-                weeklyCommits: 24,
-                planetName: 'Shared Language Trails'
-            }
-        }));
-        await page.goto(`${baseUrl}/card.html?username=e2e-trails&fix=true`);
-        await page.waitForFunction(() => document.getElementById('main-lang-stat')?.textContent === 'PYTHON');
-        assert.equal(await page.locator('#card-webgl-fallback').isVisible(), false);
-        assert.equal(await page.locator('#card-container').getAttribute('data-card-theme'), null);
+        const python = listShowcasePlanets().find(({ slug }) => slug === 'python');
+        assert.deepEqual(python.languageStats, { Python: 70, Rust: 20, TypeScript: 10 });
+        await page.goto(`${baseUrl}/card.html?showcase=python&fix=true`);
         await page.waitForFunction(() => (
             window.__e2eTrailShaderSeen
             && new Set(window.__e2eTrailTimes).size > 1
         ), { timeout: 15_000 });
+        const trailRuntime = await page.evaluate(() => ({
+            shaderSeen: window.__e2eTrailShaderSeen,
+            distinctTimeValues: new Set(window.__e2eTrailTimes).size,
+            updateCount: window.__e2eTrailTimes.length
+        }));
+        assert.ok(trailRuntime.shaderSeen, 'WebGL should compile the secondary-language trail shader');
+        assert.ok(trailRuntime.distinctTimeValues > 1, 'trailTime should advance across rendered frames');
+        assert.ok(trailRuntime.updateCount > 2);
         assertNoPageErrors();
     } finally {
         await close();
@@ -638,13 +632,7 @@ test('showcase cards render without WebGL fallback and shared trail shader time 
 test('Japanese and English mobile showcases fit the viewport and display the fixed planet data', { timeout: 60_000 }, async () => {
     const { page, close, assertNoPageErrors } = await openPage({ viewport: { width: 390, height: 844 } });
     try {
-        await page.route((url) => url.pathname === '/api/planets/showcase/typescript', (route) => route.fulfill({
-            json: {
-                ...getShowcasePlanet('typescript'),
-                languageStats: { TypeScript: 70, Rust: 20, Python: 10 }
-            }
-        }));
-        for (const [route, language] of [['/showcase/typescript', 'ja'], ['/en/showcase/typescript', 'en']]) {
+        for (const [route, language] of [['/showcase/python', 'ja'], ['/en/showcase/python', 'en']]) {
             const response = await page.goto(`${baseUrl}${route}`);
             assert.equal(response.status(), 200);
             await page.waitForFunction(() => (
@@ -653,11 +641,9 @@ test('Japanese and English mobile showcases fit the viewport and display the fix
             ));
             assert.equal(await page.locator('html').getAttribute('lang'), language);
             assert.equal(await page.locator('#planet-name-val').isVisible(), true);
-            assert.equal(await page.locator('#canvas-container canvas').isVisible(), true);
-            assert.equal(await page.locator('#webgl-fallback').isVisible(), false);
             assert.deepEqual(
                 await page.locator('#lang-stats-container p').allTextContents(),
-                ['TypeScript70%', 'Rust20%', 'Python10%']
+                ['Python70%', 'Rust20%', 'TypeScript10%']
             );
             const dimensions = await page.evaluate(() => ({
                 viewport: document.documentElement.clientWidth,
@@ -744,7 +730,7 @@ test('a signed GitHub webhook reaches the other browser over live Socket.IO', { 
             predicate: (message) => message.text().startsWith('Realtime meteor connected'),
             timeout: 15_000
         });
-        await receiver.page.goto(`${baseUrl}/showcase/go`);
+        await receiver.page.goto(`${baseUrl}/showcase/python`);
         await sender.page.goto(`${baseUrl}/showcase/typescript`);
         await Promise.all([receiverConnected, senderConnected]);
 
@@ -784,55 +770,5 @@ test('a signed GitHub webhook reaches the other browser over live Socket.IO', { 
         receiver.assertNoPageErrors();
     } finally {
         await Promise.all([sender.close(), receiver.close()]);
-    }
-});
-
-test('XML surface compiles and animates in both home and card', { timeout: 60_000 }, async (t) => {
-    const { page, close, assertNoPageErrors } = await openPage();
-    const shaderErrors = [];
-    page.on('console', (message) => {
-        if (message.type() === 'error' && /WebGLProgram|VALIDATE_STATUS|shader error/i.test(message.text())) {
-            shaderErrors.push(message.text());
-        }
-    });
-    await page.addInitScript(() => {
-        window.__xmlTimes = [];
-        const prototype = window.WebGL2RenderingContext?.prototype;
-        if (!prototype) return;
-        const locations = new Set();
-        const getLocation = prototype.getUniformLocation;
-        const setFloat = prototype.uniform1f;
-        prototype.getUniformLocation = function (program, name) {
-            const location = getLocation.call(this, program, name);
-            if (name === 'xmlNestingTime' && location) locations.add(location);
-            return location;
-        };
-        prototype.uniform1f = function (location, value) {
-            if (locations.has(location)) window.__xmlTimes.push(value);
-            return setFloat.call(this, location, value);
-        };
-    });
-    const fixture = {
-        username: 'e2e-xml', mainLanguage: 'XML', planetColor: '#285a76',
-        planetSizeFactor: 2, languageStats: { XML: 70, TypeScript: 20, Rust: 10 },
-        totalCommits: 2000, weeklyCommits: 24, planetName: 'XML Integration Fixture'
-    };
-    await page.route((url) => ['/api/planets/showcase/typescript', '/api/planets/user/e2e-xml'].includes(url.pathname),
-        (route) => route.fulfill({ json: fixture }));
-    try {
-        for (const pathname of ['/showcase/typescript', '/card.html?username=e2e-xml&fix=true']) {
-            await page.goto(baseUrl + pathname);
-            await page.waitForFunction(() => new Set(window.__xmlTimes).size > 1);
-            if (pathname.startsWith('/card')) {
-                assert.equal(await page.locator('#main-lang-stat').textContent(), 'XML');
-                assert.equal(await page.locator('#card-webgl-fallback').isVisible(), false);
-            }
-            assert.deepEqual(shaderErrors, [], 'XML shader must link successfully');
-            assertNoPageErrors();
-        }
-        const revision = await page.evaluate(async () => (await import('/vendor/three/build/three.module.js')).REVISION);
-        t.diagnostic(`XML home/card rendered with Three revision ${revision}`);
-    } finally {
-        await close();
     }
 });

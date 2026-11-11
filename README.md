@@ -111,12 +111,13 @@ GitHub Push Webhook → Express → Socket.IO → 閲覧中のブラウザに流
 | Java | 土壌と地表ダスト | `java-planet-soil.js` |
 | Kotlin | 結晶・コア・電気的な線 | `kotlin-planet-crystal.js` |
 | Perl | 海洋を思わせる地表表現 | `perl-planet-ocean.js` |
+| Python | 構造的な地表と軌跡 | `python-planet-structure.js` |
 | Rust | 砂漠地形と砂塵 | `rust-planet-desert.js` |
 | Ruby | 太陽熱・コロナ・エンバー | `ruby-planet-solar.js` |
 
 対応言語のカタログと色定義は、専用レンダラーの一覧とは別に `src/domain/planet/constants.js` で管理しています。未登録言語でも、色と名前のフォールバックによって惑星データを保持できます。
 
-2位・3位の言語は、主言語にかかわらず、言語色を持つ共通の軌跡として惑星の周囲を巡ります。
+Python向けの表現では、構造的な地表とそれに対応する軌跡を表示します。
 
 ## 言語別ショーケース
 
@@ -193,6 +194,14 @@ GitHub Push Webhook → Express → Socket.IO → 閲覧中のブラウザに流
       </a>
     </td>
   </tr>
+  <tr>
+    <td align="center" width="50%" colspan="2">
+      <strong>Python — Paired Orbital Trails</strong><br>
+      <a href="https://githubplanet.dev/card.html?showcase=python&amp;fix=true">
+        <img width="400" alt="Python showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_python.gif">
+      </a>
+    </td>
+  </tr>
 </table>
 
 カードを画像付きでまとめた一覧は[カードギャラリー](docs/cards/README.md)（[English](docs/cards/README.en.md)）を参照してください。
@@ -237,8 +246,6 @@ http://localhost:3000/demo?showcase=ruby
 ### 静止カード（標準）
 
 GitHubプロフィールのREADMEには、静止カードをそのまま貼り付けられます。リポジトリへのファイル追加やGitHub Actionsの設定は不要です。
-
-カードページはログイン不要で開けます。ただし、GitHub Planetに本人がまだログインしていない場合は公開リポジトリの情報からプレビューを生成するため、年間コントリビューション数を正確には取得できません。この場合は実際に0件という意味ではなく、**—（未取得）**と表示します。本人がログインすれば貢献数を反映した惑星を生成できます。
 
 ```markdown
 [![GitHub Planet](https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/https://githubplanet.dev/card.html?username=ユーザー名&fix=true)](https://githubplanet.dev/card.html?username=ユーザー名)
@@ -484,6 +491,8 @@ npm run perf:random-http
 - `update-card.yml`: テスト、デプロイ済みショーケースのSmoke test、Playwright録画、FFmpeg変換、`card-assets`ブランチへの公開。
 
 GIF生成ではPlaywrightでカードを録画し、FFmpegで`800x266`のGIFへ変換します。生成物が10 MiB以下であることを確認してから公開します。
+
+公式プロフィールカードのGitHubデータ同期は明示的な有効化後に動作します。初期状態は保存済みデータで従来のGIF録画を継続します。設定完了後、Environment variable `OFFICIAL_CARD_REFRESH_ENABLED` を `true` にすると、毎日の録画前にGitHubから惑星データを更新します。認証トークンはリポジトリSecretではなく、[Actions Environments設定](https://github.com/nitr0yukkuri/githubplanet/settings/environments)で`official-card`環境を作成し、Deployment branchesを`main`だけに制限したうえで、Environment secret `CARD_REFRESH_TOKEN`に登録してください。値にはプロフィール所有者本人が発行したfine-grained personal access tokenを使い、User permissionsの`Starring`を`Read`に設定してください。Repository permissionsと他のAccount permissionsは付与しません。Classic PATや`repo`／`public_repo`権限は使いません。公開リポジトリのデータだけを取得し、private/internal contributionの集計値は含めません。トークンはActions内からHTTPSで送られ、ログや生成物には含めません。有効化後にSecretが未設定、または更新に失敗した場合はGIFを公開せず、古いデータを新しいカードとして扱いません。日次実行はUTC 00:00の予定です。
 
 ## セキュリティと運用上の注意
 

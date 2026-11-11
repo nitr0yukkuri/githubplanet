@@ -160,15 +160,7 @@ export function registerPageRoutes(app, {
     });
 
     app.get(['/card', '/card.html', '/en/card', '/en/card.html', '/english/card', '/english/card.html'], (req, res) => {
-        const { username, fix, showcase } = req.query;
-        if (showcase !== undefined) {
-            const slug = typeof showcase === 'string' ? showcase.trim().toLowerCase() : '';
-            // 廃止したショーケースで空のカードを出さず、ページ取得時点で404にする。
-            if (!showcasePages.some((planet) => planet.slug === slug)) {
-                res.setHeader('X-Robots-Tag', 'noindex, follow');
-                return res.status(404).type('html').send(pageCache.get('404.html'));
-            }
-        }
+        const { username, fix } = req.query;
         const loggedInUser = req.session.planetData?.user?.login;
 
         if (!username && !fix) {
@@ -179,12 +171,17 @@ export function registerPageRoutes(app, {
             return sendPage(req, res, 'card.html');
         }
 
-        // The HTML card only displays planet data already exposed by the public
-        // /api/planets/user/:username endpoint. Captures and interactive views
-        // should follow the same public access rules, even without a session.
-        // Keep /api/card/:username protected because it is a separate capture API.
-        allowPortfolioCardEmbedding(res);
-        return sendPage(req, res, 'card.html');
+        if (fix) {
+            allowPortfolioCardEmbedding(res);
+            return sendPage(req, res, 'card.html');
+        }
+
+        if (!isProduction || (loggedInUser && loggedInUser === username)) {
+            allowPortfolioCardEmbedding(res);
+            return sendPage(req, res, 'card.html');
+        }
+
+        res.status(403).send('Forbidden: This card is private.');
     });
 
     app.get(['/sender', '/en/sender', '/english/sender'], (req, res) => {

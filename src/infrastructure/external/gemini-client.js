@@ -22,10 +22,8 @@ export function createGeminiClient({
 
         // モデル一覧はリクエストごとに変わらないため、毎回の外部API往復を避ける。
         modelListPromise = measureExternalOperation(onRequestTiming, 'list_models', () => {
-            const listModelsUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
-            // URLがログに残らないよう、APIキーはヘッダーで送る。
+            const listModelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanApiKey}`;
             return axios.get(listModelsUrl, {
-                headers: { 'x-goog-api-key': cleanApiKey },
                 timeout: GEMINI_API_TIMEOUT_MS
             });
         }, { provider: 'gemini' })
@@ -58,14 +56,11 @@ export function createGeminiClient({
             for (const model of models) {
                 const modelId = model.name.split('/').pop();
                 try {
-                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`;
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${cleanApiKey}`;
                     const response = await measureExternalOperation(onRequestTiming, 'generate_content', () => axios.post(url, {
                         contents: [{ parts: [{ text: prompt }] }]
                     }, {
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'x-goog-api-key': cleanApiKey
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         timeout: GEMINI_API_TIMEOUT_MS
                     }), { provider: 'gemini', modelId });
                     const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;

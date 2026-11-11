@@ -71,8 +71,6 @@ When a GitHub Push Webhook arrives, the application derives a shooting star's co
 
 The static card is the recommended default. Replace `YOUR_USERNAME` and paste the snippet into your profile `README.md`; no repository files or GitHub Actions setup are required.
 
-Card pages can be opened without signing in. If the owner has not connected GitHub Planet, the card uses public repository metadata to show a preview; its contribution count is shown as **—** (unavailable), not **0**. Sign in as the owner to generate a planet with the contribution count.
-
 ### Default (recommended, no GitHub Actions): Static card
 
 ```markdown
@@ -192,6 +190,8 @@ GitHub Webhook → Express → Socket.IO → Browser
     <img src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/profile_card.gif" alt="nitr0yukkuri's GitHub Planet" />
   </a>
 </div>
+
+Official profile refresh is opt-in. Existing GIF recording continues with saved data until the environment variable `OFFICIAL_CARD_REFRESH_ENABLED` is set to `true`. Once enabled, it refreshes the owner's planet data before daily recording. Create an `official-card` environment in [Actions Environments](https://github.com/nitr0yukkuri/githubplanet/settings/environments), restrict its deployment branches to `main`, and add `CARD_REFRESH_TOKEN` as an environment secret there. Do not store this token as a repository secret. Use a fine-grained personal access token owned by the profile owner, with only the `Starring: Read` user permission. Do not grant repository permissions or other account permissions. Do not use a classic PAT or the `repo` or `public_repo` scopes. The card uses public repository data only and excludes private or internal contribution counts. The workflow sends the token over HTTPS and does not include it in logs or generated assets. If enabled and the secret is missing or the refresh fails, the workflow stops without publishing a GIF made from stale data. The scheduled run is set for 00:00 UTC.
 
 ### Frontend & Design
 

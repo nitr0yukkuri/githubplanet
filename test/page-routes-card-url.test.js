@@ -88,39 +88,3 @@ test('uses an explicitly configured origin for non-production card captures', as
     assert.match(response.headers.get('location'), /https:\/\/preview\.githubplanet\.dev\/card\.html/);
     assert.doesNotMatch(response.headers.get('location'), /attacker\.example/);
 });
-
-
-test('serves public profile cards to anonymous visitors in production', async (t) => {
-    const app = express();
-    app.use((req, res, next) => {
-        req.session = {};
-        next();
-    });
-    registerPageRoutes(app, {
-        rootDirectory: process.cwd(),
-        isProduction: true,
-        sessionSecret: 'test-session-secret',
-        publicBaseUrl: 'https://githubplanet.dev'
-    });
-
-    const server = app.listen(0, '127.0.0.1');
-    await new Promise((resolve) => server.once('listening', resolve));
-    t.after(() => server.close());
-
-    const baseUrl = `http://127.0.0.1:${server.address().port}`;
-    for (const route of [
-        '/card.html?username=Robson',
-        '/card?username=Robson',
-        '/en/card.html?username=Robson',
-        '/english/card?username=Robson',
-        '/card.html?username=Robson&fix=true'
-    ]) {
-        const response = await fetch(`${baseUrl}${route}`);
-        assert.equal(response.status, 200, route);
-        assert.match(await response.text(), /id="card-container"/);
-    }
-
-    // The authenticated capture endpoint must remain protected.
-    const privateCapture = await fetch(`${baseUrl}/api/card/Robson`);
-    assert.equal(privateCapture.status, 403);
-});

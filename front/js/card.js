@@ -57,7 +57,7 @@ if (!isScreenshotMode) {
     const pageUrl = `${PUBLIC_DEPLOY_URL}${localizedPath('/card.html')}?${cardQuery}`;
     const captureUrl = `${pageUrl}&fix=true`;
     const staticCardUrl = `https://image.thum.io/get/width/800/crop/400/noanimate/wait/8/${captureUrl}`;
-    const mdText = `[![GitHub Planet](${staticCardUrl})](${pageUrl})`;
+    const mdText = `[![GitHub Planet](${staticCardUrl})](${captureUrl})`;
 
     if (markdownCode) markdownCode.textContent = mdText;
     if (copyBtn) {
@@ -177,7 +177,7 @@ async function init() {
     try {
         const dataUrl = showcaseSlug
             ? `/api/planets/showcase/${encodeURIComponent(showcaseSlug)}`
-            : `/api/planets/user/${encodeURIComponent(username)}`;
+            : `/api/planets/user/${username}`;
         const res = await fetch(dataUrl, { signal: controller.signal });
         if (!res.ok) throw new Error('Data fetch failed');
         const data = await res.json();
@@ -188,7 +188,7 @@ async function init() {
         const dummyData = {
             username: username,
             planetName: 'Error Planet',
-            totalCommits: null,
+            totalCommits: 0,
             planetSizeFactor: 1,
             planetColor: '#808080',
             mainLanguage: 'Unknown'
@@ -220,22 +220,8 @@ function updateUI(data) {
         : localizedPlanetName(data);
     planetNameSub.textContent = displayPlanetName.toUpperCase();
 
-    // Anonymous public previews cannot retrieve a reliable contribution count.
-    // A zero in that preview is a placeholder, NOT zero actual contributions.
-    // Preserve genuine zero contributions for signed-in/saved profiles.
-    if (data.isPublicPreview || !Number.isFinite(data.totalCommits)) {
-        commitsVal.textContent = '—';
-        const isEnglish = document.documentElement.lang === 'en';
-        commitsVal.title = data.isPublicPreview
-            ? (isEnglish
-                ? 'Contribution count unavailable in public preview. The owner can sign in to connect their planet.'
-                : '公開プレビューでは貢献数を取得できません。本人がログインすると連携できます。')
-            : (isEnglish ? 'Contribution data unavailable.' : '貢献数を取得できませんでした。');
-    } else {
-        commitsVal.removeAttribute('title');
-        const duration = isScreenshotMode || prefersReducedMotion() ? 0 : 1500;
-        animateValue(commitsVal, 0, data.totalCommits, duration);
-    }
+    const duration = isScreenshotMode || prefersReducedMotion() ? 0 : 1500;
+    animateValue(commitsVal, 0, data.totalCommits || 0, duration);
 
     mainLangStat.textContent = (data.mainLanguage || 'UNKNOWN').toUpperCase();
 

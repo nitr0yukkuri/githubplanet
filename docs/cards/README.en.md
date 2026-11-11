@@ -1,6 +1,6 @@
 # GitHub Planet Card Gallery
 
-Cards without descriptions: [one column](README.cards-only.en.md) | [two columns](README.cards-only-2-column.en.md)
+Cards without descriptions: [view the cards only](README.cards-only.en.md)
 
 This is the gallery of language showcase planet cards. Every card uses fixed data and the production read-only showcase API. Each card includes a short description of its visual identity.
 
@@ -98,6 +98,15 @@ This is the gallery of language showcase planet cards. Every card uses fixed dat
       <sub>A hot corona glows above the surface as ember-like sparks rise.</sub><br>
       <a href="https://githubplanet.dev/card.html?showcase=ruby&amp;fix=true">
         <img width="400" alt="Ruby showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_ruby.gif">
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2">
+      <strong>Python — Paired Orbital Trails</strong><br>
+      <sub>Rust and TypeScript trails follow separate paths and disappear behind the planet.</sub><br>
+      <a href="https://githubplanet.dev/card.html?showcase=python&amp;fix=true">
+        <img width="400" alt="Python showcase planet" src="https://raw.githubusercontent.com/nitr0yukkuri/githubplanet/card-assets/showcase_python.gif">
       </a>
     </td>
   </tr>
