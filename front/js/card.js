@@ -213,7 +213,12 @@ function showCardWebGLFallback(color) {
 function updateUI(data) {
     applyCardLanguageTheme(containerElement, data);
     usernameDisplay.textContent = data.username || username;
-    planetNameSub.textContent = localizedPlanetName(data).toUpperCase();
+    const planetName = String(data.planetName || '');
+    const hasJapaneseCharacters = /[\u3040-\u30ff\u3400-\u9fff]/u.test(planetName);
+    const displayPlanetName = planetName && !hasJapaneseCharacters
+        ? planetName
+        : localizedPlanetName(data);
+    planetNameSub.textContent = displayPlanetName.toUpperCase();
 
     // Anonymous public previews cannot retrieve a reliable contribution count.
     // A zero in that preview is a placeholder, NOT zero actual contributions.
