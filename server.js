@@ -10,6 +10,7 @@ import { Server } from 'socket.io';
 import { randomBytes } from 'node:crypto';
 import { createPlanetQueryService } from './src/application/planet-query-service.js';
 import { createAuthoredLanguageHistoryService } from './src/application/authored-language-history-service.js';
+import { createPublicContributionHistoryService } from './src/application/public-contribution-history-service.js';
 import { createPlanetService } from './src/application/planet-service.js';
 import { listShowcasePlanets } from './src/domain/planet/showcase-planets.js';
 import { createLanguageColorService } from './src/application/language-color-service.js';
@@ -18,6 +19,7 @@ import { createMeteorService } from './src/application/meteor-service.js';
 import { LANGUAGE_COLORS } from './src/domain/planet/constants.js';
 import { EXTENSION_MAP } from './src/domain/planet/language-extensions.js';
 import { createAuthoredLanguageHistoryRepository } from './src/infrastructure/database/authored-language-history-repository.js';
+import { createPublicContributionHistoryRepository } from './src/infrastructure/database/public-contribution-history-repository.js';
 import { createLanguageColorRepository } from './src/infrastructure/database/language-color-repository.js';
 import { createWebhookDeliveryStore } from './src/infrastructure/database/webhook-delivery-store.js';
 import { createPlanetRepository } from './src/infrastructure/database/planet-repository.js';
@@ -25,11 +27,13 @@ import { assertDatabaseMigrationsApplied } from './src/infrastructure/database/m
 import { createPostgresPool } from './src/infrastructure/database/postgres.js';
 import { createGeminiClient } from './src/infrastructure/external/gemini-client.js';
 import { createGithubClient } from './src/infrastructure/external/github-client.js';
+import { createGithubPublicHistoryClient } from './src/infrastructure/external/github-public-history.js';
 import { registerAuthRoutes } from './src/presentation/http/auth-routes.js';
 import { createCanonicalHostRedirect } from './src/presentation/http/canonical-host-redirect.js';
 import { registerEventRoutes } from './src/presentation/http/event-routes.js';
 import { registerPageRoutes } from './src/presentation/http/page-routes.js';
 import { registerPlanetRoutes } from './src/presentation/http/planet-routes.js';
+import { registerPublicContributionHistoryRoutes } from './src/presentation/http/public-contribution-history-routes.js';
 import { createRandomPerformanceReporter } from './src/presentation/http/random-performance.js';
 import { createExternalPerformanceReporter } from './src/infrastructure/observability/external-performance.js';
 import { createErrorHandler } from './src/presentation/http/error-handler.js';
@@ -157,6 +161,13 @@ const githubClient = createGithubClient({
         ? externalPerformance.record
         : undefined
 });
+const publicHistoryGithubClient = createGithubPublicHistoryClient({
+    axios,
+    minRequestIntervalMs: 1_000,
+    onRequestTiming: process.env.PERF_TRACE_EXTERNAL === 'true'
+        ? externalPerformance.record
+        : undefined
+});
 const planetService = createPlanetService({
     repository: planetRepository,
     githubClient,
@@ -178,6 +189,11 @@ const planetQueryService = planetRepository ? createPlanetQueryService({
 const authoredLanguageHistoryService = planetRepository ? createAuthoredLanguageHistoryService({
     repository: createAuthoredLanguageHistoryRepository(pool),
     githubClient
+}) : undefined;
+const publicContributionHistoryService = planetRepository ? createPublicContributionHistoryService({
+    planetRepository,
+    historyRepository: createPublicContributionHistoryRepository(pool),
+    githubClient: publicHistoryGithubClient
 }) : undefined;
 
 app.use('/front/img', express.static(path.join(__dirname, 'front/img'), { maxAge: '30d' }));
@@ -230,6 +246,10 @@ registerPlanetRoutes(app, {
     cacheDuration: DATA_CACHE_DURATION,
     randomHistoryStorage: process.env.RANDOM_HISTORY_STORAGE || 'cookie',
     randomPerformance
+});
+registerPublicContributionHistoryRoutes(app, {
+    service: publicContributionHistoryService,
+    systemApiKey: process.env.SYSTEM_API_KEY
 });
 
 let io;
