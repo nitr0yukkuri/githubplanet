@@ -1,3 +1,5 @@
+import { createWebhookDeliveryService } from '../src/application/webhook-delivery-service.js';
+import { createMemoryWebhookStore } from './fixtures/webhook-store.js';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
@@ -35,21 +37,14 @@ test('protects internal event tools and verifies GitHub webhook signatures', asy
         processedWebhookDeliveries += 1;
         return processWebhook(...args);
     };
+    const webhookDeliveryService = createWebhookDeliveryService({ store: createMemoryWebhookStore(), meteorService });
     registerEventRoutes(app, {
         generatePlanetName: async () => 'ok',
         geminiClient,
         languageColorService: geminiClient,
         meteorService,
-        webhookDeliveryStore: {
-            deliveries: new Set(),
-            payloads: new Set(),
-            async claimGithubWebhookDelivery(deliveryId, payloadHash) {
-                if (this.deliveries.has(deliveryId) || this.payloads.has(payloadHash)) return false;
-                this.deliveries.add(deliveryId);
-                this.payloads.add(payloadHash);
-                return true;
-            }
-        },
+        webhookDeliveryService,
+        onWebhookAccepted: () => { void webhookDeliveryService.processPending(); },
         systemApiKey: 'system-secret',
         webhookSecret: 'webhook-secret',
         requireInternalAuth: true,
@@ -84,7 +79,7 @@ test('protects internal event tools and verifies GitHub webhook signatures', asy
     });
     assert.equal(authorizedMeteor.status, 200);
 
-    const body = JSON.stringify({ repository: { language: 'JavaScript' }, commits: [] });
+    const body = JSON.stringify({ repository: { language: 'JavaScript' }, commits: [{ id: 'fixture-commit', modified: ['main.js'] }] });
     const unsignedWebhook = await fetch(`${baseUrl}/webhook`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
