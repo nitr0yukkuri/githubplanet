@@ -124,7 +124,15 @@ export function createApplication({
 
     if (serveStaticAssets) app.use('/front/img', express.static(path.join(rootDirectory, 'front/img'), { maxAge: '30d' }));
     if (serveStaticAssets) app.use('/front', express.static(path.join(rootDirectory, 'front'), { maxAge: 0 }));
-    if (serveStaticAssets) app.use('/vendor/three', express.static(path.join(rootDirectory, 'node_modules/three'), { maxAge: '30d' }));
+    if (serveStaticAssets) {
+        // パッケージのディレクトリ全体を公開せず、カードが読み込む2つの公開JSだけを配信する。
+        app.get('/vendor/three/build/three.module.js', (_req, res) => {
+            res.sendFile(path.join(rootDirectory, 'node_modules/three/build/three.module.js'), { maxAge: '30d' });
+        });
+        app.get('/vendor/three/examples/jsm/controls/OrbitControls.js', (_req, res) => {
+            res.sendFile(path.join(rootDirectory, 'node_modules/three/examples/jsm/controls/OrbitControls.js'), { maxAge: '30d' });
+        });
+    }
 
     const PgSession = connectPgSimple(session);
     app.use(randomPerformance.beforeSessionMiddleware);
