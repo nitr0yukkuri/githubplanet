@@ -30,13 +30,16 @@ Chromeで既存ユーザーのGitHub OAuth往復を完了し、ホームの惑�
 
 ## 回帰検証とレビュー
 
-- 全回帰テスト351件成功、Workers dry-run成功。
+- 全回帰テスト354件成功、Workers dry-run成功。
 - 実workerdのQueue/WebSocket検証は2048件・64batch・重複0件。遅いpublisherが完了状態を上書きしないことも確認した。
 - レビューで履歴Queueが未生成Poolを参照する問題を発見。遅延接続を再現する回帰テストを先に失敗させ、`ensurePool()`を呼んでからsession/履歴へアクセスするよう修正した。
 - 最新mainの本番環境チェック、CSP nonce、通常APIの本文制限、URL経由の内部キー認証廃止を共有bootstrap/routeで維持する。Node入口はDB接続前にも共通の環境チェックを実行する。
+- 移動箇所へのCodeQL指摘を受け、称号保存・履歴開始へsession専用CSRF tokenを追加し、Nodeのvendor配信をカードが使う2つのJSへ限定した。警告の抑制や解析対象からの除外は行っていない。
 - PostgreSQLを含むQueue履歴完了・session・Webhook・ブラウザー統合検証はPRのCloudflare workflowでも実行する。
 
 本番では大量履歴や署名の有効なWebhookを負荷試験していない。日次枠、CPU、memory、Queueの再試行とDLQの監視は必要で、今回の疎通成功を無制限の稼働保証として扱わない。Cloud Runの停止後もArtifact Registryなどの保存料金は別に残る。
+
+Cookie認証を使う`POST /api/save-title`と`POST /api/me/authored-language-history/scan`は、同じsessionで`GET /api/csrf-token`から得た値を`X-CSRF-Token`へ付ける。tokenはsessionごとに暗号学的乱数で生成し、欠落・不一致は403。匿名要求は従来どおり401。設定画面はこの取得・送信を自動で行う。Webhook署名と管理APIキーの経路はこのCSRF tokenの対象外。
 
 ## 再配備
 
