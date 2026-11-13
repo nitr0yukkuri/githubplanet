@@ -1,6 +1,6 @@
 # Cloudflare移行
 
-最新の実配備結果は [公開プレビュー検証（2026-11-12）](cloudflare-preview-validation.md) を参照。実Hyperdrive、Queue、DOへの接続と公開URLの疎通は確認済み。本番DNSは未切替で、無料枠のCPU余裕と実OAuth完了は未確認。
+最新の状態は [本番切替と検証結果（2026-11-13）](cloudflare-cutover.md) を参照。Cloudflare Freeへ切替済みで、実OAuth・セッション保持・本人カードの描画を確認し、Cloud Runを手動0台、旧Cloud Buildトリガーをdisabledにした。過去の [公開プレビュー検証（2026-11-12）](cloudflare-preview-validation.md) は切替前の調査記録として残す。
 
 ## 構成と互換性
 
