@@ -19,6 +19,15 @@ import { createExternalPerformanceReporter } from '../infrastructure/observabili
 import { createErrorHandler } from '../presentation/http/error-handler.js';
 import { safeErrorMetadata } from '../shared/error-metadata.js';
 
+export function assertRuntimeConfiguration(env) {
+    if (!['development', 'test', 'production'].includes(env.NODE_ENV)) {
+        throw new Error('NODE_ENV must be explicitly set to development, test, or production');
+    }
+    if (env.NODE_ENV === 'production' && (!env.SESSION_SECRET || env.SESSION_SECRET === 'dev_secret')) {
+        throw new Error('SESSION_SECRET must be configured in production and must not use the development placeholder');
+    }
+}
+
 export function createApplication({
     env = process.env, pool, rootDirectory, httpClient = axios, languageColorCache = {},
     emitMeteor, readPublicFile, realtime, serveStaticAssets = true, disableSessionPruning = false, compressResponses = true,
@@ -28,14 +37,9 @@ export function createApplication({
     const app = express();
     const port = parseInt(env.PORT) || 3000;
     const runtimeEnvironment = env.NODE_ENV;
-    if (!['development', 'test', 'production'].includes(runtimeEnvironment)) {
-        throw new Error('NODE_ENV must be explicitly set to development, test, or production');
-    }
+    assertRuntimeConfiguration(env);
     const isProduction = runtimeEnvironment === 'production';
     const sessionSecret = env.SESSION_SECRET;
-    if (isProduction && (!sessionSecret || sessionSecret === 'dev_secret')) {
-        throw new Error('SESSION_SECRET must be configured in production and must not use the development placeholder');
-    }
     const effectiveSessionSecret = sessionSecret || 'dev_secret';
     const randomPerformance = createRandomPerformanceReporter({
         enabled: env.PERF_TRACE_RANDOM === 'true'

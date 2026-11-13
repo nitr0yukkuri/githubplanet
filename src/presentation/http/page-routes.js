@@ -37,7 +37,7 @@ export function registerPageRoutes(app, {
 
     function addScriptNonce(html, req) {
         if (!req.cspNonce) return html;
-        // HTMLテンプレートと後挿入したscriptで同じnonceを使い、移行先でも既存CSPを維持する。
+        // script-srcのnonce許可を、HTMLテンプレート内と後挿入された全scriptで共有する。
         return html.replace(/<script(?=[\s>])/gi, `<script nonce="${req.cspNonce}"`);
     }
 
@@ -70,6 +70,7 @@ export function registerPageRoutes(app, {
     }
 
     function sendNotFound(req, res) {
+        // 一般404と廃止カードも同じ描画経路に通し、翻訳scriptだけnonceが欠ける状態を防ぐ。
         res.setHeader('X-Robots-Tag', 'noindex, follow');
         res.status(404);
         return sendPage(req, res, '404.html');
