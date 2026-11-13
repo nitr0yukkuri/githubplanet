@@ -1,4 +1,5 @@
 import { applyI18n, localizedTitlePart, t } from './i18n.js';
+import { postWithCsrf } from './csrf-request.js';
 
 const prefixSelect = document.getElementById('prefix-select');
 const suffixSelect = document.getElementById('suffix-select');
@@ -21,7 +22,7 @@ suffixSelect.addEventListener('change', updatePreview);
 
 saveBtn.addEventListener('click', async () => {
     try {
-        const res = await fetch('/api/save-title', {
+        const res = await postWithCsrf('/api/save-title', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prefix: currentPrefix, suffix: currentSuffix })

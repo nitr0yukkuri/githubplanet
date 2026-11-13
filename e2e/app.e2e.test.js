@@ -423,7 +423,7 @@ async function proxyLocalHttpRequest(route) {
         delete responseHeaders[header];
     }
     let responseBody = Buffer.from(await upstream.arrayBuffer());
-    if (new URL(request.url()).pathname === '/front/js/home.js') {
+    if (new URL(request.url()).pathname === '/front/js/realtime-connection.js') {
         const source = responseBody.toString('utf8');
         assert.match(source, /transports: \['websocket', 'polling'\]/);
         // The isolated browser runner cannot open raw sockets; use Socket.IO's real HTTP polling transport.

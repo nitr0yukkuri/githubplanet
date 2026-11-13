@@ -1,0 +1,70 @@
+name: Cloudflare runtime compatibility
+on:
+  pull_request:
+    paths:
+      - 'cloudflare/**'
+      - 'src/**'
+      - 'front/**'
+      - 'scripts/*cloudflare*'
+      - 'test/**'
+      - 'package*.json'
+      - 'wrangler.json'
+      - '*.html'
+      - 'manifest*.json'
+      - 'sw.js'
+      - 'migrations/**'
+      - '.github/workflows/cloudflare.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'cloudflare/**'
+      - 'src/**'
+      - 'front/**'
+      - 'scripts/*cloudflare*'
+      - 'test/**'
+      - 'package*.json'
+      - 'wrangler.json'
+      - '*.html'
+      - 'manifest*.json'
+      - 'sw.js'
+      - 'migrations/**'
+      - '.github/workflows/cloudflare.yml'
+permissions:
+  contents: read
+jobs:
+  cloudflare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: githubplanet
+          POSTGRES_PASSWORD: local-test-only
+          POSTGRES_DB: githubplanet_cf_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U githubplanet -d githubplanet_cf_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.22.1'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - run: npm run check:cloudflare
+      - run: npm run test:cloudflare:realtime
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:cloudflare
+        env:
+          TEST_DATABASE_URL: postgresql://githubplanet:local-test-only@127.0.0.1:5432/githubplanet_cf_ci
+          CF_BROWSER_CHANNEL: chromium
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: cloudflare-mobile-rendering
+          path: .cloudflare/*-mobile.png
+          if-no-files-found: ignore
+          retention-days: 7

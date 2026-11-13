@@ -5,3 +5,8 @@ node_modules
 /artifacts/
 front/img/skybox/*.png
 front/img/Achievementsimage.jpg
+
+.cloudflare
+.wrangler
+.dev.vars
+.dev.vars.*

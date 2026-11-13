@@ -1,16 +1,17 @@
 {
   "dependencies": {
+    "@streamparser/json": "^0.0.26",
     "axios": "^1.13.2",
     "compression": "^1.8.1",
     "connect-pg-simple": "^10.0.0",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
+    "express-rate-limit": "^8.7.1",
     "express-session": "^1.18.2",
     "pg": "^8.16.3",
     "pngjs": "^7.0.0",
     "socket.io": "^4.7.2",
-    "three": "0.160.0",
-    "express-rate-limit": "^8.7.1"
+    "three": "0.160.0"
   },
   "type": "module",
   "scripts": {
@@ -23,12 +24,21 @@
     "perf:random-http": "node scripts/measure-random-http.mjs",
     "perf:home-login": "node scripts/measure-home-login.mjs",
     "test": "node --test --test-concurrency=1 \"test/**/*.test.js\"",
-    "test:e2e": "node --test --test-concurrency=1 e2e/app.e2e.test.js"
+    "test:e2e": "node --test --test-concurrency=1 e2e/app.e2e.test.js",
+    "build:cloudflare": "node scripts/build-cloudflare.mjs",
+    "dev:cloudflare": "npm run build:cloudflare && wrangler dev",
+    "check:cloudflare": "npm run build:cloudflare && wrangler deploy --dry-run",
+    "deploy:cloudflare": "npm run build:cloudflare && node scripts/deploy-cloudflare.mjs",
+    "test:cloudflare": "npm run build:cloudflare && node scripts/test-cloudflare.mjs",
+    "test:cloudflare:realtime": "npm run build:cloudflare && node scripts/check-cloudflare-realtime.mjs",
+    "preflight:cloudflare": "node scripts/deploy-cloudflare.mjs --preflight-only"
   },
   "license": "MIT",
   "devDependencies": {
     "playwright": "1.65.0",
-    "vite": "^8.3.6"
+    "vite": "^8.3.6",
+    "wrangler": "^4.160.0",
+    "ws": "8.21.3"
   },
   "engines": {
     "node": ">=24.22.1 <25"

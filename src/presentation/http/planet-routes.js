@@ -3,6 +3,7 @@ import { normalizePlanetCommitCounts } from '../../domain/planet/planet.js';
 import { getShowcasePlanet } from '../../domain/planet/showcase-planets.js';
 import { toPlanetResponse } from './planet-response.js';
 import { safeErrorMetadata } from '../../shared/error-metadata.js';
+import { issueSessionCsrfToken, verifyCsrfToken } from './csrf-protection.js';
 
 const ANONYMOUS_RANDOM_COOKIE = 'githubplanet_random_planet';
 
@@ -33,6 +34,8 @@ export function registerPlanetRoutes(app, {
     planetService,
     planetQueryService,
     authoredLanguageHistoryService,
+    enqueueHistoryScan,
+    createMeRateLimit: suppliedMeRateLimit,
     historyDisabledUsernames = [],
     cacheDuration,
     randomHistoryStorage = 'cookie',
@@ -45,7 +48,7 @@ export function registerPlanetRoutes(app, {
         String(username || '').trim().toLowerCase()
     );
     // /api/me verifies the GitHub profile, so cap repeated upstream calls per stable account ID.
-    const createMeRateLimit = () => rateLimit({
+    const createMeRateLimit = suppliedMeRateLimit || (() => rateLimit({
         windowMs: 15 * 60 * 1000,
         limit: 100,
         standardHeaders: true,
@@ -54,10 +57,13 @@ export function registerPlanetRoutes(app, {
             const userId = req.session?.planetData?.user?.id;
             return userId ? `github-user:${userId}` : ipKeyGenerator(req.ip);
         }
-    });
+    }));
     const authenticatedMeRateLimit = createMeRateLimit();
     // 保存値の先読みで、GitHub更新用の既存リクエスト枠を消費しない。
     const savedPlanetRateLimit = createMeRateLimit();
+    const mutationRateLimit = createMeRateLimit();
+
+    app.get('/api/csrf-token', mutationRateLimit, issueSessionCsrfToken);
 
     app.get('/github-profile/:githubId', async (req, res) => {
         if (!/^[1-9]\d*$/.test(String(req.params.githubId || ''))) {
@@ -179,10 +185,14 @@ export function registerPlanetRoutes(app, {
         });
     });
 
-    app.post('/api/save-title', async (req, res) => {
+    app.post('/api/save-title', mutationRateLimit, async (req, res) => {
         const userId = req.session?.planetData?.user?.id;
         if (!userId || !planetQueryService) {
             return res.status(401).json({ error: 'Not logged in' });
+        }
+        // SameSiteだけに頼らず、Cookie認証で更新する操作をsession専用tokenでも検証する。
+        if (!verifyCsrfToken(req.session.csrfToken, req.headers?.['x-csrf-token'])) {
+            return res.status(403).json({ error: 'Invalid CSRF token' });
         }
 
         const { prefix, suffix } = req.body || {};
@@ -253,10 +263,13 @@ export function registerPlanetRoutes(app, {
         }
     });
 
-    app.post('/api/me/authored-language-history/scan', async (req, res) => {
+    app.post('/api/me/authored-language-history/scan', mutationRateLimit, async (req, res) => {
         const user = req.session?.planetData?.user;
         if (!user?.id || !req.session.github_token) {
             return res.status(401).json({ error: 'Not logged in' });
+        }
+        if (!verifyCsrfToken(req.session.csrfToken, req.headers?.['x-csrf-token'])) {
+            return res.status(403).json({ error: 'Invalid CSRF token' });
         }
         if (isHistoryDisabled(user.login)) {
             res.set('Cache-Control', 'private, no-store');
@@ -272,7 +285,7 @@ export function registerPlanetRoutes(app, {
         res.set('Cache-Control', 'private, no-store');
 
         try {
-            const scanStarted = await authoredLanguageHistoryService.startScan({
+            const scanStarted = await (enqueueHistoryScan || authoredLanguageHistoryService.startScan)({
                 githubId: user.id,
                 login: user.login,
                 accessToken: req.session.github_token,

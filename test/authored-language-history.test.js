@@ -36,7 +36,7 @@ test('marks budget-limited results partial and persists them for a later scan', 
                 repositoriesScanned: 1, commitsFound: 1, commitsScanned: 1
             };
         },
-        async findAuthoredLanguageCommits() {
+        async findAuthoredLanguageHistoryDays() {
             return [{ authoredAt: '2025-01-01T00:00:00Z', languageAdditions: { TypeScript: 4 } }];
         }
     };
@@ -85,7 +85,7 @@ test('continues short request chunks while preserving the cumulative request bud
             scan = { ...progress, scanStatus: 'complete' };
         },
         async failAuthoredLanguageHistoryScan() { assert.fail('request chunks should not fail'); },
-        async findAuthoredLanguageCommits() { return []; }
+        async findAuthoredLanguageHistoryDays() { return []; }
     };
     const service = createAuthoredLanguageHistoryService({
         repository,

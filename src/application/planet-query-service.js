@@ -1,10 +1,8 @@
 import { safeErrorMetadata } from '../shared/error-metadata.js';
 
-export function createPlanetQueryService({ repository, githubClient, planetService, cacheDuration }) {
-    const publicPreviewCache = new Map();
+export function createPlanetQueryService({ repository, githubClient, planetService, cacheDuration, publicPreviewCache = new Map(), githubIdentityCache = new Map() }) {
     const publicPreviewCacheTtlMs = 5 * 60 * 1000;
     const maxPublicPreviewCacheEntries = 200;
-    const githubIdentityCache = new Map();
     const githubIdentityCacheTtlMs = 30_000;
     const missingGithubIdentityCacheTtlMs = 10_000;
     const maxGithubIdentityCacheEntries = 500;

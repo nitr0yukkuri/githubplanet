@@ -205,6 +205,15 @@ test('limits ordinary JSON while accepting larger GitHub webhook payloads', asyn
     assert.equal(accepted.status, 200);
 });
 
+test('serves the two public Three modules without exposing package metadata', async () => {
+    for (const modulePath of ['build/three.module.js', 'examples/jsm/controls/OrbitControls.js']) {
+        const module = await fetch(baseUrl + '/vendor/three/' + modulePath);
+        assert.equal(module.status, 200);
+        assert.match(module.headers.get('content-type'), /javascript/);
+    }
+    assert.equal((await fetch(baseUrl + '/vendor/three/package.json')).status, 404);
+});
+
 test('keeps unauthenticated API responses unchanged', async () => {
     const me = await fetch(`${baseUrl}/api/me`);
     const saveTitle = await fetch(`${baseUrl}/api/save-title`, {

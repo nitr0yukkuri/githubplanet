@@ -127,6 +127,7 @@ export function createGithubAuthoredLanguageHistoryClient({ axios, extensionMap,
             accountCreatedAt,
             now = new Date(),
             knownCommits = new Set(),
+            findKnownCommitShas = async () => [],
             initialProgress = {},
             onBatch = async () => {},
             onProgress = async () => {}
@@ -268,6 +269,8 @@ export function createGithubAuthoredLanguageHistoryClient({ axios, extensionMap,
                             await onProgress({ ...progress });
                             break;
                         }
+                        const savedShas = new Set(await findKnownCommitShas(commitList
+                            .filter(commit => typeof commit?.sha === 'string').map(commit => commit.sha)));
                         const references = commitList.filter((commit) => {
                             const sha = commit?.sha;
                             if (!sha) return false;
@@ -275,7 +278,7 @@ export function createGithubAuthoredLanguageHistoryClient({ axios, extensionMap,
                             const key = `${fullName.toLowerCase()}:${normalizedSha}`;
                             if (seen.has(normalizedSha)) return false;
                             seen.add(normalizedSha);
-                            const isNew = !knownCommits.has(key) && !knownCommits.has(normalizedSha);
+                            const isNew = !savedShas.has(normalizedSha) && !knownCommits.has(key) && !knownCommits.has(normalizedSha);
                             if (isNew) progress.commitsFound += 1;
                             return isNew;
                         });

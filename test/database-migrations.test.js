@@ -190,7 +190,10 @@ test('keeps the HTTP server startup free from schema mutations', () => {
     assert.match(serverSource, /assertDatabaseMigrationsApplied\(pool\)/);
     assert.doesNotMatch(serverSource, /prepareDatabase|runDatabaseMigrations/);
     assert.doesNotMatch(serverSource, /initializeRandomQueryStrategy/);
-    assert.match(serverSource, /randomQueryStrategy: process\.env\.RANDOM_QUERY_STRATEGY \|\| 'indexed'/);
+    const applicationSource = fs.readFileSync(path.join(projectRoot, 'src/bootstrap/create-application.js'), 'utf8');
+    const serviceSource = fs.readFileSync(path.join(projectRoot, 'src/bootstrap/create-application-services.js'), 'utf8');
+    assert.doesNotMatch(applicationSource + serviceSource, /prepareDatabase|runDatabaseMigrations/);
+    assert.match(serviceSource, /randomQueryStrategy: env\.RANDOM_QUERY_STRATEGY \|\| 'indexed'/);
 });
 
 test('starts the Docker application only after its migration service succeeds', () => {

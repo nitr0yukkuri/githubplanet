@@ -13,7 +13,9 @@ export function registerPageRoutes(app, {
     sessionSecret,
     publicBaseUrl = DEFAULT_PUBLIC_BASE_URL,
     cardCaptureBaseUrl = isProduction ? publicBaseUrl : undefined,
-    showcasePages = []
+    showcasePages = [],
+    readPublicFile = (fileName) => fs.readFileSync(path.join(rootDirectory, fileName)),
+    realtime
 }) {
     const normalizedPublicBaseUrl = publicBaseUrl.replace(/\/+$/, '');
     const normalizedCardCaptureBaseUrl = cardCaptureBaseUrl?.replace(/\/+$/, '');
@@ -27,9 +29,9 @@ export function registerPageRoutes(app, {
     // 公開ページのクロールごとに同期I/Oが発生しないよう、テンプレートは起動時に読み込む。
     const pageCache = new Map([
         'index.html', 'achievements.html', 'settings.html', 'card.html', '404.html', 'sender.html'
-    ].map((fileName) => [fileName, fs.readFileSync(path.join(rootDirectory, fileName), 'utf8')
+    ].map((fileName) => [fileName, String(readPublicFile(fileName))
         .replaceAll(SOURCE_PUBLIC_BASE_URL, normalizedPublicBaseUrl)]));
-    const favicon = fs.readFileSync(path.join(rootDirectory, 'front/img/favicon-96.png'));
+    const favicon = readPublicFile('front/img/favicon-96.png');
     const seo = createPageSeo({ publicBaseUrl: normalizedPublicBaseUrl, showcasePages });
     app.use(seo.middleware);
 
@@ -59,6 +61,11 @@ export function registerPageRoutes(app, {
             }
         }
 
+        if (realtime) {
+            const transport = realtime.transport === 'websocket' ? 'websocket' : 'socket.io';
+            const url = String(realtime.url || '/realtime').replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;');
+            html = html.replace('</head>', '<meta name="githubplanet-realtime-transport" content="' + transport + '"><meta name="githubplanet-realtime-url" content="' + url + '"></head>');
+        }
         res.type('html').send(addScriptNonce(html, req));
     }
 
@@ -127,12 +134,12 @@ export function registerPageRoutes(app, {
 
     app.get('/manifest.json', (req, res) => {
         res.type('application/manifest+json');
-        res.sendFile(path.join(rootDirectory, 'manifest.json'));
+        res.send(readPublicFile('manifest.json'));
     });
 
     app.get('/manifest-en.json', (req, res) => {
         res.type('application/manifest+json');
-        res.sendFile(path.join(rootDirectory, 'manifest-en.json'));
+        res.send(readPublicFile('manifest-en.json'));
     });
 
     app.get('/favicon.ico', (_req, res) => {
@@ -142,7 +149,7 @@ export function registerPageRoutes(app, {
     app.get('/sw.js', (req, res) => {
         res.setHeader('Cache-Control', 'no-cache');
         res.type('application/javascript');
-        res.sendFile(path.join(rootDirectory, 'sw.js'));
+        res.send(readPublicFile('sw.js'));
     });
 
     app.get('/api/card/:username', (req, res) => {

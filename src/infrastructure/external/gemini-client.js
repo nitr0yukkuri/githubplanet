@@ -8,10 +8,11 @@ export function createGeminiClient({
     axios,
     apiKey,
     onRequestTiming,
-    modelListCacheTtlMs = MODEL_LIST_CACHE_TTL_MS
+    modelListCacheTtlMs = MODEL_LIST_CACHE_TTL_MS,
+    modelListCache = {}
 }) {
-    let generationModels = null;
-    let generationModelsExpiresAt = 0;
+    let generationModels = modelListCache.models || null;
+    let generationModelsExpiresAt = modelListCache.expiresAt || 0;
     let modelListPromise = null;
 
     async function getGenerationModels(cleanApiKey) {
@@ -39,6 +40,8 @@ export function createGeminiClient({
             .then((models) => {
                 generationModels = models;
                 generationModelsExpiresAt = Date.now() + modelListCacheTtlMs;
+                modelListCache.models = models;
+                modelListCache.expiresAt = generationModelsExpiresAt;
                 return models;
             })
             .finally(() => {

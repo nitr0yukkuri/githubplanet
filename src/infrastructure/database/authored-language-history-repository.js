@@ -41,16 +41,47 @@ function progressValues(progress) {
 export function createAuthoredLanguageHistoryRepository(pool) {
     if (!pool) return undefined;
     return {
-        async findAuthoredLanguageCommitKeys(githubId) {
+        async findAuthoredLanguageCommitKeys(githubId, commitShas = []) {
+            if (!commitShas.length) return [];
             const result = await pool.query(`
                 SELECT repository_full_name, commit_sha
                 FROM authored_language_commits
-                WHERE github_id = $1
-            `, [githubId]);
+                WHERE github_id = $1 AND LOWER(commit_sha) = ANY($2::text[])
+            `, [githubId, [...new Set(commitShas.map(sha => String(sha).toLowerCase()))]]);
             return result.rows.map(({ repository_full_name, commit_sha }) => ({
                 repositoryFullName: repository_full_name,
                 commitSha: commit_sha
             }));
+        },
+
+        async findAuthoredLanguageHistoryDays(githubId) {
+            // コミット全件をWorkerへ運ばず、重複SHAの除外と日別の追加行集計をDBで済ませる。
+            const result = await pool.query(`
+                WITH unique_commits AS (
+                    SELECT DISTINCT ON (LOWER(commit_sha)) authored_at, language_added_lines
+                    FROM authored_language_commits WHERE github_id = $1
+                    ORDER BY LOWER(commit_sha), authored_at ASC, repository_full_name ASC
+                ), days AS (
+                    SELECT (authored_at AT TIME ZONE 'UTC')::date AS day,
+                        MAX(authored_at) AS captured_at
+                    FROM unique_commits GROUP BY 1
+                ), additions AS (
+                    SELECT (authored_at AT TIME ZONE 'UTC')::date AS day, item.key AS language,
+                        SUM(GREATEST(0, TRUNC(CASE
+                            WHEN item.value ~ '^[[:space:]]*[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[[:space:]]*$'
+                            THEN item.value::numeric ELSE 0 END))) AS lines
+                    FROM unique_commits CROSS JOIN LATERAL jsonb_each_text(
+                        CASE WHEN jsonb_typeof(language_added_lines) = 'object'
+                            THEN language_added_lines ELSE '{}'::jsonb END) AS item
+                    WHERE item.key <> '' GROUP BY 1, 2
+                ), totals AS (
+                    SELECT day, jsonb_object_agg(language, lines) FILTER (WHERE lines > 0) AS additions
+                    FROM additions GROUP BY day
+                )
+                SELECT days.captured_at, COALESCE(totals.additions, '{}'::jsonb) AS language_additions
+                FROM days LEFT JOIN totals USING (day) ORDER BY day ASC
+            `, [githubId]);
+            return result.rows.map(row => ({ authoredAt: row.captured_at, languageAdditions: row.language_additions }));
         },
 
         async findAuthoredLanguageCommits(githubId) {

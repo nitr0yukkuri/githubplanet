@@ -9,6 +9,7 @@ export function registerEventRoutes(app, {
     systemApiKey,
     webhookSecret,
     webhookDeliveryStore,
+    enqueueWebhook,
     requireInternalAuth = false,
     requireWebhookSignature = false
 }) {
@@ -59,22 +60,31 @@ export function registerEventRoutes(app, {
                 if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(deliveryId)) {
                     return res.status(400).send('Invalid delivery ID');
                 }
-                if (typeof webhookDeliveryStore?.claimGithubWebhookDelivery !== 'function') {
-                    return res.status(503).send('Webhook delivery store is unavailable');
+                if (!enqueueWebhook) {
+                    if (typeof webhookDeliveryStore?.claimGithubWebhookDelivery !== 'function') {
+                        return res.status(503).send('Webhook delivery store is unavailable');
+                    }
+                    let isNewDelivery;
+                    try {
+                        const payloadHash = crypto.createHash('sha256').update(req.rawBody).digest('hex');
+                        isNewDelivery = await webhookDeliveryStore.claimGithubWebhookDelivery(deliveryId, payloadHash);
+                    } catch (error) {
+                        console.error('[Webhook Delivery Store Error]', safeErrorMetadata(error));
+                        return res.status(503).send('Webhook delivery could not be recorded');
+                    }
+                    if (!isNewDelivery) return res.status(200).send('OK');
                 }
-
-                let isNewDelivery;
-                try {
-                    const payloadHash = crypto.createHash('sha256').update(req.rawBody).digest('hex');
-                    isNewDelivery = await webhookDeliveryStore.claimGithubWebhookDelivery(deliveryId, payloadHash);
-                } catch (error) {
-                    console.error('[Webhook Delivery Store Error]', safeErrorMetadata(error));
-                    return res.status(503).send('Webhook delivery could not be recorded');
-                }
-                if (!isNewDelivery) return res.status(200).send('OK');
             }
 
             const payload = req.body;
+            if (enqueueWebhook) {
+                // 永続キューへの保存が終わるまでACKを返さず、停止時の通知欠落を防ぐ。
+                await enqueueWebhook(payload, {
+                    deliveryId: req.get('x-github-delivery'),
+                    payloadHash: crypto.createHash('sha256').update(req.rawBody).digest('hex')
+                });
+                return res.status(200).send('OK');
+            }
             res.status(200).send('OK');
 
             // GitHubへのACK速度は維持しつつ、業務処理はApplicationのユースケースに委譲する。

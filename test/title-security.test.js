@@ -10,8 +10,8 @@ function createApp() {
         get(paths, handler) {
             for (const path of Array.isArray(paths) ? paths : [paths]) handlers.set(`GET ${path}`, handler);
         },
-        post(path, handler) {
-            handlers.set(`POST ${path}`, handler);
+        post(path, ...handlersForRoute) {
+            handlers.set(`POST ${path}`, handlersForRoute.at(-1));
         }
     };
 }
@@ -42,6 +42,7 @@ test('rejects arbitrary title parts without updating the database or session', a
         async updateActiveTitle() { updateCalls += 1; }
     });
     const session = {
+        csrfToken: 'a'.repeat(64),
         planetData: {
             user: { id: 42 },
             planetData: {
@@ -54,6 +55,7 @@ test('rejects arbitrary title parts without updating the database or session', a
 
     await handler({
         session,
+        headers: { 'x-csrf-token': session.csrfToken },
         body: { prefix: '管理者', suffix: '全称号解放' }
     }, response);
 
@@ -69,6 +71,7 @@ test('allows a title only when both parts are unlocked for the authenticated use
         async updateActiveTitle(githubId, title) { updates.push({ githubId, title }); }
     });
     const session = {
+        csrfToken: 'a'.repeat(64),
         planetData: {
             user: { id: 42 },
             planetData: {
@@ -81,6 +84,7 @@ test('allows a title only when both parts are unlocked for the authenticated use
 
     await handler({
         session,
+        headers: { 'x-csrf-token': session.csrfToken },
         body: { prefix: '星間の', suffix: '交信者' }
     }, response);
 
