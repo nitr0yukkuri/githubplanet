@@ -196,3 +196,46 @@ test('gets a public GitHub profile by immutable account ID', async () => {
     assert.equal(request.config.headers.Authorization, 'Bearer token');
     assert.equal(request.config.headers.Accept, 'application/vnd.github+json');
 });
+
+test('authenticates public REST lookups with OAuth app credentials and keeps user tokens scoped', async () => {
+    const requests = [];
+    const client = createGithubClient({
+        clientId: 'oauth-client-id',
+        clientSecret: 'oauth-client-secret',
+        axios: {
+            async get(url, config) {
+                requests.push({ url, config });
+                if (url.endsWith('/alice/repos')) return { data: [] };
+                return { data: { id: 42, login: 'alice' } };
+            }
+        }
+    });
+    const appAuthorization = `Basic ${btoa('oauth-client-id:oauth-client-secret')}`;
+
+    await client.getUser('alice');
+    await client.getUserById(42);
+    await client.getPublicPlanetSource('alice');
+    await client.getUser('alice', 'visitor-access-token');
+
+    assert.deepEqual(requests.map(({ config }) => config.headers.Authorization), [
+        appAuthorization,
+        appAuthorization,
+        appAuthorization,
+        'Bearer visitor-access-token'
+    ]);
+});
+
+test('preserves GitHub rate limit cooldown on public REST errors', async () => {
+    const error = Object.assign(new Error('rate limited'), {
+        response: { status: 429, headers: { 'retry-after': '17' } }
+    });
+    const client = createGithubClient({
+        axios: { async get() { throw error; } }
+    });
+
+    await assert.rejects(() => client.getUser('alice'), (actual) => {
+        assert.equal(actual, error);
+        assert.equal(actual.retryAfterMs, 17_000);
+        return true;
+    });
+});

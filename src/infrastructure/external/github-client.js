@@ -68,6 +68,26 @@ function endpoint(baseUrl, pathname) {
     return new URL(pathname, `${baseUrl.replace(/\/+$/, '')}/`).href;
 }
 
+// 匿名REST枠は送信元IP単位なので、公開データはOAuthアプリ資格情報で認証する。
+function restAuthorization(clientId, clientSecret, accessToken) {
+    if (accessToken) return `Bearer ${accessToken}`;
+    if (clientId && clientSecret) return `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
+    return null;
+}
+
+function applyGithubRateLimitCooldown(error) {
+    if (![403, 429].includes(error?.response?.status)) return error;
+    const headers = error.response.headers || {};
+    const retryAfterSeconds = Number(headers['retry-after'] || headers['Retry-After']);
+    const resetAt = Number(headers['x-ratelimit-reset'] || headers['X-RateLimit-Reset']) * 1_000;
+    if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+        error.retryAfterMs = retryAfterSeconds * 1_000;
+    } else if (Number.isFinite(resetAt) && resetAt > Date.now()) {
+        error.retryAfterMs = resetAt - Date.now();
+    }
+    return error;
+}
+
 function mapRepositories(connection, { includeStars = false } = {}) {
     return (connection?.nodes || []).map((repository) => ({
         languages: (repository.languages?.edges || []).map((edge) => ({
@@ -166,14 +186,19 @@ export function createGithubClient({
 
         async getUser(username, accessToken) {
             return measureExternalOperation(onRequestTiming, 'get_user', async () => {
-                const response = await axios.get(endpoint(githubApiBaseUrl, `/users/${encodeURIComponent(username)}`), {
-                    headers: {
-                        Accept: 'application/vnd.github+json',
-                        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
-                    },
-                    timeout: GITHUB_API_TIMEOUT_MS
-                });
-                return response.data;
+                const authorization = restAuthorization(clientId, clientSecret, accessToken);
+                try {
+                    const response = await axios.get(endpoint(githubApiBaseUrl, `/users/${encodeURIComponent(username)}`), {
+                        headers: {
+                            Accept: 'application/vnd.github+json',
+                            ...(authorization ? { Authorization: authorization } : {})
+                        },
+                        timeout: GITHUB_API_TIMEOUT_MS
+                    });
+                    return response.data;
+                } catch (error) {
+                    throw applyGithubRateLimitCooldown(error);
+                }
             }, { provider: 'github' });
         },
 
@@ -183,28 +208,37 @@ export function createGithubClient({
                 if (!/^[1-9]\d*$/.test(normalizedAccountId)) {
                     throw new TypeError('Invalid GitHub account ID');
                 }
-                const response = await axios.get(
-                    endpoint(githubApiBaseUrl, `/user/${normalizedAccountId}`),
-                    {
-                        headers: {
-                            Accept: 'application/vnd.github+json',
-                            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
-                        },
-                        timeout: GITHUB_API_TIMEOUT_MS
-                    }
-                );
-                return response.data;
+                const authorization = restAuthorization(clientId, clientSecret, accessToken);
+                try {
+                    const response = await axios.get(
+                        endpoint(githubApiBaseUrl, `/user/${normalizedAccountId}`),
+                        {
+                            headers: {
+                                Accept: 'application/vnd.github+json',
+                                ...(authorization ? { Authorization: authorization } : {})
+                            },
+                            timeout: GITHUB_API_TIMEOUT_MS
+                        }
+                    );
+                    return response.data;
+                } catch (error) {
+                    throw applyGithubRateLimitCooldown(error);
+                }
             }, { provider: 'github' });
         },
 
         async getPublicPlanetSource(username) {
             return measureExternalOperation(onRequestTiming, 'get_public_planet_source', async () => {
                 try {
+                    const authorization = restAuthorization(clientId, clientSecret);
                     const response = await axios.get(
                         endpoint(githubApiBaseUrl, `/users/${encodeURIComponent(username)}/repos`),
                         {
                             params: { per_page: 100, sort: 'updated', type: 'owner' },
-                            headers: { Accept: 'application/vnd.github+json' },
+                            headers: {
+                                Accept: 'application/vnd.github+json',
+                                ...(authorization ? { Authorization: authorization } : {})
+                            },
                             timeout: GITHUB_API_TIMEOUT_MS
                         }
                     );
@@ -224,23 +258,7 @@ export function createGithubClient({
                         dailyContributions: []
                     };
                 } catch (error) {
-                    const status = error.response?.status;
-                    const retryAfterSeconds = Number(
-                        error.response?.headers?.['retry-after']
-                        || error.response?.headers?.['Retry-After']
-                    );
-                    const resetAt = Number(
-                        error.response?.headers?.['x-ratelimit-reset']
-                        || error.response?.headers?.['X-RateLimit-Reset']
-                    ) * 1000;
-                    if ([403, 429].includes(status)) {
-                        if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
-                            error.retryAfterMs = retryAfterSeconds * 1000;
-                        } else if (Number.isFinite(resetAt) && resetAt > Date.now()) {
-                            error.retryAfterMs = resetAt - Date.now();
-                        }
-                    }
-                    throw error;
+                    throw applyGithubRateLimitCooldown(error);
                 }
             }, { provider: 'github' });
         },

@@ -1,0 +1,94 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "githubplanet-preview",
+  "main": "cloudflare/worker.js",
+  "compatibility_date": "2026-11-11",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": true,
+  "assets": {
+    "directory": ".cloudflare/assets",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "NODE_ENV": "production",
+    "PUBLIC_BASE_URL": "https://githubplanet.dev"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "METEOR_HUB",
+        "class_name": "MeteorHub"
+      },
+      {
+        "name": "JOB_STATE",
+        "class_name": "BackgroundJobState"
+      },
+      {
+        "name": "REQUEST_BUDGET",
+        "class_name": "RequestBudget"
+      },
+      {
+        "name": "WEBHOOK_INGRESS",
+        "class_name": "WebhookIngress"
+      },
+      {
+        "name": "APPLICATION_GATEWAY",
+        "class_name": "ApplicationGateway"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "cloudflare-v1",
+      "new_sqlite_classes": [
+        "MeteorHub",
+        "BackgroundJobState",
+        "RequestBudget"
+      ]
+    },
+    { "tag": "cloudflare-webhook-v2", "new_sqlite_classes": ["WebhookIngress"] },
+    { "tag": "cloudflare-http-v3", "new_sqlite_classes": ["ApplicationGateway"] }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "BACKGROUND_JOBS",
+        "queue": "githubplanet-background-preview"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "githubplanet-background-preview",
+        "max_batch_size": 1,
+        "max_concurrency": 3,
+        "max_batch_timeout": 1,
+        "max_retries": 8,
+        "retry_delay": 60,
+        "dead_letter_queue": "githubplanet-background-preview-dlq"
+      }
+    ]
+  },
+  "limits": {
+    "cpu_ms": 30000
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1
+  },
+  "alias": {
+    "iconv-lite": "./.cloudflare/vendor/iconv-lite/lib/index.js"
+  },
+  "hyperdrive": [
+    {
+      "binding": "POSTGRES",
+      "id": "00000000000000000000000000000000"
+    }
+  ],
+  "triggers": {
+    "crons": [
+      "0 * * * *"
+    ]
+  }
+}

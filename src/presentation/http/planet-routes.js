@@ -33,6 +33,8 @@ export function registerPlanetRoutes(app, {
     planetService,
     planetQueryService,
     authoredLanguageHistoryService,
+    enqueueHistoryScan,
+    createMeRateLimit: suppliedMeRateLimit,
     historyDisabledUsernames = [],
     cacheDuration,
     randomHistoryStorage = 'cookie',
@@ -45,7 +47,7 @@ export function registerPlanetRoutes(app, {
         String(username || '').trim().toLowerCase()
     );
     // /api/me verifies the GitHub profile, so cap repeated upstream calls per stable account ID.
-    const createMeRateLimit = () => rateLimit({
+    const createMeRateLimit = suppliedMeRateLimit || (() => rateLimit({
         windowMs: 15 * 60 * 1000,
         limit: 100,
         standardHeaders: true,
@@ -54,7 +56,7 @@ export function registerPlanetRoutes(app, {
             const userId = req.session?.planetData?.user?.id;
             return userId ? `github-user:${userId}` : ipKeyGenerator(req.ip);
         }
-    });
+    }));
     const authenticatedMeRateLimit = createMeRateLimit();
     // 保存値の先読みで、GitHub更新用の既存リクエスト枠を消費しない。
     const savedPlanetRateLimit = createMeRateLimit();
@@ -272,7 +274,7 @@ export function registerPlanetRoutes(app, {
         res.set('Cache-Control', 'private, no-store');
 
         try {
-            const scanStarted = await authoredLanguageHistoryService.startScan({
+            const scanStarted = await (enqueueHistoryScan || authoredLanguageHistoryService.startScan)({
                 githubId: user.id,
                 login: user.login,
                 accessToken: req.session.github_token,

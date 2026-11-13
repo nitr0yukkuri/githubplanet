@@ -1,3 +1,4 @@
+import { buildWebhookMeteors } from '../domain/meteor/webhook-meteors.js';
 export function createMeteorService({ languageColorService, extensionMap, emitMeteor, logger = console }) {
     async function emitManualMeteor({ language, color, scale }) {
         const finalColor = color || await languageColorService.resolveLanguageColor(language || 'Unknown');
@@ -5,37 +6,19 @@ export function createMeteorService({ languageColorService, extensionMap, emitMe
         const resolvedLanguage = language || 'Manual';
 
         logger.log(`[Manual Meteor] Language: ${language}, Color: ${finalColor}, Scale: ${finalScale}`);
-        emitMeteor({ color: finalColor, language: resolvedLanguage, scale: finalScale });
+        await emitMeteor({ color: finalColor, language: resolvedLanguage, scale: finalScale });
         return { color: finalColor };
     }
 
-    async function processWebhook(payload) {
-        if (!payload || !payload.repository || !Array.isArray(payload.commits)) return;
-        const repositoryLanguage = payload.repository.language || 'Unknown';
-
-        for (const commit of payload.commits) {
-            let targetLanguage = repositoryLanguage;
-            const files = [...(commit.added || []), ...(commit.modified || [])];
-            const totalLines = parseInt(commit.total_lines || 0, 10);
-            const changeCount = files.length;
-            let meteorScale = totalLines > 0
-                ? 1.0 + (Math.log10(totalLines + 1) * 0.25)
-                : 1.0 + (changeCount / 10) * 0.5;
-            if (meteorScale > 2.0) meteorScale = 2.0;
-
-            for (const file of files) {
-                const extension = file.split('.').pop().toLowerCase();
-                if (extensionMap[extension]) {
-                    targetLanguage = extensionMap[extension];
-                    break;
-                }
-            }
-
-            const resolvedColor = await languageColorService.resolveLanguageColor(targetLanguage);
-            logger.log(`[Webhook] Commit: ${commit.id.substring(0, 7)} -> Scale: ${meteorScale.toFixed(2)}, Lines: ${totalLines}`);
-            emitMeteor({ color: resolvedColor, language: targetLanguage, scale: meteorScale });
-        }
+    async function emitWebhookMeteor({ commitId, language, scale }, emissionOptions) {
+        const color = await languageColorService.resolveLanguageColor(language);
+        logger.log('[Webhook] Commit: ' + commitId.slice(0, 7) + ' -> Scale: ' + scale.toFixed(2));
+        await emitMeteor({ color, language, scale }, emissionOptions);
     }
 
-    return { emitManualMeteor, processWebhook };
+    async function processWebhook(payload) {
+        for (const input of buildWebhookMeteors(payload, extensionMap)) await emitWebhookMeteor(input);
+    }
+
+    return { emitManualMeteor, emitWebhookMeteor, processWebhook };
 }

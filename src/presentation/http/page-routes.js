@@ -13,7 +13,9 @@ export function registerPageRoutes(app, {
     sessionSecret,
     publicBaseUrl = DEFAULT_PUBLIC_BASE_URL,
     cardCaptureBaseUrl = isProduction ? publicBaseUrl : undefined,
-    showcasePages = []
+    showcasePages = [],
+    readPublicFile = (fileName) => fs.readFileSync(path.join(rootDirectory, fileName)),
+    realtime
 }) {
     const normalizedPublicBaseUrl = publicBaseUrl.replace(/\/+$/, '');
     const normalizedCardCaptureBaseUrl = cardCaptureBaseUrl?.replace(/\/+$/, '');
@@ -21,26 +23,33 @@ export function registerPageRoutes(app, {
         'index.html': 'GitHub Planet',
         'achievements.html': 'Achievements - GitHub Planet',
         'settings.html': 'Settings - GitHub Planet',
-        'card.html': 'GitHub Planet Card'
+        'card.html': 'GitHub Planet Card',
+        '404.html': '404 - Planet Not Found'
     };
     // 公開ページのクロールごとに同期I/Oが発生しないよう、テンプレートは起動時に読み込む。
     const pageCache = new Map([
         'index.html', 'achievements.html', 'settings.html', 'card.html', '404.html', 'sender.html'
-    ].map((fileName) => [fileName, fs.readFileSync(path.join(rootDirectory, fileName), 'utf8')
+    ].map((fileName) => [fileName, String(readPublicFile(fileName))
         .replaceAll(SOURCE_PUBLIC_BASE_URL, normalizedPublicBaseUrl)]));
-    const favicon = fs.readFileSync(path.join(rootDirectory, 'front/img/favicon-96.png'));
+    const favicon = readPublicFile('front/img/favicon-96.png');
     const seo = createPageSeo({ publicBaseUrl: normalizedPublicBaseUrl, showcasePages });
     app.use(seo.middleware);
 
+    function addScriptNonce(html, req) {
+        if (!req.cspNonce) return html;
+        // HTMLテンプレートと後挿入したscriptで同じnonceを使い、移行先でも既存CSPを維持する。
+        return html.replace(/<script(?=[\s>])/gi, `<script nonce="${req.cspNonce}"`);
+    }
+
     function sendPage(req, res, fileName) {
+        res.setHeader('Cache-Control', 'no-store');
         const isEnglish = /^\/(en|english)(\/|$)/.test(req.path);
         let html = pageCache.get(fileName);
 
         if (fileName === 'index.html') {
             const page = seo.resolveHomePage(req);
             if (!page) {
-                res.setHeader('X-Robots-Tag', 'noindex, follow');
-                return res.status(404).type('html').send(pageCache.get('404.html'));
+                return sendNotFound(req, res);
             }
             if (!page.indexable) res.setHeader('X-Robots-Tag', 'noindex, follow');
             html = seo.renderHome(html, page);
@@ -52,7 +61,18 @@ export function registerPageRoutes(app, {
             }
         }
 
-        res.type('html').send(html);
+        if (realtime) {
+            const transport = realtime.transport === 'websocket' ? 'websocket' : 'socket.io';
+            const url = String(realtime.url || '/realtime').replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;');
+            html = html.replace('</head>', '<meta name="githubplanet-realtime-transport" content="' + transport + '"><meta name="githubplanet-realtime-url" content="' + url + '"></head>');
+        }
+        res.type('html').send(addScriptNonce(html, req));
+    }
+
+    function sendNotFound(req, res) {
+        res.setHeader('X-Robots-Tag', 'noindex, follow');
+        res.status(404);
+        return sendPage(req, res, '404.html');
     }
 
     function generateSignature(username) {
@@ -113,12 +133,12 @@ export function registerPageRoutes(app, {
 
     app.get('/manifest.json', (req, res) => {
         res.type('application/manifest+json');
-        res.sendFile(path.join(rootDirectory, 'manifest.json'));
+        res.send(readPublicFile('manifest.json'));
     });
 
     app.get('/manifest-en.json', (req, res) => {
         res.type('application/manifest+json');
-        res.sendFile(path.join(rootDirectory, 'manifest-en.json'));
+        res.send(readPublicFile('manifest-en.json'));
     });
 
     app.get('/favicon.ico', (_req, res) => {
@@ -128,13 +148,13 @@ export function registerPageRoutes(app, {
     app.get('/sw.js', (req, res) => {
         res.setHeader('Cache-Control', 'no-cache');
         res.type('application/javascript');
-        res.sendFile(path.join(rootDirectory, 'sw.js'));
+        res.send(readPublicFile('sw.js'));
     });
 
     app.get('/api/card/:username', (req, res) => {
         const loggedInUser = req.session.planetData?.user?.login;
         const { username } = req.params;
-        const apiKey = req.headers['x-api-key'] || req.query.api_key;
+        const apiKey = req.headers['x-api-key'];
         const isAuthorized = (loggedInUser && loggedInUser === username)
             || (systemApiKey && apiKey === systemApiKey);
 
@@ -165,8 +185,7 @@ export function registerPageRoutes(app, {
             const slug = typeof showcase === 'string' ? showcase.trim().toLowerCase() : '';
             // 廃止したショーケースで空のカードを出さず、ページ取得時点で404にする。
             if (!showcasePages.some((planet) => planet.slug === slug)) {
-                res.setHeader('X-Robots-Tag', 'noindex, follow');
-                return res.status(404).type('html').send(pageCache.get('404.html'));
+                return sendNotFound(req, res);
             }
         }
         const loggedInUser = req.session.planetData?.user?.login;
@@ -188,7 +207,8 @@ export function registerPageRoutes(app, {
     });
 
     app.get(['/sender', '/en/sender', '/english/sender'], (req, res) => {
-        res.type('html').send(pageCache.get('sender.html'));
+        res.setHeader('Cache-Control', 'no-store');
+        res.type('html').send(addScriptNonce(pageCache.get('sender.html'), req));
     });
 
     app.get(['/achievements', '/en/achievements', '/english/achievements'], (req, res) => {
@@ -198,4 +218,5 @@ export function registerPageRoutes(app, {
     app.get(['/settings', '/en/settings', '/english/settings'], (req, res) => {
         sendPage(req, res, 'settings.html');
     });
+    return { sendNotFound };
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import net from 'node:net';
 
 let serverProcess;
@@ -38,6 +38,18 @@ function waitForServer(process, timeoutMs = 15000) {
         });
     });
 }
+
+test('fails closed when NODE_ENV is missing', () => {
+    const result = spawnSync(process.execPath, ['server.js'], {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+        timeout: 10_000,
+        env: { ...process.env, NODE_ENV: '', DATABASE_URL: '' }
+    });
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr + result.stdout, /NODE_ENV must be explicitly set/);
+});
 
 before(async () => {
     const port = await getAvailablePort();
@@ -87,7 +99,23 @@ test('serves locale-correct source documents for Japanese and English home route
 
     assert.equal(english.headers.get('x-powered-by'), null);
     assert.equal(english.headers.get('x-content-type-options'), 'nosniff');
-    assert.match(english.headers.get('content-security-policy') || '', /frame-ancestors 'none'/);
+    assert.equal(english.headers.get('cache-control'), 'no-store');
+    const contentSecurityPolicy = english.headers.get('content-security-policy') || '';
+    assert.match(contentSecurityPolicy, /frame-ancestors 'none'/);
+    assert.doesNotMatch(contentSecurityPolicy, /script-src[^;]*'unsafe-inline'/);
+    for (const [response, html] of [[japanese, japaneseHtml], [english, englishHtml], [englishAlias, englishAliasHtml]]) {
+        const nonce = /script-src[^;]*'nonce-([^']+)'/.exec(
+            response.headers.get('content-security-policy') || ''
+        )?.[1];
+        assert.ok(nonce, 'a per-response script nonce is present in the CSP');
+        const inlineScripts = [...html.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>/gi)];
+        assert.ok(inlineScripts.length > 0);
+        assert.ok(inlineScripts.every(([tag]) => tag.includes(`nonce="${nonce}"`)));
+    }
+    assert.notEqual(
+        /'nonce-([^']+)'/.exec(english.headers.get('content-security-policy'))?.[1],
+        /'nonce-([^']+)'/.exec(englishAlias.headers.get('content-security-policy'))?.[1]
+    );
 });
 
 test('serves public pages and sender with their existing content types', async () => {
@@ -103,6 +131,21 @@ test('serves public pages and sender with their existing content types', async (
         const response = await fetch(`${baseUrl}${route}`);
         assert.equal(response.status, 200, route);
         assert.match(response.headers.get('content-type') || '', /^text\/html/);
+        assert.equal(response.headers.get('cache-control'), 'no-store', route);
+    }
+});
+
+test('applies the CSP nonce to general and retired-card 404 responses in both locales', async () => {
+    for (const route of ['/missing-page', '/en/missing-page', '/showcase/removed',
+        '/card.html?showcase=python&fix=true', '/en/card.html?showcase=python&fix=true']) {
+        const response = await fetch(`${baseUrl}${route}`);
+        assert.equal(response.status, 404, route);
+        assert.equal(response.headers.get('cache-control'), 'no-store');
+        const nonce = /'nonce-([^']+)'/.exec(response.headers.get('content-security-policy'))?.[1];
+        assert.ok(nonce);
+        const scripts = [...(await response.text()).matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>/gi)];
+        assert.equal(scripts.length, 2);
+        assert.ok(scripts.every(([tag]) => tag.includes(`nonce="${nonce}"`)), route);
     }
 });
 
@@ -142,6 +185,24 @@ test('keeps card access rules unchanged', async () => {
         publicFixCard.headers.get('content-security-policy') || '',
         /frame-ancestors 'self' https:\/\/wakato\.tech https:\/\/www\.wakato\.tech/
     );
+});
+
+test('limits ordinary JSON while accepting larger GitHub webhook payloads', async () => {
+    const ordinaryPayload = JSON.stringify({ data: 'x'.repeat(1_050_000) });
+    const rejected = await fetch(baseUrl + '/api/save-title', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: ordinaryPayload
+    });
+    assert.equal(rejected.status, 413);
+
+    const webhookPayload = JSON.stringify({ padding: 'x'.repeat(1_050_000) });
+    const accepted = await fetch(baseUrl + '/webhook', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: webhookPayload
+    });
+    assert.equal(accepted.status, 200);
 });
 
 test('keeps unauthenticated API responses unchanged', async () => {

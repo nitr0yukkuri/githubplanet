@@ -2,3 +2,11 @@ node_modules
 /githubplanet
 .env
 /artifacts/
+
+.cloudflare/
+cloudflare/generated-pages.js
+.dev.vars
+.dev.vars.*
+
+.wrangler/
+cloudflare/generated-schema.js

@@ -36,20 +36,14 @@ export function createAuthoredLanguageHistoryService({ repository, githubClient 
         // インスタンス内だけのロックでは重複を防げないため、DBの条件付き更新を先に通す。
         inFlightScans.add(key);
         try {
-            const savedKeys = await repository.findAuthoredLanguageCommitKeys(githubId);
-            const knownCommits = new Set(savedKeys.flatMap(({ repositoryFullName, commitSha }) => {
-                const normalizedSha = commitSha.toLowerCase();
-                return [
-                    `${repositoryFullName.toLowerCase()}:${normalizedSha}`,
-                    normalizedSha
-                ];
-            }));
             const progress = await githubClient.scanHistoricalAuthoredLanguageCommits({
                 login,
                 accessToken,
                 accountCreatedAt,
                 now,
-                knownCommits,
+                findKnownCommitShas: async (commitShas) => (
+                    await repository.findAuthoredLanguageCommitKeys(githubId, commitShas)
+                ).map(({ commitSha }) => commitSha.toLowerCase()),
                 initialProgress: resumeProgress,
                 onBatch: (batch) => repository.saveAuthoredLanguageCommits(githubId, batch),
                 onProgress: (value) => repository.updateAuthoredLanguageHistoryScan(githubId, value)
@@ -77,7 +71,7 @@ export function createAuthoredLanguageHistoryService({ repository, githubClient 
 
     async function getHistory(githubId) {
         const scan = await repository.getAuthoredLanguageHistoryScan(githubId);
-        const rows = scan ? await repository.findAuthoredLanguageCommits(githubId) : [];
+        const rows = scan ? await repository.findAuthoredLanguageHistoryDays(githubId) : [];
         const history = buildAuthoredLanguageHistory(rows);
         return {
             history,

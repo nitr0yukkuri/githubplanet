@@ -1,3 +1,4 @@
+import { createMeteorConnection } from './realtime-connection.js';
 import { calculateStarCount, canReusePlanetScene, createPlanetDisposalResources, disposePlanetObject } from './planet-scene-resources.js';
 import { createHomeApi } from './home/api-client.js';
 import { createLanguageHistoryController } from './home/language-history-controller.js';
@@ -79,25 +80,8 @@ function recordHomeAnimationFrame(frameStartedAt) {
     }
 }
 
-// WebSocketを先に試し、失敗時はPollingへ切り替えて通知を維持する。
-// Firebase HostingのCloud Run rewriteではUpgradeヘッダーが届かないため、流星接続だけCloud Run直URLへ送る。
-const realtimeSocketOrigin = window.location.hostname === 'githubplanet.dev'
-    ? 'https://githubplanet-git-e7ranic5ja-dt.a.run.app'
-    : window.location.origin;
-const socket = io(realtimeSocketOrigin, {
-    transports: ['websocket', 'polling']
-});
+const socket = createMeteorConnection({ io });
 
-socket.on('connect', () => {
-    console.info(`Realtime meteor connected (${socket.io.engine?.transport?.name || 'unknown'})`);
-});
-socket.on('connect_error', (error) => {
-    console.warn('Realtime meteor connection failed:', error.message);
-    if (socket.io.opts.transports[0] === 'websocket') {
-        // Socket.IOの再接続をPollingから始め、利用可能なら後からWebSocketへ昇格する。
-        socket.io.opts.transports = ['polling', 'websocket'];
-    }
-});
 
 const homeRoute = resolveHomeRoute(window.location.pathname, window.location.search);
 const isExhibitionRoute = homeRoute.mode === 'exhibition';
