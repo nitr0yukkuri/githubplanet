@@ -28,7 +28,7 @@ test('CSRF tokens are private, unpredictable per session, stable, and never issu
 test('cookie-authenticated mutations reject missing, malformed and other-session tokens before I/O', async () => {
     const routes = new Map();
     const app = { get(path, ...handlers) { routes.set('GET ' + path, handlers.at(-1)); },
-        post(path, handler) { routes.set('POST ' + path, handler); } };
+        post(path, ...handlers) { routes.set('POST ' + path, handlers.at(-1)); } };
     let writes = 0;
     registerPlanetRoutes(app, {
         planetQueryService: { async saveActiveTitle() { writes++; return true; } },

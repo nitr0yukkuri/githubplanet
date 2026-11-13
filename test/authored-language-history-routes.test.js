@@ -17,7 +17,7 @@ test('starts and reads authored-language history only for the logged-in account'
     const calls = [];
     const app = {
         get(path, handler) { routes.set(`GET ${path}`, handler); },
-        post(path, handler) { routes.set(`POST ${path}`, handler); }
+        post(path, ...handlers) { routes.set(`POST ${path}`, handlers.at(-1)); }
     };
     const authoredLanguageHistoryService = {
         async startScan(input) { calls.push(['start', input.githubId, input.login, input.accessToken]); return true; },

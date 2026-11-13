@@ -1,5 +1,6 @@
 import { createApplicationServices } from './create-application-services.js';
 import express from 'express';
+import { rateLimit } from 'express-rate-limit';
 import session from 'express-session';
 import axios from 'axios';
 import compression from 'compression';
@@ -125,11 +126,12 @@ export function createApplication({
     if (serveStaticAssets) app.use('/front/img', express.static(path.join(rootDirectory, 'front/img'), { maxAge: '30d' }));
     if (serveStaticAssets) app.use('/front', express.static(path.join(rootDirectory, 'front'), { maxAge: 0 }));
     if (serveStaticAssets) {
+        const vendorRateLimit = rateLimit({ windowMs: 15 * 60_000, limit: 1000, standardHeaders: true, legacyHeaders: false });
         // パッケージのディレクトリ全体を公開せず、カードが読み込む2つの公開JSだけを配信する。
-        app.get('/vendor/three/build/three.module.js', (_req, res) => {
+        app.get('/vendor/three/build/three.module.js', vendorRateLimit, (_req, res) => {
             res.sendFile(path.join(rootDirectory, 'node_modules/three/build/three.module.js'), { maxAge: '30d' });
         });
-        app.get('/vendor/three/examples/jsm/controls/OrbitControls.js', (_req, res) => {
+        app.get('/vendor/three/examples/jsm/controls/OrbitControls.js', vendorRateLimit, (_req, res) => {
             res.sendFile(path.join(rootDirectory, 'node_modules/three/examples/jsm/controls/OrbitControls.js'), { maxAge: '30d' });
         });
     }

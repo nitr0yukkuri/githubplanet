@@ -10,8 +10,8 @@ function createApp() {
         get(paths, handler) {
             for (const path of Array.isArray(paths) ? paths : [paths]) handlers.set(`GET ${path}`, handler);
         },
-        post(path, handler) {
-            handlers.set(`POST ${path}`, handler);
+        post(path, ...handlersForRoute) {
+            handlers.set(`POST ${path}`, handlersForRoute.at(-1));
         }
     };
 }

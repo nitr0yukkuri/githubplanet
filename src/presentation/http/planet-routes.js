@@ -61,8 +61,9 @@ export function registerPlanetRoutes(app, {
     const authenticatedMeRateLimit = createMeRateLimit();
     // 保存値の先読みで、GitHub更新用の既存リクエスト枠を消費しない。
     const savedPlanetRateLimit = createMeRateLimit();
+    const mutationRateLimit = createMeRateLimit();
 
-    app.get('/api/csrf-token', issueSessionCsrfToken);
+    app.get('/api/csrf-token', mutationRateLimit, issueSessionCsrfToken);
 
     app.get('/github-profile/:githubId', async (req, res) => {
         if (!/^[1-9]\d*$/.test(String(req.params.githubId || ''))) {
@@ -184,7 +185,7 @@ export function registerPlanetRoutes(app, {
         });
     });
 
-    app.post('/api/save-title', async (req, res) => {
+    app.post('/api/save-title', mutationRateLimit, async (req, res) => {
         const userId = req.session?.planetData?.user?.id;
         if (!userId || !planetQueryService) {
             return res.status(401).json({ error: 'Not logged in' });
@@ -262,7 +263,7 @@ export function registerPlanetRoutes(app, {
         }
     });
 
-    app.post('/api/me/authored-language-history/scan', async (req, res) => {
+    app.post('/api/me/authored-language-history/scan', mutationRateLimit, async (req, res) => {
         const user = req.session?.planetData?.user;
         if (!user?.id || !req.session.github_token) {
             return res.status(401).json({ error: 'Not logged in' });
