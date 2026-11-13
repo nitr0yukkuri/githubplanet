@@ -29,7 +29,7 @@ test('malformed queue data never invokes the application', async () => {
 });
 
 test('a failed history scan observes the GitHub cooldown before consuming another retry', async()=>{
-    let retryDelay, released=0;
+    let retryDelay, released=0, connected=false;
     const state={async claim(){return {token:'lease'};},async release(){released++;}};
     const env={JOB_STATE:{getByName(){return state;}}};
     const pool={async query(sql){
@@ -37,6 +37,11 @@ test('a failed history scan observes the GitHub cooldown before consuming anothe
         return {rows:[{scan_status:'failed',retry_after:new Date(Date.now()+3600_000)}]};
     },async end(){}};
     const message={body:{id,hash,type:'history',githubId:'123'},ack(){throw new Error('must retry');},retry({delaySeconds}){retryDelay=delaySeconds;}};
-    await consumeJobs({messages:[message]},env,{waitUntil(){}},()=>({pool,authoredLanguageHistoryService:{async startScan(){}}}));
+    await consumeJobs({messages:[message]},env,{waitUntil(){}},()=>({
+        get pool(){return connected ? pool : undefined;},
+        ensurePool(){connected=true;return pool;},
+        authoredLanguageHistoryService:{async startScan(){}}
+    }));
+    assert.equal(connected,true,'History jobs must initialize their request-scoped database connection');
     assert.equal(released,1);assert.ok(retryDelay>=3598&&retryDelay<=3600);
 });

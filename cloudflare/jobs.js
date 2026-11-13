@@ -83,10 +83,12 @@ export async function consumeJobs(batch, env, context, createRuntime) {
             } else if (job.type === 'meteor') {
                 await runtime.meteorService.emitWebhookMeteor(job.input);
             } else {
-                const identity = await readScanIdentity(runtime.pool, job.githubId);
+                // HTTP/session処理を通らないQueueでは、遅延生成のPoolをここで初期化する。
+                const pool = runtime.ensurePool();
+                const identity = await readScanIdentity(pool, job.githubId);
                 if (identity) {
                     await runtime.authoredLanguageHistoryService.startScan(identity);
-                    const scan = await createAuthoredLanguageHistoryRepository(runtime.pool).getAuthoredLanguageHistoryScan(job.githubId);
+                    const scan = await createAuthoredLanguageHistoryRepository(pool).getAuthoredLanguageHistoryScan(job.githubId);
                     if (scan?.scanStatus === 'failed') {
                         const retryAt = new Date(scan.retryAfter).getTime();
                         retryDelay = Number.isFinite(retryAt) ? Math.min(43_200, Math.max(60, Math.ceil((retryAt - Date.now()) / 1000))) : 300;
