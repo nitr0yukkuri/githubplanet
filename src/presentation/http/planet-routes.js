@@ -3,6 +3,7 @@ import { normalizePlanetCommitCounts } from '../../domain/planet/planet.js';
 import { getShowcasePlanet } from '../../domain/planet/showcase-planets.js';
 import { toPlanetResponse } from './planet-response.js';
 import { safeErrorMetadata } from '../../shared/error-metadata.js';
+import { issueSessionCsrfToken, verifyCsrfToken } from './csrf-protection.js';
 
 const ANONYMOUS_RANDOM_COOKIE = 'githubplanet_random_planet';
 
@@ -60,6 +61,8 @@ export function registerPlanetRoutes(app, {
     const authenticatedMeRateLimit = createMeRateLimit();
     // 保存値の先読みで、GitHub更新用の既存リクエスト枠を消費しない。
     const savedPlanetRateLimit = createMeRateLimit();
+
+    app.get('/api/csrf-token', issueSessionCsrfToken);
 
     app.get('/github-profile/:githubId', async (req, res) => {
         if (!/^[1-9]\d*$/.test(String(req.params.githubId || ''))) {
@@ -186,6 +189,10 @@ export function registerPlanetRoutes(app, {
         if (!userId || !planetQueryService) {
             return res.status(401).json({ error: 'Not logged in' });
         }
+        // SameSiteだけに頼らず、Cookie認証で更新する操作をsession専用tokenでも検証する。
+        if (!verifyCsrfToken(req.session.csrfToken, req.headers?.['x-csrf-token'])) {
+            return res.status(403).json({ error: 'Invalid CSRF token' });
+        }
 
         const { prefix, suffix } = req.body || {};
         const unlockedTitles = req.session.planetData.planetData?.unlockedTitles || {
@@ -259,6 +266,9 @@ export function registerPlanetRoutes(app, {
         const user = req.session?.planetData?.user;
         if (!user?.id || !req.session.github_token) {
             return res.status(401).json({ error: 'Not logged in' });
+        }
+        if (!verifyCsrfToken(req.session.csrfToken, req.headers?.['x-csrf-token'])) {
+            return res.status(403).json({ error: 'Invalid CSRF token' });
         }
         if (isHistoryDisabled(user.login)) {
             res.set('Cache-Control', 'private, no-store');

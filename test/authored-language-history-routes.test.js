@@ -31,6 +31,7 @@ test('starts and reads authored-language history only for the logged-in account'
     assert.deepEqual(calls, []);
 
     const session = {
+        csrfToken: 'a'.repeat(64),
         planetData: { user: { id: 41, login: 'alice', created_at: '2020-01-01T00:00:00Z' } },
         github_token: 'private-token'
     };
@@ -42,7 +43,7 @@ test('starts and reads authored-language history only for the logged-in account'
 
     const scanHandler = routes.get('POST /api/me/authored-language-history/scan');
     const scanResponse = createResponse();
-    await scanHandler({ session }, scanResponse);
+    await scanHandler({ session, headers: { 'x-csrf-token': session.csrfToken } }, scanResponse);
 
     assert.equal(scanResponse.headers['Cache-Control'], 'private, no-store');
     assert.equal(scanResponse.body.scanStarted, true);

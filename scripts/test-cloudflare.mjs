@@ -99,7 +99,11 @@ try {
     assert.equal(invalid.status, 401);
     console.log('PASS signed webhook Queue delivery and duplicate event suppression');
 
-    const scan = await fetchRoute('/api/me/authored-language-history/scan', { method: 'POST', headers: { Cookie: cookie } });
+    const csrfResponse = await fetchRoute('/api/csrf-token', { headers: { Cookie: cookie } });
+    assert.equal(csrfResponse.status, 200);
+    const { csrfToken } = await csrfResponse.json();
+    assert.equal((await fetchRoute('/api/me/authored-language-history/scan', { method: 'POST', headers: { Cookie: cookie } })).status, 403);
+    const scan = await fetchRoute('/api/me/authored-language-history/scan', { method: 'POST', headers: { Cookie: cookie, 'X-CSRF-Token': csrfToken } });
     assert.equal(scan.status, 200);
     await until(async () => { const result = await pool.query('SELECT scan_status FROM authored_language_history_scans WHERE github_id=90000001001'); return result.rows[0]?.scan_status === 'complete'; });
     console.log('PASS queued history scan with token lookup from the session store');

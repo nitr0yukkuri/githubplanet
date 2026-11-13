@@ -99,7 +99,8 @@ for (const [route, status] of [
             },
             authoredLanguageHistoryService: { getHistory: fail, startScan: fail }, cacheDuration: 60_000
         });
-        const req = { params: { githubId: '42' }, body: { prefix: '名もなき', suffix: '旅人' }, session: {
+        const req = { params: { githubId: '42' }, body: { prefix: '名もなき', suffix: '旅人' }, headers: { 'x-csrf-token': 'a'.repeat(64) }, session: {
+            csrfToken: 'a'.repeat(64),
             github_token: marker, last_updated: Date.now(),
             planetData: { user: { id: 42, login: 'test-user' }, planetData: { totalCommits: 321 } }
         } };
